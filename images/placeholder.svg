@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600" viewBox="0 0 600 600">
+  <rect width="600" height="600" fill="#FFF1F4"></rect>
+  <g fill="none" stroke="#fc4c7a" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" opacity="0.55">
+    <rect x="180" y="180" width="240" height="200" rx="20"></rect>
+    <circle cx="250" cy="250" r="26"></circle>
+    <path d="M200 360 L280 290 L330 330 L380 280 L420 320"></path>
+  </g>
+  <text x="300" y="450" font-family="Inter, Arial, sans-serif" font-size="30" font-weight="700" fill="#fc4c7a" text-anchor="middle" opacity="0.8">DC Kids</text>
+  <text x="300" y="488" font-family="Inter, Arial, sans-serif" font-size="20" fill="#b06" text-anchor="middle" opacity="0.6">Photo coming soon</text>
+</svg>

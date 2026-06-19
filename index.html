@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DC Kids Brand — Merging Style with Comfort | Newborn Essentials (0-12 yrs)</title>
+  <meta name="description" content="DC Kids Brand — Ghana's favourite kids' fashion &amp; baby essentials store. Newborn to 12 years. Wholesale &amp; retail. Nationwide delivery. China pre-orders.">
+  <meta name="keywords" content="kids fashion Ghana, baby clothes Accra, newborn essentials, wholesale kids clothing, China preorder, DC Kids Brand">
+  <meta name="author" content="DC Kids Brand">
+  <meta name="theme-color" content="#0F4C3A">
+  <link rel="canonical" href="https://dckidsbrand.com/">
+  <meta name="robots" content="index, follow">
+
+  <!-- Open Graph (Facebook, WhatsApp link previews) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="DC Kids Brand">
+  <meta property="og:title" content="DC Kids Brand — Ghana's kids' fashion store">
+  <meta property="og:description" content="Newborn to 12 years. Retail, wholesale &amp; China pre-orders. Nationwide delivery in Ghana.">
+  <meta property="og:url" content="https://dckidsbrand.com/">
+  <meta property="og:image" content="https://dckidsbrand.com/icon.png">
+  <meta property="og:locale" content="en_GH">
+
+  <!-- Twitter card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="DC Kids Brand — Ghana's kids' fashion store">
+  <meta name="twitter:description" content="Newborn to 12 years. Retail, wholesale &amp; China pre-orders.">
+  <meta name="twitter:image" content="https://dckidsbrand.com/icon.png">
+
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="DC Kids">
+
+  <link rel="icon" href="icon.png" type="image/png">
+  
+  <!-- Font Awesome 6 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Google Fonts: Inter & Playfair Display -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,600&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            serif: ['Playfair Display', 'serif'],
+          },
+          colors: {
+            brand: {
+              green: '#5E9C7E',
+              darkgreen: '#0F4C3A',
+              bg: '#FAFAF8',
+              pink: '#FCECEC'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    body { background-color: #FAFAF8; }
+    .hide-scroll::-webkit-scrollbar { display: none; }
+    .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Nav Drawer styling to transition properly via classes */
+    .nav-drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 280px;
+      height: 100vh;
+      background: rgba(255,255,255,0.18);
+      backdrop-filter: blur(32px) saturate(1.8);
+      -webkit-backdrop-filter: blur(32px) saturate(1.8);
+      z-index: 999;
+      transform: translateX(-100%);
+      transition: .3s cubic-bezier(.4,0,.2,1);
+      padding: 80px 0 24px;
+      overflow-y: auto;
+      box-shadow: 4px 0 32px rgba(0,0,0,0.12), inset 1px 0 0 rgba(255,255,255,0.4);
+      border-right: 1px solid rgba(255,255,255,0.25);
+    }
+    .nav-drawer.open { transform: translateX(0); }
+    .nav-drawer__overlay { 
+      position: fixed; 
+      inset: 0; 
+      background: rgba(0,0,0,.35); 
+      z-index: 998; 
+      opacity: 0; 
+      pointer-events: none; 
+      transition: .3s ease; 
+    }
+    .nav-drawer__overlay.open { opacity: 1; pointer-events: all; }
+    
+    /* Nav Drawer items active class */
+    .nav-drawer__item { 
+      display: flex; 
+      align-items: center; 
+      gap: 14px; 
+      padding: 12px 24px; 
+      color: #333; 
+      font-weight: 500; 
+      font-size: 15px; 
+      transition: all 0.2s; 
+    }
+    .nav-drawer__item:hover { background: rgba(94,156,126,0.06); }
+    .nav-drawer__item.active { background: rgba(94,156,126,0.1); color: #0F4C3A; font-weight: 600; }
+    .nav-drawer__item svg { width: 20px; height: 20px; opacity: .6; }
+    .nav-drawer__item.active svg { opacity: 1; }
+    .nav-drawer__divider { height: 1px; background: rgba(0,0,0,.06); margin: 8px 24px; }
+    
+    /* Header menu hamburger button */
+    .header__menu-btn { 
+      width: 36px; 
+      height: 36px; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      justify-content: center; 
+      gap: 5px; 
+      background: none; 
+      border: none; 
+      cursor: pointer; 
+      z-index: 1001; 
+    }
+    .header__menu-btn span { 
+      display: block; 
+      width: 22px; 
+      height: 2px; 
+      background: #333; 
+      border-radius: 2px; 
+      transition: .3s ease; 
+    }
+    .header__menu-btn.active span:nth-child(1) { transform: rotate(45deg) translate(5px,5px); }
+    .header__menu-btn.active span:nth-child(2) { opacity: 0; }
+    .header__menu-btn.active span:nth-child(3) { transform: rotate(-45deg) translate(5px,-5px); }
+    
+    .promo-carousel__slide { min-width: 100%; }
+    .promo-carousel__dot { 
+      width: 8px; 
+      height: 8px; 
+      border-radius: 50%; 
+      background: rgba(255,255,255,.5); 
+      border: none; 
+      cursor: pointer; 
+      transition: .3s ease; 
+    }
+    .promo-carousel__dot.active { background: #fff; width: 20px; border-radius: 4px; }
+    
+    /* Cart Drawer styling */
+    .cart-drawer { 
+      position: fixed; 
+      top: 0; 
+      right: 0; 
+      width: 100%; 
+      max-width: 448px; 
+      height: 100%; 
+      background: #fff; 
+      box-shadow: -4px 0 24px rgba(0,0,0,0.1); 
+      z-index: 1050; 
+      transform: translateX(100%); 
+      transition: transform .35s cubic-bezier(.32,.72,0,1); 
+      display: flex; 
+      flex-direction: column; 
+    }
+    .cart-drawer.open { transform: translateX(0); }
+    .cart-overlay { 
+      position: fixed; 
+      inset: 0; 
+      background: rgba(0,0,0,0.4); 
+      z-index: 1040; 
+      opacity: 0; 
+      pointer-events: none; 
+      transition: opacity .3s ease; 
+    }
+    .cart-overlay.open { opacity: 1; pointer-events: all; }
+    
+    /* Store Mode Bar and Toggle */
+    .store-mode-bar { background: transparent; padding: 8px 16px; display: flex; justify-content: center; }
+    .store-mode-toggle { background: #f3f4f6; border: 1px solid #e5e7eb; padding: 4px; border-radius: 10px; display: flex; gap: 4px; }
+    .mode-btn {
+      background: transparent;
+      color: #6b7280;
+      border: none;
+      padding: 6px 20px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: .3s ease;
+    }
+    .mode-btn.active { background: #fff; color: #0F4C3A; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    
+    /* Wholesale theme styling overrides */
+    body.wholesale-theme .header__menu-btn span { background: var(--charcoal, #1A1A1A); }
+    
+    /* Product grid settings */
+    .product-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 12px 24px; }
+    @media (min-width: 640px) { .product-grid { grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 0 20px 32px; } }
+    @media (min-width: 1024px) { 
+      .product-grid { 
+        grid-template-columns: repeat(4, 1fr); 
+        max-width: 1600px !important; 
+        width: 95% !important; 
+        margin: 0 auto !important; 
+      } 
+    }
+    
+    /* Global overrides to expand dynamic content to fill screen width */
+    body .product-grid, body .section-header {
+      max-width: 1600px !important;
+      width: 95% !important;
+      margin-left: auto !important;
+      margin-right: auto !important;
+    }
+    body .section-header {
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+    }
+    
+    /* Active inventory toggle buttons styles */
+    .inventory-toggle__btn.active { background-color: #f3f4f6 !important; border-color: #d1d5db !important; font-weight: 700 !important; }
+    
+    @keyframes pulse-wa { 
+      0%, 100% { box-shadow: 0 2px 8px rgba(37,211,102,.3); } 
+      50% { box-shadow: 0 2px 18px rgba(37,211,102,.5); } 
+    }
+
+    /* Higher specificity overrides to defeat styles.css and match mockup pills */
+    body .category-pill {
+      border-radius: 9999px !important;
+      border: 1px solid #eaeaea !important;
+      padding: 10px 20px !important;
+      font-size: 14px !important;
+      font-weight: 500 !important;
+      color: #4b5563 !important;
+      background-color: #ffffff !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+      border-bottom: 1px solid #eaeaea !important;
+      transition: all 0.2s ease !important;
+    }
+    body .category-pill:hover {
+      background-color: #f9fafb !important;
+      color: #111827 !important;
+    }
+    body .category-pill.active {
+      background-color: #f3f4f6 !important;
+      color: #111827 !important;
+      font-weight: 600 !important;
+      border-color: #d1d5db !important;
+    }
+
+    /* Overrides for search input wrapper styles */
+    body .store-search-container input[type="text"] {
+      border-radius: 9999px !important;
+      border: 1.5px solid #E5E7EB !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03) !important;
+    }
+    body .store-search-container input[type="text"]:focus {
+      border-color: #5E9C7E !important;
+      box-shadow: 0 0 0 3px rgba(94,156,126,0.15) !important;
+    }
+    
+    /* Wholesale video container - diagonal division in the middle */
+    @media (min-width: 768px) {
+      .wholesale-video-container {
+        clip-path: polygon(12% 0, 100% 0, 100% 100%, 0 100%);
+        margin-left: -6%;
+        width: 51% !important;
+        position: relative;
+        z-index: 20;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="styles.css?v=13">
+
+  <!-- Structured data: Organization + WebSite (SEO + Google rich results) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://dckidsbrand.com/#org",
+        "name": "DC Kids Brand",
+        "url": "https://dckidsbrand.com/",
+        "logo": "https://dckidsbrand.com/icon.png",
+        "description": "Ghana's favourite kids' fashion & baby essentials store.",
+        "address": { "@type": "PostalAddress", "addressCountry": "GH", "addressLocality": "Accra" },
+        "sameAs": [
+          "https://www.instagram.com/dckidsbrand",
+          "https://www.tiktok.com/@dckidsbrand"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://dckidsbrand.com/#website",
+        "url": "https://dckidsbrand.com/",
+        "name": "DC Kids Brand",
+        "publisher": { "@id": "https://dckidsbrand.com/#org" },
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://dckidsbrand.com/?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    ]
+  }
+  </script>
+</head>
+<body class="font-sans text-gray-800 antialiased selection:bg-brand-green/20 selection:text-brand-darkgreen">
+
+  <!-- ===== STICKY HEADER ===== -->
+  <header id="header" class="header px-4 flex items-center justify-between transition-all duration-300">
+    <!-- Left: hamburger menu -->
+    <button id="menuBtn" class="header__menu-btn hover:bg-black/5 rounded-lg transition-colors p-2" aria-label="Open menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    
+    <!-- Right: Search icon + Cart Button -->
+    <div class="flex items-center gap-1">
+      <!-- Search trigger (focuses the input) -->
+      <button onclick="document.getElementById('storeSearchInput').focus(); document.getElementById('storeSearchInput').scrollIntoView({behavior: 'smooth', block: 'center'});" class="p-2 text-gray-600 hover:text-brand-green transition-colors" aria-label="Search">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+      </button>
+      
+      <!-- Cart -->
+      <button id="cartBtn" class="relative p-2 text-gray-600 hover:text-brand-green transition-colors" aria-label="Open Cart">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="9" cy="21" r="1"></circle>
+          <circle cx="20" cy="21" r="1"></circle>
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+        </svg>
+        <span id="cartCount" class="absolute -top-1 -right-1 bg-[#E11D48] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white" style="min-width:18px;height:18px;padding:0 4px;line-height:1;">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== MOBILE NAV DRAWER ===== -->
+  <div class="nav-drawer__overlay" id="navOverlay"></div>
+  <nav class="nav-drawer" id="navDrawer">
+    <!-- Logo area at the top of nav drawer -->
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 24px 16px;border-bottom:1px solid rgba(0,0,0,0.06);margin-bottom:8px;">
+      <img src="icon.png" alt="DC Kids Brand" style="height:36px;width:auto;object-fit:contain;">
+      <span style="font-size:13px;font-weight:700;color:#0F4C3A;letter-spacing:0.01em;">DC Kids Brand</span>
+    </div>
+
+    <a href="#all" class="nav-drawer__item active" data-category="all">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg>
+      All Products
+    </a>
+    <a href="#newborn" class="nav-drawer__item" data-category="newborn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+      Newborn
+    </a>
+    <a href="#clothing" class="nav-drawer__item" data-category="clothing">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M20.38 3.46 16 2a8.59 8.59 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"></path></svg>
+      Kids Clothing
+    </a>
+    <a href="#shoes" class="nav-drawer__item" data-category="shoes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z"></path><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z"></path><path d="M16 17h4"></path><path d="M4 13h4"></path></svg>
+      Footwear
+    </a>
+    <a href="#feeding" class="nav-drawer__item" data-category="feeding">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M8 2h8"></path><path d="M9 2v3a3 3 0 0 0 6 0V2"></path><path d="M7 9h10l-1 11a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2L7 9z"></path><path d="M9 13h6"></path></svg>
+      Feeding & Bottles
+    </a>
+    <a href="#gear" class="nav-drawer__item" data-category="gear">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      Baby Gear
+    </a>
+    <a href="#bathcare" class="nav-drawer__item" data-category="bathcare">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M9 6 6.5 3.5a1.5 1.5 0 0 0-1-.5C4.683 3 4 3.683 4 4.5V17a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1H4"></path><path d="M12 6h8"></path></svg>
+      Bath &amp; Care
+    </a>
+    <a href="#essentials" class="nav-drawer__item" data-category="essentials">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M9 12h.01M15 12h.01M12 2a8 8 0 0 0-8 8c0 1.5.5 3 1.5 4l.5 3 3-1.5h4l3 1.5.5-3A7.96 7.96 0 0 0 20 10a8 8 0 0 0-8-8z"></path><path d="M12 16c-1.5 0-2.5-.5-2.5-1.5S10.5 13 12 13s2.5.5 2.5 1.5-1 1.5-2.5 1.5z"></path></svg>
+      Baby Essentials
+    </a>
+    <a href="#accessories" class="nav-drawer__item" data-category="accessories">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"></path><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"></path><path d="M8 21v-5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v5"></path><path d="M8 10h8"></path><path d="M8 14h8"></path></svg>
+      Bags & Accessories
+    </a>
+    <a href="#bedding" class="nav-drawer__item" data-category="bedding">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M2 4v16"></path><path d="M2 8h18a2 2 0 0 1 2 2v10"></path><path d="M2 17h20"></path><path d="M6 8v9"></path></svg>
+      Bedding
+    </a>
+    
+    <div class="nav-drawer__divider"></div>
+    
+    <a href="#preorder-section" class="nav-drawer__item" data-category="preorder">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="m3.3 7 8.7 5 8.7-5"></path><path d="M12 22V12"></path></svg>
+      China Pre-Orders
+    </a>
+    
+    <div class="nav-drawer__divider"></div>
+    
+    <a href="#" class="nav-drawer__item" id="navWishlistBtn" onclick="openWishlist(); return false;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+      My Wishlist
+      <span id="wishlistNavCount" style="margin-left:auto;background:#0F4C3A;color:#fff;font-size:11px;font-weight:700;min-width:20px;height:20px;border-radius:10px;display:none;align-items:center;justify-content:center;padding:0 6px;">0</span>
+    </a>
+    <a href="/track.html" class="nav-drawer__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Track Order
+    </a>
+
+    <div class="nav-drawer__divider"></div>
+
+    <a href="https://maps.google.com/?q=ECOWAS+Plaza+Building+Kasoa+Adade+Ghana" class="nav-drawer__item" target="_blank">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+      Find Our Store
+    </a>
+    <a href="https://wa.me/233549193805" class="nav-drawer__item" target="_blank">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>
+      Contact Us
+    </a>
+  </nav>
+
+  <!-- ===== URGENCY BANNER ===== -->
+  <style>
+    #urgencyBanner { overflow: hidden; position: relative; }
+    #urgencyBanner .banner-track-wrapper {
+      display: inline-flex;
+      white-space: nowrap;
+      animation: marquee 30s linear infinite;
+      will-change: transform;
+    }
+    #urgencyBanner .banner-track-wrapper:hover { animation-play-state: paused; }
+    @keyframes marquee {
+      0%   { transform: translate3d(100vw, 0, 0); }
+      100% { transform: translate3d(-100%, 0, 0); }
+    }
+  </style>
+  <div id="urgencyBanner" class="bg-brand-pink text-gray-800 py-3 px-4 relative flex items-center text-xs md:text-sm font-medium border-b border-black/5 pr-10" style="min-height:40px;">
+    <div class="banner-track-wrapper">
+      <span class="banner-track" style="padding-right:60px;"><i class="fas fa-bullhorn text-gray-600 text-sm" style="margin-right:8px;"></i> <strong>China Pre-Order Window OPEN!</strong> Orders close May 18th — Don't miss out! &nbsp;&bull;&nbsp;</span>
+      <span class="banner-track" style="padding-right:60px;" aria-hidden="true"><i class="fas fa-bullhorn text-gray-600 text-sm" style="margin-right:8px;"></i> <strong>China Pre-Order Window OPEN!</strong> Orders close May 18th — Don't miss out! &nbsp;&bull;&nbsp;</span>
+      <span class="banner-track" style="padding-right:60px;" aria-hidden="true"><i class="fas fa-bullhorn text-gray-600 text-sm" style="margin-right:8px;"></i> <strong>China Pre-Order Window OPEN!</strong> Orders close May 18th — Don't miss out! &nbsp;&bull;&nbsp;</span>
+    </div>
+    <button id="closeBanner" class="absolute right-3 top-1/2 -translate-y-1/2 hover:opacity-75 p-1.5 cursor-pointer rounded-full hover:bg-black/10 transition-colors z-10" aria-label="Close banner" style="background:rgba(255,255,255,0.5);">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+    </button>
+  </div>
+
+  <!-- ===== STORE SEARCH & WHATSAPP ===== -->
+  <div class="store-search-container max-w-2xl mx-auto px-4 mt-6 mb-4">
+    <div class="flex items-center gap-3">
+      <!-- Search bar container -->
+      <div class="relative flex-1">
+        <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+          <i class="fas fa-search"></i>
+        </span>
+        <input type="text" id="storeSearchInput" placeholder="Search for products, categories, sizes..." 
+               class="w-full pl-11 pr-4 py-3.5 bg-white border border-gray-200 rounded-full text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-green/30 focus:border-brand-green transition-all shadow-sm">
+      </div>
+      <!-- WhatsApp button -->
+      <a href="https://wa.me/233549193805" target="_blank" rel="noopener" aria-label="Chat on WhatsApp"
+         class="w-12 h-12 rounded-full bg-[#25D366] text-white flex items-center justify-center text-2xl shadow-md hover:scale-105 active:scale-95 transition-transform duration-200 ease-out flex-shrink-0 animate-[pulse-wa_3s_infinite_ease-in-out]">
+        <i class="fab fa-whatsapp"></i>
+      </a>
+    </div>
+  </div>
+
+  <!-- ===== CATEGORY PILLS ===== -->
+  <div class="w-full overflow-x-auto hide-scroll flex justify-start md:justify-center px-4 py-2 mb-6">
+    <nav id="categoryPills" class="flex gap-2.5 whitespace-nowrap">
+      <a href="#all" class="category-pill active flex items-center gap-2 px-5 py-2.5 rounded-full border text-sm font-medium transition-all" data-filter="all">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> All
+      </a>
+      <a href="#newborn" class="category-pill flex items-center gap-2 px-5 py-2.5 rounded-full border bg-white text-gray-600 border-gray-100 hover:bg-gray-50 text-sm font-medium transition-all" data-filter="newborn">
+        <i class="fas fa-baby text-xs opacity-80"></i> Newborn
+      </a>
+      <a href="#clothing" class="category-pill flex items-center gap-2 px-5 py-2.5 rounded-full border bg-white text-gray-600 border-gray-100 hover:bg-gray-50 text-sm font-medium transition-all" data-filter="clothing">
+        <i class="fas fa-tshirt text-xs opacity-80"></i> Kids Clothing
+      </a>
+      <a href="#shoes" class="category-pill flex items-center gap-2 px-5 py-2.5 rounded-full border bg-white text-gray-600 border-gray-100 hover:bg-gray-50 text-sm font-medium transition-all" data-filter="shoes">
+        <i class="fas fa-shoe-prints text-xs opacity-80"></i> Footwear
+      </a>
+      <a href="#essentials" class="category-pill flex items-center gap-2 px-5 py-2.5 rounded-full border bg-white text-gray-600 border-gray-100 hover:bg-gray-50 text-sm font-medium transition-all" data-filter="essentials">
+        <i class="fas fa-hand-holding-heart text-xs opacity-80"></i> Baby Essentials
+      </a>
+      <a href="#accessories" class="category-pill flex items-center gap-2 px-5 py-2.5 rounded-full border bg-white text-gray-600 border-gray-100 hover:bg-gray-50 text-sm font-medium transition-all" data-filter="accessories">
+        <i class="fas fa-shopping-bag text-xs opacity-80"></i> Bags & Accessories
+      </a>
+      <a href="#bedding" class="category-pill flex items-center gap-2 px-5 py-2.5 rounded-full border bg-white text-gray-600 border-gray-100 hover:bg-gray-50 text-sm font-medium transition-all" data-filter="bedding">
+        <i class="fas fa-bed text-xs opacity-80"></i> Bedding
+      </a>
+    </nav>
+  </div>
+
+  <!-- ===== HERO PROMO CAROUSEL ===== -->
+  <div class="max-w-[1600px] w-[95%] mx-auto px-4 mb-8">
+    <section class="relative w-full h-[72vh] md:h-[82vh] lg:h-[88vh] rounded-2xl overflow-hidden shadow-xl" id="promoCarousel">
+      <!-- Slides Track -->
+      <div id="promoTrack" class="flex h-full w-full transition-transform duration-500 ease-out">
+        <div class="promo-carousel__slide w-full h-full flex-shrink-0 relative">
+          <img src="images/promo_store1.jpg" alt="Style, Comfort & Quality for Every Kid" class="w-full h-full object-cover">
+        </div>
+        <div class="promo-carousel__slide w-full h-full flex-shrink-0 relative">
+          <img src="images/promo_store2.jpg" alt="DC Kids Brand" class="w-full h-full object-cover">
+        </div>
+        <div class="promo-carousel__slide w-full h-full flex-shrink-0 relative">
+          <img src="images/promo_store3.jpg" alt="Footwear Collection" class="w-full h-full object-cover">
+        </div>
+        <div class="promo-carousel__slide w-full h-full flex-shrink-0 relative">
+          <img src="images/promo_store4.jpg" alt="Family Shopping" class="w-full h-full object-cover">
+        </div>
+        <div class="promo-carousel__slide w-full h-full flex-shrink-0 relative">
+          <img src="images/promo_store5.jpg" alt="Personalised Service" class="w-full h-full object-cover">
+        </div>
+        <div class="promo-carousel__slide w-full h-full flex-shrink-0 relative">
+          <img src="images/promo_store6.jpg" alt="Welcome to Our Store" class="w-full h-full object-cover">
+        </div>
+      </div>
+      
+      <!-- Gradient Overlay -->
+      <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent pointer-events-none"></div>
+      
+      <!-- Text Overlay (vertical center) -->
+      <div class="absolute inset-y-0 left-6 md:left-12 flex flex-col justify-center max-w-md z-10 text-white gap-3.5">
+        <span class="text-xs uppercase tracking-wider font-semibold text-brand-green">DC Kids Brand</span>
+        <h1 class="font-serif text-3xl md:text-5xl leading-tight font-semibold">Style, Comfort &<br>Quality for Every Kid</h1>
+        <p class="text-gray-200 text-sm md:text-base font-light">New arrivals you'll love</p>
+        <div>
+          <a href="#clothing" onclick="event.preventDefault();filterByCategory('clothing');" class="inline-block bg-brand-green hover:bg-brand-green/90 text-white font-medium px-6 py-3 rounded-xl transition-all shadow-lg hover:shadow-brand-green/20">
+            Shop New Arrivals
+          </a>
+        </div>
+      </div>
+      
+      <!-- Arrow Navigation (Direct carousel control) -->
+      <button onclick="if(window.__carouselGoTo){window.__carouselGoTo('prev')}" 
+              class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center backdrop-blur-sm transition-colors z-20" aria-label="Previous Slide">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <button onclick="if(window.__carouselGoTo){window.__carouselGoTo('next')}" 
+              class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center backdrop-blur-sm transition-colors z-20" aria-label="Next Slide">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+      
+      <!-- Dots Container -->
+      <div id="promoDots" class="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 z-20"></div>
+    </section>
+  </div>
+
+  <!-- ===== STOCK TOGGLE ===== -->
+  <div class="max-w-[1600px] w-[95%] mx-auto px-4 mb-6">
+    <div class="grid grid-cols-2 gap-3 sm:gap-4 stock-toggle-grid">
+      <!-- Toggle Card 1: Available -->
+      <button class="inventory-toggle__btn active flex items-center gap-4 p-4 md:p-5 bg-white border border-gray-200 rounded-2xl text-left shadow-sm hover:shadow-md transition-all cursor-pointer w-full group" data-stock="available">
+        <span class="w-12 h-12 rounded-xl bg-brand-green/10 flex items-center justify-center text-brand-darkgreen text-xl flex-shrink-0 group-[.active]:bg-brand-darkgreen group-[.active]:text-white transition-colors duration-300">
+          <i class="fas fa-store"></i>
+        </span>
+        <div>
+          <div class="font-semibold text-gray-800 text-sm md:text-base">In Stock (Kasoa)</div>
+          <div class="text-xs text-gray-500 font-normal">Shop available items</div>
+        </div>
+      </button>
+      
+      <!-- Toggle Card 2: Preorder -->
+      <button class="inventory-toggle__btn flex items-center gap-4 p-4 md:p-5 bg-white border border-gray-200 rounded-2xl text-left shadow-sm hover:shadow-md transition-all cursor-pointer w-full group" data-stock="preorder">
+        <span class="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 text-xl flex-shrink-0 group-[.active]:bg-brand-darkgreen group-[.active]:text-white transition-colors duration-300">
+          <i class="fas fa-globe"></i>
+        </span>
+        <div>
+          <div class="font-semibold text-gray-800 text-sm md:text-base">China Pre-Orders</div>
+          <div class="text-xs text-gray-500 font-normal">Order from China</div>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== TRUST STRIP ===== -->
+  <div class="max-w-[1600px] w-[95%] mx-auto px-4 mb-8">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-b border-gray-200">
+      <!-- Item 1 -->
+      <div class="flex items-center gap-3">
+        <span class="text-brand-green text-xl"><i class="fas fa-map-marker-alt"></i></span>
+        <div>
+          <div class="text-xs font-semibold text-gray-800">Nationwide Delivery</div>
+          <div class="text-[10px] text-gray-500">Fast & reliable delivery</div>
+        </div>
+      </div>
+      <!-- Item 2 -->
+      <div class="flex items-center gap-3">
+        <span class="text-brand-green text-xl"><i class="fas fa-shield-alt"></i></span>
+        <div>
+          <div class="text-xs font-semibold text-gray-800">Quality Guaranteed</div>
+          <div class="text-[10px] text-gray-500">100% original & trusted</div>
+        </div>
+      </div>
+      <!-- Item 3 -->
+      <div class="flex items-center gap-3">
+        <span class="text-brand-green text-xl"><i class="far fa-smile"></i></span>
+        <div>
+          <div class="text-xs font-semibold text-gray-800">0-12 Yrs</div>
+          <div class="text-[10px] text-gray-500">Kids Fashion</div>
+        </div>
+      </div>
+      <!-- Item 4 -->
+      <div class="flex items-center gap-3">
+        <span class="text-brand-green text-xl"><i class="fas fa-lock"></i></span>
+        <div>
+          <div class="text-xs font-semibold text-gray-800">Secure Payments</div>
+          <div class="text-[10px] text-gray-500">Pay safely online</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== STORE MODE BAR ===== -->
+  <div class="store-mode-bar" id="storeModeBar" style="display:none">
+    <div class="store-mode-toggle">
+      <button class="mode-btn active" data-mode="retail" id="btnRetail">Retail Store</button>
+      <button class="mode-btn" data-mode="wholesale" id="btnWholesale">Wholesale Portal</button>
+    </div>
+  </div>
+
+  <!-- ===== DYNAMIC PRODUCT SECTIONS ===== -->
+  <div id="dynamicSections">
+    <!-- Products organized by category will be injected here by JS -->
+  </div>
+
+  <!-- ===== PRE-ORDER SECTION ===== -->
+  <div class="max-w-[1600px] w-[95%] mx-auto px-4">
+    <section id="preorderSection" class="hidden pb-16">
+      <div class="section-header flex justify-between items-center mb-6">
+        <h2 class="text-xl font-semibold text-red-600">China Sourcing Pre-Orders</h2>
+        <span class="text-xs px-3 py-1 bg-red-50 text-red-600 border border-red-100 rounded-full font-medium">Ends May 18</span>
+      </div>
+      
+      <!-- Info banner -->
+      <div class="bg-red-50/70 border border-red-100/80 p-5 rounded-2xl mb-6 text-sm leading-relaxed text-red-800 shadow-sm">
+        <div class="font-semibold flex items-center gap-2 mb-2">
+          <i class="fas fa-info-circle"></i> How it works:
+        </div>
+        <ol class="list-decimal pl-5 space-y-1 text-red-700/90 font-medium">
+          <li>Select items &amp; tap <strong>"Pre-Order via WhatsApp"</strong>.</li>
+          <li>We confirm your total and collect a <strong>70% deposit</strong>.</li>
+          <li>Your items arrive in <strong>3-4 weeks</strong>.</li>
+          <li>Pay the remaining 30% upon pickup or before delivery.</li>
+        </ol>
+      </div>
+      
+      <!-- Product Grid -->
+      <div class="product-grid" id="preorderGrid">
+        <!-- Pre-order items rendered here via JS -->
+      </div>
+      <!-- Custom (off-catalog) pre-order CTA -->
+      <div class="mt-8 bg-white border border-gray-200 rounded-2xl p-6 md:p-7 shadow-sm flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+        <span class="w-14 h-14 rounded-2xl bg-brand-green/10 text-brand-darkgreen flex items-center justify-center text-2xl flex-shrink-0"><i class="fas fa-magnifying-glass"></i></span>
+        <div class="flex-1">
+          <div class="font-semibold text-gray-800 text-base md:text-lg">Want something not listed here?</div>
+          <div class="text-sm text-gray-500 mt-1">Send us a photo or link and we'll source it direct from China for you.</div>
+        </div>
+        <a href="https://wa.me/233549193805?text=Hi%20DC%20Kids!%20I%20want%20to%20start%20a%20custom%20China%20pre-order." target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-brand-darkgreen text-white font-semibold text-sm shadow-sm hover:scale-105 active:scale-95 transition-transform whitespace-nowrap"><i class="fab fa-whatsapp text-lg"></i> Start a Custom Pre-Order</a>
+      </div>
+        <!-- Pre-order items rendered here via JS -->
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== WHOLESALE FOR RESELLERS SECTION ===== -->
+  <div class="max-w-[1600px] w-[95%] mx-auto px-4 mb-12">
+    <div class="bg-[#EEF2EF] rounded-3xl overflow-hidden flex flex-col md:flex-row items-center shadow-sm">
+      <!-- Left side: Text and CTA -->
+      <div class="w-full md:w-[55%] p-8 md:p-12 md:pr-16 flex flex-col justify-center items-start text-left gap-4 relative z-10">
+        <span class="w-12 h-12 rounded-2xl bg-brand-green/10 flex items-center justify-center text-brand-darkgreen text-xl">
+          <i class="fas fa-users"></i>
+        </span>
+        <h2 class="font-serif text-2xl md:text-3.5xl text-brand-darkgreen font-bold leading-tight">Wholesale for Resellers</h2>
+        <p class="text-sm md:text-base text-gray-600 max-w-md leading-relaxed">
+          Exclusive prices, bulk discounts and priority service for your business.
+        </p>
+        <button onclick="document.getElementById('btnWholesale').click(); window.scrollTo({ top: 0, behavior: 'smooth' });" 
+           class="inline-flex items-center gap-2 bg-brand-darkgreen hover:bg-brand-darkgreen/95 text-white font-medium px-6 py-3 rounded-full transition-all shadow-md active:scale-98">
+          Access Wholesale Portal <i class="fas fa-arrow-right text-xs"></i>
+        </button>
+      </div>
+      <!-- Right side: Video Loop -->
+      <div class="w-full md:w-[45%] h-64 md:h-auto self-stretch relative overflow-hidden wholesale-video-container">
+        <video
+          autoplay
+          loop
+          muted
+          playsinline
+          webkit-playsinline
+          disablepictureinpicture
+          disableremoteplayback
+          controlslist="nodownload nofullscreen noremoteplayback"
+          oncontextmenu="return false;"
+          class="absolute inset-0 w-full h-full object-cover object-center pointer-events-none"
+        >
+          <source src="wholesale-packing.mp4" type="video/mp4" />
+          <source src="IMG_8659.MOV" type="video/quicktime" />
+        </video>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== WHY CHOOSE US / SERVICES ===== -->
+  <div class="max-w-[1600px] w-[95%] mx-auto px-4 mb-12">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <!-- Card 1 -->
+      <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-start gap-4">
+        <span class="w-12 h-12 rounded-xl bg-brand-green/10 flex items-center justify-center text-brand-darkgreen text-xl flex-shrink-0">
+          <i class="fas fa-store"></i>
+        </span>
+        <div>
+          <h3 class="font-semibold text-gray-800 text-base mb-1">Physical Store</h3>
+          <p class="text-xs text-gray-500 leading-relaxed">Visit us at ECOWAS Plaza Building, Kasoa-Adade. See & feel before you buy.</p>
+        </div>
+      </div>
+      
+      <!-- Card 2 -->
+      <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-start gap-4">
+        <span class="w-12 h-12 rounded-xl bg-brand-green/10 flex items-center justify-center text-brand-darkgreen text-xl flex-shrink-0">
+          <i class="fas fa-truck"></i>
+        </span>
+        <div>
+          <h3 class="font-semibold text-gray-800 text-base mb-1">Nationwide Delivery</h3>
+          <p class="text-xs text-gray-500 leading-relaxed">We deliver across Ghana. Your order, at your doorstep.</p>
+        </div>
+      </div>
+      
+      <!-- Card 3 -->
+      <div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-start gap-4">
+        <span class="w-12 h-12 rounded-xl bg-brand-green/10 flex items-center justify-center text-brand-darkgreen text-xl flex-shrink-0">
+          <i class="fas fa-dollar-sign"></i>
+        </span>
+        <div>
+          <h3 class="font-semibold text-gray-800 text-base mb-1">Wholesale & Retail</h3>
+          <p class="text-xs text-gray-500 leading-relaxed">Best prices in Kasoa! Bulk buyers & retailers welcome.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TRUST STRIP ===== -->
+  <section aria-label="Why shop with DC Kids" style="background:#F7FBF9;border-top:1px solid #E8F0EC;border-bottom:1px solid #E8F0EC;padding:26px 16px;">
+    <div style="max-width:1100px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">
+      <div class="trust-item" style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;">
+        <span style="width:42px;height:42px;border-radius:12px;background:#E8F5EE;color:#0F4C3A;display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+        </span>
+        <span style="font-size:13px;font-weight:700;color:#1A1A1A;">Nationwide Delivery</span>
+        <span style="font-size:11.5px;color:#777;line-height:1.4;">Fast dispatch across Ghana</span>
+      </div>
+      <div class="trust-item" style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;">
+        <span style="width:42px;height:42px;border-radius:12px;background:#E8F5EE;color:#0F4C3A;display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+        </span>
+        <span style="font-size:13px;font-weight:700;color:#1A1A1A;">Order on WhatsApp</span>
+        <span style="font-size:11.5px;color:#777;line-height:1.4;">Quick, friendly support</span>
+      </div>
+      <div class="trust-item" style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;">
+        <span style="width:42px;height:42px;border-radius:12px;background:#E8F5EE;color:#0F4C3A;display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+        </span>
+        <span style="font-size:13px;font-weight:700;color:#1A1A1A;">Easy Exchanges</span>
+        <span style="font-size:11.5px;color:#777;line-height:1.4;">Wrong size? We'll sort it</span>
+      </div>
+      <div class="trust-item" style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;">
+        <span style="width:42px;height:42px;border-radius:12px;background:#E8F5EE;color:#0F4C3A;display:flex;align-items:center;justify-content:center;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </span>
+        <span style="font-size:13px;font-weight:700;color:#1A1A1A;">Quality You Can Trust</span>
+        <span style="font-size:11.5px;color:#777;line-height:1.4;">Carefully sourced styles</span>
+      </div>
+    </div>
+  </section>
+  <style>
+    @media (max-width: 640px) {
+      section[aria-label="Why shop with DC Kids"] > div { grid-template-columns:repeat(2,1fr) !important; gap:22px 12px !important; }
+    }
+  </style>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="bg-[#1A1F25] text-gray-300 pt-16 pb-8 border-t border-gray-800 font-sans">
+    <div class="max-w-[1600px] w-[95%] mx-auto px-4 grid grid-cols-1 md:grid-cols-5 gap-8 mb-12">
+      <!-- Col 1: Brand & Socials -->
+      <div class="flex flex-col gap-4">
+        <div class="flex items-center gap-2">
+          <span class="w-10 h-10 rounded-full bg-white flex items-center justify-center p-1 border border-gray-700">
+            <img src="icon.png" alt="DC Kids Brand" class="w-full h-full object-contain">
+          </span>
+          <span class="font-serif text-lg font-bold text-white">DC Kids Brand</span>
+        </div>
+        <p class="text-xs text-gray-400 leading-relaxed">Merging Style with Comfort</p>
+        <div class="flex gap-3 mt-2">
+          <!-- TikTok -->
+          <a href="https://www.tiktok.com/@dckidsbrand" target="_blank" rel="noopener" aria-label="TikTok"
+             class="w-9 h-9 rounded-full bg-gray-800 hover:bg-brand-green hover:text-white flex items-center justify-center transition-colors">
+            <i class="fab fa-tiktok"></i>
+          </a>
+          <!-- WhatsApp -->
+          <a href="https://wa.me/233549193805" target="_blank" rel="noopener" aria-label="WhatsApp"
+             class="w-9 h-9 rounded-full bg-gray-800 hover:bg-[#25D366] hover:text-white flex items-center justify-center transition-colors">
+            <i class="fab fa-whatsapp"></i>
+          </a>
+          <!-- Instagram -->
+          <a href="https://instagram.com" target="_blank" rel="noopener" aria-label="Instagram"
+             class="w-9 h-9 rounded-full bg-gray-800 hover:bg-pink-600 hover:text-white flex items-center justify-center transition-colors">
+            <i class="fab fa-instagram"></i>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Col 2: Customer Service -->
+      <div>
+        <h4 class="text-white font-semibold text-sm mb-4">Customer Service</h4>
+        <ul class="space-y-2.5 text-xs text-gray-400">
+          <li><a href="#" class="hover:text-white transition-colors">FAQs</a></li>
+          <li><a href="#" class="hover:text-white transition-colors">Shipping & Delivery</a></li>
+          <li><a href="#" class="hover:text-white transition-colors">Returns & Exchanges</a></li>
+          <li><a href="#" class="hover:text-white transition-colors">Size Guide</a></li>
+          <li><a href="#" class="hover:text-white transition-colors">Track Your Order</a></li>
+        </ul>
+      </div>
+      
+      <!-- Col 3: Policies -->
+      <div>
+        <h4 class="text-white font-semibold text-sm mb-4">Policies</h4>
+        <ul class="space-y-2.5 text-xs text-gray-400">
+          <li><a href="#" class="hover:text-white transition-colors">Privacy Policy</a></li>
+          <li><a href="#" class="hover:text-white transition-colors">Refund Policy</a></li>
+          <li><a href="#" class="hover:text-white transition-colors">Shipping Policy</a></li>
+          <li><a href="#" class="hover:text-white transition-colors">Terms & Conditions</a></li>
+        </ul>
+      </div>
+      
+      <!-- Col 4: About DC Kids -->
+      <div class="flex flex-col gap-3">
+        <h4 class="text-white font-semibold text-sm">About DC Kids</h4>
+        <p class="text-xs text-gray-400 leading-relaxed">
+          We're passionate about bringing stylish, high-quality, and comfortable kids' fashion to families across Ghana.
+        </p>
+        <a href="#" class="text-xs text-brand-green hover:underline flex items-center gap-1">
+          Learn more about us <i class="fas fa-arrow-right text-[10px]"></i>
+        </a>
+      </div>
+      
+      <!-- Col 5: Contact Us -->
+      <div>
+        <h4 class="text-white font-semibold text-sm mb-4">Contact Us</h4>
+        <ul class="space-y-3 text-xs text-gray-400">
+          <li class="flex items-start gap-2">
+            <i class="fas fa-phone-alt mt-0.5 text-gray-500"></i>
+            <span>+233 59 123 4567</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <i class="far fa-envelope mt-0.5 text-gray-500"></i>
+            <span class="break-all">info@dckidsbrand.com</span>
+          </li>
+          <li class="flex items-start gap-2">
+            <i class="fas fa-map-marker-alt mt-0.5 text-gray-500"></i>
+            <span>ECOWAS Plaza Building,<br>Kasoa-Adade, Ghana</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+    
+    <!-- Footer bottom bar -->
+    <div class="border-t border-gray-800 pt-8 mt-8">
+      <div class="max-w-[1600px] w-[95%] mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-4 text-[11px] text-gray-500 text-center">
+        <!-- Payment badges -->
+        <div class="flex items-center gap-3">
+          <span>We accept:</span>
+          <div class="flex gap-2.5 text-lg">
+            <i class="fab fa-cc-visa text-gray-400 hover:text-white transition-colors"></i>
+            <i class="fab fa-cc-mastercard text-gray-400 hover:text-white transition-colors"></i>
+            <i class="fab fa-cc-paypal text-gray-400 hover:text-white transition-colors"></i>
+          </div>
+        </div>
+        
+        <!-- Copyright -->
+        <div>
+          &copy; 2026 DC Kids Brand. All Rights Reserved.
+        </div>
+        
+        <!-- Ghanaian Flag -->
+        <div class="flex items-center gap-1.5">
+          <span>Proudly Ghanaian</span>
+          <span class="text-base leading-none">🇬🇭</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===== CART DRAWER ===== -->
+  <div class="cart-overlay" id="cartOverlay"></div>
+  <div class="cart-drawer flex flex-col" id="cartDrawer">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100 flex-shrink-0">
+      <h2 class="text-lg font-semibold text-gray-800">Your Cart</h2>
+      <button class="p-2 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer" id="closeCartBtn" aria-label="Close cart">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    
+    <!-- Body (scrollable) -->
+    <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4" id="cartBody">
+      <!-- Dummy Items (will be replaced by JS) -->
+      <div class="cart-item flex items-center gap-4 pb-4 border-b border-gray-100">
+        <img src="images/product_56.jpg" alt="Boys 3-Piece Sailor Set" class="w-16 h-16 rounded-xl object-cover flex-shrink-0">
+        <div class="flex-1">
+          <div class="text-sm font-medium text-gray-800">Boys 3-Piece Sailor Set</div>
+          <div class="text-xs text-gray-400">6M – 24M</div>
+          <div class="text-sm font-semibold text-gray-800 mt-1">GHC 85</div>
+        </div>
+        <div class="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+          <button class="px-2 py-1 bg-gray-50 text-gray-500 hover:bg-gray-100">-</button>
+          <span class="px-3 text-sm font-medium text-gray-700">1</span>
+          <button class="px-2 py-1 bg-gray-50 text-gray-500 hover:bg-gray-100">+</button>
+        </div>
+        <button class="text-gray-400 hover:text-red-500 p-1" aria-label="Remove item">
+          <i class="far fa-trash-can"></i>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="p-6 border-t border-gray-100 flex-shrink-0 bg-gray-50">
+      <div class="flex justify-between items-center mb-4 text-base font-semibold text-gray-800">
+        <span>Subtotal:</span>
+        <span id="cartSubtotal">GHC 245</span>
+      </div>
+      <button class="w-full bg-[#25D366] hover:bg-[#20ba56] text-white font-medium py-3.5 px-6 rounded-xl flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg transition-all active:scale-[0.98]" id="checkoutBtn">
+        <i class="fab fa-whatsapp text-lg"></i>
+        Checkout via WhatsApp
+      </button>
+    </div>
+  </div>
+
+  <!-- ===== WISHLIST DRAWER ===== -->
+  <div class="cart-overlay" id="wishlistOverlay" onclick="closeWishlist()"></div>
+  <div class="cart-drawer flex flex-col" id="wishlistDrawer">
+    <div class="flex items-center justify-between px-6 py-5 border-b border-gray-100 flex-shrink-0">
+      <h2 class="text-lg font-semibold text-gray-800">My Wishlist</h2>
+      <button class="p-2 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer" onclick="closeWishlist()" aria-label="Close wishlist">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4" id="wishlistBody"></div>
+  </div>
+
+  <script src="gradient.js?v=3"></script>
+  <script src="app.js?v=15"></script>
+
+  <!-- ===== CHECKOUT MODAL ===== -->
+  <div id="checkoutModal" style="display:none;position:fixed;inset:0;z-index:3000;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">
+    <div style="background:#fff;border-radius:24px;padding:32px 28px;max-width:400px;width:92%;position:relative;box-shadow:0 24px 64px rgba(0,0,0,0.18);animation:modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1);max-height:92vh;overflow-y:auto;">
+
+      <!-- Step 1: Enter Details -->
+      <div id="checkoutStep1">
+        <div style="text-align:center;margin-bottom:22px;">
+          <div style="width:72px;height:72px;border-radius:50%;background:#E8F5EE;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#5E9C7E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <h2 style="font-size:20px;font-weight:700;color:#1f2937;margin:0 0 6px;">Enter Customer Details</h2>
+          <p style="font-size:13px;color:#9ca3af;margin:0;line-height:1.5;">Please provide your details to continue with the order.</p>
+        </div>
+
+        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em;">Full Name <span style="color:#dc2626;">*</span></label>
+        <div style="position:relative;margin-bottom:14px;">
+          <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <input id="checkoutName" type="text" placeholder="Enter your full name" style="width:100%;padding:11px 12px 11px 36px;border:1.5px solid #e0e4e8;border-radius:12px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;transition:border-color 0.2s,box-shadow 0.2s;" onfocus="this.style.borderColor='#5E9C7E';this.style.boxShadow='0 0 0 3px rgba(94,156,126,0.1)'" onblur="this.style.borderColor='#e0e4e8';this.style.boxShadow='none'">
+        </div>
+
+        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em;">Phone / WhatsApp <span style="color:#dc2626;">*</span></label>
+        <div style="position:relative;margin-bottom:18px;">
+          <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          <input id="checkoutPhone" type="tel" placeholder="e.g. 0241234567" style="width:100%;padding:11px 12px 11px 36px;border:1.5px solid #e0e4e8;border-radius:12px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;transition:border-color 0.2s,box-shadow 0.2s;" onfocus="this.style.borderColor='#5E9C7E';this.style.boxShadow='0 0 0 3px rgba(94,156,126,0.1)'" onblur="this.style.borderColor='#e0e4e8';this.style.boxShadow='none'">
+        </div>
+
+        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em;">Delivery Area / Town</label>
+        <div style="position:relative;margin-bottom:14px;">
+          <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <input id="checkoutArea" type="text" placeholder="e.g. Kasoa, Accra, Kumasi" style="width:100%;padding:11px 12px 11px 36px;border:1.5px solid #e0e4e8;border-radius:12px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;transition:border-color 0.2s,box-shadow 0.2s;" onfocus="this.style.borderColor='#5E9C7E';this.style.boxShadow='0 0 0 3px rgba(94,156,126,0.1)'" onblur="this.style.borderColor='#e0e4e8';this.style.boxShadow='none'">
+        </div>
+
+        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em;">Order Notes <span style="font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <div style="position:relative;margin-bottom:18px;">
+          <textarea id="checkoutNotes" rows="2" placeholder="Landmark, preferred colour, delivery time…" style="width:100%;padding:11px 12px;border:1.5px solid #e0e4e8;border-radius:12px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;resize:vertical;transition:border-color 0.2s,box-shadow 0.2s;" onfocus="this.style.borderColor='#5E9C7E';this.style.boxShadow='0 0 0 3px rgba(94,156,126,0.1)'" onblur="this.style.borderColor='#e0e4e8';this.style.boxShadow='none'"></textarea>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:8px;background:#f0f8f4;border-radius:10px;padding:10px 13px;margin-bottom:20px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5E9C7E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <span style="font-size:11.5px;color:#5E9C7E;font-weight:500;">Your information is secure and will not be shared.</span>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <button id="checkoutModalCancel" style="flex:1;padding:12px;border:1.5px solid #e0e4e8;border-radius:12px;font-size:14px;font-weight:600;color:#6b7280;background:#fff;cursor:pointer;font-family:inherit;transition:background 0.15s;">Cancel</button>
+          <button id="checkoutModalOk" style="flex:1.6;padding:12px;border:none;border-radius:12px;font-size:14px;font-weight:600;color:#fff;background:#5E9C7E;cursor:pointer;font-family:inherit;transition:background 0.15s;">Continue →</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Thank You -->
+      <div id="checkoutStep2" style="display:none;text-align:center;">
+        <div style="width:72px;height:72px;border-radius:50%;background:#E8F5EE;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#5E9C7E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <h2 style="font-size:22px;font-weight:700;color:#1f2937;margin:0 0 6px;">Thank You!</h2>
+        <p style="font-size:13px;color:#9ca3af;margin:0 0 20px;">Customer details added successfully.</p>
+        <hr style="border:none;border-top:1px solid #f3f4f6;margin-bottom:20px;">
+        <div style="background:#f0f8f4;border-radius:12px;padding:14px 16px;text-align:left;margin-bottom:22px;display:flex;gap:12px;align-items:flex-start;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5E9C7E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#1f2937;margin-bottom:3px;">What's Next?</div>
+            <div style="font-size:12px;color:#6b7280;line-height:1.5;">You can now continue with the order and complete the checkout process.</div>
+          </div>
+        </div>
+        <button id="checkoutModalContinue" style="width:100%;padding:13px;border:none;border-radius:12px;font-size:14px;font-weight:600;color:#fff;background:#5E9C7E;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:background 0.15s;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.82 9.82 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.81 11.81 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.88 11.88 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.82 11.82 0 0 0-3.48-8.413z"/></svg>
+          Continue to Checkout
+        </button>
+      </div>
+
+      <!-- Step 3: Receipt -->
+      <div id="checkoutStep3" style="display:none;">
+        <div style="text-align:center;margin-bottom:16px;">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#5E9C7E" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <h2 style="font-size:18px;font-weight:700;color:#1f2937;margin:8px 0 0;">Order Receipt</h2>
+        </div>
+
+        <div id="receiptCard" style="background:#f9fafb;border-radius:14px;padding:18px 16px;margin-bottom:18px;border:1px solid #e5e7eb;">
+          <!-- Header -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;padding-bottom:12px;border-bottom:1px dashed #d1d5db;">
+            <div>
+              <div style="font-size:15px;font-weight:700;color:#0F4C3A;">DC Kids Brand</div>
+              <div style="font-size:11px;color:#9ca3af;margin-top:2px;">Merging Style with Comfort</div>
+            </div>
+            <div style="text-align:right;">
+              <div id="receiptOrderNum" style="font-size:12px;font-weight:700;color:#5E9C7E;font-family:monospace;"></div>
+              <div id="receiptDate" style="font-size:11px;color:#9ca3af;margin-top:2px;"></div>
+            </div>
+          </div>
+
+          <!-- Customer -->
+          <div style="display:flex;gap:16px;margin-bottom:14px;padding-bottom:12px;border-bottom:1px dashed #d1d5db;">
+            <div style="flex:1;">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;font-weight:600;">Customer</div>
+              <div id="receiptCustomer" style="font-size:13px;font-weight:600;color:#1f2937;margin-top:2px;"></div>
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;font-weight:600;">Phone</div>
+              <div id="receiptPhone" style="font-size:13px;font-weight:600;color:#1f2937;margin-top:2px;"></div>
+            </div>
+          </div>
+
+          <!-- Items -->
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;font-weight:600;margin-bottom:8px;">Items</div>
+          <div id="receiptItems" style="margin-bottom:14px;"></div>
+
+          <!-- Total -->
+          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:12px;border-top:2px solid #0F4C3A;">
+            <div style="font-size:14px;font-weight:700;color:#1f2937;">Total</div>
+            <div id="receiptTotal" style="font-size:18px;font-weight:800;color:#0F4C3A;"></div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;gap:10px;">
+          <button id="receiptPrintBtn" style="flex:1;padding:12px;border:1.5px solid #e0e4e8;border-radius:12px;font-size:13px;font-weight:600;color:#374151;background:#fff;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            Print
+          </button>
+          <button id="receiptWhatsAppBtn" style="flex:1.6;padding:12px;border:none;border-radius:12px;font-size:13px;font-weight:600;color:#fff;background:#25D366;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.82 9.82 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.81 11.81 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.88 11.88 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.82 11.82 0 0 0-3.48-8.413z"/></svg>
+            Complete via WhatsApp
+          </button>
+        </div>
+        <button id="receiptCloseBtn" style="width:100%;margin-top:8px;padding:10px;border:none;border-radius:12px;font-size:13px;font-weight:500;color:#9ca3af;background:transparent;cursor:pointer;font-family:inherit;">Close</button>
+      </div>
+
+    </div>
+  </div>
+  <style>
+    @keyframes modalIn { from { opacity:0; transform:scale(0.92) translateY(12px); } to { opacity:1; transform:scale(1) translateY(0); } }
+    @media print {
+      body > *:not(#checkoutModal) { display: none !important; }
+      #checkoutModal { position: static !important; background: none !important; backdrop-filter: none !important; }
+      #checkoutModal > div { box-shadow: none !important; max-width: 100% !important; width: 100% !important; padding: 0 !important; }
+      #checkoutStep1, #checkoutStep2 { display: none !important; }
+      #checkoutStep3 button { display: none !important; }
+      #receiptCard { border: 1px solid #000 !important; }
+    }
+  </style>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      var video = document.querySelector('.wholesale-video-container video');
+      if (video) {
+        video.play().catch(function(err) {
+          console.log("Autoplay prevented, waiting for user interaction:", err);
+          var playOnInteract = function() {
+            video.play();
+            document.removeEventListener('click', playOnInteract);
+            document.removeEventListener('touchstart', playOnInteract);
+          };
+          document.addEventListener('click', playOnInteract);
+          document.addEventListener('touchstart', playOnInteract);
+        });
+      }
+    });
+  </script>
+
+  <!-- ─── PWA: install prompt + service worker registration ─── -->
+  <div id="pwaInstallBanner" style="display:none; position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:9000; background:#0F4C3A; color:#fff; padding:12px 18px; border-radius:14px; box-shadow:0 12px 36px rgba(0,0,0,0.25); display:none; gap:14px; align-items:center; max-width:92vw; font-family:Inter,sans-serif;">
+    <span style="font-size:14px;">Install DC Kids on your home screen?</span>
+    <button id="pwaInstallBtn" type="button" style="background:#5E9C7E;border:none;color:#fff;font-weight:600;padding:8px 14px;border-radius:10px;cursor:pointer;">Install</button>
+    <button id="pwaDismissBtn" type="button" aria-label="Dismiss" style="background:transparent;border:none;color:#fff;font-size:18px;cursor:pointer;line-height:1;padding:4px;">&times;</button>
+  </div>
+  <script>
+    // Register service worker (PWA + offline app shell)
+    if ('serviceWorker' in navigator) {
+      // When an updated worker takes control, reload once so the page runs the
+      // fresh JS/CSS instead of stale cached code. Guarded against reload loops,
+      // and skipped on first registration (no prior controller to replace).
+      var hadController = !!navigator.serviceWorker.controller;
+      var swReloading = false;
+      navigator.serviceWorker.addEventListener('controllerchange', function() {
+        if (swReloading || !hadController) return;
+        swReloading = true;
+        window.location.reload();
+      });
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/service-worker.js').catch(function(err) {
+          console.warn('SW registration failed:', err);
+        });
+      });
+    }
+
+    // Install-prompt UX (Chromium browsers fire beforeinstallprompt)
+    (function() {
+      var deferredPrompt = null;
+      var banner = document.getElementById('pwaInstallBanner');
+      var installBtn = document.getElementById('pwaInstallBtn');
+      var dismissBtn = document.getElementById('pwaDismissBtn');
+      var DISMISS_KEY = 'dckids_pwa_dismissed';
+
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        deferredPrompt = e;
+        if (localStorage.getItem(DISMISS_KEY) === '1') return;
+        banner.style.display = 'flex';
+      });
+
+      installBtn && installBtn.addEventListener('click', function() {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.finally(function() {
+          deferredPrompt = null;
+          banner.style.display = 'none';
+        });
+      });
+      dismissBtn && dismissBtn.addEventListener('click', function() {
+        banner.style.display = 'none';
+        localStorage.setItem(DISMISS_KEY, '1');
+      });
+
+      window.addEventListener('appinstalled', function() {
+        banner.style.display = 'none';
+        deferredPrompt = null;
+      });
+    })();
+  </script>
+
+  <!-- ===== FLOATING WHATSAPP CHAT BUTTON ===== -->
+  <a id="floatingWaBtn" class="floating-wa" href="https://wa.me/233549193805?text=Hi%20DC%20Kids!%20I%20have%20a%20question%20about%20a%20product." target="_blank" rel="noopener" aria-label="Chat with DC Kids on WhatsApp" title="Chat with us on WhatsApp">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.82 9.82 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.81 11.81 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.88 11.88 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.82 11.82 0 0 0-3.48-8.413z"/></svg>
+  </a>
+  <script>
+    // Use the shop's configured WhatsApp number if available
+    (function () {
+      fetch('/api/settings').then(r => r.ok ? r.json() : null).then(cfg => {
+        if (cfg && cfg.whatsapp_number) {
+          var btn = document.getElementById('floatingWaBtn');
+          if (btn) btn.href = 'https://wa.me/' + cfg.whatsapp_number + '?text=' + encodeURIComponent('Hi DC Kids! I have a question about a product.');
+        }
+      }).catch(function(){});
+    })();
+  </script>
+  <!-- ===== FLOATING GLASS BOTTOM NAV (mobile) ===== -->
+  <style>
+    .sf-bottom-nav { display: none; }
+    @media (max-width: 1024px) {
+      .sf-bottom-nav {
+        display: block;
+        position: fixed;
+        bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+        left: 50%; transform: translateX(-50%);
+        z-index: 900;
+        background: rgba(255,255,255,0.42);
+        -webkit-backdrop-filter: saturate(150%) blur(10px);
+        backdrop-filter: saturate(150%) blur(10px);
+        border: 1px solid rgba(255,255,255,0.6);
+        border-radius: 999px;
+        box-shadow: 0 12px 40px -8px rgba(20,14,18,0.28), 0 2px 8px rgba(20,14,18,0.10);
+      }
+      .sf-bottom-nav__inner { display: flex; align-items: center; gap: 4px; padding: 0 10px; height: 62px; }
+      .sf-nav-btn {
+        position: relative;
+        width: 52px; height: 52px;
+        display: flex; align-items: center; justify-content: center;
+        background: none; border: none; cursor: pointer;
+        color: #8a8088; -webkit-tap-highlight-color: transparent;
+        transition: color 0.15s ease;
+      }
+      .sf-nav-btn.active { color: #fff; }
+      .sf-nav-btn.active::after {
+        content: ''; position: absolute; inset: 6px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #5E9C7E, #7DB8A0);
+        box-shadow: 0 6px 16px -4px rgba(94,156,126,0.6);
+        z-index: -1;
+      }
+      .sf-nav-badge {
+        position: absolute; top: 4px; right: 6px;
+        min-width: 17px; height: 17px; padding: 0 4px;
+        border-radius: 9px;
+        background: #5E9C7E; color: #fff;
+        border: 2px solid #fff;
+        font-size: 10px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+      }
+      /* lift page content so the floating pill doesn't cover the footer */
+      .footer, footer { padding-bottom: 90px !important; }
+    }
+  </style>
+  <nav class="sf-bottom-nav" id="sfBottomNav" aria-label="Primary">
+    <div class="sf-bottom-nav__inner">
+      <button type="button" class="sf-nav-btn active" data-sf="home" aria-label="Home">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>
+      </button>
+      <button type="button" class="sf-nav-btn" data-sf="wishlist" aria-label="Wishlist">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+        <span class="sf-nav-badge" id="sfWishBadge" style="display:none;">0</span>
+      </button>
+      <button type="button" class="sf-nav-btn" data-sf="cart" aria-label="Cart">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+        <span class="sf-nav-badge" id="sfCartBadge" style="display:none;">0</span>
+      </button>
+      <button type="button" class="sf-nav-btn" data-sf="account" aria-label="Menu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+      </button>
+    </div>
+  </nav>
+
+  <script>
+    (function(){
+      var nav = document.getElementById('sfBottomNav');
+      if (!nav) return;
+      function setActive(key){
+        nav.querySelectorAll('.sf-nav-btn').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-sf')===key); });
+      }
+      nav.addEventListener('click', function(e){
+        var btn = e.target.closest('.sf-nav-btn'); if(!btn) return;
+        var key = btn.getAttribute('data-sf');
+        if (key==='home'){ window.scrollTo({top:0, behavior:'smooth'}); setActive('home'); }
+        else if (key==='wishlist'){ if(typeof openWishlist==='function') openWishlist(); setActive('wishlist'); }
+        else if (key==='cart'){ var cb=document.getElementById('cartBtn'); if(cb) cb.click(); setActive('cart'); }
+        else if (key==='account'){ var mb=document.getElementById('menuBtn'); if(mb) mb.click(); setActive('account'); }
+      });
+      // Mirror cart/wishlist counts onto the nav badges
+      function syncBadges(){
+        var c = document.getElementById('cartCount');
+        var w = document.getElementById('wishlistNavCount');
+        var cb = document.getElementById('sfCartBadge');
+        var wb = document.getElementById('sfWishBadge');
+        if (cb && c){ var cn=parseInt(c.textContent,10)||0; cb.textContent=cn>9?'9+':cn; cb.style.display=cn>0?'flex':'none'; }
+        if (wb && w){ var wn=parseInt(w.textContent,10)||0; wb.textContent=wn>9?'9+':wn; wb.style.display=wn>0?'flex':'none'; }
+      }
+      setInterval(syncBadges, 800);
+      syncBadges();
+    })();
+  </script>
+</body>
+</html>

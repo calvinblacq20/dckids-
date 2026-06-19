@@ -1,0 +1,892 @@
+[
+  {
+    "id": 1,
+    "name": "Party Dress",
+    "size": "2Y - 8Y",
+    "price": 67,
+    "img": "images/product_1.jpg",
+    "cat": "clothing",
+    "stock": 15,
+    "badge": ""
+  },
+  {
+    "id": 2,
+    "name": "Crossbody Bag",
+    "size": "Standard",
+    "price": 141,
+    "img": "images/product_2.jpg",
+    "cat": "accessories",
+    "stock": 27,
+    "badge": ""
+  },
+  {
+    "id": 3,
+    "name": "Hair Bows Set",
+    "size": "Standard",
+    "price": 124,
+    "img": "images/product_3.jpg",
+    "cat": "accessories",
+    "stock": 18,
+    "badge": ""
+  },
+  {
+    "id": 4,
+    "name": "Sun Hat",
+    "size": "Standard",
+    "price": 92,
+    "img": "images/product_4.jpg",
+    "cat": "accessories",
+    "stock": 10,
+    "badge": ""
+  },
+  {
+    "id": 5,
+    "name": "Hair Bows Set",
+    "size": "Standard",
+    "price": 46,
+    "img": "images/product_5.jpg",
+    "cat": "accessories",
+    "stock": 29,
+    "badge": ""
+  },
+  {
+    "id": 6,
+    "name": "Sun Hat",
+    "size": "Standard",
+    "price": 48,
+    "img": "images/product_6.jpg",
+    "cat": "accessories",
+    "stock": 25,
+    "badge": ""
+  },
+  {
+    "id": 7,
+    "name": "Baby Beanie",
+    "size": "Standard",
+    "price": 73,
+    "img": "images/product_7.jpg",
+    "cat": "accessories",
+    "stock": 20,
+    "badge": ""
+  },
+  {
+    "id": 8,
+    "name": "Knitted Swaddle",
+    "size": "0 - 12M",
+    "price": 142,
+    "img": "images/product_8.jpg",
+    "cat": "newborn",
+    "stock": 16,
+    "badge": ""
+  },
+  {
+    "id": 9,
+    "name": "Knitted Swaddle",
+    "size": "0 - 12M",
+    "price": 38,
+    "img": "images/product_9.jpg",
+    "cat": "newborn",
+    "stock": 10,
+    "badge": ""
+  },
+  {
+    "id": 10,
+    "name": "Knitted Swaddle",
+    "size": "0 - 12M",
+    "price": 63,
+    "img": "images/product_10.jpg",
+    "cat": "newborn",
+    "stock": 14,
+    "badge": ""
+  },
+  {
+    "id": 11,
+    "name": "Boutique Romper",
+    "size": "1Y - 6Y",
+    "price": 47,
+    "img": "images/product_11.jpg",
+    "cat": "preorder",
+    "stock": 13,
+    "badge": ""
+  },
+  {
+    "id": 12,
+    "name": "Special Occasion Suit",
+    "size": "1Y - 6Y",
+    "price": 84,
+    "img": "images/product_12.jpg",
+    "cat": "preorder",
+    "stock": 25,
+    "badge": ""
+  },
+  {
+    "id": 13,
+    "name": "Plush Baby Blanket",
+    "size": "Standard",
+    "price": 51,
+    "img": "images/product_13.jpg",
+    "cat": "bedding",
+    "stock": 18,
+    "badge": ""
+  },
+  {
+    "id": 14,
+    "name": "Plush Baby Blanket",
+    "size": "Standard",
+    "price": 120,
+    "img": "images/product_14.jpg",
+    "cat": "bedding",
+    "stock": 27,
+    "badge": ""
+  },
+  {
+    "id": 15,
+    "name": "Toddler Pillow",
+    "size": "Standard",
+    "price": 132,
+    "img": "images/product_15.jpg",
+    "cat": "bedding",
+    "stock": 22,
+    "badge": ""
+  },
+  {
+    "id": 16,
+    "name": "Cotton Crib Sheet",
+    "size": "Standard",
+    "price": 119,
+    "img": "images/product_16.jpg",
+    "cat": "bedding",
+    "stock": 15,
+    "badge": ""
+  },
+  {
+    "id": 17,
+    "name": "Soft Duvet Cover",
+    "size": "Standard",
+    "price": 115,
+    "img": "images/product_17.jpg",
+    "cat": "bedding",
+    "stock": 3,
+    "badge": ""
+  },
+  {
+    "id": 18,
+    "name": "Soft Duvet Cover",
+    "size": "Standard",
+    "price": 39,
+    "img": "images/product_18.jpg",
+    "cat": "bedding",
+    "stock": 26,
+    "badge": ""
+  },
+  {
+    "id": 19,
+    "name": "Cotton Crib Sheet",
+    "size": "Standard",
+    "price": 35,
+    "img": "images/product_19.jpg",
+    "cat": "bedding",
+    "stock": 2,
+    "badge": ""
+  },
+  {
+    "id": 20,
+    "name": "Swaddle Blanket",
+    "size": "Standard",
+    "price": 72,
+    "img": "images/product_20.jpg",
+    "cat": "bedding",
+    "stock": 14,
+    "badge": ""
+  },
+  {
+    "id": 21,
+    "name": "Cotton Crib Sheet",
+    "size": "Standard",
+    "price": 45,
+    "img": "images/product_21.jpg",
+    "cat": "bedding",
+    "stock": 12,
+    "badge": ""
+  },
+  {
+    "id": 22,
+    "name": "Waterproof Mattress Protector",
+    "size": "Standard",
+    "price": 100,
+    "img": "images/product_22.jpg",
+    "cat": "bedding",
+    "stock": 1,
+    "badge": ""
+  },
+  {
+    "id": 23,
+    "name": "Plush Baby Blanket",
+    "size": "Standard",
+    "price": 123,
+    "img": "images/product_23.jpg",
+    "cat": "bedding",
+    "stock": 24,
+    "badge": ""
+  },
+  {
+    "id": 24,
+    "name": "Party Dress",
+    "size": "2Y - 8Y",
+    "price": 33,
+    "img": "images/product_24.jpg",
+    "cat": "clothing",
+    "stock": 5,
+    "badge": ""
+  },
+  {
+    "id": 25,
+    "name": "Graphic Tee",
+    "size": "2Y - 8Y",
+    "price": 30,
+    "img": "images/product_25.jpg",
+    "cat": "clothing",
+    "stock": 21,
+    "badge": ""
+  },
+  {
+    "id": 26,
+    "name": "Casual Joggers",
+    "size": "2Y - 8Y",
+    "price": 32,
+    "img": "images/product_26.jpg",
+    "cat": "clothing",
+    "stock": 15,
+    "badge": ""
+  },
+  {
+    "id": 27,
+    "name": "Kids Two-Piece Set",
+    "size": "2Y - 8Y",
+    "price": 102,
+    "img": "images/product_27.jpg",
+    "cat": "clothing",
+    "stock": 27,
+    "badge": ""
+  },
+  {
+    "id": 28,
+    "name": "Baby Romper",
+    "size": "0 - 12M",
+    "price": 64,
+    "img": "images/product_28.jpg",
+    "cat": "newborn",
+    "stock": 27,
+    "badge": ""
+  },
+  {
+    "id": 29,
+    "name": "Trendy Backpack",
+    "size": "Standard",
+    "price": 36,
+    "img": "images/product_29.jpg",
+    "cat": "accessories",
+    "stock": 12,
+    "badge": ""
+  },
+  {
+    "id": 30,
+    "name": "Kids Sunglasses",
+    "size": "Standard",
+    "price": 78,
+    "img": "images/product_30.jpg",
+    "cat": "accessories",
+    "stock": 29,
+    "badge": ""
+  },
+  {
+    "id": 31,
+    "name": "Hair Bows Set",
+    "size": "Standard",
+    "price": 94,
+    "img": "images/product_31.jpg",
+    "cat": "accessories",
+    "stock": 10,
+    "badge": ""
+  },
+  {
+    "id": 32,
+    "name": "Trendy Backpack",
+    "size": "Standard",
+    "price": 67,
+    "img": "images/product_32.jpg",
+    "cat": "accessories",
+    "stock": 25,
+    "badge": ""
+  },
+  {
+    "id": 33,
+    "name": "Sun Hat",
+    "size": "Standard",
+    "price": 63,
+    "img": "images/product_33.jpg",
+    "cat": "accessories",
+    "stock": 9,
+    "badge": ""
+  },
+  {
+    "id": 34,
+    "name": "Trendy Backpack",
+    "size": "Standard",
+    "price": 129,
+    "img": "images/product_34.jpg",
+    "cat": "accessories",
+    "stock": 10,
+    "badge": ""
+  },
+  {
+    "id": 35,
+    "name": "Kids Sunglasses",
+    "size": "Standard",
+    "price": 66,
+    "img": "images/product_35.jpg",
+    "cat": "accessories",
+    "stock": 0,
+    "badge": ""
+  },
+  {
+    "id": 36,
+    "name": "Casual Joggers",
+    "size": "2Y - 8Y",
+    "price": 132,
+    "img": "images/product_36.jpg",
+    "cat": "clothing",
+    "stock": 26,
+    "badge": ""
+  },
+  {
+    "id": 37,
+    "name": "Graphic Tee",
+    "size": "2Y - 8Y",
+    "price": 68,
+    "img": "images/product_37.jpg",
+    "cat": "clothing",
+    "stock": 16,
+    "badge": ""
+  },
+  {
+    "id": 38,
+    "name": "Graphic Tee",
+    "size": "2Y - 8Y",
+    "price": 68,
+    "img": "images/product_38.jpg",
+    "cat": "clothing",
+    "stock": 13,
+    "badge": ""
+  },
+  {
+    "id": 39,
+    "name": "Ribbed Leggings",
+    "size": "2Y - 8Y",
+    "price": 89,
+    "img": "images/product_39.jpg",
+    "cat": "clothing",
+    "stock": 3,
+    "badge": ""
+  },
+  {
+    "id": 40,
+    "name": "Kids Two-Piece Set",
+    "size": "2Y - 8Y",
+    "price": 142,
+    "img": "images/product_40.jpg",
+    "cat": "clothing",
+    "stock": 5,
+    "badge": ""
+  },
+  {
+    "id": 41,
+    "name": "Knit Sweater",
+    "size": "2Y - 8Y",
+    "price": 107,
+    "img": "images/product_41.jpg",
+    "cat": "clothing",
+    "stock": 8,
+    "badge": ""
+  },
+  {
+    "id": 42,
+    "name": "Casual Joggers",
+    "size": "2Y - 8Y",
+    "price": 93,
+    "img": "images/product_42.jpg",
+    "cat": "clothing",
+    "stock": 22,
+    "badge": ""
+  },
+  {
+    "id": 43,
+    "name": "Winter Jacket",
+    "size": "2Y - 8Y",
+    "price": 125,
+    "img": "images/product_43.jpg",
+    "cat": "clothing",
+    "stock": 12,
+    "badge": ""
+  },
+  {
+    "id": 44,
+    "name": "Cotton Summer Dress",
+    "size": "2Y - 8Y",
+    "price": 149,
+    "img": "images/product_44.jpg",
+    "cat": "clothing",
+    "stock": 20,
+    "badge": ""
+  },
+  {
+    "id": 45,
+    "name": "Denim Overalls",
+    "size": "2Y - 8Y",
+    "price": 46,
+    "img": "images/product_45.jpg",
+    "cat": "clothing",
+    "stock": 23,
+    "badge": ""
+  },
+  {
+    "id": 46,
+    "name": "Kids Two-Piece Set",
+    "size": "2Y - 8Y",
+    "price": 134,
+    "img": "images/product_46.jpg",
+    "cat": "clothing",
+    "stock": 8,
+    "badge": ""
+  },
+  {
+    "id": 47,
+    "name": "Party Dress",
+    "size": "2Y - 8Y",
+    "price": 67,
+    "img": "images/product_47.jpg",
+    "cat": "clothing",
+    "stock": 21,
+    "badge": ""
+  },
+  {
+    "id": 48,
+    "name": "Winter Jacket",
+    "size": "2Y - 8Y",
+    "price": 61,
+    "img": "images/product_48.jpg",
+    "cat": "clothing",
+    "stock": 19,
+    "badge": ""
+  },
+  {
+    "id": 49,
+    "name": "Casual Joggers",
+    "size": "2Y - 8Y",
+    "price": 74,
+    "img": "images/product_49.jpg",
+    "cat": "clothing",
+    "stock": 10,
+    "badge": ""
+  },
+  {
+    "id": 50,
+    "name": "Polo Shirt & Shorts",
+    "size": "2Y - 8Y",
+    "price": 138,
+    "img": "images/product_50.jpg",
+    "cat": "clothing",
+    "stock": 28,
+    "badge": ""
+  },
+  {
+    "id": 51,
+    "name": "Cotton Summer Dress",
+    "size": "2Y - 8Y",
+    "price": 96,
+    "img": "images/product_51.jpg",
+    "cat": "clothing",
+    "stock": 28,
+    "badge": ""
+  },
+  {
+    "id": 52,
+    "name": "Kids Two-Piece Set",
+    "size": "2Y - 8Y",
+    "price": 69,
+    "img": "images/product_52.jpg",
+    "cat": "clothing",
+    "stock": 23,
+    "badge": ""
+  },
+  {
+    "id": 53,
+    "name": "Newborn Mittens",
+    "size": "0 - 12M",
+    "price": 78,
+    "img": "images/product_53.jpg",
+    "cat": "newborn",
+    "stock": 12,
+    "badge": ""
+  },
+  {
+    "id": 54,
+    "name": "Bodysuit 3-Pack",
+    "size": "0 - 12M",
+    "price": 68,
+    "img": "images/product_54.jpg",
+    "cat": "newborn",
+    "stock": 4,
+    "badge": ""
+  },
+  {
+    "id": 55,
+    "name": "Winter Jacket",
+    "size": "2Y - 8Y",
+    "price": 124,
+    "img": "images/product_55.jpg",
+    "cat": "clothing",
+    "stock": 27,
+    "badge": ""
+  },
+  {
+    "id": 56,
+    "name": "Casual Joggers",
+    "size": "2Y - 8Y",
+    "price": 103,
+    "img": "images/product_56.jpg",
+    "cat": "clothing",
+    "stock": 25,
+    "badge": ""
+  },
+  {
+    "id": 57,
+    "name": "Kids Two-Piece Set",
+    "size": "2Y - 8Y",
+    "price": 52,
+    "img": "images/product_57.jpg",
+    "cat": "clothing",
+    "stock": 12,
+    "badge": ""
+  },
+  {
+    "id": 58,
+    "name": "Knit Sweater",
+    "size": "2Y - 8Y",
+    "price": 40,
+    "img": "images/product_58.jpg",
+    "cat": "clothing",
+    "stock": 25,
+    "badge": ""
+  },
+  {
+    "id": 59,
+    "name": "Ribbed Leggings",
+    "size": "2Y - 8Y",
+    "price": 141,
+    "img": "images/product_59.jpg",
+    "cat": "clothing",
+    "stock": 20,
+    "badge": ""
+  },
+  {
+    "id": 60,
+    "name": "Denim Overalls",
+    "size": "2Y - 8Y",
+    "price": 67,
+    "img": "images/product_60.jpg",
+    "cat": "clothing",
+    "stock": 23,
+    "badge": ""
+  },
+  {
+    "id": 61,
+    "name": "Party Dress",
+    "size": "2Y - 8Y",
+    "price": 81,
+    "img": "images/product_61.jpg",
+    "cat": "clothing",
+    "stock": 28,
+    "badge": ""
+  },
+  {
+    "id": 62,
+    "name": "Graphic Tee",
+    "size": "2Y - 8Y",
+    "price": 78,
+    "img": "images/product_62.jpg",
+    "cat": "clothing",
+    "stock": 29,
+    "badge": ""
+  },
+  {
+    "id": 63,
+    "name": "Ribbed Leggings",
+    "size": "2Y - 8Y",
+    "price": 111,
+    "img": "images/product_63.jpg",
+    "cat": "clothing",
+    "stock": 4,
+    "badge": ""
+  },
+  {
+    "id": 64,
+    "name": "Graphic Tee",
+    "size": "2Y - 8Y",
+    "price": 65,
+    "img": "images/product_64.jpg",
+    "cat": "clothing",
+    "stock": 12,
+    "badge": ""
+  },
+  {
+    "id": 65,
+    "name": "Kids Two-Piece Set",
+    "size": "2Y - 8Y",
+    "price": 127,
+    "img": "images/product_65.jpg",
+    "cat": "clothing",
+    "stock": 17,
+    "badge": ""
+  },
+  {
+    "id": 66,
+    "name": "Toddler Sneakers",
+    "size": "Size 25 - 35",
+    "price": 70,
+    "img": "images/product_66.jpg",
+    "cat": "shoes",
+    "stock": 17,
+    "badge": ""
+  },
+  {
+    "id": 67,
+    "name": "Princess Sandals",
+    "size": "Size 25 - 35",
+    "price": 144,
+    "img": "images/product_67.jpg",
+    "cat": "shoes",
+    "stock": 25,
+    "badge": ""
+  },
+  {
+    "id": 68,
+    "name": "Slip-on Loafers",
+    "size": "Size 25 - 35",
+    "price": 130,
+    "img": "images/product_68.jpg",
+    "cat": "shoes",
+    "stock": 0,
+    "badge": ""
+  },
+  {
+    "id": 69,
+    "name": "Canvas Shoes",
+    "size": "Size 25 - 35",
+    "price": 38,
+    "img": "images/product_69.jpg",
+    "cat": "shoes",
+    "stock": 6,
+    "badge": ""
+  },
+  {
+    "id": 70,
+    "name": "Canvas Shoes",
+    "size": "Size 25 - 35",
+    "price": 93,
+    "img": "images/product_70.jpg",
+    "cat": "shoes",
+    "stock": 24,
+    "badge": ""
+  },
+  {
+    "id": 71,
+    "name": "Slip-on Loafers",
+    "size": "Size 25 - 35",
+    "price": 91,
+    "img": "images/product_71.jpg",
+    "cat": "shoes",
+    "stock": 20,
+    "badge": ""
+  },
+  {
+    "id": 72,
+    "name": "Princess Sandals",
+    "size": "Size 25 - 35",
+    "price": 119,
+    "img": "images/product_72.jpg",
+    "cat": "shoes",
+    "stock": 19,
+    "badge": ""
+  },
+  {
+    "id": 73,
+    "name": "Canvas Shoes",
+    "size": "Size 25 - 35",
+    "price": 70,
+    "img": "images/product_73.jpg",
+    "cat": "shoes",
+    "stock": 14,
+    "badge": ""
+  },
+  {
+    "id": 74,
+    "name": "Toddler Sneakers",
+    "size": "Size 25 - 35",
+    "price": 44,
+    "img": "images/product_74.jpg",
+    "cat": "shoes",
+    "stock": 8,
+    "badge": ""
+  },
+  {
+    "id": 75,
+    "name": "Slip-on Loafers",
+    "size": "Size 25 - 35",
+    "price": 93,
+    "img": "images/product_75.jpg",
+    "cat": "shoes",
+    "stock": 12,
+    "badge": ""
+  },
+  {
+    "id": 76,
+    "name": "Breathable Mesh Shoes",
+    "size": "Size 25 - 35",
+    "price": 122,
+    "img": "images/product_76.jpg",
+    "cat": "shoes",
+    "stock": 8,
+    "badge": ""
+  },
+  {
+    "id": 77,
+    "name": "Light-up Sneakers",
+    "size": "Size 25 - 35",
+    "price": 38,
+    "img": "images/product_77.jpg",
+    "cat": "shoes",
+    "stock": 8,
+    "badge": ""
+  },
+  {
+    "id": 78,
+    "name": "Designer Kids Tracksuit",
+    "size": "1Y - 6Y",
+    "price": 68,
+    "img": "images/product_78.jpg",
+    "cat": "preorder",
+    "stock": 18,
+    "badge": ""
+  },
+  {
+    "id": 79,
+    "name": "Winter Jacket",
+    "size": "2Y - 8Y",
+    "price": 146,
+    "img": "images/product_79.jpg",
+    "cat": "clothing",
+    "stock": 17,
+    "badge": ""
+  },
+  {
+    "id": 80,
+    "name": "Kids Two-Piece Set",
+    "size": "2Y - 8Y",
+    "price": 149,
+    "img": "images/product_80.jpg",
+    "cat": "clothing",
+    "stock": 1,
+    "badge": ""
+  },
+  {
+    "id": 81,
+    "name": "Denim Overalls",
+    "size": "2Y - 8Y",
+    "price": 96,
+    "img": "images/product_81.jpg",
+    "cat": "clothing",
+    "stock": 1,
+    "badge": ""
+  },
+  {
+    "id": 82,
+    "name": "Winter Jacket",
+    "size": "2Y - 8Y",
+    "price": 101,
+    "img": "images/product_82.jpg",
+    "cat": "clothing",
+    "stock": 8,
+    "badge": ""
+  },
+  {
+    "id": 83,
+    "name": "Special Occasion Suit",
+    "size": "1Y - 6Y",
+    "price": 150,
+    "img": "images/product_83.jpg",
+    "cat": "preorder",
+    "stock": 1,
+    "badge": ""
+  },
+  {
+    "id": 84,
+    "name": "Cotton Summer Dress",
+    "size": "2Y - 8Y",
+    "price": 83,
+    "img": "images/product_bedsheets.png",
+    "cat": "clothing",
+    "stock": 14,
+    "badge": ""
+  },
+  {
+    "id": 85,
+    "name": "Ribbed Leggings",
+    "size": "2Y - 8Y",
+    "price": 74,
+    "img": "images/product_boys_sets.png",
+    "cat": "clothing",
+    "stock": 21,
+    "badge": ""
+  },
+  {
+    "id": 86,
+    "name": "Knit Sweater",
+    "size": "2Y - 8Y",
+    "price": 58,
+    "img": "images/product_girls_dresses.png",
+    "cat": "clothing",
+    "stock": 10,
+    "badge": ""
+  },
+  {
+    "id": 87,
+    "name": "Winter Jacket",
+    "size": "2Y - 8Y",
+    "price": 135,
+    "img": "images/product_kaftan.png",
+    "cat": "clothing",
+    "stock": 19,
+    "badge": ""
+  },
+  {
+    "id": 88,
+    "name": "Kids Two-Piece Set",
+    "size": "2Y - 8Y",
+    "price": 80,
+    "img": "images/product_kids_bags.png",
+    "cat": "clothing",
+    "stock": 1,
+    "badge": ""
+  },
+  {
+    "id": 89,
+    "name": "Ribbed Leggings",
+    "size": "2Y - 8Y",
+    "price": 37,
+    "img": "images/product_kids_shoes.png",
+    "cat": "clothing",
+    "stock": 10,
+    "badge": ""
+  }
+]

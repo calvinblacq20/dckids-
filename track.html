@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Track your order — DC Kids Brand</title>
+  <meta name="description" content="Track your DC Kids Brand order using your order reference and phone number.">
+  <meta name="theme-color" content="#0F4C3A">
+  <link rel="icon" href="icon.png" type="image/png">
+  <link rel="manifest" href="/manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=11">
+  <style>
+    html {
+      background: linear-gradient(rgba(30, 30, 35, 0.45), rgba(30, 30, 35, 0.45)), url('IMG_8409.PNG') no-repeat center center fixed;
+      background-size: cover;
+    }
+    body {
+      background: transparent;
+      font-family: 'Inter', sans-serif;
+      color: #1A1A1A;
+      margin: 0;
+      min-height: 100vh;
+    }
+    .tk-header { background: #fff; border-bottom: 1px solid #EEE; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .tk-header__brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: #0F4C3A; text-decoration: none; font-size: 16px; }
+    .tk-header__brand img { height: 42px; width: auto; object-fit: contain; }
+    .tk-header__links a { text-decoration: none; color: #777; font-size: 14px; margin-left: 18px; font-weight: 500; }
+    .tk-header__links a:hover { color: #0F4C3A; }
+
+    .tk-shell { max-width: 640px; margin: 60px auto; padding: 0 20px; }
+    .tk-card { background: #fff; border: 1px solid #EEE; border-radius: 18px; padding: 28px; box-shadow: 0 6px 24px rgba(0,0,0,0.04); }
+    .tk-title { font-size: 24px; font-weight: 700; color: #0F4C3A; margin: 0 0 6px; font-family: 'Playfair Display', serif; }
+    .tk-sub { font-size: 13px; color: #777; margin: 0 0 22px; }
+    .tk-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+    .tk-field label { font-size: 12px; font-weight: 600; color: #444; text-transform: uppercase; letter-spacing: 0.4px; }
+    .tk-field input { padding: 12px 14px; border: 1px solid #DDD; border-radius: 10px; font-size: 14px; font-family: inherit; outline: none; }
+    .tk-field input:focus { border-color: #0F4C3A; box-shadow: 0 0 0 3px rgba(15,76,58,0.12); }
+    .tk-btn { width: 100%; padding: 13px; border: none; border-radius: 12px; background: #0F4C3A; color: #fff; font-weight: 600; cursor: pointer; font-family: inherit; font-size: 14px; transition: transform 0.1s; }
+    .tk-btn:hover { transform: translateY(-1px); }
+    .tk-error { background: #FEE; color: #B91C1C; padding: 10px 12px; border-radius: 10px; font-size: 13px; margin-bottom: 12px; display: none; }
+
+    /* result */
+    .tk-result { display: none; margin-top: 8px; }
+    .tk-result__head { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid #EEE; }
+    .tk-status-pill { padding: 4px 12px; border-radius: 14px; font-size: 12px; font-weight: 700; }
+    .tk-status-pending     { background: #FEF3C7; color: #D97706; }
+    .tk-status-processing  { background: #DBEAFE; color: #1D4ED8; }
+    .tk-status-delivered   { background: #DCFCE7; color: #16A34A; }
+    .tk-status-cancelled   { background: #FEE; color: #DC2626; }
+    .tk-meta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+    .tk-meta { padding: 12px 14px; border: 1px solid #EEE; border-radius: 12px; }
+    .tk-meta__label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.4px; }
+    .tk-meta__value { font-size: 14px; font-weight: 600; color: #222; margin-top: 4px; }
+
+    .tk-steps { display: flex; justify-content: space-between; margin: 24px 0; position: relative; }
+    .tk-steps::before { content: ''; position: absolute; top: 14px; left: 12px; right: 12px; height: 2px; background: #EEE; z-index: 0; }
+    .tk-step { display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; z-index: 1; flex: 1; }
+    .tk-step__dot { width: 28px; height: 28px; border-radius: 50%; background: #fff; border: 2px solid #DDD; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #888; font-weight: 700; transition: all 0.2s; }
+    .tk-step__label { font-size: 11px; color: #888; text-align: center; font-weight: 500; }
+    .tk-step--done .tk-step__dot { background: #5E9C7E; border-color: #5E9C7E; color: #fff; }
+    .tk-step--done .tk-step__label { color: #0F4C3A; font-weight: 700; }
+    .tk-step--current .tk-step__dot { background: #0F4C3A; border-color: #0F4C3A; color: #fff; }
+    .tk-step--current .tk-step__label { color: #0F4C3A; font-weight: 700; }
+
+    .tk-items { margin-top: 18px; }
+    .tk-items__title { font-size: 13px; font-weight: 700; margin: 0 0 10px; color: #222; }
+    .tk-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #F4F4F4; font-size: 13px; }
+    .tk-item:last-child { border-bottom: none; }
+    .tk-item__name { color: #444; }
+    .tk-item__qty { color: #888; font-size: 12px; }
+    .tk-item__price { font-weight: 600; color: #222; }
+    .tk-total { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 14px; border-top: 2px solid #EEE; font-weight: 700; font-size: 15px; color: #0F4C3A; }
+
+    .tk-actions { display: flex; gap: 10px; margin-top: 22px; }
+    .tk-btn--outline { background: #fff; border: 1px solid #DDD; color: #444; }
+  </style>
+</head>
+<body>
+  <header class="tk-header">
+    <a href="/" class="tk-header__brand"><img src="icon.png" alt="DC Kids Brand"></a>
+    <nav class="tk-header__links">
+      <a href="/">Shop</a>
+    </nav>
+  </header>
+
+  <div class="tk-shell">
+    <div class="tk-card">
+      <div id="tk-lookup">
+        <h1 class="tk-title">Track your order</h1>
+        <p class="tk-sub">Enter your order reference and the phone number you used at checkout.</p>
+        <div id="tk-error" class="tk-error"></div>
+        <form id="tk-form">
+          <div class="tk-field">
+            <label for="tk-order">Order reference</label>
+            <input type="text" id="tk-order" placeholder="ORD-1042" required>
+          </div>
+          <div class="tk-field">
+            <label for="tk-phone">Phone number</label>
+            <input type="tel" id="tk-phone" placeholder="0549193805" required>
+          </div>
+          <button type="submit" class="tk-btn">Track order</button>
+        </form>
+      </div>
+
+      <div id="tk-result" class="tk-result">
+        <div class="tk-result__head">
+          <div style="flex:1;">
+            <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.4px;">Order</div>
+            <div id="tk-r-ref" style="font-size:20px;font-weight:700;color:#222;margin-top:4px;">—</div>
+          </div>
+          <span id="tk-r-status" class="tk-status-pill">—</span>
+        </div>
+
+        <div class="tk-steps">
+          <div class="tk-step" data-step="placed"><div class="tk-step__dot">1</div><div class="tk-step__label">Placed</div></div>
+          <div class="tk-step" data-step="processing"><div class="tk-step__dot">2</div><div class="tk-step__label">Processing</div></div>
+          <div class="tk-step" data-step="dispatched"><div class="tk-step__dot">3</div><div class="tk-step__label">Dispatched</div></div>
+          <div class="tk-step" data-step="delivered"><div class="tk-step__dot">4</div><div class="tk-step__label">Delivered</div></div>
+        </div>
+
+        <div class="tk-meta-row">
+          <div class="tk-meta"><div class="tk-meta__label">Customer</div><div id="tk-r-name" class="tk-meta__value">—</div></div>
+          <div class="tk-meta"><div class="tk-meta__label">Placed on</div><div id="tk-r-date" class="tk-meta__value">—</div></div>
+          <div class="tk-meta"><div class="tk-meta__label">Type</div><div id="tk-r-type" class="tk-meta__value">retail</div></div>
+          <div class="tk-meta"><div class="tk-meta__label">Last update</div><div id="tk-r-updated" class="tk-meta__value">—</div></div>
+        </div>
+
+        <div class="tk-items">
+          <h3 class="tk-items__title">Items</h3>
+          <div id="tk-r-items"></div>
+          <div class="tk-total"><span>Total</span><span id="tk-r-total">GHS 0</span></div>
+        </div>
+
+        <div class="tk-actions">
+          <button type="button" class="tk-btn tk-btn--outline" onclick="tkBack()">Look up another</button>
+          <a id="tk-whatsapp" class="tk-btn" style="display:flex;align-items:center;justify-content:center;text-decoration:none;" href="#">Message us on WhatsApp</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var form = document.getElementById('tk-form');
+      var errorEl = document.getElementById('tk-error');
+      var lookupEl = document.getElementById('tk-lookup');
+      var resultEl = document.getElementById('tk-result');
+
+      function showError(msg) { errorEl.textContent = msg; errorEl.style.display = 'block'; setTimeout(function () { errorEl.style.display = 'none'; }, 4000); }
+
+      function fmtMoney(v) { return 'GHS ' + (Number(v) || 0).toLocaleString(); }
+      function fmtDate(s) { try { return new Date(s).toLocaleString(); } catch (e) { return '—'; } }
+
+      function statusToStep(status) {
+        var s = (status || '').toLowerCase();
+        if (s.indexOf('cancel') >= 0) return -1;
+        if (s.indexOf('deliver') >= 0 || s.indexOf('complete') >= 0) return 4;
+        if (s.indexOf('dispatch') >= 0 || s.indexOf('shipped') >= 0) return 3;
+        if (s.indexOf('process') >= 0) return 2;
+        return 1; // pending / pending_deposit
+      }
+      function statusClass(status) {
+        var s = (status || '').toLowerCase();
+        if (s.indexOf('cancel') >= 0) return 'tk-status-cancelled';
+        if (s.indexOf('deliver') >= 0 || s.indexOf('complete') >= 0) return 'tk-status-delivered';
+        if (s.indexOf('process') >= 0 || s.indexOf('dispatch') >= 0) return 'tk-status-processing';
+        return 'tk-status-pending';
+      }
+      function renderSteps(currentIdx) {
+        var steps = document.querySelectorAll('.tk-step');
+        steps.forEach(function (st, i) {
+          st.classList.remove('tk-step--done', 'tk-step--current');
+          if (currentIdx === -1) return; // cancelled: no progress
+          if (i + 1 < currentIdx) st.classList.add('tk-step--done');
+          else if (i + 1 === currentIdx) st.classList.add('tk-step--current');
+        });
+      }
+
+      function render(data) {
+        document.getElementById('tk-r-ref').textContent = data.order_number;
+        var sEl = document.getElementById('tk-r-status');
+        sEl.textContent = data.status || 'pending';
+        sEl.className = 'tk-status-pill ' + statusClass(data.status);
+        document.getElementById('tk-r-name').textContent = data.customer_name || '—';
+        document.getElementById('tk-r-date').textContent = fmtDate(data.created_at);
+        document.getElementById('tk-r-updated').textContent = fmtDate(data.updated_at || data.created_at);
+        document.getElementById('tk-r-type').textContent = data.order_type || 'retail';
+        document.getElementById('tk-r-total').textContent = fmtMoney(data.total_amount);
+
+        var itemsEl = document.getElementById('tk-r-items');
+        if (!data.items || data.items.length === 0) {
+          itemsEl.innerHTML = '<div style="color:#888;font-size:13px;padding:8px 0;">No items recorded.</div>';
+        } else {
+          itemsEl.innerHTML = data.items.map(function (it) {
+            return '<div class="tk-item"><div><div class="tk-item__name">' + esc(it.product_name) + '</div><div class="tk-item__qty">Qty ' + (it.quantity || 1) + '</div></div><div class="tk-item__price">' + fmtMoney(it.price_at_time) + '</div></div>';
+          }).join('');
+        }
+        renderSteps(statusToStep(data.status));
+
+        // WhatsApp deep-link
+        var msg = encodeURIComponent('Hello DC Kids, I have a question about order ' + data.order_number + '.');
+        document.getElementById('tk-whatsapp').href = 'https://wa.me/233549193805?text=' + msg;
+
+        lookupEl.style.display = 'none';
+        resultEl.style.display = 'block';
+      }
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var order = document.getElementById('tk-order').value.trim();
+        var phone = document.getElementById('tk-phone').value.trim();
+        if (!order || !phone) return;
+        fetch('/api/orders/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_number: order, phone: phone })
+        })
+        .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'Lookup failed'); return d; }); })
+        .then(render)
+        .catch(function (err) { showError(err.message); });
+      });
+
+      window.tkBack = function () {
+        resultEl.style.display = 'none';
+        lookupEl.style.display = 'block';
+        document.getElementById('tk-order').value = '';
+        document.getElementById('tk-phone').value = '';
+      };
+
+      function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]; }); }
+
+      // Pre-fill order from ?order=XXX (e.g. when linked from My Account)
+      var qs = new URLSearchParams(location.search);
+      if (qs.get('order')) document.getElementById('tk-order').value = qs.get('order');
+    })();
+  </script>
+</body>
+</html>
