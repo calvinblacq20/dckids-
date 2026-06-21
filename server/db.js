@@ -26,12 +26,30 @@ const db = new sqlite3.Database(dbPath, (err) => {
         )`, (err) => {
             if (err) console.error("Error creating users table", err);
             
-            // Seed a default admin user if none exists
+            // Seed a default admin user if none exists. Never ship a hardcoded
+            // password: use ADMIN_PASSWORD from the environment if provided,
+            // otherwise generate a strong random one and print it ONCE at first
+            // boot so the operator can capture it. This only runs on a fresh DB
+            // (no admin row yet), so existing installs are untouched.
             db.get(`SELECT * FROM users WHERE username = 'admin'`, async (err, row) => {
                 if (!row) {
-                    const hash = await bcrypt.hash('admin123', 10);
-                    db.run(`INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)`, ['admin', hash, 'manager']);
-                    console.log('Default admin user created.');
+                    const crypto = require('crypto');
+                    const provided = process.env.ADMIN_PASSWORD;
+                    const password = provided || crypto.randomBytes(12).toString('base64url');
+                    const hash = await bcrypt.hash(password, 10);
+                    db.run(`INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)`, ['admin', hash, 'manager'], (insErr) => {
+                        if (insErr) { console.error('Failed to create admin user:', insErr.message); return; }
+                        if (provided) {
+                            console.log('Default admin user created (password from ADMIN_PASSWORD).');
+                        } else {
+                            console.log('\n=====================================================');
+                            console.log('  Admin account created');
+                            console.log('  Username: admin');
+                            console.log('  Password (shown ONCE): ' + password);
+                            console.log('  Change it after login, or set ADMIN_PASSWORD in .env.');
+                            console.log('=====================================================\n');
+                        }
+                    });
                 }
             });
         });
@@ -40,16 +58,79 @@ const db = new sqlite3.Database(dbPath, (err) => {
         db.run(`CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
+            sku TEXT,
             size TEXT,
             price REAL,
             img TEXT,
             cat TEXT,
             stock INTEGER DEFAULT 10,
             badge TEXT,
+            description TEXT,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`, (err) => {
             if (err) console.error("Error creating products table", err);
-            
+
+            // Migration: add sku to pre-existing DBs that lack it, then enforce
+            // uniqueness on real SKUs (the partial index still allows many NULLs,
+            // so legacy rows without a SKU are unaffected). The index must be
+            // created only after the column exists, so it's nested in the ALTER
+            // callback rather than queued alongside it.
+            const ensureSkuIndex = () => {
+                db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_products_sku ON products(sku) WHERE sku IS NOT NULL", (er) => {
+                    if (er) console.error("Migration (idx_products_sku) failed:", er.message);
+                });
+            };
+            db.all("PRAGMA table_info(products)", (e, cols) => {
+                if (e || !cols) return;
+                const names = cols.map(c => c.name);
+                if (names.indexOf('sku') === -1) {
+                    db.run("ALTER TABLE products ADD COLUMN sku TEXT", (er) => {
+                        if (er) { console.error("Migration (products.sku) failed:", er.message); return; }
+                        console.log("Migration: added products.sku");
+                        ensureSkuIndex();
+                    });
+                } else {
+                    ensureSkuIndex();
+                }
+                // Migration: add description to pre-existing DBs that lack it.
+                if (names.indexOf('description') === -1) {
+                    db.run("ALTER TABLE products ADD COLUMN description TEXT", (er) => {
+                        if (er) console.error("Migration (products.description) failed:", er.message);
+                        else console.log("Migration: added products.description");
+                    });
+                }
+
+                // Migration: fulfillment_type decouples "is this a pre-order" from
+                // category, which used to overload cat='preorder' (so a pre-order
+                // pair of shoes was invisible under the real "Shoes" category).
+                // Backfill legacy rows: flag them as preorder and move them into a
+                // real category inferred from their name, since the fake "preorder"
+                // category never told us what they actually were.
+                if (names.indexOf('fulfillment_type') === -1) {
+                    db.run("ALTER TABLE products ADD COLUMN fulfillment_type TEXT DEFAULT 'in_stock'", (er) => {
+                        if (er) { console.error("Migration (products.fulfillment_type) failed:", er.message); return; }
+                        console.log("Migration: added products.fulfillment_type");
+                        db.all("SELECT id, name FROM products WHERE cat = 'preorder'", [], (e2, rows) => {
+                            if (e2 || !rows || !rows.length) return;
+                            const inferCategory = (name) => {
+                                const n = (name || '').toLowerCase();
+                                if (/shoe|sneaker|boot|sandal|cloq/.test(n)) return 'shoes';
+                                if (/coat|suit|gown|dress|outfit|set\b/.test(n)) return 'clothing';
+                                if (/bedding|mattress|furniture|blanket/.test(n)) return 'bedding';
+                                if (/watch|accessor/.test(n)) return 'accessories';
+                                if (/baby|newborn/.test(n)) return 'newborn';
+                                return 'essentials';
+                            };
+                            const backfillStmt = db.prepare("UPDATE products SET cat = ?, fulfillment_type = 'preorder' WHERE id = ?");
+                            rows.forEach(p => backfillStmt.run(inferCategory(p.name), p.id));
+                            backfillStmt.finalize(() => {
+                                console.log(`Migration: backfilled ${rows.length} legacy preorder product(s) into real categories`);
+                            });
+                        });
+                    });
+                }
+            });
+
             // Seed products if empty
             db.get(`SELECT COUNT(*) as count FROM products`, (err, row) => {
                 if (row.count === 0) {
@@ -131,22 +212,24 @@ const db = new sqlite3.Database(dbPath, (err) => {
                         { id:69, name:"Cotton Muslin Quilt",              size:"Standard",   price:75,   img:"images/product_26.jpg", cat:"bedding",     stock:10, badge:"" },
                         { id:70, name:"Kids' Travel Neck Pillow",         size:"One Size",   price:25,   img:"images/product_27.jpg", cat:"bedding",     stock:18, badge:"" },
                         
-                        // China Pre-Order Items
-                        { id:71, name:"Pre-Order: Luxury Winter Coat",    size:"2Y – 10Y",   price:150,  img:"images/product_78.jpg", cat:"preorder",    stock:10, badge:"china" },
-                        { id:72, name:"Pre-Order: Designer Sneakers",     size:"Size 26–36", price:120,  img:"images/product_83.jpg", cat:"preorder",    stock:10, badge:"china" },
-                        { id:73, name:"Pre-Order: Formal Suit Set",       size:"3Y – 12Y",   price:200,  img:"images/product_11.jpg", cat:"preorder",    stock:10, badge:"china" },
-                        { id:74, name:"Pre-Order: Princess Gown",         size:"4Y – 10Y",   price:180,  img:"images/product_12.jpg", cat:"preorder",    stock:10, badge:"china" },
-                        { id:75, name:"Pre-Order: Premium Baby Gear",     size:"One Size",   price:250,  img:"images/product_28.jpg", cat:"preorder",    stock:10, badge:"china" },
-                        { id:76, name:"Pre-Order: School Tech Bundle",    size:"Assorted",    price:300,  img:"images/product_36.jpg", cat:"preorder",    stock:10, badge:"china" },
-                        { id:77, name:"Pre-Order: Boutique Shoe Mix",     size:"Assorted",    price:null, img:"images/product_37.jpg", cat:"preorder",    stock:10, badge:"china" },
-                        { id:78, name:"Pre-Order: Kids Smartwatch",       size:"One Size",   price:85,   img:"images/product_55.jpg", cat:"preorder",    stock:10, badge:"china" },
-                        { id:79, name:"Pre-Order: Playroom Furniture",    size:"Standard",   price:450,  img:"images/product_65.jpg", cat:"preorder",    stock:10, badge:"china" },
-                        { id:80, name:"Pre-Order: Bulk Stock Request",    size:"Custom",     price:null, img:"images/product_79.jpg", cat:"preorder",    stock:10, badge:"china" }
+                        // China Pre-Order Items — real category + fulfillment_type:"preorder",
+                        // so they show up under their actual category (badged as pre-order)
+                        // instead of only inside a fake "preorder" category.
+                        { id:71, name:"Pre-Order: Luxury Winter Coat",    size:"2Y – 10Y",   price:150,  img:"images/product_78.jpg", cat:"clothing",    stock:10, badge:"china", fulfillment_type:"preorder" },
+                        { id:72, name:"Pre-Order: Designer Sneakers",     size:"Size 26–36", price:120,  img:"images/product_83.jpg", cat:"shoes",       stock:10, badge:"china", fulfillment_type:"preorder" },
+                        { id:73, name:"Pre-Order: Formal Suit Set",       size:"3Y – 12Y",   price:200,  img:"images/product_11.jpg", cat:"clothing",    stock:10, badge:"china", fulfillment_type:"preorder" },
+                        { id:74, name:"Pre-Order: Princess Gown",         size:"4Y – 10Y",   price:180,  img:"images/product_12.jpg", cat:"clothing",    stock:10, badge:"china", fulfillment_type:"preorder" },
+                        { id:75, name:"Pre-Order: Premium Baby Gear",     size:"One Size",   price:250,  img:"images/product_28.jpg", cat:"newborn",     stock:10, badge:"china", fulfillment_type:"preorder" },
+                        { id:76, name:"Pre-Order: School Tech Bundle",    size:"Assorted",    price:300,  img:"images/product_36.jpg", cat:"essentials",  stock:10, badge:"china", fulfillment_type:"preorder" },
+                        { id:77, name:"Pre-Order: Boutique Shoe Mix",     size:"Assorted",    price:null, img:"images/product_37.jpg", cat:"shoes",       stock:10, badge:"china", fulfillment_type:"preorder" },
+                        { id:78, name:"Pre-Order: Kids Smartwatch",       size:"One Size",   price:85,   img:"images/product_55.jpg", cat:"accessories", stock:10, badge:"china", fulfillment_type:"preorder" },
+                        { id:79, name:"Pre-Order: Playroom Furniture",    size:"Standard",   price:450,  img:"images/product_65.jpg", cat:"bedding",     stock:10, badge:"china", fulfillment_type:"preorder" },
+                        { id:80, name:"Pre-Order: Bulk Stock Request",    size:"Custom",     price:null, img:"images/product_79.jpg", cat:"essentials",  stock:10, badge:"china", fulfillment_type:"preorder" }
                     ];
 
-                    const stmt = db.prepare("INSERT INTO products (id, name, size, price, img, cat, stock, badge) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                    const stmt = db.prepare("INSERT INTO products (id, name, size, price, img, cat, stock, badge, fulfillment_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
                     productsData.forEach(p => {
-                        stmt.run(p.id, p.name, p.size, p.price, p.img, p.cat, p.stock, p.badge);
+                        stmt.run(p.id, p.name, p.size, p.price, p.img, p.cat, p.stock, p.badge, p.fulfillment_type || 'in_stock');
                     });
                     stmt.finalize();
                     console.log("Database seeded successfully.");

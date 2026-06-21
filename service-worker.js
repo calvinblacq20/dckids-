@@ -9,12 +9,16 @@
    - Images + fonts: cache-first.
    - Bumping VERSION wipes old caches on activate.
 */
-const VERSION = 'dckids-v83';
+const VERSION = 'dckids-v90';
 const STATIC_CACHE = 'dckids-static-' + VERSION;
 const RUNTIME_CACHE = 'dckids-runtime-' + VERSION;
 
-// App shell — minimal; HTML pages are network-first so we don't preload them.
+// App shell. HTML pages stay network-first; index.html + admin.html are precached
+// only so an offline navigation has a correct same-section fallback (an admin
+// navigation must never be answered with the storefront).
 const APP_SHELL = [
+  '/index.html',
+  '/admin.html',
   '/styles.css',
   '/manifest.json',
   '/icon.png'
@@ -65,7 +69,15 @@ self.addEventListener('fetch', (event) => {
         const copy = res.clone();
         caches.open(RUNTIME_CACHE).then((c) => c.put(req, copy)).catch(() => {});
         return res;
-      }).catch(() => caches.match(req).then((r) => r || caches.match('/index.html')))
+      }).catch(() => caches.match(req).then((r) => {
+        if (r) return r;
+        // Offline navigation fallback: keep admin/login navigations on the admin
+        // shell. Falling back to /index.html here was bouncing the admin login
+        // page to the storefront whenever the network blipped (e.g. the reload
+        // right after a new SW takes control).
+        const fallback = url.pathname.startsWith('/admin') ? '/admin.html' : '/index.html';
+        return caches.match(fallback);
+      }))
     );
     return;
   }

@@ -13,12 +13,12 @@
   <meta name="description" content="DC Kids Admin Dashboard — Manage inventory, orders, customers, and analytics for your kids' boutique.">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#fc4c7a">
-  <link rel="manifest" href="manifest.json">
+  <link rel="manifest" href="admin.manifest.json">
   <title>DC Kids — Admin Dashboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=82">
+  <link rel="stylesheet" href="admin.css?v=84">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -326,7 +326,14 @@
               <span>Reports</span>
             </a>
           </li>
-          <!-- 9. Settings -->
+          <!-- 9. Reviews -->
+          <li>
+            <a href="#" class="sidebar-link" data-tab="tab-reviews">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <span>Reviews</span>
+            </a>
+          </li>
+          <!-- 10. Settings -->
           <li>
             <a href="#" class="sidebar-link" data-tab="tab-settings">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -744,13 +751,17 @@
             <option value="essentials">Essentials</option>
             <option value="accessories">Accessories / Bags</option>
             <option value="bedding">Bedding</option>
-            <option value="preorder">Pre-order</option>
           </select>
           <select id="inv-status-filter" class="filter-select" aria-label="Filter by status">
             <option value="">All Status</option>
             <option value="in-stock">In Stock</option>
             <option value="low-stock">Low Stock</option>
             <option value="out-of-stock">Out of Stock</option>
+          </select>
+          <select id="inv-fulfillment-filter" class="filter-select" aria-label="Filter by listing type">
+            <option value="">All Listings</option>
+            <option value="in_stock">Available Now</option>
+            <option value="preorder">China Pre-Order</option>
           </select>
           <select id="inv-sort" class="filter-select" aria-label="Sort inventory">
             <option value="name-asc">Name A–Z</option>
@@ -868,7 +879,6 @@
             <option value="clothing">Clothing</option>
             <option value="accessories">Accessories</option>
             <option value="newborn">Newborn</option>
-            <option value="preorder">Pre-Order</option>
             <option value="bedding">Bedding</option>
             <option value="shoes">Shoes</option>
           </select>
@@ -877,6 +887,11 @@
             <option value="in-stock">In Stock</option>
             <option value="low-stock">Low Stock</option>
             <option value="out-of-stock">Out of Stock</option>
+          </select>
+          <select id="prod-fulfillment-filter" class="filter-select" aria-label="Filter products by listing type">
+            <option value="">All Listings</option>
+            <option value="in_stock">Available Now</option>
+            <option value="preorder">China Pre-Order</option>
           </select>
           <select id="prod-sort" class="filter-select" aria-label="Sort products">
             <option value="newest">Sort By: Newest</option>
@@ -939,9 +954,13 @@
             <option value="clothing">Clothing</option>
             <option value="accessories">Accessories</option>
             <option value="newborn">Newborn</option>
-            <option value="preorder">Pre-order</option>
             <option value="bedding">Bedding</option>
             <option value="shoes">Shoes</option>
+          </select>
+          <select onchange="if(this.value){prodBulkSetFulfillment(this.value); this.value='';}" class="filter-select" style="min-width:180px;">
+            <option value="">Set listing type…</option>
+            <option value="in_stock">Available Now</option>
+            <option value="preorder">China Pre-Order</option>
           </select>
           <select onchange="if(this.value !== ''){prodBulkSetBadge(this.value === 'none' ? '' : this.value); this.value='';}" class="filter-select" style="min-width:160px;">
             <option value="">Set badge…</option>
@@ -3735,6 +3754,8 @@
             </tbody>
           </table>
         </div>
+
+        <div id="prod-pagination" class="pagination" aria-label="Product pagination"></div>
       </section>
 
 
@@ -3866,6 +3887,69 @@
         </div>
 
         <div id="cust-pagination" class="pagination" aria-label="Customers pagination"></div>
+      </section>
+
+      <!-- ==================== TAB: REVIEWS ==================== -->
+      <section id="tab-reviews" class="tab-view" role="tabpanel" aria-label="Customer Reviews" style="display: none;">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Customer Reviews</h1>
+            <p class="page-subtitle">View and moderate reviews left on your products</p>
+          </div>
+        </div>
+
+        <!-- Review Stats -->
+        <div class="stats-grid stats-grid-3">
+          <div class="stat-card stat-card-sm">
+            <div class="stat-content">
+              <span class="stat-value" id="review-total-count">0</span>
+              <span class="stat-label">Total Reviews</span>
+            </div>
+          </div>
+          <div class="stat-card stat-card-sm">
+            <div class="stat-content">
+              <span class="stat-value" id="review-avg-rating">—</span>
+              <span class="stat-label">Average Rating</span>
+            </div>
+          </div>
+          <div class="stat-card stat-card-sm">
+            <div class="stat-content">
+              <span class="stat-value" id="review-low-count">0</span>
+              <span class="stat-label">Low Ratings (≤2★)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search -->
+        <div class="filter-bar">
+          <div class="filter-group">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="search" id="review-search" class="filter-input" placeholder="Search by product or customer…" aria-label="Search reviews">
+          </div>
+        </div>
+
+        <!-- Reviews Table -->
+        <div class="table-responsive">
+          <table id="reviews-table" class="admin-table data-table sticky-header" aria-label="Customer reviews table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Customer</th>
+                <th>Rating</th>
+                <th>Review</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="reviews-tbody">
+              <tr>
+                <td colspan="6" class="empty-state">No reviews found</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div id="review-pagination" class="pagination" aria-label="Reviews pagination"></div>
       </section>
 
       <!-- ==================== TAB: STAFF / ADMINS ==================== -->
@@ -4639,7 +4723,7 @@
 
             <div style="grid-column: span 1;">
               <label for="modal-product-sku" class="block text-sm font-medium text-gray-700 mb-1.5" style="display: block; margin-bottom: 6px;">SKU</label>
-              <input type="text" id="modal-product-sku" value="DCK-DR-001" class="w-full border border-solid border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-gray-900 shadow-sm" style="box-sizing: border-box; width: 100%; border-radius: 8px; padding: 10px 12px; font-size: 13px;" />
+              <input type="text" id="modal-product-sku" placeholder="e.g. DCK-DR-001" class="w-full border border-solid border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-gray-900 shadow-sm" style="box-sizing: border-box; width: 100%; border-radius: 8px; padding: 10px 12px; font-size: 13px;" />
             </div>
 
             <div style="grid-column: span 1;">
@@ -4652,7 +4736,6 @@
                   <option value="essentials">Essentials</option>
                   <option value="accessories">Accessories</option>
                   <option value="bedding">Bedding</option>
-                  <option value="preorder">China Pre-Orders</option>
                 </select>
                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500" style="position: absolute; right: 12px; top: 0; bottom: 0; display: flex; align-items: center; pointer-events: none;">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -4679,6 +4762,19 @@
                   <option value="out_of_stock">Out of Stock</option>
                 </select>
                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-emerald-600" style="position: absolute; right: 12px; top: 0; bottom: 0; display: flex; align-items: center; pointer-events: none;">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+              </div>
+            </div>
+
+            <div style="grid-column: span 1;">
+              <label for="modal-product-fulfillment" class="block text-sm font-medium text-gray-700 mb-1.5" style="display: block; margin-bottom: 6px;">Listing Type</label>
+              <div class="relative" style="position: relative;">
+                <select id="modal-product-fulfillment" class="w-full border border-solid border-purple-200 bg-purple-50 text-purple-700 rounded-lg px-3 py-2.5 appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-sm" style="box-sizing: border-box; width: 100%; border-radius: 8px; padding: 10px 12px; font-size: 13px; -webkit-appearance: none;">
+                  <option value="in_stock">Available Now</option>
+                  <option value="preorder">China Pre-Order</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-purple-600" style="position: absolute; right: 12px; top: 0; bottom: 0; display: flex; align-items: center; pointer-events: none;">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
               </div>
@@ -4727,9 +4823,11 @@
       </div>
       <div class="modal-body">
         <p style="font-size:13px;color:#666;margin:0 0 12px;">
-          Upload a CSV with these column headers (first row): <code style="background:#FFF1F4;color:#fc4c7a;padding:2px 6px;border-radius:5px;font-size:12px;">name, price, stock, cat, size, badge, img, status, description</code>.
+          Upload a CSV with these column headers (first row): <code style="background:#FFF1F4;color:#fc4c7a;padding:2px 6px;border-radius:5px;font-size:12px;">name, price, stock, cat, size, badge, img, fulfillment_type, sku, description</code>.
           <code style="background:#FFF1F4;color:#fc4c7a;padding:2px 6px;border-radius:5px;font-size:12px;">name</code> and
           <code style="background:#FFF1F4;color:#fc4c7a;padding:2px 6px;border-radius:5px;font-size:12px;">price</code> are required.
+          <code style="background:#FFF1F4;color:#fc4c7a;padding:2px 6px;border-radius:5px;font-size:12px;">fulfillment_type</code> is optional — leave blank or "in_stock" for normal items, "preorder" for China pre-orders.
+          <code style="background:#FFF1F4;color:#fc4c7a;padding:2px 6px;border-radius:5px;font-size:12px;">sku</code> is optional too — leave it blank to auto-assign one, or set your own.
         </p>
         <div style="margin-bottom:14px;">
           <button type="button" class="btn btn-outline-small" onclick="downloadProductCsvTemplate()" style="font-size:12px;">Download template CSV</button>
@@ -4821,8 +4919,9 @@
               </div>
 
               <div>
-                <label class="block text-sm font-bold text-gray-900 mb-2">SKU <span class="text-rose-500">*</span></label>
-                <input type="text" id="add-product-sku" placeholder="Enter SKU" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-gray-400 shadow-sm transition-shadow" required />
+                <label class="block text-sm font-bold text-gray-900 mb-2">SKU</label>
+                <input type="text" id="add-product-sku" placeholder="Auto-assigned if left blank" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-gray-400 shadow-sm transition-shadow" />
+                <p class="text-[11px] text-gray-500 mt-1.5">Suggested automatically once you pick a category — edit it if you use your own SKU scheme.</p>
               </div>
 
               <div>
@@ -4833,7 +4932,6 @@
                     <option value="clothing">Clothing</option>
                     <option value="accessories">Accessories</option>
                     <option value="newborn">Newborn</option>
-                    <option value="preorder">China Pre-Orders</option>
                     <option value="bedding">Bedding</option>
                     <option value="shoes">Shoes</option>
                     <option value="essentials">Essentials</option>
@@ -4879,9 +4977,22 @@
                   </div>
                 </div>
                 <p class="text-[11px] text-gray-500 flex items-center gap-1.5 font-medium">
-                  Status will be set automatically based on stock quantity. 
+                  Status will be set automatically based on stock quantity.
                   <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 </p>
+              </div>
+
+              <div>
+                <label class="block text-sm font-bold text-gray-900 mb-2">Listing Type</label>
+                <div class="relative">
+                  <select id="add-product-fulfillment" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-gray-500 shadow-sm bg-white cursor-pointer transition-shadow">
+                    <option value="in_stock">Available Now</option>
+                    <option value="preorder">China Pre-Order</option>
+                  </select>
+                  <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -5644,6 +5755,7 @@
             <div class="detail-chips">
               <span id="pd-cat-chip" class="detail-chip detail-chip--muted">category</span>
               <span id="pd-status-chip" class="detail-chip detail-chip--status">In Stock</span>
+              <span id="pd-fulfillment-chip" class="detail-chip" style="display:none;background:var(--purple-light);color:var(--purple);">China Pre-Order</span>
             </div>
           </div>
         </div>
@@ -5763,7 +5875,7 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="admin.js?v=1781895722"></script>
+  <script src="admin.js?v=1782066153"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

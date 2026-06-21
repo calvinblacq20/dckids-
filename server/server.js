@@ -44,11 +44,15 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ limit: '2mb', extended: true }));
 
 // Serve the frontend static files.
-// HTML + the service worker must never be cached by the browser/proxy, so layout
-// edits show up on a normal refresh. Other assets cache normally.
+// HTML, the service worker, and CSS/JS must never be cached by the browser/proxy.
+// Without an explicit Cache-Control, browsers apply heuristic caching based on
+// Last-Modified and can serve a stale .css/.js straight from disk cache on a
+// normal reload — bypassing the service worker's network-first fetch entirely,
+// since fetch() still honors the underlying HTTP cache. Images/fonts cache normally.
 app.use(express.static(path.join(__dirname, '..'), {
     setHeaders: function (res, filePath) {
-        if (filePath.endsWith('.html') || filePath.endsWith('service-worker.js')) {
+        if (filePath.endsWith('.html') || filePath.endsWith('service-worker.js') ||
+            filePath.endsWith('.css') || filePath.endsWith('.js')) {
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
             res.setHeader('Pragma', 'no-cache');
             res.setHeader('Expires', '0');
@@ -91,10 +95,13 @@ app.use((req, res, next) => {
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    if (token == null) return res.sendStatus(401);
+    // Always answer with JSON — the admin client does res.json() on every reply,
+    // and a plain-text "Unauthorized"/"Forbidden" body throws a confusing
+    // "Unexpected token 'F'" parse error that masked expired sessions.
+    if (token == null) return res.status(401).json({ error: 'Authentication required' });
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) return res.sendStatus(403);
+        if (err) return res.status(403).json({ error: 'Invalid or expired session' });
         req.user = user;
         next();
     });
@@ -222,37 +229,104 @@ app.put('/api/settings', authenticateToken, requireManager, (req, res) => {
 });
 
 
+// A SKU collided with the partial-unique index — surface a clear message
+// instead of the raw SQLite "UNIQUE constraint failed" text.
+const isDuplicateSku = (err) => err && /UNIQUE constraint failed: products\.sku/.test(err.message);
+
+// Category-prefix + sequential SKU, e.g. "CLO-0001". Walks forward past any
+// existing number (including gaps from deleted products or manually-typed
+// SKUs) so it always lands on something genuinely free.
+const SKU_PREFIXES = { clothing: 'CLO', shoes: 'SHO', accessories: 'ACC', newborn: 'NEW', bedding: 'BED', essentials: 'ESS' };
+function skuPrefixFor(cat) {
+    return SKU_PREFIXES[cat] || (String(cat || 'GEN').replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() || 'GEN');
+}
+function generateSku(cat, callback) {
+    const prefix = skuPrefixFor(cat);
+    db.all(`SELECT sku FROM products WHERE sku LIKE ?`, [prefix + '-%'], (err, rows) => {
+        if (err) return callback(err);
+        let maxN = 0;
+        (rows || []).forEach(r => {
+            const m = /^[A-Z]+-(\d+)$/.exec(r.sku || '');
+            if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
+        });
+        const tryNext = (n) => {
+            const candidate = prefix + '-' + String(n).padStart(4, '0');
+            db.get(`SELECT 1 FROM products WHERE sku = ?`, [candidate], (err2, row) => {
+                if (err2) return callback(err2);
+                if (row) return tryNext(n + 1);
+                callback(null, candidate);
+            });
+        };
+        tryNext(maxN + 1);
+    });
+}
+
+// Preview the next auto-assigned SKU for a category, without reserving it.
+app.get('/api/products/next-sku', authenticateToken, requireManager, (req, res) => {
+    generateSku(req.query.cat, (err, sku) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ sku });
+    });
+});
+
 // Add new product (Manager only)
 app.post('/api/products', authenticateToken, requireManager, (req, res) => {
-    const { name, size, price, img, cat, stock, badge } = req.body;
-    db.run(
-        `INSERT INTO products (name, size, price, img, cat, stock, badge) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [name, size, price, img, cat, stock, badge],
-        function (err) {
+    const { name, sku, size, price, img, cat, stock, badge, description, fulfillment_type } = req.body;
+    const insert = (finalSku) => {
+        db.run(
+            `INSERT INTO products (name, sku, size, price, img, cat, stock, badge, description, fulfillment_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [name, finalSku || null, size, price, img, cat, stock, badge, description || null, fulfillment_type || 'in_stock'],
+            function (err) {
+                if (isDuplicateSku(err)) return res.status(409).json({ error: 'That SKU is already in use by another product.' });
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ id: this.lastID, sku: finalSku || null });
+            }
+        );
+    };
+    // Admin left SKU blank — auto-assign one rather than storing nothing.
+    if (sku && String(sku).trim()) {
+        insert(String(sku).trim());
+    } else {
+        generateSku(cat, (err, generated) => {
             if (err) return res.status(500).json({ error: err.message });
-            res.json({ id: this.lastID });
-        }
-    );
+            insert(generated);
+        });
+    }
 });
 
 // Update product (Manager only)
 app.put('/api/products/:id', authenticateToken, requireManager, (req, res) => {
-    const { name, size, price, img, cat, stock, badge } = req.body;
+    const { name, sku, size, price, img, cat, stock, badge, description, fulfillment_type } = req.body;
     db.run(
-        `UPDATE products SET name = ?, size = ?, price = ?, img = ?, cat = ?, stock = ?, badge = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [name, size, price, img, cat, stock, badge, req.params.id],
+        `UPDATE products SET name = ?, sku = ?, size = ?, price = ?, img = ?, cat = ?, stock = ?, badge = ?, description = ?, fulfillment_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [name, sku || null, size, price, img, cat, stock, badge, description || null, fulfillment_type || 'in_stock', req.params.id],
         function (err) {
+            if (isDuplicateSku(err)) return res.status(409).json({ error: 'That SKU is already in use by another product.' });
             if (err) return res.status(500).json({ error: err.message });
             res.json({ changes: this.changes });
         }
     );
 });
 
-// Delete product (Manager only)
+// Delete product (Manager only). Order history is untouched on purpose —
+// order_items has no FK on product_id and stores its own product_name/price,
+// so past orders stay intact even after the product itself is gone. Gallery
+// images, reviews, and wishlist entries have no value without the product,
+// so they're removed first (the FK on product_id otherwise rejects the delete).
 app.delete('/api/products/:id', authenticateToken, requireManager, (req, res) => {
-    db.run(`DELETE FROM products WHERE id = ?`, req.params.id, function (err) {
+    const productId = req.params.id;
+    db.run(`DELETE FROM product_images WHERE product_id = ?`, [productId], (err) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ changes: this.changes });
+        db.run(`DELETE FROM product_reviews WHERE product_id = ?`, [productId], (err2) => {
+            if (err2) return res.status(500).json({ error: err2.message });
+            db.run(`DELETE FROM wishlist_items WHERE product_id = ?`, [productId], (err3) => {
+                if (err3) return res.status(500).json({ error: err3.message });
+                db.run(`DELETE FROM products WHERE id = ?`, [productId], function (err4) {
+                    if (err4) return res.status(500).json({ error: err4.message });
+                    res.json({ changes: this.changes });
+                });
+            });
+        });
     });
 });
 
@@ -1502,9 +1576,19 @@ app.post('/api/products/bulk-delete', authenticateToken, requireManager, (req, r
     const { ids } = req.body || {};
     if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids array required' });
     const placeholders = ids.map(() => '?').join(',');
-    db.run(`DELETE FROM products WHERE id IN (${placeholders})`, ids, function(err) {
+    // Same FK constraint as the single-delete route — clear dependent rows first.
+    db.run(`DELETE FROM product_images WHERE product_id IN (${placeholders})`, ids, (err) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json({ success: true, deleted: this.changes });
+        db.run(`DELETE FROM product_reviews WHERE product_id IN (${placeholders})`, ids, (err2) => {
+            if (err2) return res.status(500).json({ error: err2.message });
+            db.run(`DELETE FROM wishlist_items WHERE product_id IN (${placeholders})`, ids, (err3) => {
+                if (err3) return res.status(500).json({ error: err3.message });
+                db.run(`DELETE FROM products WHERE id IN (${placeholders})`, ids, function(err4) {
+                    if (err4) return res.status(500).json({ error: err4.message });
+                    res.json({ success: true, deleted: this.changes });
+                });
+            });
+        });
     });
 });
 app.post('/api/products/bulk-update', authenticateToken, requireManager, (req, res) => {
@@ -1512,7 +1596,7 @@ app.post('/api/products/bulk-update', authenticateToken, requireManager, (req, r
     if (!Array.isArray(ids) || ids.length === 0 || !fields || typeof fields !== 'object') {
         return res.status(400).json({ error: 'ids array and fields object required' });
     }
-    const allowed = ['cat', 'badge', 'price', 'stock', 'status'];
+    const allowed = ['cat', 'badge', 'price', 'stock', 'description', 'fulfillment_type'];
     const updates = [];
     const values = [];
     Object.keys(fields).forEach(k => { if (allowed.includes(k)) { updates.push(`${k} = ?`); values.push(fields[k]); } });
@@ -1526,18 +1610,66 @@ app.post('/api/products/bulk-update', authenticateToken, requireManager, (req, r
 app.post('/api/products/bulk-import', authenticateToken, requireManager, (req, res) => {
     const { rows } = req.body || {};
     if (!Array.isArray(rows) || rows.length === 0) return res.status(400).json({ error: 'rows array required' });
-    let inserted = 0, skipped = 0;
-    const stmt = db.prepare(`INSERT INTO products (name, price, stock, cat, size, badge, img, status, description)
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-    rows.forEach(r => {
-        if (!r || !r.name || r.price == null) { skipped++; return; }
-        stmt.run([r.name, Number(r.price) || 0, Number(r.stock) || 0, r.cat || '', r.size || '', r.badge || '', r.img || '', r.status || 'in_stock', r.description || '']);
-        inserted++;
-    });
-    stmt.finalize((err) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ success: true, inserted, skipped });
-    });
+
+    const validRows = [];
+    let skipped = 0;
+    rows.forEach(r => { if (r && r.name && r.price != null) validRows.push(r); else skipped++; });
+
+    // status is derived from stock at display time, so it isn't a stored column.
+    const stmt = db.prepare(`INSERT INTO products (name, sku, price, stock, cat, size, badge, img, description, fulfillment_type)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    let inserted = 0;
+    const failures = [];
+
+    // Rows that omit a SKU get one auto-assigned, same scheme as a manual add
+    // (category prefix + sequential number). Seeding each prefix's starting
+    // number once up front — rather than re-querying per row — means two
+    // blank-SKU rows for the same category in one CSV don't race for the same
+    // number; rows run one at a time anyway so the in-memory counter stays correct.
+    const nextNumByPrefix = {};
+    const seedPrefix = (prefix, cb) => {
+        if (nextNumByPrefix[prefix] != null) return cb();
+        db.all(`SELECT sku FROM products WHERE sku LIKE ?`, [prefix + '-%'], (err, dbRows) => {
+            let maxN = 0;
+            (dbRows || []).forEach(row => {
+                const m = /^[A-Z]+-(\d+)$/.exec(row.sku || '');
+                if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
+            });
+            nextNumByPrefix[prefix] = maxN;
+            cb();
+        });
+    };
+
+    const processRow = (idx) => {
+        if (idx >= validRows.length) {
+            return stmt.finalize((err) => {
+                if (err) return res.status(500).json({ error: err.message });
+                res.json({ success: true, inserted, skipped, failed: failures.length, errors: failures.slice(0, 10) });
+            });
+        }
+        const r = validRows[idx];
+        const fulfillmentType = (r.fulfillment_type || '').toLowerCase() === 'preorder' ? 'preorder' : 'in_stock';
+        const cat = r.cat || '';
+        const insertWith = (sku) => {
+            stmt.run([r.name, sku || null, Number(r.price) || 0, Number(r.stock) || 0, cat, r.size || '', r.badge || '', r.img || '', r.description || '', fulfillmentType], function (err) {
+                if (isDuplicateSku(err)) failures.push({ row: idx + 1, name: r.name, error: 'Duplicate SKU "' + sku + '"' });
+                else if (err) failures.push({ row: idx + 1, name: r.name, error: err.message });
+                else inserted++;
+                processRow(idx + 1);
+            });
+        };
+        const explicitSku = String(r.sku || '').trim();
+        if (explicitSku) {
+            insertWith(explicitSku);
+        } else {
+            const prefix = skuPrefixFor(cat);
+            seedPrefix(prefix, () => {
+                nextNumByPrefix[prefix]++;
+                insertWith(prefix + '-' + String(nextNumByPrefix[prefix]).padStart(4, '0'));
+            });
+        }
+    };
+    processRow(0);
 });
 
 // ===========================================================================

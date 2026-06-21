@@ -52,6 +52,16 @@ function waUrl(productName) {
   return `https://wa.me/${num}?text=${msg}`;
 }
 
+// Static wa.me links (nav, header, footer, floating button) carry their own
+// message text — only swap the number, so admin changes reach them without
+// clobbering each link's wording.
+function applyWhatsAppNumber() {
+  const num = siteConfig.whatsapp_number || '233549193805';
+  document.querySelectorAll('[data-wa-link]').forEach(el => {
+    el.href = el.href.replace(/wa\.me\/\d+/, 'wa.me/' + num);
+  });
+}
+
 // ── Size → Price modifier (GHC markup per age tier) ──
 function getPriceModifier(sizeLabel) {
   const s = sizeLabel.toString().trim();
@@ -135,7 +145,7 @@ function renderCard(p, index) {
   // Genuine low-stock urgency only — never faked. Retail only (wholesale sells in bulk),
   // and not for pre-orders (their stock isn't on-hand).
   let lowStockHTML = '';
-  if (!isSoldOut && p.cat !== 'preorder' && typeof p.stock === 'number' && p.stock > 0 && p.stock <= 5) {
+  if (!isSoldOut && p.fulfillment_type !== 'preorder' && typeof p.stock === 'number' && p.stock > 0 && p.stock <= 5) {
     lowStockHTML = '<div class="product-card__lowstock"><span class="product-card__lowstock-dot"></span>Only ' + p.stock + ' left</div>';
   }
 
@@ -151,7 +161,7 @@ function renderCard(p, index) {
     unitPrice = unitPrice * (1 - (discount / 100));
   }
 
-  const isPreorder = p.cat === 'preorder';
+  const isPreorder = p.fulfillment_type === 'preorder';
   const cardClass = isPreorder ? 'product-card product-card--preorder' : 'product-card';
 
   // Initial display: for wholesale show total for MOQ; for retail show single-unit price
@@ -222,7 +232,7 @@ function renderCard(p, index) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
           Add Bulk to Cart
         </button>
-        <a href="${waUrl(p.name + ' (Wholesale Bulk)')}" target="_blank" title="Ask via WhatsApp" aria-label="Ask via WhatsApp" style="flex-shrink:0;width:44px;display:flex;align-items:center;justify-content:center;background:#25D366;color:#fff;border-radius:8px;text-decoration:none;">
+        <a href="${waUrl(p.name + ' (Wholesale Bulk)')}" target="_blank" title="Ask via WhatsApp" aria-label="Ask via WhatsApp" class="product-card__cta-wa">
           <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.82 9.82 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.81 11.81 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.88 11.88 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.82 11.82 0 0 0-3.48-8.413z"/></svg>
         </a>
       </div>`;
@@ -256,7 +266,7 @@ function renderCard(p, index) {
       </div>
       <div class="product-card__body">
         <div class="product-card__name">${p.name}</div>
-        <button type="button" class="product-card__rating" data-rating-id="${p.id}" onclick="openReviewsModal(${p.id}, '${(p.name || '').replace(/'/g, "\\'")}')" aria-label="View reviews for ${p.name}" style="display:none;">
+        <button type="button" class="product-card__rating" data-rating-id="${p.id}" onclick="openReviewsModal(${p.id}, '${(p.name || '').replace(/'/g, "\\'")}')" aria-label="View or write a review for ${p.name}" style="display:none;">
           <span class="rating-stars" data-stars-for="${p.id}"></span>
           <span class="rating-count" data-count-for="${p.id}"></span>
         </button>
@@ -327,7 +337,7 @@ function getStoredCategoryList() {
 // known defaults, then any remaining new categories (humanized) alphabetically.
 function getActiveCategories(items) {
   const present = new Set(
-    items.map(p => p.cat).filter(c => c && c !== 'preorder')
+    items.map(p => p.cat).filter(c => c)
   );
   const result = [];
   const seen = new Set();
@@ -382,14 +392,22 @@ function renderProducts() {
       });
   }
 
-  const avail = filteredProducts.filter(p => p.cat !== 'preorder');
-  const pre   = filteredProducts.filter(p => p.cat === 'preorder');
+  // Pre-order items keep their real category, so they show up in their normal
+  // category grid too (badged as pre-order) — not just tucked away in a
+  // separate section invisible to anyone browsing by category.
+  const avail = filteredProducts;
+  const pre   = filteredProducts.filter(p => p.fulfillment_type === 'preorder');
 
   if (dynamicSections) {
     // ONE paginated grid filtered by the active category — shoppers move
     // page-by-page (Prev/Next) instead of scrolling every category at once.
     const cats = getActiveCategories(avail);
-    const activeCat = (currentCategory && currentCategory !== 'all' && currentCategory !== 'preorder' && cats.some(c => c.id === currentCategory)) ? currentCategory : 'all';
+    // A category is valid to filter on if it has products OR the owner manages it
+    // (so a brand-new empty category like "ROCKS" shows its own grid, not "All").
+    const managed = (typeof getStoredCategoryList === 'function' ? getStoredCategoryList() : []);
+    const isValidCat = currentCategory && currentCategory !== 'all' && currentCategory !== 'preorder' &&
+      (cats.some(c => c.id === currentCategory) || managed.some(c => c && c.id === currentCategory));
+    const activeCat = isValidCat ? currentCategory : 'all';
     const list = activeCat === 'all' ? avail : avail.filter(p => p.cat === activeCat);
     const totalPages = Math.max(1, Math.ceil(list.length / PRODUCTS_PER_PAGE));
     let page = categoryPages[activeCat] || 1;
@@ -400,7 +418,7 @@ function renderProducts() {
     const pageProducts = list.slice(start, start + PRODUCTS_PER_PAGE);
     const label = activeCat === 'all'
       ? (searchQuery ? 'Search Results' : 'All Products')
-      : ((cats.find(c => c.id === activeCat) || {}).label || 'Products');
+      : ((cats.find(c => c.id === activeCat) || managed.find(c => c && c.id === activeCat) || {}).label || humanizeCategory(activeCat));
 
     dynamicSections.innerHTML = `
       <section id="productListSection" class="category-section pb-4">
@@ -794,7 +812,7 @@ if (checkoutBtn) {
     // If any item is a preorder, mark the whole order as a preorder
     const hasPreorder = cart.some(c => {
         const prod = products.find(p => p.id === c.id);
-        return prod && prod.cat === 'preorder';
+        return prod && prod.fulfillment_type === 'preorder';
     });
     
     const order_type = hasPreorder ? 'preorder' : storeMode;
@@ -981,6 +999,7 @@ async function initApp() {
           setStoreMode('retail');
       }
   }
+  applyWhatsAppNumber();
 
   renderProducts();
   renderCartDrawer();
@@ -1215,9 +1234,15 @@ function paintProductRating(id) {
   const countEl = document.querySelector('[data-count-for="' + id + '"]');
   if (!starsEl || !countEl || !sum) return;
   const wrap = starsEl.closest('.product-card__rating');
-  // Only show the rating row once a product actually has reviews — an empty
-  // "No reviews yet" on a brand-new shop signals "nobody has bought this".
-  if (!sum.count) { if (wrap) wrap.style.display = 'none'; return; }
+  // Every product accepts reviews, even with zero so far — show a "write a
+  // review" invite instead of a fake average rather than hiding the button.
+  if (!sum.count) {
+    starsEl.textContent = '☆☆☆☆☆';
+    starsEl.classList.remove('has-reviews');
+    countEl.textContent = 'Write a review';
+    if (wrap) wrap.style.display = '';
+    return;
+  }
   const full = Math.round(sum.average);
   starsEl.textContent = '★★★★★☆☆☆☆☆'.slice(5 - full, 10 - full);
   starsEl.classList.add('has-reviews');
@@ -1410,6 +1435,154 @@ window.addEventListener('load', () => { setTimeout(syncWishlistState, 200); });
       var letters = el.value.replace(/[0-9]/g, '');
       if (letters !== el.value) setFiltered(el, letters);
     }
+  });
+})();
+
+/* ============================================================
+   DYNAMIC STOREFRONT CATEGORY NAV
+   Rebuilds the category pills + side-drawer from the owner's
+   managed category list (shared via same-origin localStorage)
+   merged with categories present on products — so categories the
+   owner adds (e.g. "ROCKS") appear in the storefront immediately.
+   ============================================================ */
+(function () {
+  'use strict';
+  function escH(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];}); }
+
+  var PILL_ICON = {
+    newborn:'fa-baby', clothing:'fa-tshirt', shoes:'fa-shoe-prints',
+    feeding:'fa-bottle-water', gear:'fa-baby-carriage', bathcare:'fa-bath',
+    essentials:'fa-hand-holding-heart', accessories:'fa-shopping-bag', bedding:'fa-bed'
+  };
+
+  function storefrontCats() {
+    var out = [], seen = {};
+    function push(id, label){
+      if (!id || id === 'preorder' || seen[id]) return;
+      seen[id] = 1;
+      var lbl = label
+        || (typeof KNOWN_CATEGORY_LABELS !== 'undefined' && KNOWN_CATEGORY_LABELS[id])
+        || (typeof humanizeCategory === 'function' ? humanizeCategory(id) : id);
+      out.push({ id: id, label: lbl });
+    }
+    var stored = [];
+    try { stored = getStoredCategoryList() || []; } catch (e) {}
+    if (stored.length) {
+      // The owner's managed list is the source of truth (so deletes stick).
+      stored.forEach(function (c) { if (c && c.id) push(c.id, c.label); });
+    } else {
+      // No managed list yet → fall back to built-in defaults.
+      try { (categoryMap || []).forEach(function (c) { push(c.id, c.label); }); } catch (e) {}
+    }
+    // Any category that actually has products always shows — even for shoppers
+    // whose browser doesn't have the managed list (it's product data, server-side).
+    try { (Array.isArray(products) ? products : []).forEach(function (p) { if (p.cat) push(p.cat); }); } catch (e) {}
+    return out;
+  }
+
+  function selectCategory(cat) {
+    try { currentCategory = cat; } catch (e) {}
+    try { categoryPages[cat] = 1; } catch (e) {}
+    if (typeof inventoryBtns !== 'undefined' && inventoryBtns) {
+      if (inventoryBtns[1]) inventoryBtns[1].classList.remove('active');
+      if (inventoryBtns[0]) inventoryBtns[0].classList.add('active');
+    }
+    if (typeof dynamicSections !== 'undefined' && dynamicSections) dynamicSections.classList.remove('hidden');
+    if (typeof preorderSec !== 'undefined' && preorderSec) preorderSec.classList.add('hidden');
+    try { currentStock = 'available'; } catch (e) {}
+    if (categoryPills) categoryPills.querySelectorAll('.category-pill').forEach(function (p) {
+      p.classList.toggle('active', (p.getAttribute('data-filter') || 'all') === cat);
+    });
+    if (navDrawer) navDrawer.querySelectorAll('.nav-drawer__item[data-category]').forEach(function (n) {
+      n.classList.toggle('active', (n.getAttribute('data-category') || '') === cat);
+    });
+    (window.renderProducts || renderProducts)();
+    var sec = document.getElementById('productListSection');
+    if (sec) window.scrollTo({ top: sec.getBoundingClientRect().top + window.pageYOffset - 90, behavior: 'smooth' });
+  }
+
+  function rebuildPills() {
+    if (!categoryPills) return;
+    var cats = storefrontCats();
+    var active = (typeof currentCategory !== 'undefined' && currentCategory) ? currentCategory : 'all';
+    var html = '<a href="#all" class="category-pill flex items-center gap-2 px-5 py-2.5 rounded-full border text-sm font-medium transition-all' + (active === 'all' ? ' active' : '') + '" data-filter="all"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> All</a>';
+    html += cats.map(function (c) {
+      var ic = PILL_ICON[c.id] || 'fa-tag';
+      return '<a href="#' + escH(c.id) + '" class="category-pill flex items-center gap-2 px-5 py-2.5 rounded-full border bg-white text-gray-600 border-gray-100 hover:bg-gray-50 text-sm font-medium transition-all' + (active === c.id ? ' active' : '') + '" data-filter="' + escH(c.id) + '"><i class="fas ' + ic + ' text-xs opacity-80"></i> ' + escH(c.label) + '</a>';
+    }).join('');
+    categoryPills.innerHTML = html;
+  }
+
+  function rebuildNav() {
+    if (!navDrawer) return;
+    var cats = storefrontCats();
+    // Preserve each category's ORIGINAL glyph icon: snapshot the existing SVG by
+    // category id, then drop the originals (so their old click handlers don't
+    // double-fire with the delegated one). New categories get a generic tag.
+    var iconById = {};
+    navDrawer.querySelectorAll('.nav-drawer__item[data-category]').forEach(function (n) {
+      var dc = n.getAttribute('data-category');
+      if (dc === 'all' || dc === 'preorder') return;
+      var svg = n.querySelector('svg');
+      if (svg && !iconById[dc]) iconById[dc] = svg.outerHTML;
+      n.parentNode.removeChild(n);
+    });
+    var allItem = navDrawer.querySelector('.nav-drawer__item[data-category="all"]');
+    var anchor = allItem ? allItem.nextSibling : null;
+    var tagSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
+    cats.forEach(function (c) {
+      var a = document.createElement('a');
+      a.href = '#' + c.id;
+      a.className = 'nav-drawer__item';
+      a.setAttribute('data-category', c.id);
+      a.innerHTML = (iconById[c.id] || tagSvg) + ' ' + escH(c.label);
+      if (allItem) navDrawer.insertBefore(a, anchor); else navDrawer.appendChild(a);
+    });
+  }
+
+  function wireDelegation() {
+    if (categoryPills && !categoryPills.__catDeleg) {
+      categoryPills.__catDeleg = true;
+      categoryPills.addEventListener('click', function (e) {
+        var pill = e.target.closest('.category-pill');
+        if (!pill || !categoryPills.contains(pill)) return;
+        e.preventDefault();
+        selectCategory(pill.getAttribute('data-filter') || 'all');
+      });
+    }
+    if (navDrawer && !navDrawer.__catDeleg) {
+      navDrawer.__catDeleg = true;
+      navDrawer.addEventListener('click', function (e) {
+        var item = e.target.closest('.nav-drawer__item[data-category]');
+        if (!item || !navDrawer.contains(item)) return;
+        var cat = item.getAttribute('data-category');
+        if (cat === 'all' || cat === 'preorder') return; // originals handle these
+        e.preventDefault();
+        if (typeof closeNav === 'function') closeNav();
+        selectCategory(cat);
+      });
+    }
+  }
+
+  function syncCategoryNav() { rebuildPills(); rebuildNav(); wireDelegation(); }
+  window.syncCategoryNav = syncCategoryNav;
+
+  // Re-sync the storefront nav + grid whenever the category list changes.
+  function resync() {
+    try { syncCategoryNav(); } catch (e) {}
+    try { (window.renderProducts || renderProducts)(); } catch (e) {}
+  }
+  // Fires when the admin (another tab, same browser) adds/renames/deletes a category.
+  window.addEventListener('storage', function (e) {
+    if (!e || e.key === 'dcKidsCategories' || e.key === null) resync();
+  });
+  // Catch changes made in this same tab (storage event doesn't fire for the writer).
+  window.addEventListener('focus', resync);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) resync(); });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(syncCategoryNav, 600);
+    setTimeout(syncCategoryNav, 1800);
   });
 })();
 

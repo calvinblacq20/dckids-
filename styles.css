@@ -877,6 +877,29 @@ ul { list-style: none; }
 }
 .product-card__cta svg { width: 15px; height: 15px; }
 
+/* Wholesale bulk CTA row: WhatsApp is the secondary/fallback action, so it's an
+   outline icon button rather than a second solid-green block next to "Add Bulk
+   to Cart" — two filled greens side by side were reading as one undifferentiated
+   block. */
+.product-card__cta-wa {
+  flex-shrink: 0;
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  border: 1.5px solid #25D366;
+  color: #25D366;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: all var(--transition);
+}
+.product-card__cta-wa:hover {
+  background: #25D366;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
 /* ─── 14. Pre-Order Grid Section ─── */
 .preorder-grid-section { padding: 16px; margin-top: 10px; }
 .preorder-grid-banner {

@@ -43,6 +43,8 @@ let custCurrentPage = 1;
 const CUST_PER_PAGE = 10;
 let suppCurrentPage = 1;
 const SUPP_PER_PAGE = 10;
+let reviewCurrentPage = 1;
+const REVIEW_PER_PAGE = 10;
 
 // Confirm callback holder
 let pendingConfirmCallback = null;
@@ -59,8 +61,12 @@ function getOrders() {
 function fetchOrdersFromServer(callback) {
     var token = localStorage.getItem('adminToken');
     fetch(API_URL + '/orders', { headers: { 'Authorization': 'Bearer ' + token } })
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+        if (r.status === 401 || r.status === 403) { handleSessionExpiry(); return null; }
+        return r.json();
+    })
     .then(function(data) {
+        if (data === null) return; // session expired — already handled
         if (Array.isArray(data)) {
             window.adminOrders = data.map(function(o) {
                 return {
@@ -342,6 +348,7 @@ function handleLogin(e) {
 }
 
 function showDashboard(role) {
+    _sessionExpiredHandled = false;
     currentRole = role || localStorage.getItem('adminRole') || '';
     document.getElementById('login-container').style.display = 'none';
     document.getElementById('dashboard-container').style.display = 'block';
@@ -383,6 +390,19 @@ function logout() {
     document.getElementById('login-container').style.display = 'flex';
 }
 
+// A protected endpoint answered 401/403: the token is missing, invalid, or
+// expired (e.g. an offline fallback token now hitting a live server). Sign the
+// admin out cleanly instead of silently serving stale local data on a dead
+// session. Guarded so parallel failing calls only log out once.
+var _sessionExpiredHandled = false;
+function handleSessionExpiry() {
+    if (_sessionExpiredHandled) return true;
+    _sessionExpiredHandled = true;
+    if (typeof showToast === 'function') showToast('Your session expired. Please sign in again.', 'warning');
+    logout();
+    return true;
+}
+
 /* ============================================================
    SECTION 4: SPA NAVIGATION
    ============================================================ */
@@ -395,6 +415,7 @@ var navTargetMap = {
     'tab-suppliers': 'Suppliers',
     'tab-analytics': 'Sales Analytics',
     'tab-reports': 'Reports',
+    'tab-reviews': 'Reviews',
     'tab-settings': 'Settings',
     'tab-admins': 'Manage Staff'
 };
@@ -443,6 +464,7 @@ function switchTab(targetId) {
     else if (targetId === 'tab-suppliers') loadSuppliers();
     else if (targetId === 'tab-analytics') loadAnalytics();
     else if (targetId === 'tab-reports') loadReports();
+    else if (targetId === 'tab-reviews') loadReviews();
     else if (targetId === 'tab-settings') loadSettingsTab();
     else if (targetId === 'tab-admins') loadAdmins();
 }
@@ -691,6 +713,37 @@ function renderNotifications() {
     }
 }
 
+// ── Mobile header-popover backdrop ──────────────────────────────────────────
+// The notification dropdown and account menu relocate to <body> and float over
+// the dashboard on phones/tablets. This scrim dims the page behind them, closes
+// them on an outside tap, and — by closing the sidebar first — removes the
+// sidebar-under-popover overlap. Shared by both popovers.
+function showHeaderPopoverScrim() {
+    if (window.innerWidth > 1024) return;
+    var sidebar = document.querySelector('.admin-sidebar');
+    if (sidebar) sidebar.classList.remove('open');
+    var sidebarOverlay = document.getElementById('sidebar-overlay');
+    if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+
+    var scrim = document.getElementById('header-popover-scrim');
+    if (!scrim) {
+        scrim = document.createElement('div');
+        scrim.id = 'header-popover-scrim';
+        scrim.className = 'header-popover-scrim';
+        scrim.addEventListener('click', hideHeaderPopoverScrim);
+        document.body.appendChild(scrim);
+    }
+    scrim.classList.add('open');
+}
+
+function hideHeaderPopoverScrim() {
+    var scrim = document.getElementById('header-popover-scrim');
+    if (scrim) scrim.classList.remove('open');
+    var dd = document.getElementById('notification-dropdown');
+    if (dd) dd.style.display = 'none';
+    if (typeof closeAdminUserMenu === 'function') closeAdminUserMenu();
+}
+
 function toggleNotificationDropdown(e) {
     // Stop the opening click from bubbling to the document outside-click handler,
     // which would otherwise close the dropdown in the same tick (the mobile
@@ -746,8 +799,10 @@ function toggleNotificationDropdown(e) {
         }
         dropdown.innerHTML = html;
         dropdown.style.display = 'block';
+        if (mobile) showHeaderPopoverScrim();
     } else {
         dropdown.style.display = 'none';
+        hideHeaderPopoverScrim();
     }
 }
 
@@ -770,6 +825,7 @@ function markAllNotificationsRead() {
     renderNotifications();
     var dropdown = document.getElementById('notification-dropdown');
     if (dropdown) dropdown.style.display = 'none';
+    hideHeaderPopoverScrim();
 }
 
 function addNotification(type, message) {
@@ -1162,12 +1218,14 @@ function renderInventoryTable() {
 
 function getFilteredInventory() {
     var searchEl = document.querySelector('#tab-inventory .filter-bar input');
-    var catFilter = document.querySelector('#tab-inventory .filter-bar select:first-of-type');
-    var statusFilter = document.querySelector('#tab-inventory .filter-bar select:nth-of-type(2)');
+    var catFilter = document.getElementById('inv-cat-filter');
+    var statusFilter = document.getElementById('inv-status-filter');
+    var fulfillmentFilter = document.getElementById('inv-fulfillment-filter');
 
     var query = searchEl ? searchEl.value.toLowerCase() : '';
     var cat = catFilter ? catFilter.value : 'all';
     var status = statusFilter ? statusFilter.value : 'all';
+    var fulfillment = fulfillmentFilter ? fulfillmentFilter.value : '';
 
     return globalProducts.filter(function(p) {
         var matchesSearch = !query || (p.name && p.name.toLowerCase().indexOf(query) >= 0) || (p.cat && p.cat.toLowerCase().indexOf(query) >= 0) || (p.size && p.size.toLowerCase().indexOf(query) >= 0);
@@ -1176,12 +1234,13 @@ function getFilteredInventory() {
         if (status === 'in-stock') matchesStatus = p.stock >= 5;
         else if (status === 'low-stock') matchesStatus = p.stock > 0 && p.stock < 5;
         else if (status === 'out-of-stock') matchesStatus = p.stock <= 0;
-        return matchesSearch && matchesCat && matchesStatus;
+        var matchesFulfillment = !fulfillment || (p.fulfillment_type || 'in_stock') === fulfillment;
+        return matchesSearch && matchesCat && matchesStatus && matchesFulfillment;
     });
 }
 
 function sortInventory(products) {
-    var sortEl = document.querySelector('#tab-inventory .filter-bar select:nth-of-type(3)');
+    var sortEl = document.getElementById('inv-sort');
     var sortVal = sortEl ? sortEl.value : '';
     var copy = products.slice();
     if (sortVal === 'name-asc') copy.sort(function(a, b) { return (a.name || '').localeCompare(b.name || ''); });
@@ -1198,9 +1257,15 @@ function escapeHtml(unsafe) {
     return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
+// Real SKU when the product has one; otherwise a stable ID-derived placeholder
+// (#000042) so legacy rows created before SKUs were stored still show something.
+function displaySku(p) {
+    return (p && p.sku) ? p.sku : '#' + String(p.id).padStart(6, '0');
+}
+
 function buildProductRow(p) {
-    var sku = String(p.id).padStart(6, '0');
     var category = p.cat || 'Uncategorized';
+    var preorderHTML = p.fulfillment_type === 'preorder' ? ' <span class="status-pill preorder">Pre-Order</span>' : '';
     var statusHTML;
     if (p.stock <= 0) {
         statusHTML = '<span class="status-pill out-of-stock">Out of Stock</span>';
@@ -1225,8 +1290,8 @@ function buildProductRow(p) {
     return '<td class="table-card-header" data-label="Product"><div class="table-product">' +
         '<img src="' + escapeHtml(p.img || 'images/product_1.jpg') + '" alt="' + escapeHtml(p.name) + '">' +
         '<div class="table-product-info"><h4 onclick="openEditModal(' + p.id + ')">' + escapeHtml(p.name) + '</h4><p>Size: ' + escapeHtml(p.size || 'N/A') + '</p></div></div></td>' +
-        '<td data-label="SKU" style="color:var(--admin-subtext);font-family:monospace;">#' + sku + '</td>' +
-        '<td data-label="Category">' + escapeHtml(category) + '</td>' +
+        '<td data-label="SKU" style="color:var(--admin-subtext);font-family:monospace;">' + escapeHtml(displaySku(p)) + '</td>' +
+        '<td data-label="Category">' + escapeHtml(category) + preorderHTML + '</td>' +
         '<td data-label="Price" style="font-weight:600;">GHS ' + (p.price || '—') + '</td>' +
         '<td data-label="Stock" style="font-weight:600;">' + (p.stock != null ? p.stock : 0) + '</td>' +
         '<td data-label="Status">' + statusHTML + '</td>' +
@@ -1243,7 +1308,7 @@ function openProductDetail(productId) {
     var modal = document.getElementById('modal-product-detail');
     if (!modal) return;
 
-    var sku = '#' + String(p.id).padStart(6, '0');
+    var sku = displaySku(p);
     var stock = (p.stock != null) ? p.stock : 0;
     var statusText = stock <= 0 ? 'Out of Stock' : (stock < 5 ? 'Low Stock' : 'In Stock');
     var statusClass = stock <= 0 ? 'out-of-stock' : (stock < 5 ? 'low-stock' : 'in-stock');
@@ -1263,6 +1328,8 @@ function openProductDetail(productId) {
     if (catChip) catChip.textContent = p.cat || 'category';
     var statusChip = document.getElementById('pd-status-chip');
     if (statusChip) { statusChip.textContent = statusText; statusChip.className = 'detail-chip detail-chip--status ' + statusClass; }
+    var fulfillmentChip = document.getElementById('pd-fulfillment-chip');
+    if (fulfillmentChip) fulfillmentChip.style.display = (p.fulfillment_type === 'preorder') ? '' : 'none';
     var stockStatusEl = document.getElementById('pd-stock-status');
     if (stockStatusEl) stockStatusEl.className = 'detail-row__value status-text-' + statusClass;
 
@@ -1363,6 +1430,7 @@ function renderProductsGrid() {
                     '</div>' +
                     '<div style="padding:16px;">' +
                     '<span style="font-size:11px;background:#f5f5f5;padding:4px 8px;border-radius:6px;color:#666;">' + escapeHtml(p.cat || '') + '</span>' +
+                    (p.fulfillment_type === 'preorder' ? ' <span class="status-pill preorder">Pre-Order</span>' : '') +
                     '<h4 style="margin:8px 0 4px;font-size:15px;">' + escapeHtml(p.name) + '</h4>' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;">' +
                     '<span style="font-weight:700;font-size:16px;">GHS ' + (p.price || 0) + '</span>' +
@@ -1376,7 +1444,10 @@ function renderProductsGrid() {
         return;
     }
 
-    var products = getFilteredProducts();
+    var filteredProducts = getFilteredProducts();
+    var totalItems = filteredProducts.length;
+    var start = (prodCurrentPage - 1) * PROD_PER_PAGE;
+    var products = filteredProducts.slice(start, start + PROD_PER_PAGE);
     tbody.innerHTML = '';
     if (products.length === 0) {
         tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#888;padding:40px;">No products found</td></tr>';
@@ -1422,8 +1493,8 @@ function renderProductsGrid() {
                 '</div>' +
                 '</div>' +
                 '</td>' +
-                '<td data-label="SKU" style="color:var(--admin-subtext);font-family:monospace;">#' + String(p.id).padStart(6, '0') + '</td>' +
-                '<td data-label="Category" style="text-transform:capitalize;">' + escapeHtml(p.cat) + '</td>' +
+                '<td data-label="SKU" style="color:var(--admin-subtext);font-family:monospace;">' + escapeHtml(displaySku(p)) + '</td>' +
+                '<td data-label="Category" style="text-transform:capitalize;">' + escapeHtml(p.cat) + (p.fulfillment_type === 'preorder' ? ' <span class="status-pill preorder" style="text-transform:none;">Pre-Order</span>' : '') + '</td>' +
                 '<td data-label="Price" style="font-weight:600;">GHS ' + (p.price || '—') + '</td>' +
                 '<td data-label="Stock" style="font-weight:600;">' + (p.stock != null ? p.stock : 0) + '</td>' +
                 '<td data-label="Badge">' + getBadge(p.badge) + '</td>' +
@@ -1433,21 +1504,23 @@ function renderProductsGrid() {
         });
     }
 
-    var pagEl = document.getElementById('prod-pagination');
-    if (pagEl) {
-        pagEl.style.display = 'none';
-    }
+    renderPagination('prod-pagination', totalItems, prodCurrentPage, PROD_PER_PAGE, function(page) {
+        prodCurrentPage = page;
+        renderProductsGrid();
+    });
 }
 
 function getFilteredProducts() {
     var searchEl = document.getElementById('prod-search');
     var catEl = document.getElementById('prod-cat-filter');
     var statusEl = document.getElementById('prod-status-filter');
+    var fulfillmentEl = document.getElementById('prod-fulfillment-filter');
     var sortEl = document.getElementById('prod-sort');
 
     var query = searchEl ? searchEl.value.toLowerCase() : '';
     var cat = catEl ? catEl.value : 'all';
     var status = statusEl ? statusEl.value : '';
+    var fulfillment = fulfillmentEl ? fulfillmentEl.value : '';
     var sort = sortEl ? sortEl.value : 'newest';
 
     var adv = (typeof prodAdvancedFilters !== 'undefined') ? prodAdvancedFilters : { priceMin: null, priceMax: null, stockMin: null, stockMax: null, badge: '' };
@@ -1472,11 +1545,12 @@ function getFilteredProducts() {
             var badgeVal = (p.badge || '').toString().toLowerCase();
             matchesBadge = (adv.badge === 'none') ? !badgeVal : badgeVal === adv.badge;
         }
+        var matchesFulfillment = !fulfillment || (p.fulfillment_type || 'in_stock') === fulfillment;
 
         return matchesSearch && matchesCat && matchesStatus
             && matchesPriceMin && matchesPriceMax
             && matchesStockMin && matchesStockMax
-            && matchesBadge;
+            && matchesBadge && matchesFulfillment;
     });
 
     if (sort === 'price-low') {
@@ -1583,12 +1657,15 @@ function openEditModal(id) {
 
     var title = document.getElementById('modal-product-title');
     var nameEl = document.getElementById('modal-product-name');
+    var skuEl = document.getElementById('modal-product-sku');
     var sizeEl = document.getElementById('modal-product-size');
     var catEl = document.getElementById('modal-product-cat');
     var priceEl = document.getElementById('modal-product-price');
     var stockEl = document.getElementById('modal-product-stock');
     var badgeEl = document.getElementById('modal-product-badge');
+    var descEl = document.getElementById('modal-product-desc');
     var idEl = document.getElementById('modal-product-id');
+    var fulfillmentEl = document.getElementById('modal-product-fulfillment');
     var imgPreview = document.querySelector('#modal-product-img-preview img');
     var imgSrcEl = document.getElementById('modal-product-img-src');
 
@@ -1597,29 +1674,67 @@ function openEditModal(id) {
         if (p) {
             if (title) title.textContent = 'Edit Product';
             if (nameEl) nameEl.value = p.name || '';
+            if (skuEl) skuEl.value = p.sku || '';
             if (sizeEl) sizeEl.value = p.size || '';
             if (catEl) catEl.value = p.cat || 'clothing';
             if (priceEl) priceEl.value = p.price || '';
             if (stockEl) stockEl.value = p.stock != null ? p.stock : 0;
             if (badgeEl) badgeEl.value = p.badge || '';
+            if (descEl) descEl.value = p.description || '';
             if (idEl) idEl.value = p.id;
+            if (fulfillmentEl) fulfillmentEl.value = p.fulfillment_type || 'in_stock';
             if (imgPreview) imgPreview.src = p.img || 'images/product_1.jpg';
             if (imgSrcEl) imgSrcEl.value = p.img || 'images/product_1.jpg';
         }
     } else {
         if (title) title.textContent = 'Add New Product';
         if (nameEl) nameEl.value = '';
+        if (skuEl) skuEl.value = '';
         if (sizeEl) sizeEl.value = '';
         if (catEl) catEl.value = 'clothing';
         if (priceEl) priceEl.value = '';
         if (stockEl) stockEl.value = 0;
         if (badgeEl) badgeEl.value = '';
+        if (descEl) descEl.value = '';
         if (idEl) idEl.value = '';
+        if (fulfillmentEl) fulfillmentEl.value = 'in_stock';
         if (imgPreview) imgPreview.src = 'images/product_1.jpg';
         if (imgSrcEl) imgSrcEl.value = 'images/product_1.jpg';
     }
 
+    // Legacy products saved before SKUs existed have none — suggest one now
+    // rather than leaving the field blank (wireSkuSuggest no-ops if a real
+    // SKU is already present, so this never touches an existing value).
+    if (catEl) catEl.dispatchEvent(new Event('change'));
+
     modal.style.display = 'flex';
+}
+
+// Suggests a SKU (category prefix + next number) the moment a category is
+// picked, so adding a product never blocks on "think of a SKU" — but it
+// never overwrites text the admin typed themselves (data-autofilled tracks
+// which value is "ours" to replace vs. the admin's own).
+function wireSkuSuggest(catSelectId, skuInputId) {
+    var catEl = document.getElementById(catSelectId);
+    var skuEl = document.getElementById(skuInputId);
+    if (!catEl || !skuEl) return;
+    skuEl.addEventListener('input', function() { skuEl.dataset.autofilled = ''; });
+    catEl.addEventListener('change', function() {
+        var cat = catEl.value;
+        if (!cat || (skuEl.value && !skuEl.dataset.autofilled)) return;
+        var token = localStorage.getItem('adminToken');
+        fetch(API_URL + '/products/next-sku?cat=' + encodeURIComponent(cat), {
+            headers: { 'Authorization': 'Bearer ' + (token || '') }
+        })
+        .then(function(res) { return res.ok ? res.json() : null; })
+        .then(function(data) {
+            if (data && data.sku && (!skuEl.value || skuEl.dataset.autofilled)) {
+                skuEl.value = data.sku;
+                skuEl.dataset.autofilled = '1';
+            }
+        })
+        .catch(function() {});
+    });
 }
 
 function updateDescriptionCount(val) {
@@ -1738,14 +1853,20 @@ function saveProduct() {
     var id = document.getElementById('modal-product-id').value;
     var isEditing = id !== '';
 
+    var skuEl = document.getElementById('modal-product-sku');
+    var descEl = document.getElementById('modal-product-desc');
+    var fulfillmentEl = document.getElementById('modal-product-fulfillment');
     var payload = {
         name: nameVal,
+        sku: (skuEl && skuEl.value.trim()) || null,
         size: document.getElementById('modal-product-size').value,
         cat: document.getElementById('modal-product-cat').value,
         price: priceVal,
         stock: stockVal,
         badge: document.getElementById('modal-product-badge').value || null,
-        img: document.getElementById('modal-product-img-src').value
+        img: document.getElementById('modal-product-img-src').value,
+        description: (descEl && descEl.value.trim()) || null,
+        fulfillment_type: (fulfillmentEl && fulfillmentEl.value) || 'in_stock'
     };
 
     var method = isEditing ? 'PUT' : 'POST';
@@ -2624,10 +2745,12 @@ function fetchSuppliers(callback) {
         headers: { 'Authorization': 'Bearer ' + token }
     })
     .then(function(res) {
+        if (res.status === 401 || res.status === 403) { handleSessionExpiry(); return null; }
         if (!res.ok) throw new Error('Supplier API unavailable');
         return res.json();
     })
     .then(function(data) {
+        if (data === null) return; // session expired — already handled
         saveSuppliers(normalizeSupplierList(data));
         if (callback) callback();
     })
@@ -3551,9 +3674,12 @@ function drpBuildCalendar(year, month, side, pickerState, selectFn, navFn) {
     var prevBtn = side === 'left'
         ? '<button type="button" class="drp-nav-btn" onclick="' + navFn + '(-1)" aria-label="Previous month"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>'
         : '<span class="drp-nav-spacer"></span>';
+    // The right calendar owns the "next" arrow in desktop's dual view. The left
+    // calendar still emits a real next button (class --mnext) so the single
+    // calendar shown on phones can page forward; it's hidden on desktop via CSS.
     var nextBtn = side === 'right'
         ? '<button type="button" class="drp-nav-btn" onclick="' + navFn + '(1)" aria-label="Next month"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>'
-        : '<span class="drp-nav-spacer"></span>';
+        : '<button type="button" class="drp-nav-btn drp-nav-btn--mnext" onclick="' + navFn + '(1)" aria-label="Next month"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>';
 
     var html = '<div class="drp-cal-head">' + prevBtn +
         '<span class="drp-cal-title">' + DRP_MONTHS[month] + ' ' + year + '</span>' + nextBtn + '</div>';
@@ -5156,6 +5282,135 @@ function generateReport(type) {
 }
 
 /* ============================================================
+   SECTION 19B: REVIEWS TAB
+   ============================================================ */
+window.adminReviews = [];
+
+function loadReviews() {
+    var token = localStorage.getItem('adminToken');
+    if (!token || token.indexOf('fallback-token') === 0) {
+        renderReviewsTable();
+        return;
+    }
+
+    fetch(API_URL + '/admin/reviews', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(res) {
+        if (res.status === 401 || res.status === 403) { handleSessionExpiry(); return null; }
+        if (!res.ok) throw new Error('Reviews API unavailable');
+        return res.json();
+    })
+    .then(function(data) {
+        if (data === null) return; // session expired — already handled
+        window.adminReviews = Array.isArray(data) ? data : [];
+        renderReviewStats();
+        renderReviewsTable();
+    })
+    .catch(function(err) {
+        console.warn('Could not load reviews:', err.message);
+        var tbody = document.getElementById('reviews-tbody');
+        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Could not load reviews.</td></tr>';
+    });
+}
+
+function renderReviewStats() {
+    var reviews = window.adminReviews || [];
+    var totalEl = document.getElementById('review-total-count');
+    var avgEl = document.getElementById('review-avg-rating');
+    var lowEl = document.getElementById('review-low-count');
+    if (totalEl) totalEl.textContent = reviews.length;
+    if (avgEl) {
+        var avg = reviews.length ? (reviews.reduce(function(s, r) { return s + r.rating; }, 0) / reviews.length) : 0;
+        avgEl.textContent = reviews.length ? avg.toFixed(1) : '—';
+    }
+    if (lowEl) lowEl.textContent = reviews.filter(function(r) { return r.rating <= 2; }).length;
+}
+
+function getFilteredReviews() {
+    var searchEl = document.getElementById('review-search');
+    var query = searchEl ? searchEl.value.toLowerCase() : '';
+    var reviews = window.adminReviews || [];
+    if (!query) return reviews;
+    return reviews.filter(function(r) {
+        return (r.product_name || '').toLowerCase().indexOf(query) >= 0 ||
+               (r.author_name || '').toLowerCase().indexOf(query) >= 0;
+    });
+}
+
+function renderReviewsTable() {
+    var tbody = document.getElementById('reviews-tbody');
+    if (!tbody) return;
+
+    var reviews = getFilteredReviews();
+    var totalItems = reviews.length;
+    var start = (reviewCurrentPage - 1) * REVIEW_PER_PAGE;
+    var paged = reviews.slice(start, start + REVIEW_PER_PAGE);
+
+    tbody.innerHTML = '';
+    if (paged.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No reviews found</td></tr>';
+    } else {
+        paged.forEach(function(r) {
+            var tr = document.createElement('tr');
+            var stars = '★★★★★☆☆☆☆☆'.slice(5 - r.rating, 10 - r.rating);
+            var date = r.created_at ? new Date(r.created_at).toLocaleDateString() : '—';
+            var excerpt = (r.title ? r.title + ' — ' : '') + (r.body || '');
+            tr.innerHTML = '<td class="table-card-header" data-label="Product" style="font-weight:600;">' + escapeHtml(r.product_name || 'Unknown product') + '</td>' +
+                '<td data-label="Customer">' + escapeHtml(r.author_name) + '</td>' +
+                '<td data-label="Rating" style="color:#fc4c7a;letter-spacing:1.5px;">' + stars + '</td>' +
+                '<td data-label="Review" style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(excerpt) + '">' + escapeHtml(excerpt) + '</td>' +
+                '<td data-label="Date">' + date + '</td>' +
+                '<td data-label="Actions"><div class="table-actions">' +
+                    '<button class="action-icon delete" title="Delete review" onclick="confirmDeleteReview(' + r.id + ')">' +
+                        '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>' +
+                    '</button>' +
+                '</div></td>';
+            tbody.appendChild(tr);
+        });
+    }
+
+    renderPagination('review-pagination', totalItems, reviewCurrentPage, REVIEW_PER_PAGE, function(page) {
+        reviewCurrentPage = page;
+        renderReviewsTable();
+    });
+}
+
+function confirmDeleteReview(id) {
+    showConfirm('Delete Review', 'Are you sure you want to delete this review? This action cannot be undone.', function() {
+        deleteReview(id);
+    });
+}
+
+function deleteReview(id) {
+    var token = localStorage.getItem('adminToken');
+    if (!token) return;
+
+    var review = (window.adminReviews || []).find(function(r) { return r.id === id; });
+
+    fetch(API_URL + '/admin/reviews/' + id, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(res) {
+        if (res.status === 401 || res.status === 403) { handleSessionExpiry(); return null; }
+        if (!res.ok) return res.json().then(function(d) { throw new Error(d.error || 'Delete failed'); });
+        return res.json();
+    })
+    .then(function(data) {
+        if (data === null) return; // session expired — already handled
+        window.adminReviews = (window.adminReviews || []).filter(function(r) { return r.id !== id; });
+        renderReviewStats();
+        renderReviewsTable();
+        showToast('Review deleted', 'success');
+        addActivity('review', 'Deleted review by ' + (review ? review.author_name : 'a customer'));
+    })
+    .catch(function(err) {
+        showToast(err.message || 'Failed to delete review', 'error');
+    });
+}
+
+/* ============================================================
    SECTION 20: SETTINGS TAB
    ============================================================ */
 function applyAccentColor(color) {
@@ -5286,6 +5541,9 @@ function toggleAdminUserMenu(event) {
     if (willOpen) {
         populateAdminUserMenu();
         menu.classList.add('admin-user-menu--open');
+        if (window.innerWidth <= 1024) showHeaderPopoverScrim();
+    } else {
+        hideHeaderPopoverScrim();
     }
 }
 
@@ -5375,9 +5633,10 @@ document.addEventListener('click', function(e) {
     if (!e.target.closest) return;
     if (e.target.closest('#admin-user-menu') || e.target.closest('#user-profile-btn')) return;
     closeAdminUserMenu();
+    hideHeaderPopoverScrim();
 });
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closeAdminUserMenu();
+    if (e.key === 'Escape') { closeAdminUserMenu(); hideHeaderPopoverScrim(); }
 });
 
 function loadSettingsTab() {
@@ -5847,7 +6106,6 @@ function enhanceInventoryFilters() {
             '<option value="accessories">Accessories</option>' +
             '<option value="bags">Bags</option>' +
             '<option value="bedding">Bedding</option>' +
-            '<option value="preorder">Pre-Order</option>' +
             '<option value="newborn">Newborn</option>' +
             '<option value="essentials">Essentials</option>';
     }
@@ -5860,9 +6118,12 @@ function enhanceInventoryFilters() {
             '<option value="out-of-stock">Out of Stock</option>';
     }
 
-    // Bind filter events
-    if (selects[0]) selects[0].addEventListener('change', function() { invCurrentPage = 1; renderInventoryTable(); });
-    if (selects[1]) selects[1].addEventListener('change', function() { invCurrentPage = 1; renderInventoryTable(); });
+    // Bind filter events by id, not position — the filter bar now has a 3rd
+    // (fulfillment) select between status and sort, so positional indices shift.
+    ['inv-cat-filter', 'inv-status-filter', 'inv-fulfillment-filter', 'inv-sort'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.addEventListener('change', function() { invCurrentPage = 1; renderInventoryTable(); });
+    });
     if (searchInput) {
         searchInput.addEventListener('input', function() { invCurrentPage = 1; renderInventoryTable(); });
     }
@@ -5881,10 +6142,13 @@ function buildTabContent(tabId) {
                 '<input type="search" id="prod-search" class="filter-input" placeholder="Search products…" aria-label="Search products">' +
                 '</div>' +
                 '<select id="prod-cat-filter" class="filter-select" aria-label="Filter products by category">' +
-                '<option value="">All Categories</option><option value="clothing">Clothing</option><option value="accessories">Accessories</option><option value="newborn">Newborn</option><option value="preorder">Pre-Order</option><option value="bedding">Bedding</option><option value="shoes">Shoes</option>' +
+                '<option value="">All Categories</option><option value="clothing">Clothing</option><option value="accessories">Accessories</option><option value="newborn">Newborn</option><option value="bedding">Bedding</option><option value="shoes">Shoes</option>' +
                 '</select>' +
                 '<select id="prod-status-filter" class="filter-select" aria-label="Filter products by status">' +
                 '<option value="">All Status</option><option value="in-stock">In Stock</option><option value="low-stock">Low Stock</option><option value="out-of-stock">Out of Stock</option>' +
+                '</select>' +
+                '<select id="prod-fulfillment-filter" class="filter-select" aria-label="Filter products by listing type">' +
+                '<option value="">All Listings</option><option value="in_stock">Available Now</option><option value="preorder">China Pre-Order</option>' +
                 '</select>' +
                 '<select id="prod-sort" class="filter-select" aria-label="Sort products">' +
                 '<option value="newest">Sort By: Newest</option><option value="oldest">Sort By: Oldest</option><option value="price-low">Sort By: Price (Low to High)</option><option value="price-high">Sort By: Price (High to Low)</option><option value="name-asc">Sort By: Name (A-Z)</option>' +
@@ -6285,6 +6549,7 @@ function setupEventListeners() {
     var sidebarOverlay = document.getElementById('sidebar-overlay');
 
     function openMobileSidebar() {
+        hideHeaderPopoverScrim();
         adminSidebar.classList.add('open');
         if (sidebarOverlay) sidebarOverlay.classList.add('active');
     }
@@ -6452,6 +6717,7 @@ function setupEventListeners() {
         if (notifDropdown && notifDropdown.style.display === 'block') {
             if (!e.target.closest('#notification-btn') && !e.target.closest('.notification-wrapper') && !e.target.closest('#notification-dropdown') && !e.target.closest('#dashHeroBell') && !e.target.closest('.dash-hero__bell')) {
                 notifDropdown.style.display = 'none';
+                hideHeaderPopoverScrim();
             }
         }
         var searchDropdown = document.getElementById('global-search-results');
@@ -6500,13 +6766,14 @@ function setupEventListeners() {
         if (e.target.id === 'order-search') { orderCurrentPage = 1; renderOrdersTable(); }
         if (e.target.id === 'cust-search') { custCurrentPage = 1; renderCustomersTable(); }
         if (e.target.id === 'prod-search') { prodCurrentPage = 1; renderProductsGrid(); }
+        if (e.target.id === 'review-search') { reviewCurrentPage = 1; renderReviewsTable(); }
     });
     document.addEventListener('change', function(e) {
         if (e.target.id === 'order-status-filter') { orderCurrentPage = 1; renderOrdersTable(); }
         if (e.target.id === 'order-type-filter') { orderCurrentPage = 1; renderOrdersTable(); }
         if (e.target.id === 'order-date-filter') { orderCurrentPage = 1; renderOrdersTable(); }
         if (e.target.id === 'cust-group-filter') { custCurrentPage = 1; renderCustomersTable(); }
-        if (e.target.id === 'prod-cat-filter' || e.target.id === 'prod-status-filter' || e.target.id === 'prod-sort') { prodCurrentPage = 1; renderProductsGrid(); }
+        if (e.target.id === 'prod-cat-filter' || e.target.id === 'prod-status-filter' || e.target.id === 'prod-fulfillment-filter' || e.target.id === 'prod-sort') { prodCurrentPage = 1; renderProductsGrid(); }
     });
 
     // Products "Filter" button — apply the current filters (icon click included via closest)
@@ -6637,6 +6904,12 @@ function setupEventListeners() {
             }
         });
     }
+
+    // SKU auto-suggest: filling Category proposes a SKU so adding a product
+    // never blocks on "think of one" — but it never overwrites text the
+    // admin typed themselves (tracked via data-autofilled).
+    wireSkuSuggest('add-product-cat', 'add-product-sku');
+    wireSkuSuggest('modal-product-cat', 'modal-product-sku');
 
     var addProductSaveBtn = document.getElementById('add-product-save-btn');
     if (addProductSaveBtn) {
@@ -6789,6 +7062,8 @@ function openAddProductModal() {
     document.getElementById('add-product-price').value = '';
     document.getElementById('add-product-stock').value = '';
     document.getElementById('add-product-status').value = 'in_stock';
+    var addFulfillmentEl = document.getElementById('add-product-fulfillment');
+    if (addFulfillmentEl) addFulfillmentEl.value = 'in_stock';
     document.getElementById('add-product-size').value = '';
     document.getElementById('add-product-badge').value = '';
     document.getElementById('add-product-desc').value = '';
@@ -6855,10 +7130,6 @@ function saveNewProduct() {
         return;
     }
     var skuVal = document.getElementById('add-product-sku').value.trim();
-    if (!skuVal) {
-        showToast('SKU is required', 'warning');
-        return;
-    }
     var catVal = document.getElementById('add-product-cat').value;
     if (!catVal) {
         showToast('Category is required', 'warning');
@@ -6873,14 +7144,19 @@ function saveNewProduct() {
         return;
     }
 
+    var addDescEl = document.getElementById('add-product-desc');
+    var addFulfillmentEl = document.getElementById('add-product-fulfillment');
     var payload = {
         name: nameVal,
+        sku: skuVal,
         size: document.getElementById('add-product-size').value.trim() || 'Standard',
         cat: catVal,
         price: priceVal,
         stock: stockVal,
         badge: document.getElementById('add-product-badge').value.trim() || null,
-        img: document.getElementById('add-product-img-src').value
+        img: document.getElementById('add-product-img-src').value,
+        description: (addDescEl && addDescEl.value.trim()) || null,
+        fulfillment_type: (addFulfillmentEl && addFulfillmentEl.value) || 'in_stock'
     };
 
     fetch(API_URL + '/products', {
@@ -6892,7 +7168,7 @@ function saveNewProduct() {
         body: JSON.stringify(payload)
     })
     .then(function(res) {
-        if (!res.ok) throw new Error('Failed to save product');
+        if (!res.ok) return res.json().then(function(d) { throw new Error(d.error || 'Failed to save product'); });
         return res.json();
     })
     .then(function() {
@@ -8057,6 +8333,9 @@ function prodBulkSetCategory(cat) {
 function prodBulkSetBadge(badge) {
     prodBulkApplyFields({ badge: badge }, 'badge');
 }
+function prodBulkSetFulfillment(fulfillmentType) {
+    prodBulkApplyFields({ fulfillment_type: fulfillmentType }, 'listing type');
+}
 function prodBulkApplyFields(fields, label) {
     if (prodSelectedIds.size === 0) return;
     var ids = Array.from(prodSelectedIds).map(Number);
@@ -8136,7 +8415,7 @@ document.addEventListener('change', function(e) {
                 status.innerHTML = '<span style="color:#dc2626;">Missing required columns: name and price.</span>';
                 submit.disabled = true; return;
             }
-            var allowed = ['name','price','stock','cat','size','badge','img','status','description'];
+            var allowed = ['name','price','stock','cat','size','badge','img','description','fulfillment_type','sku'];
             var parsed = rows.slice(1).map(function(r) {
                 var obj = {};
                 headers.forEach(function(h, idx) { if (allowed.indexOf(h) >= 0) obj[h] = r[idx] != null ? String(r[idx]).trim() : ''; });
@@ -8146,7 +8425,8 @@ document.addEventListener('change', function(e) {
             window.__prodImportRows = parsed;
             preview.style.display = 'block';
             preview.innerHTML = '<strong>' + parsed.length + ' rows ready</strong><br>' + parsed.slice(0, 5).map(function(r) {
-                return '• ' + escapeHtml(r.name) + ' — GHS ' + (r.price || '0') + ' (' + (r.cat || 'uncategorized') + ')';
+                var isPreorder = (r.fulfillment_type || '').toLowerCase() === 'preorder';
+                return '• ' + escapeHtml(r.name) + ' — GHS ' + (r.price || '0') + ' (' + (r.cat || 'uncategorized') + ')' + (r.sku ? ' [' + escapeHtml(r.sku) + ']' : ' [auto SKU]') + (isPreorder ? ' — Pre-Order' : '');
             }).join('<br>') + (parsed.length > 5 ? '<br>… and ' + (parsed.length - 5) + ' more' : '');
             status.innerHTML = '<span style="color:#16A34A;">Looks good. Click <strong>Import</strong> to add ' + parsed.length + ' product' + (parsed.length === 1 ? '' : 's') + '.</span>';
             submit.disabled = parsed.length === 0;
@@ -8171,18 +8451,28 @@ function submitProductImport() {
     })
     .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error || 'Import failed'); return d; }); })
     .then(function(data) {
-        closeProductImportModal();
-        showToast('Imported ' + (data.inserted || 0) + ' products' + (data.skipped ? ' (' + data.skipped + ' skipped)' : ''), 'success');
         if (typeof fetchProducts === 'function') fetchProducts();
         window.__prodImportRows = null;
+        if (data.failed) {
+            // Some rows didn't insert (e.g. a duplicate SKU) — keep the modal
+            // open and say exactly which ones, instead of a generic success
+            // toast claiming everything went in.
+            var detail = (data.errors || []).map(function(e) { return 'Row ' + e.row + ' (' + escapeHtml(e.name || '') + '): ' + escapeHtml(e.error); }).join('<br>');
+            status.innerHTML = '<span style="color:#16A34A;">Imported ' + data.inserted + ' product' + (data.inserted === 1 ? '' : 's') + '.</span>' +
+                '<br><span style="color:#dc2626;">' + data.failed + ' row' + (data.failed === 1 ? '' : 's') + ' failed:</span><br>' + detail;
+            showToast('Imported ' + data.inserted + ', ' + data.failed + ' failed — see details', 'warning');
+        } else {
+            closeProductImportModal();
+            showToast('Imported ' + (data.inserted || 0) + ' products' + (data.skipped ? ' (' + data.skipped + ' skipped)' : ''), 'success');
+        }
     })
     .catch(function(err) { status.innerHTML = '<span style="color:#dc2626;">' + escapeHtml(err.message) + '</span>'; });
 }
 
 function downloadProductCsvTemplate() {
-    var csv = 'name,price,stock,cat,size,badge,img,status,description\n' +
-              '"Baby Romper Set",97,12,clothing,"0-3M,3-6M,6-9M",new,images/product_1.jpg,in_stock,"Soft cotton romper set"\n' +
-              '"Knit Sweater",128,8,clothing,2Y,hot,images/product_2.jpg,in_stock,"Warm winter knit"\n';
+    var csv = 'name,price,stock,cat,size,badge,img,fulfillment_type,sku,description\n' +
+              '"Baby Romper Set",97,12,clothing,"0-3M,3-6M,6-9M",new,images/product_1.jpg,in_stock,,"Soft cotton romper set — leave sku blank to auto-assign"\n' +
+              '"Knit Sweater",128,8,clothing,2Y,hot,images/product_2.jpg,preorder,CLO-0050,"Warm winter knit — China pre-order, with our own SKU"\n';
     var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
@@ -8769,18 +9059,22 @@ function downloadProductCsvTemplate() {
       { id: 'bathcare',    label: 'Bath & Care' },
       { id: 'essentials',  label: 'Baby Essentials' },
       { id: 'accessories', label: 'Bags & Accessories' },
-      { id: 'bedding',     label: 'Bedding' },
-      { id: 'preorder',    label: 'China Pre-Orders' }
+      { id: 'bedding',     label: 'Bedding' }
     ];
   }
   function loadCats() {
+    var stored = null;
     try {
       var s = JSON.parse(localStorage.getItem(LS_KEY));
-      if (Array.isArray(s) && s.length) return s;
+      if (Array.isArray(s) && s.length) stored = s;
     } catch (e) {}
-    var d = defaults();
-    saveCats(d);
-    return d;
+    var list = stored || defaults();
+    // "preorder" used to be a fake category (the old cat==='preorder' overload).
+    // It's now a per-product Listing Type, independent of category — drop any
+    // stale entry left over from before, and persist the cleanup once.
+    var cleaned = list.filter(function (c) { return c && c.id !== 'preorder'; });
+    if (!stored || cleaned.length !== list.length) saveCats(cleaned);
+    return cleaned;
   }
   function saveCats(list) { localStorage.setItem(LS_KEY, JSON.stringify(list)); }
   function slugify(name) {
@@ -8987,3 +9281,34 @@ function downloadProductCsvTemplate() {
     setTimeout(function () { populateCategoryDropdowns(); }, 1500);
   });
 })();
+
+/* ============================================================
+   Mobile date pickers: presets-first with a collapsible calendar.
+   Injects a "Custom date range" toggle into every date-range picker so the
+   calendar stays collapsed by default — keeping the dialog short and tidy on
+   phones. The toggle is hidden on desktop via CSS (.drp-custom-toggle).
+   ============================================================ */
+function initDrpCustomToggles() {
+  document.querySelectorAll('.date-range-picker').forEach(function (picker) {
+    var presets = picker.querySelector('.drp-presets');
+    if (!presets || picker.querySelector('.drp-custom-toggle')) return;
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'drp-custom-toggle';
+    btn.setAttribute('aria-expanded', 'false');
+    btn.innerHTML =
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="drp-custom-toggle__icon"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>' +
+      '<span>Custom date range</span>' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="drp-custom-toggle__chev"><polyline points="6 9 12 15 18 9"/></svg>';
+    btn.addEventListener('click', function () {
+      var shown = picker.classList.toggle('drp-show-cal');
+      btn.setAttribute('aria-expanded', shown ? 'true' : 'false');
+    });
+    presets.insertAdjacentElement('afterend', btn);
+  });
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDrpCustomToggles);
+} else {
+  initDrpCustomToggles();
+}
