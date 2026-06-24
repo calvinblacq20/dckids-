@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=84">
+  <link rel="stylesheet" href="admin.css?v=94">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -4569,7 +4569,7 @@
   <div class="form-row">
     <div class="form-group">
       <label for="config-whatsapp">WhatsApp Contact Number</label>
-      <input type="tel" id="config-whatsapp" class="form-input" placeholder="e.g. 233549193805" aria-label="WhatsApp Number">
+      <input type="tel" inputmode="numeric" id="config-whatsapp" class="form-input" placeholder="e.g. 233549193805" aria-label="WhatsApp Number">
     </div>
     <div class="form-group" style="display:flex; align-items:flex-end;">
       <label style="display:flex; align-items:center; gap: 8px; cursor:pointer;">
@@ -4607,7 +4607,7 @@
     </div>
     <div class="form-group">
       <label for="settings-phone">Phone Number</label>
-      <input type="tel" id="settings-phone" class="form-input" placeholder="e.g. 0549193805" aria-label="Phone number">
+      <input type="tel" inputmode="numeric" id="settings-phone" class="form-input" placeholder="e.g. 0549193805" aria-label="Phone number">
     </div>
   </div>
   <div class="settings-form-actions">
@@ -4707,7 +4707,7 @@
             <input type="file" id="modal-product-img-camera" accept="image/*" capture="environment" style="display:none;" aria-label="Take product photo">
             <input type="hidden" id="modal-product-img-src">
             
-            <p class="text-xs text-gray-500 text-center" style="margin: 0;">JPG, PNG or WEBP. Max size 2MB</p>
+            <p class="text-xs text-gray-500 text-center" style="margin: 0;">JPG, PNG or WEBP. Max size 10MB</p>
           </div>
         </div>
 
@@ -4793,6 +4793,17 @@
             <div style="grid-column: span 2;">
               <label for="modal-product-desc" class="block text-sm font-medium text-gray-700 mb-1.5" style="display: block; margin-bottom: 6px;">Description</label>
               <textarea id="modal-product-desc" rows="3" class="w-full border border-solid border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-gray-900 shadow-sm resize-none" style="box-sizing: border-box; width: 100%; border-radius: 8px; padding: 10px 12px; font-size: 13px; font-family: inherit;"></textarea>
+            </div>
+
+            <div style="grid-column: span 2;">
+              <label class="block text-sm font-medium text-gray-700 mb-1.5" style="display:block;margin-bottom:6px;">Sizes &amp; Pricing <span style="font-weight:400;color:#9ca3af;">(optional — give each size its own price; overrides Size Range on the storefront)</span></label>
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+                <select id="modal-product-size-preset" class="size-preset-select" style="flex:1;min-width:160px;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;font-size:13px;background:#fff;"></select>
+                <button type="button" class="btn btn-outline-small" onclick="applySizePreset('modal-product')">Apply preset</button>
+                <button type="button" class="btn btn-outline-small" onclick="openSizePresetManager()">Manage presets</button>
+              </div>
+              <div id="modal-product-sizes-list"></div>
+              <button type="button" class="btn btn-outline-small" style="margin-top:6px;" onclick="addSizeRow('modal-product')">+ Add size</button>
             </div>
 
           </div>
@@ -4891,7 +4902,7 @@
                 <button type="button" id="add-product-browse-trigger" class="change-image-btn px-5 py-2 bg-white border border-rose-200 text-rose-500 text-sm font-medium rounded-lg hover:bg-rose-50 transition-colors shadow-sm mb-4">
                   <span class="desktop-label">Browse Files</span><span class="mobile-label" style="display:none;">Choose from Phone</span>
                 </button>
-                <p class="text-[11px] text-gray-500 font-medium">JPG, PNG or WEBP. Max size 2MB.</p>
+                <p class="text-[11px] text-gray-500 font-medium">JPG, PNG or WEBP. Max size 10MB.</p>
               </div>
             </div>
 
@@ -5011,6 +5022,17 @@
                 <div class="text-right mt-1.5">
                   <span class="text-[11px] font-bold text-gray-400 char-count">0 / 500</span>
                 </div>
+              </div>
+
+              <div class="md:col-span-2 mt-2">
+                <label class="block text-sm font-bold text-gray-900 mb-2">Sizes &amp; Pricing <span style="font-weight:400;color:#9ca3af;">(optional — give each size its own price; overrides Size Range on the storefront)</span></label>
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
+                  <select id="add-product-size-preset" class="size-preset-select" style="flex:1;min-width:160px;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:13px;background:#fff;"></select>
+                  <button type="button" class="btn btn-outline-small" onclick="applySizePreset('add-product')">Apply preset</button>
+                  <button type="button" class="btn btn-outline-small" onclick="openSizePresetManager()">Manage presets</button>
+                </div>
+                <div id="add-product-sizes-list"></div>
+                <button type="button" class="btn btn-outline-small" style="margin-top:6px;" onclick="addSizeRow('add-product')">+ Add size</button>
               </div>
             </div>
 
@@ -5380,7 +5402,7 @@
                 <option value="+44">🇬🇧 +44</option>
                 <option value="+1">🇺🇸 +1</option>
               </select>
-              <input type="tel" id="add-customer-phone" placeholder="Enter phone number" class="flex-1 text-sm focus:outline-none placeholder-gray-400 bg-transparent" required />
+              <input type="tel" inputmode="numeric" id="add-customer-phone" placeholder="Enter phone number" class="flex-1 text-sm focus:outline-none placeholder-gray-400 bg-transparent" required />
             </div>
           </div>
 
@@ -5510,7 +5532,7 @@
             <select id="modal-supp-country" class="supplier-phone-control__country" aria-label="Country code">
               <option value="+233" selected>🇬🇭 +233</option>
             </select>
-            <input type="tel" id="modal-supp-phone" class="supplier-phone-control__input" placeholder="30 222 1111" autocomplete="tel-national" required>
+            <input type="tel" inputmode="numeric" id="modal-supp-phone" class="supplier-phone-control__input" placeholder="30 222 1111" autocomplete="tel-national" required>
           </div>
           <p id="err-supp-phone" class="supplier-field__error"></p>
         </div>
@@ -5875,7 +5897,7 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="admin.js?v=1782066153"></script>
+  <script src="admin.js?v=1782324953"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

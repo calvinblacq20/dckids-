@@ -129,6 +129,19 @@ const db = new sqlite3.Database(dbPath, (err) => {
                         });
                     });
                 }
+
+                // Migration: sizes holds admin-managed size variants as JSON,
+                // [{ "label": "0-3M", "price": 85 }, ...]. When present it is
+                // authoritative for the storefront dropdown AND order totals;
+                // when NULL the app falls back to the legacy parseSize +
+                // getPriceModifier behavior, so the existing catalogue keeps
+                // working until each product is edited in the admin.
+                if (names.indexOf('sizes') === -1) {
+                    db.run("ALTER TABLE products ADD COLUMN sizes TEXT", (er) => {
+                        if (er) console.error("Migration (products.sizes) failed:", er.message);
+                        else console.log("Migration: added products.sizes");
+                    });
+                }
             });
 
             // Seed products if empty

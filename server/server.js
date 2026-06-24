@@ -40,8 +40,8 @@ if (IS_PROD && ALLOWED_ORIGINS.length) {
     app.use(cors()); // dev: allow all
 }
 
-app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ limit: '2mb', extended: true }));
+app.use(express.json({ limit: '8mb' }));
+app.use(express.urlencoded({ limit: '8mb', extended: true }));
 
 // Serve the frontend static files.
 // HTML, the service worker, and CSS/JS must never be cached by the browser/proxy.
@@ -269,13 +269,37 @@ app.get('/api/products/next-sku', authenticateToken, requireManager, (req, res) 
     });
 });
 
+// Admin-managed size variants are stored as a JSON string of
+// [{ label, price }]. Normalize whatever the client sends (array or JSON
+// string) into a clean string, or null when there are no valid rows.
+function normalizeSizes(raw) {
+    let arr = raw;
+    if (typeof raw === 'string') {
+        const t = raw.trim();
+        if (!t) return null;
+        try { arr = JSON.parse(t); } catch (e) { return null; }
+    }
+    if (!Array.isArray(arr) || arr.length === 0) return null;
+    const clean = arr.map(s => ({
+        label: String(s && s.label != null ? s.label : '').trim(),
+        price: (s && s.price !== '' && s.price != null && !isNaN(Number(s.price))) ? Number(s.price) : null
+    })).filter(s => s.label);
+    return clean.length ? JSON.stringify(clean) : null;
+}
+function parseSizesJson(raw) {
+    if (!raw) return null;
+    try { const arr = JSON.parse(raw); if (Array.isArray(arr) && arr.length) return arr; } catch (e) {}
+    return null;
+}
+
 // Add new product (Manager only)
 app.post('/api/products', authenticateToken, requireManager, (req, res) => {
-    const { name, sku, size, price, img, cat, stock, badge, description, fulfillment_type } = req.body;
+    const { name, sku, size, price, img, cat, stock, badge, description, fulfillment_type, sizes } = req.body;
+    const sizesJson = normalizeSizes(sizes);
     const insert = (finalSku) => {
         db.run(
-            `INSERT INTO products (name, sku, size, price, img, cat, stock, badge, description, fulfillment_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [name, finalSku || null, size, price, img, cat, stock, badge, description || null, fulfillment_type || 'in_stock'],
+            `INSERT INTO products (name, sku, size, price, img, cat, stock, badge, description, fulfillment_type, sizes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [name, finalSku || null, size, price, img, cat, stock, badge, description || null, fulfillment_type || 'in_stock', sizesJson],
             function (err) {
                 if (isDuplicateSku(err)) return res.status(409).json({ error: 'That SKU is already in use by another product.' });
                 if (err) return res.status(500).json({ error: err.message });
@@ -296,10 +320,11 @@ app.post('/api/products', authenticateToken, requireManager, (req, res) => {
 
 // Update product (Manager only)
 app.put('/api/products/:id', authenticateToken, requireManager, (req, res) => {
-    const { name, sku, size, price, img, cat, stock, badge, description, fulfillment_type } = req.body;
+    const { name, sku, size, price, img, cat, stock, badge, description, fulfillment_type, sizes } = req.body;
+    const sizesJson = normalizeSizes(sizes);
     db.run(
-        `UPDATE products SET name = ?, sku = ?, size = ?, price = ?, img = ?, cat = ?, stock = ?, badge = ?, description = ?, fulfillment_type = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [name, sku || null, size, price, img, cat, stock, badge, description || null, fulfillment_type || 'in_stock', req.params.id],
+        `UPDATE products SET name = ?, sku = ?, size = ?, price = ?, img = ?, cat = ?, stock = ?, badge = ?, description = ?, fulfillment_type = ?, sizes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [name, sku || null, size, price, img, cat, stock, badge, description || null, fulfillment_type || 'in_stock', sizesJson, req.params.id],
         function (err) {
             if (isDuplicateSku(err)) return res.status(409).json({ error: 'That SKU is already in use by another product.' });
             if (err) return res.status(500).json({ error: err.message });
@@ -564,12 +589,27 @@ app.post('/api/orders', (req, res) => {
                     if (err) return reject(err);
                     if (!product) return reject(new Error(`Product ${item.id} not found`));
                     
-                    let basePrice = product.price || 0;
-                    if (isWholesale) {
-                        basePrice = (basePrice * (1 - (discount / 100))) * moq;
+                    // Determine the per-unit retail price for the chosen size.
+                    // Managed sizes (admin-set absolute prices) are authoritative;
+                    // otherwise fall back to the legacy base price + size modifier.
+                    const managedSizes = parseSizesJson(product.sizes);
+                    const sizeMatch = managedSizes
+                        ? managedSizes.find(s => s.label === item.size)
+                        : null;
+
+                    let basePrice, firstMod;
+                    if (sizeMatch) {
+                        let unit = (sizeMatch.price != null) ? sizeMatch.price : (product.price || 0);
+                        if (isWholesale) unit = (unit * (1 - (discount / 100))) * moq;
+                        basePrice = unit;
+                        firstMod = 0; // absolute per-size price already includes any uplift
+                    } else {
+                        basePrice = product.price || 0;
+                        if (isWholesale) {
+                            basePrice = (basePrice * (1 - (discount / 100))) * moq;
+                        }
+                        firstMod = getPriceModifier(item.size) * qtyMultiplier;
                     }
-                    
-                    const firstMod = getPriceModifier(item.size) * qtyMultiplier;
                     const finalPrice = basePrice + firstMod;
                     const finalQty = item.quantity || 1; // Number of "packages"
 
@@ -1400,6 +1440,28 @@ app.get('/api/products/:id/reviews', (req, res) => {
     );
 });
 
+// Batch rating summary for the storefront grid — one round trip for the whole
+// page of cards instead of one fetch per product, so a slow connection or a
+// single failed request can't leave individual cards permanently unrated.
+app.get('/api/products/reviews-summary', (req, res) => {
+    const ids = String(req.query.ids || '').split(',').map(s => parseInt(s, 10)).filter(Number.isInteger);
+    if (!ids.length) return res.json({});
+    const placeholders = ids.map(() => '?').join(',');
+    db.all(
+        `SELECT product_id, COUNT(*) as count, AVG(rating) as average
+         FROM product_reviews WHERE product_id IN (${placeholders}) AND status = 'approved'
+         GROUP BY product_id`,
+        ids,
+        (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            const summaries = {};
+            ids.forEach(id => { summaries[id] = { count: 0, average: 0 }; });
+            rows.forEach(r => { summaries[r.product_id] = { count: r.count, average: Math.round(r.average * 10) / 10 }; });
+            res.json(summaries);
+        }
+    );
+});
+
 app.post('/api/products/:id/reviews', (req, res) => {
     const { rating, title, body, author_name } = req.body || {};
     const productId = req.params.id;
@@ -1512,10 +1574,14 @@ app.put('/api/users/:id', authenticateToken, requireManager, async (req, res) =>
 //   TELEGRAM ORDER ALERT — DC Kids Brand (free, instant)
 //   Add to server/.env:
 //     TELEGRAM_BOT_TOKEN=your_bot_token
-//     TELEGRAM_CHAT_ID=your_chat_id  (send /start to your bot, then check getUpdates)
+//     TELEGRAM_CHAT_ID=id1,id2,...   (one or more, comma-separated)
+//   Each destination can be a personal chat id (send /start to the bot, then
+//   check getUpdates) OR a channel/group id (add the bot as an admin). To add a
+//   new owner, just append their id — every destination receives the alert.
 // ===========================================================================
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const TELEGRAM_CHAT_ID   = process.env.TELEGRAM_CHAT_ID   || '';
+const TELEGRAM_CHAT_IDS  = (process.env.TELEGRAM_CHAT_ID || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
 
 function sendOwnerWhatsAppAlert(order) {
     const now       = new Date();
@@ -1541,29 +1607,30 @@ ${itemLines || '  (no items)'}
 ━━━━━━━━━━━━━━━━━━━━
 ⏰ ${time}`;
 
-    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
+    if (!TELEGRAM_BOT_TOKEN || TELEGRAM_CHAT_IDS.length === 0) {
         console.log(`\n[DC Kids Order Alert] ${order.order_number} — GHS ${order.total_amount} from ${order.customer_name || 'Guest'} (${order.customer_phone || 'no phone'})`);
         console.log(`[DC Kids Order Alert] Add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to server/.env to receive Telegram alerts.\n`);
         return;
     }
 
-    const https   = require('https');
-    const payload = JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: msg, parse_mode: 'Markdown' });
-    const options = {
-        hostname: 'api.telegram.org',
-        path:     `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-        method:   'POST',
-        headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
-    };
-
-    const req = https.request(options, (res) => {
-        let data = '';
-        res.on('data', chunk => data += chunk);
-        res.on('end', () => console.log(`[DC Kids Order Alert] Telegram sent for ${order.order_number} — status ${res.statusCode}`));
+    const https = require('https');
+    // Send to every configured destination (owners and/or a shared channel).
+    TELEGRAM_CHAT_IDS.forEach(chatId => {
+        const payload = JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'Markdown' });
+        const options = {
+            hostname: 'api.telegram.org',
+            path:     `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            method:   'POST',
+            headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+        };
+        const req = https.request(options, (res) => {
+            res.on('data', () => {});
+            res.on('end', () => console.log(`[DC Kids Order Alert] Telegram sent for ${order.order_number} to ${chatId} — status ${res.statusCode}`));
+        });
+        req.on('error', err => console.warn(`[DC Kids Order Alert] Telegram failed for ${order.order_number} to ${chatId}: ${err.message}`));
+        req.write(payload);
+        req.end();
     });
-    req.on('error', err => console.warn(`[DC Kids Order Alert] Telegram failed for ${order.order_number}: ${err.message}`));
-    req.write(payload);
-    req.end();
 }
 
 // Expose so the order POST handler (above) can call it without restructuring.
@@ -1691,9 +1758,9 @@ app.post('/api/upload-image', authenticateToken, requireManager, (req, res) => {
 
         // Hard cap AFTER browser compression — a well-compressed product photo is
         // well under this. Anything larger means client compression didn't run.
-        const MAX_BYTES = 1.5 * 1024 * 1024;
+        const MAX_BYTES = 5 * 1024 * 1024;
         if (buf.length > MAX_BYTES) {
-            return res.status(413).json({ error: 'Image too large after compression (max 1.5MB). Try a smaller photo.' });
+            return res.status(413).json({ error: 'Image too large after compression (max 5MB). Try a smaller photo.' });
         }
 
         const fs = require('fs');

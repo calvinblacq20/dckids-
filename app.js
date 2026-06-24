@@ -52,14 +52,28 @@ function waUrl(productName) {
   return `https://wa.me/${num}?text=${msg}`;
 }
 
-// Static wa.me links (nav, header, footer, floating button) carry their own
-// message text — only swap the number, so admin changes reach them without
-// clobbering each link's wording.
+// Static wa.me links (nav, header, footer) carry their own message text —
+// only swap the number, so admin changes reach them without clobbering each
+// link's wording. The floating button is mode-aware (see updateFloatingWaBtn)
+// and isn't part of this set.
 function applyWhatsAppNumber() {
   const num = siteConfig.whatsapp_number || '233549193805';
   document.querySelectorAll('[data-wa-link]').forEach(el => {
     el.href = el.href.replace(/wa\.me\/\d+/, 'wa.me/' + num);
   });
+}
+
+// The floating button is the one WhatsApp touchpoint that survived removing
+// the per-card wholesale button, so its message should match what the
+// shopper is actually browsing instead of staying generic.
+function updateFloatingWaBtn() {
+  const btn = document.getElementById('floatingWaBtn');
+  if (!btn) return;
+  const num = siteConfig.whatsapp_number || '233549193805';
+  const msg = storeMode === 'wholesale'
+    ? 'Hi DC Kids! I have a question about a wholesale order.'
+    : 'Hi DC Kids! I have a question about a product.';
+  btn.href = 'https://wa.me/' + num + '?text=' + encodeURIComponent(msg);
 }
 
 // ── Size → Price modifier (GHC markup per age tier) ──
@@ -113,12 +127,34 @@ function parseSize(str) {
 }
 
 // ── Get live PER-UNIT price for a card (with wholesale discount applied if active) ──
+// Admin-managed size variants: array of {label, price} or null. When present
+// it is authoritative for the storefront (matches the server's order pricing).
+function getManagedSizes(p) {
+  if (!p || !p.sizes) return null;
+  try {
+    const a = typeof p.sizes === 'string' ? JSON.parse(p.sizes) : p.sizes;
+    return (Array.isArray(a) && a.length) ? a : null;
+  } catch (e) { return null; }
+}
+
+// Every price renders with 2 decimals (GH₵ 180.00).
+function gh(n) { return (Number(n) || 0).toFixed(2); }
+
 function getCardPrice(productId) {
   const product = products.find(p => p.id === productId);
-  if (!product || !product.price) return null;
+  if (!product) return null;
   const selectEl = document.getElementById(`size-select-${productId}`);
   const selectedSize = selectEl ? selectEl.value : '';
-  let unitPrice = product.price + getPriceModifier(selectedSize);
+  const managed = getManagedSizes(product);
+  let unitPrice;
+  if (managed) {
+    const m = managed.find(s => s.label === selectedSize) || managed[0];
+    unitPrice = (m && m.price != null) ? Number(m.price) : (product.price || 0);
+    if (!unitPrice) return null; // no per-size price and no base → ask for price
+  } else {
+    if (!product.price) return null;
+    unitPrice = product.price + getPriceModifier(selectedSize);
+  }
   const isWholesale = (storeMode === 'wholesale');
   const discount = siteConfig.wholesale_discount || 0;
   if (isWholesale && discount > 0) {
@@ -129,6 +165,7 @@ function getCardPrice(productId) {
 
 // ── Render product card HTML ──
 function renderCard(p, index) {
+  const escName = (p.name || '').replace(/'/g, "\\'");
   let badgeHTML = '';
   let isSoldOut = false;
   if (p.stock === 0) {
@@ -152,35 +189,44 @@ function renderCard(p, index) {
   const isWholesale = (storeMode === 'wholesale');
   const moq = siteConfig.wholesale_moq || 10;
   const discount = siteConfig.wholesale_discount || 0;
-  const sizeOptions = parseSize(p.size);
+
+  // Managed sizes (admin-set, with absolute per-size prices) win; otherwise
+  // fall back to the legacy free-text size string + per-tier modifier.
+  const managed = getManagedSizes(p);
+  const sizeOptions = managed ? managed.map(s => s.label) : parseSize(p.size);
   const hasVariants = sizeOptions.length > 1;
 
-  // Per-unit price (after wholesale discount if applicable)
-  let unitPrice = (p.price || 0);
-  if (isWholesale && discount > 0) {
-    unitPrice = unitPrice * (1 - (discount / 100));
-  }
+  // Per-unit retail price for a given size label (before wholesale discount).
+  const baseFor = (label) => {
+    if (managed) {
+      const m = managed.find(s => s.label === label) || managed[0];
+      return (m && m.price != null) ? Number(m.price) : (p.price || 0);
+    }
+    return (p.price || 0) + getPriceModifier(label);
+  };
+  const applyDisc = (v) => (isWholesale && discount > 0) ? v * (1 - (discount / 100)) : v;
+  // Whether this product has any real price (else it's "ask for price").
+  const hasPrice = managed ? (managed.some(s => s.price != null) || (p.price || 0) > 0) : ((p.price || 0) > 0);
 
   const isPreorder = p.fulfillment_type === 'preorder';
   const cardClass = isPreorder ? 'product-card product-card--preorder' : 'product-card';
 
   // Initial display: for wholesale show total for MOQ; for retail show single-unit price
-  const firstMod = hasVariants ? getPriceModifier(sizeOptions[0]) : 0;
-  const initialUnit = Math.round((unitPrice + firstMod) * 100) / 100;
+  const initialUnit = Math.round(applyDisc(baseFor(sizeOptions[0])) * 100) / 100;
   const initialQty  = isWholesale ? moq : 1;
   const initialTotal = Math.round(initialUnit * initialQty * 100) / 100;
-  const initialPrice = unitPrice > 0
-    ? `GH₵ ${initialTotal}` + (isWholesale ? ` <span style="font-size:11px;color:#888;font-weight:400;">(${initialQty} pcs @ GH₵ ${initialUnit})</span>` : '')
+  const initialPrice = hasPrice
+    ? `GH₵ ${gh(initialTotal)}` + (isWholesale ? ` <span style="font-size:11px;color:#888;font-weight:400;">(${initialQty} pcs @ GH₵ ${gh(initialUnit)})</span>` : '')
     : (isPreorder ? '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg> Price on request' : 'Ask for price');
 
   let sizeHTML = '';
   if (hasVariants) {
     const firstSize = sizeOptions[0];
-    const firstUnit = Math.round((unitPrice + getPriceModifier(firstSize)) * 100) / 100;
-    const firstLabel = unitPrice > 0 ? firstSize + ' — GH₵ ' + firstUnit : firstSize;
+    const firstUnit = Math.round(applyDisc(baseFor(firstSize)) * 100) / 100;
+    const firstLabel = (hasPrice && firstUnit > 0) ? firstSize + ' — GH₵ ' + gh(firstUnit) : firstSize;
     const optionsHTML = sizeOptions.map((s, i) => {
-      const sUnit = Math.round((unitPrice + getPriceModifier(s)) * 100) / 100;
-      const label = unitPrice > 0 ? s + ' — GH₵ ' + sUnit : s;
+      const sUnit = Math.round(applyDisc(baseFor(s)) * 100) / 100;
+      const label = (hasPrice && sUnit > 0) ? s + ' — GH₵ ' + gh(sUnit) : s;
       return '<div class="premium-selector__option' + (i === 0 ? ' premium-selector__option--selected' : '') + '" data-value="' + s + '" onclick="premiumSelect(this)" role="option" tabindex="0">' +
         '<span class="premium-selector__radio"></span>' +
         '<span class="premium-selector__option-text">' + label + '</span>' +
@@ -195,8 +241,9 @@ function renderCard(p, index) {
       '<div class="premium-selector__dropdown" role="listbox">' + optionsHTML + '</div>' +
     '</div>';
   } else {
-    sizeHTML = '<div class="product-card__size">' + p.size + '</div>' +
-                '<input type="hidden" id="size-select-' + p.id + '" value="' + p.size + '">';
+    const singleLabel = sizeOptions[0] || p.size || 'One Size';
+    sizeHTML = '<div class="product-card__size">' + singleLabel + '</div>' +
+                '<input type="hidden" id="size-select-' + p.id + '" value="' + singleLabel + '">';
   }
 
   // Bulk quantity selector (wholesale only)
@@ -227,15 +274,10 @@ function renderCard(p, index) {
   if (isSoldOut) {
     ctaHTML = `<button disabled class="product-card__cta" style="background-color: #ccc; cursor: not-allowed; color: #666; border: none;">Out of Stock</button>`;
   } else if (isWholesale) {
-    ctaHTML = `<div style="display:flex;gap:6px;align-items:stretch;">
-        <button onclick="addToCart(${p.id})" class="product-card__cta" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-          Add Bulk to Cart
-        </button>
-        <a href="${waUrl(p.name + ' (Wholesale Bulk)')}" target="_blank" title="Ask via WhatsApp" aria-label="Ask via WhatsApp" class="product-card__cta-wa">
-          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.82 9.82 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.81 11.81 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.88 11.88 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.82 11.82 0 0 0-3.48-8.413z"/></svg>
-        </a>
-      </div>`;
+    ctaHTML = `<button onclick="addToCart(${p.id})" class="product-card__cta" style="display:flex;align-items:center;justify-content:center;gap:6px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+        Add Bulk to Cart
+      </button>`;
   } else if (isPreorder) {
     ctaHTML = p.price
         ? `<button onclick="addToCart(${p.id})" class="product-card__cta">
@@ -265,8 +307,8 @@ function renderCard(p, index) {
         </button>
       </div>
       <div class="product-card__body">
-        <div class="product-card__name">${p.name}</div>
-        <button type="button" class="product-card__rating" data-rating-id="${p.id}" onclick="openReviewsModal(${p.id}, '${(p.name || '').replace(/'/g, "\\'")}')" aria-label="View or write a review for ${p.name}" style="display:none;">
+        <button type="button" class="product-card__name" onclick="openReviewsModal(${p.id}, '${escName}')" aria-label="View details for ${p.name}">${p.name}</button>
+        <button type="button" class="product-card__rating" data-rating-id="${p.id}" onclick="openReviewsModal(${p.id}, '${escName}')" aria-label="View or write a review for ${p.name}" style="display:none;">
           <span class="rating-stars" data-stars-for="${p.id}"></span>
           <span class="rating-count" data-count-for="${p.id}"></span>
         </button>
@@ -296,7 +338,7 @@ function updateCardPrice(productId) {
   const bulkQtyEl = document.getElementById(`bulk-qty-${productId}`);
   const qty = (isWholesale && bulkQtyEl) ? parseInt(bulkQtyEl.value) : 1;
   const total = Math.round(unitPrice * qty * 100) / 100;
-  priceEl.innerHTML = `GH₵ ${total}` + (isWholesale ? ` <span style="font-size:11px;color:#888;font-weight:400;">(${qty} pcs @ GH₵ ${unitPrice})</span>` : '');
+  priceEl.innerHTML = `GH₵ ${gh(total)}` + (isWholesale ? ` <span style="font-size:11px;color:#888;font-weight:400;">(${qty} pcs @ GH₵ ${gh(unitPrice)})</span>` : '');
   priceEl.style.transition = 'color 0.2s';
   priceEl.style.color = 'var(--green-primary)';
 }
@@ -636,7 +678,7 @@ function renderCartDrawer() {
   }
   if (cart.length === 0) {
     cartBody.innerHTML = '<div style="padding:32px 24px;text-align:center;color:#999;font-size:15px;">Your cart is empty.<br><br>Add some amazing styles!</div>';
-    if (cartSubtotal) cartSubtotal.innerText = 'GHC 0';
+    if (cartSubtotal) cartSubtotal.innerText = 'GH₵ 0.00';
     return;
   }
   let html = '', subtotal = 0;
@@ -649,7 +691,7 @@ function renderCartDrawer() {
         <div class="cart-item__details">
           <div class="cart-item__title">${item.name}</div>
           <div class="cart-item__size">${item.size}</div>
-          <div class="cart-item__price">GHC ${item.price}</div>
+          <div class="cart-item__price">GH₵ ${gh(item.price)}</div>
         </div>
         <div class="cart-item__controls">
           <button class="cart-item__btn" onclick="updateCartQty(${index}, -1)">-</button>
@@ -662,7 +704,7 @@ function renderCartDrawer() {
       </div>`;
   });
   cartBody.innerHTML = html;
-  if (cartSubtotal) cartSubtotal.innerText = `GHC ${subtotal}`;
+  if (cartSubtotal) cartSubtotal.innerText = `GH₵ ${gh(subtotal)}`;
 }
 
 // ── Custom Checkout Modal ──
@@ -748,14 +790,10 @@ function showReceiptStep(orderNumber, totalAmount, customerName, customerPhone, 
   cartItems.forEach(c => {
     const prod = products.find(p => p.id === c.id);
     if (!prod) return;
-    // Calculate price from product data + size modifier + wholesale discount
-    let unitPrice = (prod.price || 0) + getPriceModifier(c.size);
-    const isWholesale = (storeMode === 'wholesale');
-    const discount = siteConfig.wholesale_discount || 0;
-    if (isWholesale && discount > 0) {
-      unitPrice = unitPrice * (1 - (discount / 100));
-    }
-    unitPrice = Math.round(unitPrice * 100) / 100;
+    // Use the price captured when the item was added — it already reflects the
+    // chosen size (managed or legacy) and any wholesale discount, and matches
+    // the authoritative total the server computed.
+    const unitPrice = Math.round((c.price || 0) * 100) / 100;
     const lineTotal = unitPrice * c.qty;
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px;';
@@ -764,13 +802,13 @@ function showReceiptStep(orderNumber, totalAmount, customerName, customerPhone, 
         <div style="font-weight:600;color:#1f2937;">${prod.name}</div>
         <div style="font-size:11px;color:#9ca3af;">Size: ${c.size} &times; ${c.qty}</div>
       </div>
-      <div style="font-weight:700;color:#0F4C3A;white-space:nowrap;">GHC ${lineTotal.toFixed(2)}</div>
+      <div style="font-weight:700;color:#0F4C3A;white-space:nowrap;">GH₵ ${lineTotal.toFixed(2)}</div>
     `;
     itemsEl.appendChild(row);
   });
 
   // Total
-  document.getElementById('receiptTotal').textContent = `GHC ${Number(totalAmount).toFixed(2)}`;
+  document.getElementById('receiptTotal').textContent = `GH₵ ${Number(totalAmount).toFixed(2)}`;
 
   // Wire buttons
   const printBtn = document.getElementById('receiptPrintBtn');
@@ -847,9 +885,9 @@ if (checkoutBtn) {
             if (delivery_area) message += `*Delivery area:* ${delivery_area}\n`;
             message += `\n*Items:*\n`;
             orderedItems.forEach(it => {
-                message += `• ${it.qty} × ${it.name} (${it.size}) — GHC ${it.price * it.qty}\n`;
+                message += `• ${it.qty} × ${it.name} (${it.size}) — GH₵ ${gh(it.price * it.qty)}\n`;
             });
-            message += `\n*Total:* GHC ${data.total_amount}\n`;
+            message += `\n*Total:* GH₵ ${gh(data.total_amount)}\n`;
             if (order_notes) message += `*Notes:* ${order_notes}\n`;
             message += `\n`;
             if (order_type === 'preorder') {
@@ -968,6 +1006,7 @@ async function initApp() {
       if (btnWholesale) btnWholesale.classList.remove('active');
       document.body.classList.remove('wholesale-theme');
     }
+    updateFloatingWaBtn();
     renderProducts();
   }
 
@@ -1000,6 +1039,7 @@ async function initApp() {
       }
   }
   applyWhatsAppNumber();
+  updateFloatingWaBtn();
 
   renderProducts();
   renderCartDrawer();
@@ -1195,7 +1235,7 @@ function renderWishlist() {
       <img src="${p.img}" alt="${p.name}" class="cart-item__img">
       <div class="cart-item__details">
         <div class="cart-item__title">${p.name}</div>
-        <div class="cart-item__price">${p.price ? 'GHC ' + p.price : 'Ask for price'}</div>
+        <div class="cart-item__price">${p.price ? 'GH₵ ' + gh(p.price) : 'Ask for price'}</div>
         <button type="button" onclick="closeWishlist(); addToCart(${p.id});" style="margin-top:8px;background:#0F4C3A;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
           Add to Cart
@@ -1213,8 +1253,35 @@ function renderWishlist() {
 const reviewSummaryCache = new Map();
 
 async function loadReviewSummaries(productIds) {
-  // Fetch in parallel; cap concurrency at 6.
-  const queue = productIds.filter(id => !reviewSummaryCache.has(id));
+  // Repaint anything already cached FIRST. The rating row is re-rendered as
+  // display:none on every grid rebuild (mode toggle, category filter,
+  // pagination, search), so without repainting here the rating silently
+  // disappears on any re-render once summaries are cached.
+  productIds.forEach(id => { if (reviewSummaryCache.has(id)) paintProductRating(id); });
+
+  // One request for the whole batch — a per-product fetch (267 separate
+  // round trips on the full catalog) meant any single slow/failed request
+  // left that one card permanently unrated for the page load.
+  const ids = productIds.filter(id => !reviewSummaryCache.has(id));
+  if (!ids.length) return;
+  try {
+    const res = await fetch('/api/products/reviews-summary?ids=' + ids.join(','));
+    if (res.ok) {
+      const data = await res.json();
+      ids.forEach(id => {
+        reviewSummaryCache.set(id, data[id] || { count: 0, average: 0 });
+        paintProductRating(id);
+      });
+      return;
+    }
+  } catch (e) { /* fall through to per-product */ }
+  // Fallback for a server that predates the batch endpoint (e.g. not yet
+  // restarted): fetch each summary individually so ratings still appear.
+  await loadReviewSummariesIndividually(ids);
+}
+
+async function loadReviewSummariesIndividually(ids) {
+  const queue = ids.slice();
   while (queue.length) {
     const batch = queue.splice(0, 6);
     await Promise.all(batch.map(async (id) => {
@@ -1259,9 +1326,11 @@ function ensureReviewsModal() {
   modal.innerHTML = `
     <div style="background:#fff;border-radius:18px;max-width:560px;width:100%;padding:24px;max-height:90vh;overflow-y:auto;font-family:'Inter',sans-serif;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <h3 id="rv-modal-title" style="margin:0;font-size:18px;font-weight:700;color:#0F4C3A;font-family:'Playfair Display',serif;">Reviews</h3>
+        <h3 id="rv-modal-title" style="margin:0;font-size:18px;font-weight:700;color:#0F4C3A;font-family:'Playfair Display',serif;">Product</h3>
         <button type="button" id="rv-close" style="background:none;border:none;font-size:24px;cursor:pointer;color:#888;line-height:1;padding:4px;">&times;</button>
       </div>
+      <div id="rv-description" style="display:none;font-size:13px;color:#555;line-height:1.6;margin-bottom:16px;"></div>
+      <div style="font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;">Reviews</div>
       <div id="rv-summary" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#FFF5F7;border-radius:12px;margin-bottom:18px;">
         <div id="rv-avg" style="font-size:28px;font-weight:700;color:#fc4c7a;">—</div>
         <div>
@@ -1345,7 +1414,17 @@ async function openReviewsModal(productId, productName) {
   const modal = document.getElementById('reviews-modal');
   modal.__productId = productId;
   modal.__productName = productName;
-  document.getElementById('rv-modal-title').textContent = 'Reviews · ' + (productName || 'Product');
+  document.getElementById('rv-modal-title').textContent = productName || 'Product';
+
+  const product = products.find(p => p.id === productId);
+  const descEl = document.getElementById('rv-description');
+  if (product && product.description) {
+    descEl.textContent = product.description;
+    descEl.style.display = 'block';
+  } else {
+    descEl.style.display = 'none';
+  }
+
   document.getElementById('rv-list').innerHTML = '<div style="text-align:center;color:#888;padding:24px;font-size:13px;">Loading…</div>';
   modal.style.display = 'flex';
 
@@ -1385,11 +1464,9 @@ const _origRenderProducts = typeof renderProducts === 'function' ? renderProduct
 if (_origRenderProducts) {
   window.renderProducts = function () {
     const out = _origRenderProducts.apply(this, arguments);
-    requestAnimationFrame(() => {
-      paintWishlistHearts();
-      const ids = Array.from(document.querySelectorAll('[data-rating-id]')).map(el => Number(el.getAttribute('data-rating-id')));
-      if (ids.length) loadReviewSummaries(ids);
-    });
+    paintWishlistHearts();
+    const ids = Array.from(document.querySelectorAll('[data-rating-id]')).map(el => Number(el.getAttribute('data-rating-id')));
+    if (ids.length) loadReviewSummaries(ids);
     return out;
   };
 }

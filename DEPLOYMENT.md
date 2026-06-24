@@ -24,7 +24,7 @@ The server listens on `PORT` (default 3000) and serves the whole site.
 | `ALLOWED_ORIGINS` | production | Comma-separated origins permitted by CORS, e.g. `https://dckidsbrand.com,https://www.dckidsbrand.com`. |
 | `ADMIN_PASSWORD` | recommended | Password for the seeded `admin` account on **first boot only**. If unset, a strong random password is generated and printed once to the server log — capture it. |
 | `PORT` | no | Listening port (default 3000). Most hosts inject this automatically. |
-| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | no | Optional order-alert notifications. |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | no | Optional instant order alerts. `TELEGRAM_CHAT_ID` accepts **one or more** comma-separated destinations — each can be a personal chat id or a shared channel/group id. To add the new owner, append their id (e.g. `111111111,222222222`); every destination receives each order. For a channel, add the bot as an admin and use the channel id. |
 | `SHOP_NOTIFY_EMAIL`, `SMTP_*` | no | Optional transactional email. |
 
 ## 3. First-boot admin account

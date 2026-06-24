@@ -5109,9 +5109,7 @@ h1, h2, h3, h4, h5, h6 {
   text-align: center;
   font-size: 11px;
   font-weight: 700;
-  color: #9a8d94;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  color: #b0a6ac;
   padding: 4px 0;
 }
 
@@ -5387,6 +5385,7 @@ h1, h2, h3, h4, h5, h6 {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
   }
   /* Presets as a compact 2-column grid so the calendar stays visible */
@@ -5425,8 +5424,9 @@ h1, h2, h3, h4, h5, h6 {
     display: flex;
     align-items: center;
     gap: 10px;
-    width: calc(100% - 28px);
-    margin: 2px 14px 12px;
+    box-sizing: border-box;
+    width: 100%;
+    margin: 2px 0 12px;
     padding: 12px 14px;
     border: 1px solid #f1e3e7;
     border-radius: 12px;
@@ -5476,7 +5476,6 @@ h1, h2, h3, h4, h5, h6 {
   }
   /* Even, touch-friendly rows and legible weekday labels so the grid reads as a
      proper calendar rather than airy scattered numbers. */
-  .drp-day { height: 42px; font-size: 14px; }
   .drp-weekdays span { font-size: 12px; color: #978b91; padding: 6px 0; }
   /* Footer: a pinned flex sibling (not a sticky overlay). Range text on its own
      line above full-width buttons so nothing overlaps or gets clipped. */

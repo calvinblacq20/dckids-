@@ -665,11 +665,14 @@ ul { list-style: none; }
   line-height: 1.35;
   margin-bottom: 4px;
   color: var(--charcoal);
+  text-align: left;
+  width: 100%;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.product-card__name:hover { color: #fc4c7a; }
 .product-card__size {
   font-size: 13px;
   color: var(--charcoal-light);
@@ -745,18 +748,18 @@ ul { list-style: none; }
   pointer-events: none;
 }
 .premium-selector--open .premium-selector__dropdown {
-  max-height: 280px;
+  max-height: 230px;
   overflow-y: auto;
-  padding: 6px;
+  padding: 5px;
   opacity: 1;
   pointer-events: auto;
 }
 .premium-selector__option {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 12px;
+  gap: 8px;
+  padding: 7px 11px;
+  border-radius: 10px;
   cursor: pointer;
   transition: background 0.15s ease, transform 0.15s ease;
   position: relative;
@@ -771,8 +774,8 @@ ul { list-style: none; }
   transform: scale(0.98);
 }
 .premium-selector__radio {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   border: 2px solid #EAEAEA;
   flex-shrink: 0;
@@ -796,7 +799,7 @@ ul { list-style: none; }
   border-color: #CDE4D6;
 }
 .premium-selector__option-text {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: #333333;
 }
@@ -876,29 +879,6 @@ ul { list-style: none; }
   box-shadow: 0 2px 8px rgba(94,156,126,0.25);
 }
 .product-card__cta svg { width: 15px; height: 15px; }
-
-/* Wholesale bulk CTA row: WhatsApp is the secondary/fallback action, so it's an
-   outline icon button rather than a second solid-green block next to "Add Bulk
-   to Cart" — two filled greens side by side were reading as one undifferentiated
-   block. */
-.product-card__cta-wa {
-  flex-shrink: 0;
-  width: 44px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #fff;
-  border: 1.5px solid #25D366;
-  color: #25D366;
-  border-radius: var(--radius-sm);
-  text-decoration: none;
-  transition: all var(--transition);
-}
-.product-card__cta-wa:hover {
-  background: #25D366;
-  color: #fff;
-  transform: translateY(-1px);
-}
 
 /* ─── 14. Pre-Order Grid Section ─── */
 .preorder-grid-section { padding: 16px; margin-top: 10px; }
@@ -1552,6 +1532,12 @@ input:focus-visible {
   .product-grid { grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 12px 24px; }
   .product-card__body { padding: 8px; }
   .product-card__name { font-size: 12px; }
+}
+
+/* Size/bulk-qty dropdown: on a narrow card the open list crowds out the cards
+   below, so cap it shorter on phones (base sizing already trimmed elsewhere). */
+@media (max-width: 480px) {
+  .premium-selector--open .premium-selector__dropdown { max-height: 190px; }
 }
 
 /* Checkout modal: scrollable on short phones */

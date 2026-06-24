@@ -90,6 +90,8 @@ function fetchOrdersFromServer(callback) {
                 };
             });
             syncCustomersWithOrders();
+            detectNewOrders(window.adminOrders);
+            startOrderNotificationPolling();
         }
         if (callback) callback();
     }).catch(function(e) {
@@ -97,6 +99,42 @@ function fetchOrdersFromServer(callback) {
         // falls back to local data. Warn instead of error so the console stays clean.
         console.warn('Orders API unavailable, using local data:', e && e.message ? e.message : e);
     });
+}
+
+// Surface customer orders placed on the storefront in the admin notification
+// bell. We track the highest order id seen on this device; anything above it on
+// a later fetch is genuinely new. The first run just sets the baseline so we
+// don't backfill a notification for every pre-existing order.
+function detectNewOrders(orders) {
+    try {
+        if (!Array.isArray(orders) || !orders.length) return;
+        var ids = orders.map(function(o) { return Number(o.db_id) || 0; });
+        var maxId = Math.max.apply(null, ids);
+        var lastSeenRaw = localStorage.getItem('dcKidsLastSeenOrderId');
+        if (lastSeenRaw === null) {
+            localStorage.setItem('dcKidsLastSeenOrderId', String(maxId));
+            return;
+        }
+        var lastSeen = Number(lastSeenRaw) || 0;
+        if (maxId <= lastSeen) return;
+        orders.filter(function(o) { return (Number(o.db_id) || 0) > lastSeen; })
+            .sort(function(a, b) { return (Number(a.db_id) || 0) - (Number(b.db_id) || 0); })
+            .forEach(function(o) {
+                addNotification('new-order', 'New order ' + o.id + ' from ' + (o.customer || 'Guest') + ' — GHS ' + Number(o.total || 0).toFixed(2));
+            });
+        localStorage.setItem('dcKidsLastSeenOrderId', String(maxId));
+    } catch (e) {}
+}
+
+// Poll for new orders while logged in so the bell updates without a manual
+// refresh. Guarded so only one interval ever runs.
+var __orderPollStarted = false;
+function startOrderNotificationPolling() {
+    if (__orderPollStarted) return;
+    __orderPollStarted = true;
+    setInterval(function() {
+        if (localStorage.getItem('adminToken')) fetchOrdersFromServer();
+    }, 45000);
 }
 
 function saveOrders(orders) {
@@ -1292,7 +1330,7 @@ function buildProductRow(p) {
         '<div class="table-product-info"><h4 onclick="openEditModal(' + p.id + ')">' + escapeHtml(p.name) + '</h4><p>Size: ' + escapeHtml(p.size || 'N/A') + '</p></div></div></td>' +
         '<td data-label="SKU" style="color:var(--admin-subtext);font-family:monospace;">' + escapeHtml(displaySku(p)) + '</td>' +
         '<td data-label="Category">' + escapeHtml(category) + preorderHTML + '</td>' +
-        '<td data-label="Price" style="font-weight:600;">GHS ' + (p.price || '—') + '</td>' +
+        '<td data-label="Price" style="font-weight:600;">' + (p.price != null ? 'GHS ' + Number(p.price).toFixed(2) : 'GHS —') + '</td>' +
         '<td data-label="Stock" style="font-weight:600;">' + (p.stock != null ? p.stock : 0) + '</td>' +
         '<td data-label="Status">' + statusHTML + '</td>' +
         '<td data-label="Actions">' + actionsHTML + '</td>';
@@ -1433,7 +1471,7 @@ function renderProductsGrid() {
                     (p.fulfillment_type === 'preorder' ? ' <span class="status-pill preorder">Pre-Order</span>' : '') +
                     '<h4 style="margin:8px 0 4px;font-size:15px;">' + escapeHtml(p.name) + '</h4>' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-                    '<span style="font-weight:700;font-size:16px;">GHS ' + (p.price || 0) + '</span>' +
+                    '<span style="font-weight:700;font-size:16px;">GHS ' + Number(p.price || 0).toFixed(2) + '</span>' +
                     '<span class="status-pill ' + stockClass + '" style="font-size:11px;">' + stockLabel + '</span>' +
                     '</div>' +
                     actionsHtml +
@@ -1495,7 +1533,7 @@ function renderProductsGrid() {
                 '</td>' +
                 '<td data-label="SKU" style="color:var(--admin-subtext);font-family:monospace;">' + escapeHtml(displaySku(p)) + '</td>' +
                 '<td data-label="Category" style="text-transform:capitalize;">' + escapeHtml(p.cat) + (p.fulfillment_type === 'preorder' ? ' <span class="status-pill preorder" style="text-transform:none;">Pre-Order</span>' : '') + '</td>' +
-                '<td data-label="Price" style="font-weight:600;">GHS ' + (p.price || '—') + '</td>' +
+                '<td data-label="Price" style="font-weight:600;">' + (p.price != null ? 'GHS ' + Number(p.price).toFixed(2) : 'GHS —') + '</td>' +
                 '<td data-label="Stock" style="font-weight:600;">' + (p.stock != null ? p.stock : 0) + '</td>' +
                 '<td data-label="Badge">' + getBadge(p.badge) + '</td>' +
                 '<td data-label="Status">' + getStatusBadge(p.stock) + '</td>' +
@@ -1685,6 +1723,8 @@ function openEditModal(id) {
             if (fulfillmentEl) fulfillmentEl.value = p.fulfillment_type || 'in_stock';
             if (imgPreview) imgPreview.src = p.img || 'images/product_1.jpg';
             if (imgSrcEl) imgSrcEl.value = p.img || 'images/product_1.jpg';
+            if (typeof setSizeRows === 'function') setSizeRows('modal-product', p.sizes);
+            if (typeof populateSizePresetDropdowns === 'function') populateSizePresetDropdowns();
         }
     } else {
         if (title) title.textContent = 'Add New Product';
@@ -1700,6 +1740,8 @@ function openEditModal(id) {
         if (fulfillmentEl) fulfillmentEl.value = 'in_stock';
         if (imgPreview) imgPreview.src = 'images/product_1.jpg';
         if (imgSrcEl) imgSrcEl.value = 'images/product_1.jpg';
+        if (typeof setSizeRows === 'function') setSizeRows('modal-product', []);
+        if (typeof populateSizePresetDropdowns === 'function') populateSizePresetDropdowns();
     }
 
     // Legacy products saved before SKUs existed have none — suggest one now
@@ -1804,7 +1846,7 @@ function handleProductImageUpload(event) {
     var previewEl = document.getElementById('modal-product-img-preview');
     var hiddenImgSrc = document.getElementById('modal-product-img-src');
     if (previewEl) previewEl.innerHTML = '<div style="padding:12px;font-size:12px;color:#888;">Optimizing & uploading…</div>';
-    compressImageFile(file, 1000, 0.85)
+    compressImageFile(file, 1600, 0.85)
         .then(function(dataUrl) {
             if (previewEl) previewEl.innerHTML = '<img src="' + dataUrl + '" class="w-full h-full object-cover">';
             return uploadProductImage(dataUrl);
@@ -1866,7 +1908,8 @@ function saveProduct() {
         badge: document.getElementById('modal-product-badge').value || null,
         img: document.getElementById('modal-product-img-src').value,
         description: (descEl && descEl.value.trim()) || null,
-        fulfillment_type: (fulfillmentEl && fulfillmentEl.value) || 'in_stock'
+        fulfillment_type: (fulfillmentEl && fulfillmentEl.value) || 'in_stock',
+        sizes: (typeof readSizeRows === 'function') ? readSizeRows('modal-product') : []
     };
 
     var method = isEditing ? 'PUT' : 'POST';
@@ -2017,7 +2060,7 @@ function openOrderDetail(orderId) {
             itemsBox.innerHTML = items.map(function(it){
                 var nm = it.name || it.product || 'Item';
                 var qty = it.qty || it.quantity || 1;
-                var lineTotal = it.price != null ? ('GHS ' + (Number(it.price) * qty)) : '';
+                var lineTotal = it.price != null ? ('GHS ' + (Number(it.price) * qty).toFixed(2)) : '';
                 var img = it.img || 'images/placeholder.svg';
                 return '<div class="od-item">' +
                     '<img src="' + escapeHtml(img) + '" alt="" onerror="this.src=\'images/placeholder.svg\'">' +
@@ -3626,6 +3669,17 @@ function drpQuarterStart(date) {
     return new Date(date.getFullYear(), q * 3, 1);
 }
 
+// Collapse the inline calendar so a picker always reopens to the compact,
+// presets-first view. The drp-show-cal class otherwise persists on the element,
+// so once a user expanded "Custom date range" every later open showed the full
+// calendar instead of the tidy preset list.
+function drpResetCollapse(picker) {
+    if (!picker) return;
+    picker.classList.remove('drp-show-cal');
+    var toggle = picker.querySelector('.drp-custom-toggle');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+}
+
 function toggleAnalyticsDateMenu() {
     var menu = document.getElementById('analytics-date-menu');
     if (!menu) return;
@@ -3633,6 +3687,7 @@ function toggleAnalyticsDateMenu() {
     var exportMenu = document.getElementById('analytics-export-menu');
     if (exportMenu) exportMenu.classList.remove('open');
     if (willOpen) {
+        drpResetCollapse(menu);
         drpInitFromState();
         drpRender();
     }
@@ -4267,7 +4322,7 @@ function toggleReportsDatePickerDropdown(event) {
     var dd = document.getElementById('reports-datepicker-dropdown');
     if (!dd) return;
     var willOpen = !dd.classList.contains('open');
-    if (willOpen) { rdrpInitFromState(); rdrpRender(); }
+    if (willOpen) { drpResetCollapse(dd); rdrpInitFromState(); rdrpRender(); }
     dd.classList.toggle('open', willOpen);
 }
 
@@ -4394,7 +4449,7 @@ function toggleModalDatePicker(event) {
     var dd = document.getElementById('mdrp-picker');
     if (!dd) return;
     var willOpen = !dd.classList.contains('open');
-    if (willOpen) { mdrpInitFromState(); mdrpRender(); }
+    if (willOpen) { drpResetCollapse(dd); mdrpInitFromState(); mdrpRender(); }
     dd.classList.toggle('open', willOpen);
 }
 
@@ -7064,6 +7119,8 @@ function openAddProductModal() {
     document.getElementById('add-product-status').value = 'in_stock';
     var addFulfillmentEl = document.getElementById('add-product-fulfillment');
     if (addFulfillmentEl) addFulfillmentEl.value = 'in_stock';
+    if (typeof setSizeRows === 'function') setSizeRows('add-product', []);
+    if (typeof populateSizePresetDropdowns === 'function') populateSizePresetDropdowns();
     document.getElementById('add-product-size').value = '';
     document.getElementById('add-product-badge').value = '';
     document.getElementById('add-product-desc').value = '';
@@ -7095,7 +7152,7 @@ function handleNewProductImageUpload(event) {
     var previewImg = document.querySelector('#add-product-img-preview img');
     var hiddenImgSrc = document.getElementById('add-product-img-src');
     var placeholder = previewImg && previewImg.parentNode.querySelector('.no-image-placeholder');
-    compressImageFile(file, 1000, 0.85)
+    compressImageFile(file, 1600, 0.85)
         .then(function(dataUrl) {
             if (previewImg) {
                 previewImg.src = dataUrl;          // local preview only
@@ -7156,7 +7213,8 @@ function saveNewProduct() {
         badge: document.getElementById('add-product-badge').value.trim() || null,
         img: document.getElementById('add-product-img-src').value,
         description: (addDescEl && addDescEl.value.trim()) || null,
-        fulfillment_type: (addFulfillmentEl && addFulfillmentEl.value) || 'in_stock'
+        fulfillment_type: (addFulfillmentEl && addFulfillmentEl.value) || 'in_stock',
+        sizes: (typeof readSizeRows === 'function') ? readSizeRows('add-product') : []
     };
 
     fetch(API_URL + '/products', {
@@ -9312,3 +9370,174 @@ if (document.readyState === 'loading') {
 } else {
   initDrpCustomToggles();
 }
+
+/* ============================================================
+   PRODUCT SIZES & PRICING  (per-product rows + global presets)
+   Each product can carry its own size variants, each with its own
+   price (sent as the `sizes` payload, authoritative on the server).
+   Global presets are reusable size sets in localStorage that the
+   admin can apply to populate the rows, then tweak.
+   ============================================================ */
+(function () {
+  var PRESET_KEY = 'dcKidsSizePresets';
+
+  function defaultPresets() {
+    return [
+      { name: 'Baby months', sizes: ['0-3M', '3-6M', '6-9M', '9-12M', '12-18M'] },
+      { name: 'Kids years', sizes: ['2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '8Y'] },
+      { name: 'Shoe sizes (EU)', sizes: ['25', '26', '27', '28', '29', '30', '31', '32', '33', '34', '35'] },
+      { name: 'One size', sizes: ['One Size'] }
+    ];
+  }
+  function loadPresets() {
+    try { var s = JSON.parse(localStorage.getItem(PRESET_KEY)); if (Array.isArray(s)) return s; } catch (e) {}
+    var d = defaultPresets(); savePresets(d); return d;
+  }
+  function savePresets(list) { localStorage.setItem(PRESET_KEY, JSON.stringify(list)); }
+  function esc(s) { return (typeof escapeHtml === 'function') ? escapeHtml(String(s)) : String(s); }
+
+  function rowHtml(label, price) {
+    return '<div class="size-row" style="display:flex;gap:8px;margin-bottom:6px;align-items:center;">' +
+      '<input type="text" class="size-row-label" placeholder="Size (e.g. 3-6M)" value="' + esc(label || '') + '" style="flex:1;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;font-size:13px;">' +
+      '<input type="number" inputmode="decimal" min="0" step="0.01" class="size-row-price" placeholder="Price (GH₵)" value="' + (price != null && price !== '' ? esc(price) : '') + '" style="width:140px;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;font-size:13px;">' +
+      '<button type="button" class="size-row-del" title="Remove size" style="border:1px solid #f3c2cb;background:#fff;color:#d6336c;border-radius:8px;padding:8px 11px;font-size:12px;font-weight:700;cursor:pointer;line-height:1;">&times;</button>' +
+    '</div>';
+  }
+
+  window.addSizeRow = function (prefix, label, price) {
+    var list = document.getElementById(prefix + '-sizes-list');
+    if (!list) return;
+    var wrap = document.createElement('div');
+    wrap.innerHTML = rowHtml(label, price);
+    var row = wrap.firstChild;
+    row.querySelector('.size-row-del').addEventListener('click', function () { row.remove(); });
+    list.appendChild(row);
+  };
+
+  // Read the rows into [{label, price}] for the save payload.
+  window.readSizeRows = function (prefix) {
+    var list = document.getElementById(prefix + '-sizes-list');
+    if (!list) return [];
+    var rows = [];
+    list.querySelectorAll('.size-row').forEach(function (r) {
+      var label = (r.querySelector('.size-row-label').value || '').trim();
+      if (!label) return;
+      var priceRaw = (r.querySelector('.size-row-price').value || '').trim();
+      var price = priceRaw === '' ? null : Number(priceRaw);
+      rows.push({ label: label, price: (price != null && !isNaN(price)) ? price : null });
+    });
+    return rows;
+  };
+
+  // Populate rows when opening a product (accepts array or JSON string).
+  window.setSizeRows = function (prefix, sizes) {
+    var list = document.getElementById(prefix + '-sizes-list');
+    if (!list) return;
+    list.innerHTML = '';
+    var arr = sizes;
+    if (typeof sizes === 'string') { try { arr = JSON.parse(sizes); } catch (e) { arr = null; } }
+    if (Array.isArray(arr)) arr.forEach(function (s) { if (s && s.label) window.addSizeRow(prefix, s.label, s.price); });
+  };
+
+  window.populateSizePresetDropdowns = function () {
+    var presets = loadPresets();
+    ['add-product-size-preset', 'modal-product-size-preset'].forEach(function (id) {
+      var sel = document.getElementById(id);
+      if (!sel) return;
+      sel.innerHTML = '<option value="">Apply a size preset…</option>' +
+        presets.map(function (p, i) { return '<option value="' + i + '">' + esc(p.name) + ' (' + p.sizes.length + ')</option>'; }).join('');
+    });
+  };
+
+  window.applySizePreset = function (prefix) {
+    var sel = document.getElementById(prefix + '-size-preset');
+    if (!sel || sel.value === '') return;
+    var p = loadPresets()[parseInt(sel.value, 10)];
+    if (!p) return;
+    // Append preset sizes (keeps any rows already added); price left blank to fill in.
+    p.sizes.forEach(function (label) { window.addSizeRow(prefix, label, ''); });
+    sel.value = '';
+  };
+
+  // ---- Global preset manager (reuse the branded dialog where possible) ----
+  function ensurePresetModal() {
+    if (document.getElementById('modal-size-presets')) return;
+    var m = document.createElement('div');
+    m.id = 'modal-size-presets';
+    m.className = 'modal-overlay';
+    m.style.display = 'none';
+    m.innerHTML =
+      '<div class="modal-content" style="max-width:520px;">' +
+        '<div class="modal-header">' +
+          '<h2 class="modal-title">Size Presets</h2>' +
+          '<button class="modal-close-btn" type="button" aria-label="Close" onclick="closeModal(\'modal-size-presets\')">' +
+            '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' +
+          '</button>' +
+        '</div>' +
+        '<div class="modal-body">' +
+          '<p style="font-size:12px;color:#888;margin:0 0 12px;">Reusable size sets you can apply to any product, then set prices per product.</p>' +
+          '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">' +
+            '<input id="size-preset-name" class="form-input" placeholder="Preset name (e.g. Toddler years)">' +
+            '<input id="size-preset-sizes" class="form-input" placeholder="Sizes, comma-separated (e.g. 2Y, 3Y, 4Y)">' +
+            '<button type="button" class="btn btn-primary" onclick="addSizePreset()">Add preset</button>' +
+          '</div>' +
+          '<div id="size-preset-list"></div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(m);
+    m.addEventListener('click', function (e) { if (e.target === m) closeModal('modal-size-presets'); });
+  }
+
+  function renderPresetList() {
+    var box = document.getElementById('size-preset-list');
+    if (!box) return;
+    var presets = loadPresets();
+    box.innerHTML = presets.map(function (p, i) {
+      return '<div style="display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid #eee;">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-weight:600;color:#333;font-size:14px;">' + esc(p.name) + '</div>' +
+          '<div style="font-size:11px;color:#999;">' + esc(p.sizes.join(', ')) + '</div>' +
+        '</div>' +
+        '<button type="button" onclick="deleteSizePreset(' + i + ')" style="border:1px solid #f3c2cb;background:#fff;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;color:#d6336c;">Delete</button>' +
+      '</div>';
+    }).join('') || '<p style="color:#999;text-align:center;padding:16px;">No presets yet.</p>';
+  }
+
+  window.openSizePresetManager = function () {
+    ensurePresetModal();
+    renderPresetList();
+    if (typeof openModal === 'function') openModal('modal-size-presets');
+    else { document.getElementById('modal-size-presets').style.display = 'flex'; }
+  };
+
+  window.addSizePreset = function () {
+    var nameEl = document.getElementById('size-preset-name');
+    var sizesEl = document.getElementById('size-preset-sizes');
+    var name = nameEl ? nameEl.value.trim() : '';
+    var sizes = sizesEl ? sizesEl.value.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [];
+    if (!name) { if (typeof showToast === 'function') showToast('Enter a preset name', 'warning'); return; }
+    if (!sizes.length) { if (typeof showToast === 'function') showToast('Enter at least one size', 'warning'); return; }
+    var presets = loadPresets();
+    presets.push({ name: name, sizes: sizes });
+    savePresets(presets);
+    if (nameEl) nameEl.value = '';
+    if (sizesEl) sizesEl.value = '';
+    renderPresetList();
+    window.populateSizePresetDropdowns();
+    if (typeof showToast === 'function') showToast('Preset "' + name + '" added', 'success');
+  };
+
+  window.deleteSizePreset = function (i) {
+    var presets = loadPresets();
+    if (i < 0 || i >= presets.length) return;
+    var removed = presets.splice(i, 1)[0];
+    savePresets(presets);
+    renderPresetList();
+    window.populateSizePresetDropdowns();
+    if (typeof showToast === 'function') showToast('Preset "' + (removed ? removed.name : '') + '" removed', 'success');
+  };
+
+  document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () { if (window.populateSizePresetDropdowns) window.populateSizePresetDropdowns(); }, 500);
+  });
+})();
