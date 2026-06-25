@@ -2,12 +2,19 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const bcrypt = require('bcrypt');
 
-const dbPath = path.resolve(__dirname, 'inventory.db');
+const dbPath = process.env.DB_PATH || path.resolve(__dirname, 'inventory.db');
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error opening database', err.message);
     } else {
         console.log('Connected to the SQLite database.');
+
+        // Run every statement below in submission order. Without this, node-sqlite3
+        // does not guarantee ordering, so on a fresh database the CREATE INDEX and
+        // seed statements can race ahead of their CREATE TABLE / ALTER and crash with
+        // "no such table" / "no such column". Serialized mode is sticky on the
+        // connection, so it also orders the async migrations and seeds below.
+        db.serialize();
 
         // Concurrency hardening:
         // - WAL lets readers and a writer work simultaneously (default mode blocks readers during a write).
@@ -66,6 +73,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
             stock INTEGER DEFAULT 10,
             badge TEXT,
             description TEXT,
+            fulfillment_type TEXT DEFAULT 'in_stock',
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`, (err) => {
             if (err) console.error("Error creating products table", err);
@@ -549,7 +557,21 @@ const db = new sqlite3.Database(dbPath, (err) => {
         db.run(`CREATE INDEX IF NOT EXISTS idx_wishlist_customer   ON wishlist_items (customer_id)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_products_cat        ON products (cat)`);
         db.run(`CREATE INDEX IF NOT EXISTS idx_payments_order      ON payments (order_id)`);
+
+        // Schema is fully queued above. This trailing statement runs only after
+        // every CREATE TABLE/INDEX has executed (single-connection serial queue),
+        // so it's a reliable "schema ready" signal. The server waits on this via
+        // db.whenReady() before listening — otherwise a request arriving on a
+        // fresh database (no tables yet) crashes with "no such table: orders".
+        db.run('SELECT 1', () => { _markDbReady(); });
     }
 });
+
+// ── Readiness gate ──
+// Lets server.js delay app.listen() until the schema exists on a fresh DB.
+let _dbReady = false;
+const _dbReadyCbs = [];
+function _markDbReady() { _dbReady = true; while (_dbReadyCbs.length) _dbReadyCbs.shift()(); }
+db.whenReady = function (cb) { if (_dbReady) cb(); else _dbReadyCbs.push(cb); };
 
 module.exports = db;

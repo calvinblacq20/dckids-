@@ -1786,6 +1786,14 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+// Start listening only after the database schema is ready, so requests can't
+// arrive before the tables exist (which crashed a fresh clone with
+// "no such table: orders"). Falls back to listening directly if whenReady
+// isn't available, for safety.
+if (typeof db.whenReady === 'function') {
+    db.whenReady(() => {
+        app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    });
+} else {
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
