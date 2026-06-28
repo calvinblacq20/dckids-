@@ -62,11 +62,30 @@ app.use(express.static(path.join(__dirname, '..'), {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dckids-super-secret-key-change-in-production';
 
+// Never run in production on the built-in fallback secret: it's public (it's in
+// this file), so anyone could forge an admin token and take over. Fail fast so a
+// misconfigured deploy can't start insecurely rather than silently.
+if (IS_PROD && (!process.env.JWT_SECRET || JWT_SECRET === 'dckids-super-secret-key-change-in-production')) {
+    console.error('FATAL: JWT_SECRET must be set to a strong, unique value in production. Refusing to start.');
+    process.exit(1);
+}
+
 // Basic in-memory rate limiting to prevent API abuse (disabled for localhost)
 const rateLimit = {};
 const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
 // Tight in production to blunt abuse; generous in dev for smooth iteration.
 const MAX_REQUESTS_PER_WINDOW = IS_PROD ? 120 : 1000;
+
+// Periodically drop stale entries so the in-memory map can't grow unbounded over
+// the process lifetime. (Single-instance mitigation; for multiple instances move
+// rate limiting to a shared store like Redis.) unref() so it never holds the
+// process open on its own.
+setInterval(() => {
+    const now = Date.now();
+    for (const ip in rateLimit) {
+        if (now - rateLimit[ip].firstRequest > RATE_LIMIT_WINDOW_MS) delete rateLimit[ip];
+    }
+}, 5 * 60 * 1000).unref();
 
 app.use((req, res, next) => {
     const ip = req.ip || req.connection.remoteAddress || '';
@@ -629,17 +648,23 @@ app.post('/api/orders', (req, res) => {
 
         Promise.all(productPromises)
             .then(() => {
-                const order_number = 'ORD-' + Math.floor(1000 + Math.random() * 9000);
-                let initialStatus = order_type === 'preorder' ? 'pending_deposit' : 'pending';
+                const initialStatus = order_type === 'preorder' ? 'pending_deposit' : 'pending';
+                // A temporary unique placeholder satisfies the UNIQUE NOT NULL
+                // column until we know the row id; the real order number is then
+                // derived from that id, so two orders can never collide. (The old
+                // 'ORD-' + Math.random()*9000 had just 9000 possible values.)
+                const tempNumber = 'TMP-' + Date.now() + '-' + Math.floor(Math.random() * 1e6);
 
                 db.run(
                     `INSERT INTO orders (order_number, customer_name, customer_phone, order_type, total_amount, status, delivery_area, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [order_number, customer_name, customer_phone, order_type, total_amount, initialStatus, delivery_area || null, notes || null],
+                    [tempNumber, customer_name, customer_phone, order_type, total_amount, initialStatus, delivery_area || null, notes || null],
                     function(err) {
                         if (err) return res.status(500).json({ error: err.message });
-                        
+
                         const order_id = this.lastID;
-                        
+                        const order_number = 'ORD-' + String(10000 + order_id);
+                        db.run(`UPDATE orders SET order_number = ? WHERE id = ?`, [order_number, order_id]);
+
                         const insertItemStmt = db.prepare(`INSERT INTO order_items (order_id, product_id, product_name, quantity, price_at_time) VALUES (?, ?, ?, ?, ?)`);
                         processedItems.forEach(pi => {
                             insertItemStmt.run(order_id, pi.product_id, pi.product_name, pi.quantity, pi.price_at_time);
