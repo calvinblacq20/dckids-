@@ -512,19 +512,19 @@
           <img src="images/promo_store1.jpg" alt="Style, Comfort & Quality for Every Kid" class="w-full h-full object-cover">
         </div>
         <div class="promo-carousel__slide w-full h-full flex-shrink-0 relative">
-          <img src="images/promo_store2.jpg" alt="DC Kids Brand" class="w-full h-full object-cover">
+          <img src="images/promo_store2.jpg" alt="DC Kids Brand" class="w-full h-full object-cover" loading="lazy" decoding="async">
         </div>
         <div class="promo-carousel__slide w-full h-full flex-shrink-0 relative">
-          <img src="images/promo_store3.jpg" alt="Footwear Collection" class="w-full h-full object-cover">
+          <img src="images/promo_store3.jpg" alt="Footwear Collection" class="w-full h-full object-cover" loading="lazy" decoding="async">
         </div>
         <div class="promo-carousel__slide w-full h-full flex-shrink-0 relative">
-          <img src="images/promo_store4.jpg" alt="Family Shopping" class="w-full h-full object-cover">
+          <img src="images/promo_store4.jpg" alt="Family Shopping" class="w-full h-full object-cover" loading="lazy" decoding="async">
         </div>
         <div class="promo-carousel__slide w-full h-full flex-shrink-0 relative">
-          <img src="images/promo_store5.jpg" alt="Personalised Service" class="w-full h-full object-cover">
+          <img src="images/promo_store5.jpg" alt="Personalised Service" class="w-full h-full object-cover" loading="lazy" decoding="async">
         </div>
         <div class="promo-carousel__slide w-full h-full flex-shrink-0 relative">
-          <img src="images/promo_store6.jpg" alt="Welcome to Our Store" class="w-full h-full object-cover">
+          <img src="images/promo_store6.jpg" alt="Welcome to Our Store" class="w-full h-full object-cover" loading="lazy" decoding="async">
         </div>
       </div>
       
@@ -797,7 +797,7 @@
       <div class="flex flex-col gap-4">
         <div class="flex items-center gap-2">
           <span class="w-10 h-10 rounded-full bg-white flex items-center justify-center p-1 border border-gray-700">
-            <img src="icon.png" alt="DC Kids Brand" class="w-full h-full object-contain">
+            <img src="icon.png" alt="DC Kids Brand" class="w-full h-full object-contain" loading="lazy" decoding="async">
           </span>
           <span class="font-serif text-lg font-bold text-white">DC Kids Brand</span>
         </div>
@@ -917,7 +917,7 @@
     <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4" id="cartBody">
       <!-- Dummy Items (will be replaced by JS) -->
       <div class="cart-item flex items-center gap-4 pb-4 border-b border-gray-100">
-        <img src="images/product_56.jpg" alt="Boys 3-Piece Sailor Set" class="w-16 h-16 rounded-xl object-cover flex-shrink-0">
+        <img src="images/product_56.jpg" alt="Boys 3-Piece Sailor Set" class="w-16 h-16 rounded-xl object-cover flex-shrink-0" loading="lazy" decoding="async">
         <div class="flex-1">
           <div class="text-sm font-medium text-gray-800">Boys 3-Piece Sailor Set</div>
           <div class="text-xs text-gray-400">6M – 24M</div>
@@ -1120,10 +1120,34 @@
   </script>
 
   <!-- ─── PWA: install prompt + service worker registration ─── -->
-  <div id="pwaInstallBanner" style="display:none; position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:9000; background:#0F4C3A; color:#fff; padding:12px 18px; border-radius:14px; box-shadow:0 12px 36px rgba(0,0,0,0.25); display:none; gap:14px; align-items:center; max-width:92vw; font-family:Inter,sans-serif;">
-    <span style="font-size:14px;">Install DC Kids on your home screen?</span>
-    <button id="pwaInstallBtn" type="button" style="background:#5E9C7E;border:none;color:#fff;font-weight:600;padding:8px 14px;border-radius:10px;cursor:pointer;">Install</button>
-    <button id="pwaDismissBtn" type="button" aria-label="Dismiss" style="background:transparent;border:none;color:#fff;font-size:18px;cursor:pointer;line-height:1;padding:4px;">&times;</button>
+  <style>
+    .pwa-banner {
+      position: fixed; left: 12px; right: 12px; bottom: 16px; margin: 0 auto; z-index: 9000;
+      max-width: 440px; display: none; align-items: center; gap: 12px;
+      background: #0F4C3A; color: #fff; padding: 12px 14px; border-radius: 16px;
+      box-shadow: 0 16px 44px rgba(0, 0, 0, 0.28);
+      font-family: Inter, system-ui, sans-serif;
+      animation: pwaSlideUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .pwa-banner__icon { width: 44px; height: 44px; border-radius: 12px; background: #fff; padding: 5px; object-fit: contain; flex-shrink: 0; }
+    .pwa-banner__text { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; flex: 1; }
+    .pwa-banner__title { font-size: 14px; font-weight: 700; }
+    .pwa-banner__sub { font-size: 12px; opacity: 0.82; }
+    .pwa-banner__install { background: #5E9C7E; border: none; color: #fff; font-weight: 700; font-size: 14px; padding: 0 16px; min-height: 44px; border-radius: 10px; cursor: pointer; flex-shrink: 0; transition: background 0.15s ease; }
+    .pwa-banner__install:hover { background: #4d866b; }
+    .pwa-banner__close { background: transparent; border: none; color: rgba(255, 255, 255, 0.8); font-size: 22px; line-height: 1; cursor: pointer; padding: 6px; flex-shrink: 0; }
+    .pwa-banner__close:hover { color: #fff; }
+    @keyframes pwaSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @media (prefers-reduced-motion: reduce) { .pwa-banner { animation: none; } }
+  </style>
+  <div id="pwaInstallBanner" class="pwa-banner" role="dialog" aria-label="Install the DC Kids app">
+    <img src="icon.png" alt="" class="pwa-banner__icon">
+    <div class="pwa-banner__text">
+      <strong class="pwa-banner__title">Add DC Kids to your home screen</strong>
+      <span class="pwa-banner__sub">Shop faster — opens like an app, even offline.</span>
+    </div>
+    <button id="pwaInstallBtn" type="button" class="pwa-banner__install">Install</button>
+    <button id="pwaDismissBtn" type="button" class="pwa-banner__close" aria-label="Dismiss">&times;</button>
   </div>
   <script>
     // Register service worker (PWA + offline app shell)
