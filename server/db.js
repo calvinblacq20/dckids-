@@ -32,7 +32,31 @@ const db = new sqlite3.Database(dbPath, (err) => {
             role TEXT
         )`, (err) => {
             if (err) console.error("Error creating users table", err);
-            
+
+            // Migration: access-request workflow columns. status drives login:
+            // 'active' may sign in, 'pending' awaits owner approval, 'rejected'
+            // is refused. NULL (pre-migration rows like the seeded admin) is
+            // treated as active by the login route, so legacy installs keep
+            // working without a backfill. created_at has no default because
+            // SQLite forbids non-constant defaults in ALTER TABLE — the
+            // register endpoint stamps it at insert time.
+            db.all("PRAGMA table_info(users)", (e, cols) => {
+                if (e || !cols) return;
+                const names = cols.map(c => c.name);
+                const addCol = (ddl, label) => db.run("ALTER TABLE users ADD COLUMN " + ddl, (er) => {
+                    if (er) console.error("Migration (users." + label + ") failed:", er.message);
+                    else console.log("Migration: added users." + label);
+                });
+                if (names.indexOf('email') === -1) addCol("email TEXT", "email");
+                if (names.indexOf('full_name') === -1) addCol("full_name TEXT", "full_name");
+                if (names.indexOf('phone') === -1) addCol("phone TEXT", "phone");
+                if (names.indexOf('status') === -1) addCol("status TEXT", "status");
+                if (names.indexOf('created_at') === -1) addCol("created_at TEXT", "created_at");
+                db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL", (er) => {
+                    if (er) console.error("Migration (idx_users_email) failed:", er.message);
+                });
+            });
+
             // Seed a default admin user if none exists. Never ship a hardcoded
             // password: use ADMIN_PASSWORD from the environment if provided,
             // otherwise generate a strong random one and print it ONCE at first

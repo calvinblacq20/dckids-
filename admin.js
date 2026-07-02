@@ -343,6 +343,8 @@ function handleLogin(e) {
     var username = document.getElementById('login-username').value;
     var password = document.getElementById('login-password').value;
     var errorEl = document.getElementById('login-error');
+    var infoEl = document.getElementById('login-info');
+    if (infoEl) infoEl.textContent = '';
 
     fetch(API_URL + '/login', {
         method: 'POST',
@@ -351,7 +353,20 @@ function handleLogin(e) {
     })
     .then(function(res) {
         var contentType = res.headers.get('content-type') || '';
-        if (!res.ok || !contentType.includes('application/json')) throw new Error('Invalid credentials');
+        if (!res.ok) {
+            // Surface the server's own message (e.g. "awaiting the owner's
+            // approval") — a flat "Invalid credentials" would hide the real
+            // state from a pending requester.
+            if (contentType.includes('application/json')) {
+                return res.json().then(function(d) {
+                    var err = new Error(d.error || 'Invalid credentials');
+                    err.serverAnswered = true;
+                    throw err;
+                });
+            }
+            throw new Error('Invalid credentials');
+        }
+        if (!contentType.includes('application/json')) throw new Error('Invalid credentials');
         return res.json();
     })
     .then(function(data) {
@@ -361,6 +376,13 @@ function handleLogin(e) {
         showDashboard(data.role);
     })
     .catch(function(err) {
+        // The server answered (wrong password / pending / rejected): show its
+        // message. The offline fallback below is only for an unreachable API.
+        if (err && err.serverAnswered) {
+            errorEl.textContent = err.message;
+            errorEl.style.display = 'block';
+            return;
+        }
         // Fallback for live server prototype without node backend.
         // Compares against a stored hash — never a plaintext password.
         function _hashPw(s) {
@@ -382,6 +404,71 @@ function handleLogin(e) {
         }
         errorEl.textContent = 'Invalid credentials';
         errorEl.style.display = 'block';
+    });
+}
+
+/* ── Request-access (sign-up) view ── */
+function showSignupView(e) {
+    if (e) e.preventDefault();
+    var lc = document.getElementById('login-container');
+    var sc = document.getElementById('signup-container');
+    if (lc) lc.style.display = 'none';
+    if (sc) sc.style.display = 'flex';
+    var errEl = document.getElementById('signup-error');
+    if (errEl) errEl.textContent = '';
+    var infoEl = document.getElementById('login-info');
+    if (infoEl) infoEl.textContent = '';
+}
+
+function showLoginView(e) {
+    if (e) e.preventDefault();
+    var lc = document.getElementById('login-container');
+    var sc = document.getElementById('signup-container');
+    if (sc) sc.style.display = 'none';
+    if (lc) lc.style.display = 'flex';
+}
+
+function handleRegister(e) {
+    if (e) e.preventDefault();
+    var name = (document.getElementById('signup-name').value || '').trim();
+    var email = (document.getElementById('signup-email').value || '').trim();
+    var phone = (document.getElementById('signup-phone').value || '').trim();
+    var pw = document.getElementById('signup-password').value || '';
+    var pw2 = document.getElementById('signup-password2').value || '';
+    var errEl = document.getElementById('signup-error');
+    var btn = document.getElementById('signup-btn');
+    function fail(msg) { if (errEl) errEl.textContent = msg; }
+    if (errEl) errEl.textContent = '';
+
+    if (name.length < 2) return fail('Please enter your full name');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail('Please enter a valid email address');
+    if (pw.length < 6) return fail('Password must be at least 6 characters');
+    if (pw !== pw2) return fail('Passwords do not match');
+
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending request…'; }
+    fetch(API_URL + '/admin/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ full_name: name, email: email, phone: phone, password: pw })
+    })
+    .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })
+    .then(function(r) {
+        if (!r.ok) throw new Error(r.data.error || 'Could not submit request');
+        showLoginView();
+        var info = document.getElementById('login-info');
+        if (info) info.textContent = 'Request sent! You can sign in once the owner approves your account.';
+        var userEl = document.getElementById('login-username');
+        if (userEl) userEl.value = email;
+        ['signup-name', 'signup-email', 'signup-phone', 'signup-password', 'signup-password2'].forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+    })
+    .catch(function(err) {
+        fail(err.message === 'Failed to fetch' ? 'Server unavailable — try again later.' : err.message);
+    })
+    .finally(function() {
+        if (btn) { btn.disabled = false; btn.textContent = 'Request access'; }
     });
 }
 
@@ -417,6 +504,9 @@ function showDashboard(role) {
 
     // Load all data
     loadDashboard();
+
+    // Owner heads-up for pending admin access requests (badge + bell + toast)
+    if (typeof refreshAccessRequestsBadge === 'function') refreshAccessRequestsBadge();
 }
 
 function logout() {
@@ -7990,6 +8080,8 @@ function loadAdmins() {
     var token = localStorage.getItem('adminToken');
     if (!token) return;
 
+    loadAccessRequests();
+
     var tbody = document.getElementById('staff-table-body');
     if (tbody) {
         tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Loading staff accounts...</td></tr>';
@@ -8059,6 +8151,120 @@ function loadAdmins() {
             tbody.innerHTML = '<tr><td colspan="4" class="empty-state" style="color:var(--danger)">Error: ' + err.message + '</td></tr>';
         }
     });
+}
+
+/* ── Access requests (sign-ups awaiting the owner's approval) ── */
+function loadAccessRequests() {
+    var token = localStorage.getItem('adminToken');
+    if (!token || token.indexOf('fallback-token') === 0) return;
+
+    fetch(API_URL + '/admin/access-requests', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(res) {
+        if (res.status === 401 || res.status === 403) return null;
+        if (!res.ok) throw new Error('Failed to load access requests');
+        return res.json();
+    })
+    .then(function(rows) {
+        if (Array.isArray(rows)) renderAccessRequests(rows);
+    })
+    .catch(function() {});
+}
+
+function renderAccessRequests(rows) {
+    var panel = document.getElementById('access-requests-panel');
+    var list = document.getElementById('access-requests-list');
+    var count = document.getElementById('access-requests-count');
+    var badge = document.getElementById('staff-requests-badge');
+    if (badge) {
+        badge.textContent = rows.length;
+        badge.style.display = rows.length ? 'inline-flex' : 'none';
+    }
+    if (!panel || !list) return;
+    panel.style.display = rows.length ? 'block' : 'none';
+    if (count) count.textContent = rows.length;
+
+    list.innerHTML = rows.map(function(r) {
+        var date = (r.created_at || '').split(' ')[0];
+        return '<div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; background:#fff; border:1px solid #f1e3e7; border-radius:12px; padding:12px 14px; margin-bottom:8px;">' +
+            '<div style="flex:1 1 220px; min-width:0;">' +
+                '<strong style="display:block; font-size:14px; color:#2d2d34;">' + escapeHtml(r.full_name || '—') + '</strong>' +
+                '<span style="font-size:12.5px; color:#7b727f;">' + escapeHtml(r.email || '') +
+                (r.phone ? ' · ' + escapeHtml(r.phone) : '') +
+                (date ? ' · requested ' + escapeHtml(date) : '') + '</span>' +
+            '</div>' +
+            '<div style="display:flex; gap:8px;">' +
+                '<button type="button" class="btn btn-primary btn-sm" onclick="approveAccessRequest(' + r.id + ')">Approve</button>' +
+                '<button type="button" class="btn btn-outline btn-sm" onclick="rejectAccessRequest(' + r.id + ')">Reject</button>' +
+            '</div>' +
+        '</div>';
+    }).join('');
+}
+
+function approveAccessRequest(id) {
+    var token = localStorage.getItem('adminToken');
+    if (!token) return;
+    fetch(API_URL + '/admin/access-requests/' + id + '/approve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ role: 'staff' })
+    })
+    .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })
+    .then(function(r) {
+        if (!r.ok) throw new Error(r.data.error || 'Approve failed');
+        showToast('Approved as Staff — change their role anytime via Edit', 'success');
+        loadAdmins();
+    })
+    .catch(function(err) { showToast(err.message, 'error'); });
+}
+
+function rejectAccessRequest(id) {
+    var token = localStorage.getItem('adminToken');
+    if (!token) return;
+    fetch(API_URL + '/admin/access-requests/' + id + '/reject', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })
+    .then(function(r) {
+        if (!r.ok) throw new Error(r.data.error || 'Reject failed');
+        showToast('Request rejected', 'success');
+        loadAdmins();
+    })
+    .catch(function(err) { showToast(err.message, 'error'); });
+}
+
+// Owner notification: refresh the sidebar badge on every dashboard load, and
+// drop a bell notification + toast when NEW requests arrived since last seen.
+function refreshAccessRequestsBadge() {
+    var token = localStorage.getItem('adminToken');
+    if (!token || token.indexOf('fallback-token') === 0) return;
+    if (currentRole !== 'manager' && currentRole !== 'admin') return;
+
+    fetch(API_URL + '/admin/access-requests', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(res) { return res.ok ? res.json() : null; })
+    .then(function(rows) {
+        if (!Array.isArray(rows)) return;
+        var badge = document.getElementById('staff-requests-badge');
+        if (badge) {
+            badge.textContent = rows.length;
+            badge.style.display = rows.length ? 'inline-flex' : 'none';
+        }
+        var prev = parseInt(localStorage.getItem('dcKidsPendingAccessCount') || '0', 10);
+        if (rows.length > prev) {
+            var msg = rows.length === 1
+                ? '1 admin access request awaiting your approval'
+                : rows.length + ' admin access requests awaiting your approval';
+            if (typeof addNotification === 'function') addNotification('staff', msg);
+            if (typeof renderNotifications === 'function') renderNotifications();
+            if (typeof showToast === 'function') showToast(msg, 'warning');
+        }
+        localStorage.setItem('dcKidsPendingAccessCount', String(rows.length));
+    })
+    .catch(function() {});
 }
 
 function openAddStaffModal() {

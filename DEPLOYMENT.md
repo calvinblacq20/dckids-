@@ -15,6 +15,27 @@ node server.js
 
 The server listens on `PORT` (default 3000) and serves the whole site.
 
+### Keep it running (important)
+
+The storefront has **no products to show if the Node server isn't running** — the
+catalogue comes from the API, and the static `products.json` fallback is served by the
+same process, so if it stops, the store goes blank. Two safeguards are in place and one
+is up to your host:
+
+- The server now has **crash guards** (`uncaughtException` / `unhandledRejection`): a
+  single bad request or stray error is logged but **won't take the whole server down**.
+- **Run it under a process manager so it auto-restarts** if it ever exits or the box
+  reboots. Examples:
+  ```bash
+  # PM2
+  npm install -g pm2
+  pm2 start server.js --name dckids
+  pm2 startup && pm2 save        # restart on reboot
+  ```
+  Or a `systemd` unit with `Restart=always`, or your platform's built-in restart policy
+  (Render/Railway/Fly all auto-restart a crashed process). Don't run it as a bare
+  `node server.js` in a terminal in production — close the terminal and the store dies.
+
 ## 2. Required environment (set on your host, in `server/.env`)
 
 | Variable | Required | Purpose |

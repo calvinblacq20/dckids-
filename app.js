@@ -1015,17 +1015,23 @@ async function initApp() {
 
   // Apply site configurations
   if (siteConfig) {
-      if (siteConfig.banner_enabled) {
-          if (urgencyBanner) {
-              urgencyBanner.style.display = 'block';
-              const tracks = urgencyBanner.querySelectorAll('.banner-track');
-              if (tracks.length > 0 && siteConfig.banner_text) {
-                  const content = `<i class="fas fa-bullhorn text-gray-600 text-sm" style="margin-right:8px;"></i> <strong>UPDATE:</strong> ${siteConfig.banner_text} &nbsp;&bull;&nbsp;`;
-                  tracks.forEach(t => { t.innerHTML = content; });
+      // Only touch the banner when settings actually loaded. If the settings
+      // fetch failed (server hiccup / offline), 'banner_enabled' is absent —
+      // leave the default HTML banner visible instead of blanking the top of the
+      // page on a refresh. This was why the banner "sometimes disappeared".
+      if ('banner_enabled' in siteConfig) {
+          if (siteConfig.banner_enabled) {
+              if (urgencyBanner) {
+                  urgencyBanner.style.display = 'block';
+                  const tracks = urgencyBanner.querySelectorAll('.banner-track');
+                  if (tracks.length > 0 && siteConfig.banner_text) {
+                      const content = `<i class="fas fa-bullhorn text-gray-600 text-sm" style="margin-right:8px;"></i> <strong>UPDATE:</strong> ${siteConfig.banner_text} &nbsp;&bull;&nbsp;`;
+                      tracks.forEach(t => { t.innerHTML = content; });
+                  }
               }
+          } else {
+              if (urgencyBanner) urgencyBanner.style.display = 'none';
           }
-      } else {
-          if (urgencyBanner) urgencyBanner.style.display = 'none';
       }
 
       const storeModeBar = document.querySelector('.store-mode-bar');

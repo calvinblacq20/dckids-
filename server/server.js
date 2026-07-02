@@ -9,6 +9,18 @@ const db = require('./db');
 const app = express();
 app.set('trust proxy', 1); // accurate req.ip behind a reverse proxy (nginx/render/etc.)
 
+// Keep the store up through unexpected errors. A single bad request or a stray
+// async rejection must never take the whole server down — that's what made the
+// entire product catalogue vanish ("No products found") until a manual restart.
+// Log loudly, stay alive. Pair this with a process manager in production (see
+// DEPLOYMENT.md) so the server also auto-restarts if it ever does exit.
+process.on('uncaughtException', (err) => {
+    console.error('[uncaughtException]', (err && err.stack) ? err.stack : err);
+});
+process.on('unhandledRejection', (reason) => {
+    console.error('[unhandledRejection]', (reason && reason.stack) ? reason.stack : reason);
+});
+
 const IS_PROD = process.env.NODE_ENV === 'production';
 // Comma-separated allowed origins for production, e.g. "https://dckidsbrand.com,https://www.dckidsbrand.com"
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
@@ -136,12 +148,22 @@ const requireManager = (req, res, next) => {
 // ---------------- AUTH ROUTES ---------------- //
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-    db.get(`SELECT * FROM users WHERE username = ?`, [username], async (err, user) => {
+    // Accept username OR email — access requests register with email only.
+    const ident = String(username || '').trim();
+    db.get(`SELECT * FROM users WHERE username = ? OR email = ?`, [ident, ident.toLowerCase()], async (err, user) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!user) return res.status(400).json({ error: 'Cannot find user' });
 
         try {
             if (await bcrypt.compare(password, user.password_hash)) {
+                // Status gates the access-request workflow. NULL = legacy
+                // pre-migration account (the seeded admin) — treated as active.
+                if (user.status === 'pending') {
+                    return res.status(403).json({ error: 'Your access request is still awaiting the owner\'s approval.' });
+                }
+                if (user.status === 'rejected') {
+                    return res.status(403).json({ error: 'Your access request was declined. Contact the owner.' });
+                }
                 const accessToken = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '12h' });
                 res.json({ accessToken, role: user.role });
             } else {
@@ -151,6 +173,76 @@ app.post('/api/login', (req, res) => {
             res.status(500).send();
         }
     });
+});
+
+// Request admin access (public). Creates a PENDING account that cannot log in
+// until the owner approves it from Manage Staff. Role is fixed to 'staff' here
+// on purpose — requesters never choose their own role; the owner assigns it
+// at approval time.
+app.post('/api/admin/register', async (req, res) => {
+    const { full_name, email, phone, password } = req.body || {};
+    const name = String(full_name || '').trim();
+    const mail = String(email || '').trim().toLowerCase();
+    if (name.length < 2) return res.status(400).json({ error: 'Please enter your full name' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return res.status(400).json({ error: 'Please enter a valid email address' });
+    if (!password || String(password).length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
+
+    try {
+        const hash = await bcrypt.hash(String(password), 10);
+        db.run(
+            `INSERT INTO users (username, password_hash, role, email, full_name, phone, status, created_at)
+             VALUES (?, ?, 'staff', ?, ?, ?, 'pending', datetime('now'))`,
+            [mail, hash, mail, name, String(phone || '').trim() || null],
+            function (err) {
+                if (err) {
+                    if (String(err.message).includes('UNIQUE')) {
+                        return res.status(409).json({ error: 'An account with this email already exists' });
+                    }
+                    return res.status(500).json({ error: err.message });
+                }
+                res.status(201).json({ success: true, message: 'Request submitted — the owner will review it.' });
+            }
+        );
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Pending access requests (owner/manager only)
+app.get('/api/admin/access-requests', authenticateToken, requireManager, (req, res) => {
+    db.all(
+        `SELECT id, full_name, email, phone, created_at FROM users WHERE status = 'pending' ORDER BY id DESC`,
+        [],
+        (err, rows) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json(rows);
+        }
+    );
+});
+
+app.post('/api/admin/access-requests/:id/approve', authenticateToken, requireManager, (req, res) => {
+    const role = (req.body && req.body.role) === 'manager' ? 'manager' : 'staff';
+    db.run(
+        `UPDATE users SET status = 'active', role = ? WHERE id = ? AND status = 'pending'`,
+        [role, req.params.id],
+        function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            if (this.changes === 0) return res.status(404).json({ error: 'Request not found or already handled' });
+            res.json({ success: true, role });
+        }
+    );
+});
+
+app.post('/api/admin/access-requests/:id/reject', authenticateToken, requireManager, (req, res) => {
+    db.run(
+        `UPDATE users SET status = 'rejected' WHERE id = ? AND status = 'pending'`,
+        [req.params.id],
+        function (err) {
+            if (err) return res.status(500).json({ error: err.message });
+            if (this.changes === 0) return res.status(404).json({ error: 'Request not found or already handled' });
+            res.json({ success: true });
+        }
+    );
 });
 
 // ---------------- PUBLIC ROUTES ---------------- //
@@ -520,7 +612,7 @@ app.put('/api/suppliers/:id', authenticateToken, requireManager, (req, res) => {
 // ---------------- USER MANAGEMENT ROUTES (Manager only) ---------------- //
 // List all users
 app.get('/api/users', authenticateToken, requireManager, (req, res) => {
-    db.all(`SELECT id, username, role FROM users`, [], (err, rows) => {
+    db.all(`SELECT id, username, role, email, full_name, phone, status FROM users`, [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
     });
