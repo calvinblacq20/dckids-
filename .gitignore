@@ -41,11 +41,6 @@ dckidsbrand_images/
 *.db-shm
 *.db-wal
 
-# AI agent / tooling runtime (not part of the app)
-.claude/
-.swarm/
-.claude-flow/
-.ruflo/
 
 # Large unused brand media (TikTok source content)
 dckidsbrand_videos/

@@ -34,7 +34,7 @@ Status as of 2026-07-11 (pre-deploy). ✅ verified · ⚠️ partial/needs actio
 - [ ] Dependency-update reminder — ❌ set a monthly reminder to run `npm audit` + `npm update`
 - [x] Smoke tests: `npm test` — 43 end-to-end checks on a throwaway DB, all green (2026-07-11)
 
-## Unhappy paths (playbook: test deliberately)
+## Unhappy paths (test deliberately)
 - [x] Empty forms rejected (client + server validation)
 - [x] Wrong password ×50 → N/A (passwordless); wrong OTP ×5 → code invalidated, limiter caps requests
 - [x] Other users' URLs: tracking with wrong phone → 403 (test); staff route without manager role → 403
