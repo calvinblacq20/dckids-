@@ -152,8 +152,12 @@ function sendEmail(to, subject, html) {
             let body = '';
             r.on('data', (d) => { body += d; });
             r.on('end', () => {
-                if (r.statusCode >= 200 && r.statusCode < 300) resolve({ ok: true });
-                else { console.error(`[email failed ${r.statusCode}] ${body}`); resolve({ ok: false }); }
+                if (r.statusCode >= 200 && r.statusCode < 300) {
+                    let id = '';
+                    try { id = JSON.parse(body).id || ''; } catch (e) { /* non-JSON success body */ }
+                    console.log(`[email sent] to=${to}${id ? ' id=' + id : ''}`);
+                    resolve({ ok: true });
+                } else { console.error(`[email failed ${r.statusCode}] ${body}`); resolve({ ok: false }); }
             });
         });
         request.on('error', (e) => { console.error('[email error]', e.message); resolve({ ok: false }); });

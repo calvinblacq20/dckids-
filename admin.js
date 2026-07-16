@@ -343,7 +343,7 @@ function initSeedData() {
 var _loginEmail = '';
 
 function _loginShowStep(step) {
-    ['email', 'code', 'recovery'].forEach(function (s) {
+    ['accounts', 'email', 'code', 'recovery'].forEach(function (s) {
         var el = document.getElementById('login-step-' + s);
         if (el) el.style.display = (s === step) ? 'block' : 'none';
     });
@@ -355,6 +355,153 @@ function _loginError(msg) {
 function _loginInfo(msg) {
     var el = document.getElementById('login-info');
     if (el) el.textContent = msg || '';
+}
+
+// ── Remembered accounts ("Welcome back") ──
+// Emails of people who have signed in on THIS device — stored so they can
+// sign in with one tap. Emails only, never tokens: this is convenience, not a
+// live session (a code is still required every time). Kept per-device.
+var _REMEMBER_KEY = 'dckids_admin_emails';
+function _rememberedEmails() {
+    try { var a = JSON.parse(localStorage.getItem(_REMEMBER_KEY)); return Array.isArray(a) ? a : []; }
+    catch (e) { return []; }
+}
+function _saveRememberedEmail(email) {
+    email = (email || '').trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    var list = _rememberedEmails().filter(function (x) { return x !== email; });
+    list.unshift(email);
+    try { localStorage.setItem(_REMEMBER_KEY, JSON.stringify(list.slice(0, 4))); } catch (e) { /* storage full/blocked */ }
+}
+function _removeRememberedEmail(email) {
+    var list = _rememberedEmails().filter(function (x) { return x !== email; });
+    try { localStorage.setItem(_REMEMBER_KEY, JSON.stringify(list)); } catch (e) { /* ignore */ }
+}
+function _renderLoginAccounts() {
+    var wrap = document.getElementById('login-accounts-list');
+    if (!wrap) return 0;
+    var list = _rememberedEmails();
+    wrap.innerHTML = list.map(function (email) {
+        var initial = escapeHtml(email.charAt(0));
+        var safe = escapeHtml(email);
+        var enc = encodeURIComponent(email);
+        return '<div class="account-chip" role="listitem" onclick="pickAccount(\'' + enc + '\')">' +
+            '<span class="account-chip__avatar">' + initial + '</span>' +
+            '<span class="account-chip__body"><span class="account-chip__label">Sign in</span>' +
+            '<span class="account-chip__email">' + safe + '</span></span>' +
+            '<button type="button" class="account-chip__remove" title="Forget this email" ' +
+            'onclick="forgetAccount(event, \'' + enc + '\')">&times;</button></div>';
+    }).join('');
+    return list.length;
+}
+// Show the accounts step when we remember someone here, else the email step.
+function showLoginAccounts() {
+    _loginError('');
+    if (_renderLoginAccounts() > 0) { _loginShowStep('accounts'); }
+    else { _loginShowStep('email'); }
+}
+function pickAccount(enc) {
+    var email = decodeURIComponent(enc);
+    var el = document.getElementById('login-email');
+    if (el) el.value = email;
+    requestLoginCode();
+}
+function forgetAccount(e, enc) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    _removeRememberedEmail(decodeURIComponent(enc));
+    showLoginAccounts();
+}
+function useDifferentEmail(e) {
+    if (e) e.preventDefault();
+    _loginShowStep('email');
+    var el = document.getElementById('login-email');
+    if (el) { el.value = ''; el.focus(); }
+}
+
+// ── Idle session timeout ──
+// Server tokens live 12h and are re-checked every request, but an unattended
+// dashboard on a shared computer shouldn't stay open. Auto sign-out after
+// inactivity. Reset by any interaction; only runs while signed in.
+var _IDLE_MS = 30 * 60 * 1000; // 30 minutes
+var _idleTimer = null;
+function _resetIdleTimer() {
+    if (!document.body.classList.contains('is-authed')) return;
+    if (_idleTimer) clearTimeout(_idleTimer);
+    _idleTimer = setTimeout(function () {
+        if (typeof showToast === 'function') showToast('Signed out after 30 minutes of inactivity.', 'warning');
+        logout();
+    }, _IDLE_MS);
+}
+function _startIdleTracking() {
+    ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'].forEach(function (ev) {
+        document.addEventListener(ev, _resetIdleTimer, { passive: true });
+    });
+    _resetIdleTimer();
+}
+function _stopIdleTimer() { if (_idleTimer) { clearTimeout(_idleTimer); _idleTimer = null; } }
+
+// ── Segmented 6-digit OTP input ──
+// Six single-char boxes drive a hidden #login-code field, so verifyLoginCode /
+// resend keep reading one value while the shopper sees a boxed code entry.
+function _otpBoxes() {
+    return Array.prototype.slice.call(document.querySelectorAll('#otp-input .otp-box'));
+}
+function _syncOtpHidden() {
+    var hidden = document.getElementById('login-code');
+    if (hidden) hidden.value = _otpBoxes().map(function (b) { return b.value; }).join('');
+}
+function resetOtpInput() {
+    var boxes = _otpBoxes();
+    boxes.forEach(function (b) { b.value = ''; b.classList.remove('filled'); });
+    _syncOtpHidden();
+    if (boxes[0]) boxes[0].focus();
+}
+function initOtpInput() {
+    var boxes = _otpBoxes();
+    if (!boxes.length) return;
+    boxes.forEach(function (box, i) {
+        box.addEventListener('input', function () {
+            box.value = box.value.replace(/\D/g, '').slice(0, 1);
+            box.classList.toggle('filled', !!box.value);
+            _syncOtpHidden();
+            if (box.value && boxes[i + 1]) boxes[i + 1].focus();
+        });
+        box.addEventListener('keydown', function (e) {
+            if (e.key === 'Backspace' && !box.value && boxes[i - 1]) {
+                boxes[i - 1].focus();
+                boxes[i - 1].value = '';
+                boxes[i - 1].classList.remove('filled');
+                _syncOtpHidden();
+                e.preventDefault();
+            } else if (e.key === 'ArrowLeft' && boxes[i - 1]) {
+                boxes[i - 1].focus(); e.preventDefault();
+            } else if (e.key === 'ArrowRight' && boxes[i + 1]) {
+                boxes[i + 1].focus(); e.preventDefault();
+            } else if (e.key === 'Enter') {
+                verifyLoginCode(e);
+            }
+        });
+        box.addEventListener('paste', function (e) {
+            e.preventDefault();
+            var data = (e.clipboardData || window.clipboardData).getData('text') || '';
+            var digits = data.replace(/\D/g, '').slice(0, 6).split('');
+            if (!digits.length) return;
+            boxes.forEach(function (b, j) {
+                b.value = digits[j] || '';
+                b.classList.toggle('filled', !!b.value);
+            });
+            _syncOtpHidden();
+            boxes[Math.min(digits.length, boxes.length - 1)].focus();
+        });
+        box.addEventListener('focus', function () { box.select(); });
+    });
+    // Auto sign-in the moment all six digits are present (typed or pasted),
+    // so there's no separate "verify" tap — matches modern OTP flows.
+    var container = document.getElementById('otp-input');
+    if (container) container.addEventListener('input', function () {
+        var hidden = document.getElementById('login-code');
+        if (hidden && /^\d{6}$/.test(hidden.value)) verifyLoginCode();
+    });
 }
 
 function requestLoginCode(e) {
@@ -375,8 +522,7 @@ function requestLoginCode(e) {
         var to = document.getElementById('login-code-sent-to');
         if (to) to.textContent = email;
         _loginShowStep('code');
-        var codeEl = document.getElementById('login-code');
-        if (codeEl) { codeEl.value = ''; codeEl.focus(); }
+        resetOtpInput();
     })
     .catch(function (err) {
         _loginError(err.message === 'Failed to fetch' ? 'Server unavailable — try again later.' : err.message);
@@ -409,6 +555,8 @@ function showRecoveryLogin(e) {
 function _finishLogin(data) {
     localStorage.setItem('adminToken', data.accessToken);
     localStorage.setItem('adminRole', data.role);
+    // Remember this email on this device for one-tap sign-in next time.
+    _saveRememberedEmail(_loginEmail || (data && data.email));
     _loginError('');
     var proceed = function () { showDashboard(data.role); };
     if (data.recoveryCodes && data.recoveryCodes.length) {
@@ -606,6 +754,7 @@ function showDashboard(role) {
     document.getElementById('login-container').style.display = 'none';
     document.getElementById('dashboard-container').style.display = 'block';
     document.body.classList.add('is-authed');
+    _startIdleTracking();
 
     var badge = document.getElementById('user-role-badge');
     if (badge) {
@@ -641,9 +790,12 @@ function logout() {
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminRole');
     currentRole = '';
+    _stopIdleTimer();
     document.body.classList.remove('is-authed');
     document.getElementById('dashboard-container').style.display = 'none';
     document.getElementById('login-container').style.display = 'flex';
+    // Land on "Welcome back" if we remember anyone on this device.
+    showLoginAccounts();
 }
 
 // A protected endpoint answered 401/403: the token is missing, invalid, or
@@ -7284,6 +7436,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Render "Continue with Google" on the login screen (self-gating on config)
     initGoogleSignIn();
 
+    // Wire the segmented 6-digit code boxes
+    initOtpInput();
+
     // Check if already logged in — verify token is still valid
     var token = localStorage.getItem('adminToken');
     if (token) {
@@ -7304,6 +7459,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 localStorage.removeItem('adminRole');
                 document.getElementById('dashboard-container').style.display = 'none';
                 document.getElementById('login-container').style.display = 'flex';
+                showLoginAccounts();
             }
         })
         .catch(function() {
@@ -7312,7 +7468,11 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.removeItem('adminRole');
             document.getElementById('dashboard-container').style.display = 'none';
             document.getElementById('login-container').style.display = 'flex';
+            showLoginAccounts();
         });
+    } else {
+        // No session — open on "Welcome back" if we remember anyone here.
+        showLoginAccounts();
     }
 });
 

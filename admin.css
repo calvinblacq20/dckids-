@@ -647,7 +647,7 @@ h1, h2, h3, h4, h5, h6 {
   .signup-hero {
     flex: 0 0 auto;
     gap: 14px;
-    padding: 26px 22px 22px;
+    padding: 26px 22px 48px;   /* extra bottom room so the curved sheet clears the text */
     border-radius: 0;
     box-shadow: none;
   }
@@ -658,10 +658,15 @@ h1, h2, h3, h4, h5, h6 {
   .signup-hero__lede { margin-bottom: 0; font-size: 14.5px; }
   .signup-panel {
     flex: 1 1 auto;
-    margin-left: 0;         /* no overlap when stacked */
-    border-radius: 0;
-    box-shadow: none;
-    padding: 26px 20px 40px;
+    margin-left: 0;                  /* no side overlap when stacked */
+    /* Curved seam: pull the white sheet up over the photo and round its top so
+       the join between the picture and the form is a curve, like the left panel. */
+    margin-top: -28px;
+    position: relative;
+    z-index: 2;
+    border-radius: 26px 26px 0 0;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.12);
+    padding: 32px 20px 40px;
   }
   .signup-card { max-width: 460px; }
   .signup-title { font-size: 30px; }

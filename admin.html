@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=111">
+  <link rel="stylesheet" href="admin.css?v=112">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -285,6 +285,79 @@
       display: none;
     }
     .login-info:not(:empty) { display: block; }
+
+    /* ── Refreshed sign-in styling (tagline, verification badge, OTP boxes) ── */
+    .login-tagline { color: #9ca3af; font-size: 0.8rem; margin: 0 0 14px; }
+    .login-verify-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: #6b7280; font-size: 0.85rem; margin-top: 6px;
+    }
+    .login-verify-badge svg { color: #16a34a; }
+    .login-substep--center { text-align: center; }
+
+    /* Segmented 6-digit OTP input */
+    .otp-input { display: flex; gap: 8px; justify-content: center; margin-bottom: 12px; }
+    .otp-box {
+      flex: 1 1 0; min-width: 0; height: 56px;
+      border: 1.5px solid #e5e7eb; border-radius: 12px;
+      background: #fff !important; color: #1a1a2e !important;
+      text-align: center; font-size: 1.4rem; font-weight: 700;
+      outline: none; box-sizing: border-box;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .otp-box::placeholder { color: #cbd5e1; font-weight: 400; }
+    .otp-box:focus { border-color: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,0.18); }
+    .otp-box.filled { border-color: #9ca3af; }
+    @media (max-width: 420px) { .otp-box { height: 48px; font-size: 1.2rem; border-radius: 10px; } }
+
+    /* "Welcome back" — one-tap sign-in for accounts used on this device.
+       Stores emails only (never tokens), so it's a convenience, not a session. */
+    .login-accounts { display: flex; flex-direction: column; gap: 10px; margin-bottom: 6px; }
+    .account-chip {
+      display: flex; align-items: center; gap: 12px; width: 100%;
+      padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 14px;
+      background: #fff; cursor: pointer; text-align: left; transition: border-color .15s, box-shadow .15s, transform .05s;
+    }
+    .account-chip:hover { border-color: #16a34a; box-shadow: 0 2px 10px rgba(15,76,58,0.08); }
+    .account-chip:active { transform: translateY(1px); }
+    .account-chip__avatar {
+      width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg,#0F4C3A,#16a34a); color: #fff;
+      display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; text-transform: uppercase;
+    }
+    .account-chip__body { flex: 1; min-width: 0; }
+    .account-chip__label { font-size: 13px; font-weight: 600; color: #111827; }
+    .account-chip__email { font-size: 12.5px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .account-chip__remove {
+      flex-shrink: 0; width: 26px; height: 26px; border: none; background: none; color: #b0b6bf;
+      border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; line-height: 1;
+    }
+    .account-chip__remove:hover { background: #f3f4f6; color: #dc2626; }
+    .login-other-account {
+      width: 100%; margin-top: 4px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 14px;
+      background: #fafafa; color: #374151; font-weight: 600; font-size: 14px; cursor: pointer; transition: background .15s;
+    }
+    .login-other-account:hover { background: #f3f4f6; }
+
+    /* Legal footer shown on both the sign-in and request-access cards */
+    .login-legal { margin-top: 18px; font-size: 11.5px; line-height: 1.6; color: #9ca3af; text-align: center; }
+    .login-legal a { color: #0F4C3A; font-weight: 600; text-decoration: none; }
+    .login-legal a:hover { text-decoration: underline; }
+
+    .login-code-hint {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      color: #9ca3af; font-size: 0.8rem; margin: 0 0 2px;
+    }
+    .login-action-btn--icon { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+
+    /* Stacked action links with leading icons */
+    .login-links { display: flex; flex-direction: column; align-items: center; gap: 13px; margin-top: 14px; }
+    .login-link {
+      display: inline-flex; align-items: center; gap: 9px;
+      color: #fc4c7a; font-size: 0.92rem; font-weight: 600; text-decoration: none;
+    }
+    .login-link svg { color: #9ca3af; flex-shrink: 0; }
+    .login-link:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -293,12 +366,24 @@
   <div id="login-container" class="login-container">
     <div class="login-card">
       <div class="login-brand">
-        <img src="icon.png" alt="DC Kids Logo">
+        <img src="icon.png" alt="DC Kids Brand">
+        <p class="login-tagline">Merch for Little Champs</p>
         <h1 class="login-title">Admin sign in</h1>
+        <div class="login-verify-badge">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
+          <span>Secure verification</span>
+        </div>
       </div>
 
       <div id="login-info" class="login-info" role="status" aria-live="polite"></div>
       <div id="login-error" class="login-error" role="alert" aria-live="polite"></div>
+
+      <!-- Step 0: remembered accounts on this device (one-tap sign-in) -->
+      <div id="login-step-accounts" class="login-form" style="display:none;">
+        <p class="login-substep login-substep--center">Choose an account to sign in.</p>
+        <div id="login-accounts-list" class="login-accounts" role="list"></div>
+        <button type="button" class="login-other-account" onclick="useDifferentEmail(event)">Use a different email</button>
+      </div>
 
       <!-- Step 1: enter email -->
       <div id="login-step-email" class="login-form">
@@ -323,21 +408,39 @@
 
       <!-- Step 2: enter the 6-digit code -->
       <div id="login-step-code" class="login-form" style="display:none;">
-        <p class="login-substep">We sent a 6-digit code to <strong id="login-code-sent-to"></strong>. Enter it below (valid for 10 minutes).</p>
-        <div class="form-group">
-          <label for="login-code">6-digit code</label>
-          <div class="input-wrapper">
-            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-            </svg>
-            <input type="text" inputmode="numeric" maxlength="6" id="login-code" placeholder="123456" autocomplete="one-time-code" aria-label="6-digit code">
-          </div>
+        <p class="login-substep login-substep--center">We sent a 6-digit code to <strong id="login-code-sent-to"></strong>.<br>Enter it below (valid for 10 minutes).</p>
+        <div class="otp-input" id="otp-input" role="group" aria-label="6-digit sign-in code">
+          <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" class="otp-box" placeholder="-" aria-label="Digit 1">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" placeholder="-" aria-label="Digit 2">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" placeholder="-" aria-label="Digit 3">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" placeholder="-" aria-label="Digit 4">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" placeholder="-" aria-label="Digit 5">
+          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" placeholder="-" aria-label="Digit 6">
         </div>
-        <button id="login-verify-btn" type="button" class="login-action-btn" onclick="verifyLoginCode(event)">Verify &amp; sign in</button>
-        <p class="login-substep-links">
-          <a href="#" onclick="resendLoginCode(event)">Resend code</a> &nbsp;&middot;&nbsp;
-          <a href="#" onclick="loginBackToEmail(event)">Use a different email</a>
+        <input type="hidden" id="login-code">
+        <p class="login-code-hint">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"></circle><path d="m10.8 12.2 7.7-7.7"></path><path d="m16 6 2 2"></path><path d="m18.5 3.5 2 2"></path></svg>
+          Don't share your code with anyone.
         </p>
+        <button id="login-verify-btn" type="button" class="login-action-btn login-action-btn--icon" onclick="verifyLoginCode(event)">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Verify &amp; sign in
+        </button>
+        <div class="login-or"><span>OR</span></div>
+        <div class="login-links">
+          <a href="#" class="login-link" onclick="resendLoginCode(event)">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path></svg>
+            Resend code
+          </a>
+          <a href="#" class="login-link" onclick="loginBackToEmail(event)">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
+            Use a different email
+          </a>
+          <a href="#" class="login-link" onclick="showRecoveryLogin(event)">
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            Use a recovery code instead
+          </a>
+        </div>
       </div>
 
       <!-- Backup: recovery code -->
@@ -365,8 +468,13 @@
         <p class="login-substep-links"><a href="#" onclick="loginBackToEmail(event)">Back to email sign-in</a></p>
       </div>
 
-      <p class="login-request-access"><a href="#" onclick="showRecoveryLogin(event)">Use a recovery code instead</a></p>
       <p class="login-request-access">Need admin access? <a href="#" onclick="showSignupView(event)">Request access</a></p>
+
+      <p class="login-legal">
+        By signing in you agree to our
+        <a href="/terms.html" target="_blank" rel="noopener">Terms of Service</a> and
+        <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.
+      </p>
     </div>
   </div>
 
@@ -470,6 +578,11 @@
           <p class="signup-secure-note">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             The owner approves every request before you can sign in.
+          </p>
+          <p class="login-legal">
+            By requesting access you agree to our
+            <a href="/terms.html" target="_blank" rel="noopener">Terms of Service</a> and
+            <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.
           </p>
         </div>
       </div>
@@ -6137,7 +6250,7 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="admin.js?v=114"></script>
+  <script src="admin.js?v=116"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
