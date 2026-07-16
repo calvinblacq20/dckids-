@@ -16,7 +16,6 @@ module.exports = [
             'server/backups/**',
             'images/**',
             'docs/**',
-            '.claude/**',
             '_backup_pre_import*/**',
             '_frontend_backup_*/**',
             'dc kids (1)/**',

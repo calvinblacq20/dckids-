@@ -1,12 +1,12 @@
-# Retrofit Audit — DC Kids Brand
+# Security & Structure Audit — DC Kids Brand
 
-Playbook retrofit audit (Phases 0–10), run 2026-07-11 against commit `cd61271`.
+Full audit run 2026-07-11 against commit `cd61271`.
 Safety pass done first: tree clean, `server/.env` + `*.db` gitignored, backup taken and
 **verified restorable** (integrity ok; 27 orders, 267 products readable from the backup file).
 
-Much of a normal retrofit was already done in previous sessions (identity block, PRD,
-ship checklist, 41-check smoke suite, five security-fix rounds). This report covers what
-remains, ranked by risk. **No code was changed during this audit.**
+Most of the groundwork was already in place (project docs, PRD, ship checklist,
+41-check smoke suite, several security-fix rounds). This report covers what remains,
+ranked by risk. **No code was changed during this audit.**
 
 ---
 
@@ -54,7 +54,7 @@ remains, ranked by risk. **No code was changed during this audit.**
   Also added 2026-07-14: `/healthz` + `/readyz`, and checkout idempotency keys
   (double-submit/network-retry safe).
 - **M5 · LOW — Unbounded default fetches.** `/api/products` and `/api/orders` return the
-  full table unless pagination params are passed (playbook: paginate everything). Fine at
+  full table unless pagination params are passed (best practice: paginate everything). Fine at
   267 products / 27 orders; flip the default before the catalogue grows ~10×.
 - **M6 · LOW — No uptime monitor.** Point a free pinger at the domain post-deploy.
 
