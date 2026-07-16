@@ -647,7 +647,7 @@ h1, h2, h3, h4, h5, h6 {
   .signup-hero {
     flex: 0 0 auto;
     gap: 14px;
-    padding: 26px 22px 48px;   /* extra bottom room so the curved sheet clears the text */
+    padding: 26px 22px 22px;
     border-radius: 0;
     box-shadow: none;
   }
@@ -658,15 +658,10 @@ h1, h2, h3, h4, h5, h6 {
   .signup-hero__lede { margin-bottom: 0; font-size: 14.5px; }
   .signup-panel {
     flex: 1 1 auto;
-    margin-left: 0;                  /* no side overlap when stacked */
-    /* Curved seam: pull the white sheet up over the photo and round its top so
-       the join between the picture and the form is a curve, like the left panel. */
-    margin-top: -28px;
-    position: relative;
-    z-index: 2;
-    border-radius: 26px 26px 0 0;
-    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.12);
-    padding: 32px 20px 40px;
+    margin-left: 0;         /* no overlap when stacked */
+    border-radius: 0;
+    box-shadow: none;
+    padding: 26px 20px 40px;
   }
   .signup-card { max-width: 460px; }
   .signup-title { font-size: 30px; }
@@ -8210,7 +8205,7 @@ h1, h2, h3, h4, h5, h6 {
 /* ============================================================
    TAILWIND-BUILT MODALS — explicit centering/sizing
    modal-product, modal-add-product, modal-add-customer, modal-add-order
-   are built with cdn.tailwindcss.com utility classes (fixed, inset-0, flex,
+   are built with locally compiled Tailwind utility classes (fixed, inset-0, flex,
    items-center, justify-center, p-4, max-w-*, max-h-[90vh]). That CDN script
    doesn't reliably apply those classes, so the card was rendering edge-to-edge
    with zero margin instead of as a centered dialog. Force the shell here so
@@ -9895,3 +9890,21 @@ body.dark-mode .mobile-bottom-nav,
 
 .dark-mode .cdd-btn { background: #1e1a24; }
 .dark-mode .cdd-panel { background: #1e1a24; border-color: rgba(255,255,255,0.08); }
+
+
+/* Product image provenance + bulk image workflow */
+.admin-image-wrap { position: relative; display: inline-flex; flex: 0 0 auto; }
+.admin-image-badge { position: absolute; left: 3px; bottom: 3px; padding: 2px 5px; border-radius: 999px; background: rgba(15,76,58,.92); color: #fff; font-size: 8px; font-weight: 700; white-space: nowrap; }
+.image-source-note { display: inline-flex; align-items: center; gap: 5px; color: var(--admin-subtext); font-size: 11px; }
+.bulk-image-drop { border: 2px dashed #f7a9bd; border-radius: 14px; padding: 24px; background: #fff8fa; text-align: center; }
+.bulk-image-summary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin: 14px 0; }
+.bulk-image-summary > div { padding: 10px; border: 1px solid var(--admin-border); border-radius: 10px; background: var(--admin-card); }
+.bulk-image-list { max-height: 280px; overflow: auto; display: grid; gap: 8px; }
+.bulk-image-row { display: grid; grid-template-columns: 44px minmax(0,1fr) 100px; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--admin-border); border-radius: 10px; }
+.bulk-image-row img { width: 44px; height: 44px; object-fit: cover; border-radius: 8px; }
+.bulk-image-row__status { font-size: 11px; font-weight: 700; text-align: right; }
+.bulk-image-progress { height: 6px; overflow: hidden; border-radius: 999px; background: #eee; margin-top: 5px; }
+.bulk-image-progress > span { display: block; height: 100%; width: 0; background: #0F4C3A; transition: width .2s ease; }
+.health-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+.health-card { padding: 12px; border: 1px solid var(--admin-border); border-radius: 12px; background: var(--admin-card); }
+@media (max-width: 640px) { .bulk-image-summary, .health-grid { grid-template-columns: 1fr; } .bulk-image-row { grid-template-columns: 44px minmax(0,1fr); } .bulk-image-row__status { grid-column: 2; text-align: left; } }

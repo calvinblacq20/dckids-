@@ -13,7 +13,7 @@ npm install
 node server.js
 ```
 
-The server listens on `PORT` (default 3000) and serves the whole site.
+The server listens on `PORT` (default 3001) and serves the whole site.
 
 ### Keep it running (important)
 
@@ -22,8 +22,8 @@ catalogue comes from the API, and the static `products.json` fallback is served 
 same process, so if it stops, the store goes blank. Two safeguards are in place and one
 is up to your host:
 
-- The server now has **crash guards** (`uncaughtException` / `unhandledRejection`): a
-  single bad request or stray error is logged but **won't take the whole server down**.
+- The server handles `SIGTERM` and `SIGINT`, stops accepting requests, and closes
+  SQLite cleanly. Fatal uncaught errors exit so the host can restart a clean process.
 - **Run it under a process manager so it auto-restarts** if it ever exits or the box
   reboots. Examples:
   ```bash
@@ -41,12 +41,14 @@ is up to your host:
 | Variable | Required | Purpose |
 |---|---|---|
 | `NODE_ENV` | **yes (production)** | Set to `production` to enable strict CORS, HSTS, and tight rate limiting. Unset = dev mode (open CORS, no HSTS). |
+| `DATA_DIR` | **yes (production)** | Absolute persistent-volume mount. Railway: `/data`. Database, uploads, and local backups are derived from it. |
+| `DB_PATH` / `UPLOAD_DIR` / `BACKUP_DIR` | no | Optional absolute overrides for individual storage locations. |
 | `JWT_SECRET` | **yes** | Secret for signing admin/customer sessions. Use a long random string (32+ chars). Never commit it. |
 | `ALLOWED_ORIGINS` | production | Comma-separated origins permitted by CORS, e.g. `https://dckidsbrand.com,https://www.dckidsbrand.com`. |
-| `OWNER_EMAIL` | recommended | Comma-separated emails auto-activated as owner (manager) on sign-up. Everyone else lands in `pending` and must be approved. Unset = the very first sign-up becomes owner. See §3. |
-| `RESEND_API_KEY` / `RESEND_FROM` | recommended | Sends the 6-digit sign-in codes via Resend. Unset = codes are only printed to the server log (fine for local dev, not production). |
-| `APP_URL` | recommended | Public base URL used in emails (e.g. `https://dckidsbrand.com`). |
-| `PORT` | no | Listening port (default 3000). Most hosts inject this automatically. |
+| `OWNER_EMAIL` | **yes (production)** | Comma-separated owner emails. Production refuses the unsafe first-sign-up fallback. |
+| `RESEND_API_KEY` / `RESEND_FROM` | **yes (production)** | Sends sign-in codes. The sender must use a verified, non-default address. |
+| `APP_URL` | **yes (production)** | HTTPS public origin used in emails; it must also appear in `ALLOWED_ORIGINS`. |
+| `PORT` | no | Listening port (default 3001). Most hosts inject this automatically. |
 | `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | no | Optional instant order alerts. `TELEGRAM_CHAT_ID` accepts **one or more** comma-separated destinations — each can be a personal chat id or a shared channel/group id. To add the new owner, append their id (e.g. `111111111,222222222`); every destination receives each order. For a channel, add the bot as an admin and use the channel id. |
 | `SHOP_NOTIFY_EMAIL`, `SMTP_*` | no | Optional transactional email. |
 
@@ -71,21 +73,26 @@ code printed to the server log). The first owner is claimed like this:
 
 ## 4. Data & backups
 
-- SQLite database lives at `server/inventory.db` (plus `-wal`/`-shm` sidecars).
+- Local development defaults to `server/inventory.db`; production derives the database, uploads, and backups from `DATA_DIR`.
 - It is **gitignored** — it holds customer/order data and must not be committed.
-- Persist this file across deploys (mount a volume / persistent disk). If it is
-  wiped, the catalogue re-seeds and a new admin account is created.
-- `node server/backup_db.js` writes a backup copy.
+- On Railway, mount one volume at `/data`, set `DATA_DIR=/data`, and keep exactly one application replica.
+- New product photos are stored under `/data/uploads` and served at `/images/uploads/...`; legacy image paths remain supported.
+- Run `npm run backup` from `server/` for a WAL-safe, integrity-checked backup. The newest 30 successful files are retained under `/data/backups`.
+- Also enable Railway volume snapshots: daily, weekly, and monthly. Local backup files do not replace platform snapshots.
+- Restore only while the service is stopped: copy the selected backup to `/data/inventory.db`, remove stale `inventory.db-wal` and `inventory.db-shm`, then restart and check `/api/health`.
 
 ## 5. Production checklist
 
 - [ ] `NODE_ENV=production` set on the host
+- [ ] Railway volume mounted at `/data`; `DATA_DIR=/data`; application replicas fixed at one
 - [ ] `JWT_SECRET` is a fresh long random value
 - [ ] `ALLOWED_ORIGINS` lists your real domain(s)
 - [ ] `OWNER_EMAIL` set to your owner address(es) — so a stranger can't claim owner
 - [ ] `RESEND_API_KEY` + `RESEND_FROM` set (and a domain verified in Resend) so sign-in codes actually email
 - [ ] `APP_URL` set to your public URL (used in emails)
-- [ ] `server/inventory.db` on persistent storage
+- [ ] `/data/inventory.db` and `/data/uploads` persist across a redeploy
+- [ ] Daily, weekly, and monthly Railway volume snapshots enabled; `npm run backup` tested
+- [ ] `/api/health` returns HTTP 200 with database and storage both `ok`
 - [ ] Served over HTTPS (required for the PWA service worker and HSTS)
 
 ## 6. Google Sign-In setup (optional but recommended)

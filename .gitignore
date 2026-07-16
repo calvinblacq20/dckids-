@@ -8,6 +8,7 @@ server/inventory.db
 server/inventory.db-wal
 server/inventory.db-shm
 server/backups/
+server/uploads/
 
 # Dependencies
 node_modules/

@@ -1,29 +1,33 @@
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+const fs = require('fs');
+const config = require('./config');
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const db = require('./db');
+const { checkHealth } = require('./health');
 
 const app = express();
 app.set('trust proxy', 1); // accurate req.ip behind a reverse proxy (nginx/render/etc.)
 
-// Keep the store up through unexpected errors. A single bad request or a stray
-// async rejection must never take the whole server down — that's what made the
-// entire product catalogue vanish ("No products found") until a manual restart.
-// Log loudly, stay alive. Pair this with a process manager in production (see
-// DEPLOYMENT.md) so the server also auto-restarts if it ever does exit.
+let httpServer = null;
+let shutdownPromise = null;
+
+// Treat unexpected process-level errors as fatal: close the listener and
+// Railway's restart policy then recovers a clean process.
 process.on('uncaughtException', (err) => {
     console.error('[uncaughtException]', (err && err.stack) ? err.stack : err);
+    shutdown('uncaughtException', 1);
 });
 process.on('unhandledRejection', (reason) => {
     console.error('[unhandledRejection]', (reason && reason.stack) ? reason.stack : reason);
+    shutdown('unhandledRejection', 1);
 });
 
-const IS_PROD = process.env.NODE_ENV === 'production';
+const IS_PROD = config.isProd;
 // Comma-separated allowed origins for production, e.g. "https://dckidsbrand.com,https://www.dckidsbrand.com"
-const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+const ALLOWED_ORIGINS = config.allowedOrigins;
 
 // ----- Security headers (helmet-equivalent, zero extra deps) -----
 app.use((req, res, next) => {
@@ -61,6 +65,14 @@ app.use(express.urlencoded({ limit: '8mb', extended: true }));
 // Last-Modified and can serve a stale .css/.js straight from disk cache on a
 // normal reload — bypassing the service worker's network-first fetch entirely,
 // since fetch() still honors the underlying HTTP cache. Images/fonts cache normally.
+app.use('/images/uploads', express.static(config.uploadDir, {
+    index: false,
+    setHeaders: function (res) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+    }
+}));
+
 app.use(express.static(path.join(__dirname, '..'), {
     setHeaders: function (res, filePath) {
         if (filePath.endsWith('.html') || filePath.endsWith('service-worker.js') ||
@@ -72,28 +84,20 @@ app.use(express.static(path.join(__dirname, '..'), {
     }
 }));
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dckids-super-secret-key-change-in-production';
+app.get('/api/health', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    checkHealth(db, [config.dataDir, path.dirname(config.dbPath), config.uploadDir, config.backupDir], (result) => {
+        res.status(result.healthy ? 200 : 503).json({
+            status: result.healthy ? 'ok' : 'degraded',
+            database: result.database,
+            storage: result.storage,
+            uptimeSeconds: Math.floor(process.uptime()),
+            timestamp: new Date().toISOString()
+        });
+    });
+});
 
-// Never run in production on the built-in fallback secret: it's public (it's in
-// this file), so anyone could forge an admin token and take over. Fail fast so a
-// misconfigured deploy can't start insecurely rather than silently.
-if (IS_PROD && (!process.env.JWT_SECRET || JWT_SECRET === 'dckids-super-secret-key-change-in-production')) {
-    console.error('FATAL: JWT_SECRET must be set to a strong, unique value in production. Refusing to start.');
-    process.exit(1);
-}
-
-// Sign-in is passwordless: codes arrive by email. A production deploy without a
-// Resend key can't deliver codes, which locks every admin out (the codes are
-// deliberately NOT logged in production — see request-code). Google sign-in, if
-// configured, is a usable fallback, so degrade to a loud warning in that case.
-if (IS_PROD && !process.env.RESEND_API_KEY) {
-    if ((process.env.GOOGLE_CLIENT_ID || '').trim()) {
-        console.warn('WARNING: RESEND_API_KEY is not set — email sign-in codes cannot be delivered. Only "Continue with Google" will work.');
-    } else {
-        console.error('FATAL: RESEND_API_KEY must be set in production — sign-in codes are emailed and there is no other way in. Refusing to start.');
-        process.exit(1);
-    }
-}
+const JWT_SECRET = config.jwtSecret;
 
 // Unexpected-failure responses: the user gets a generic message; the real error
 // (raw SQLite/driver text) goes to the server log only. Driver messages leak
@@ -108,23 +112,22 @@ function serverError(res, err) {
 const https = require('https');
 const crypto = require('crypto');
 
-const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-const RESEND_FROM = process.env.RESEND_FROM || 'DC Kids Admin <onboarding@resend.dev>';
-const APP_URL = process.env.APP_URL || 'http://localhost:3001';
+const RESEND_API_KEY = config.resendApiKey;
+const RESEND_FROM = config.resendFrom;
+const APP_URL = config.appUrl;
 
 // Google Sign-In (optional). When GOOGLE_CLIENT_ID is set, the admin login page
 // shows a "Continue with Google" button; when unset, the button is hidden and
 // email-OTP remains the only path. The client id is public (safe to expose to
 // the browser) — there is no client secret because we use the ID-token flow.
-const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || '').trim();
+const GOOGLE_CLIENT_ID = config.googleClientId;
 
 // Owner allowlist: a comma-separated list of emails in OWNER_EMAIL that are
 // auto-activated as owner (manager) on sign-up — e.g. your dev email now plus
 // the real admin's email at deploy. Everyone else goes to 'pending' and must be
 // approved. If OWNER_EMAIL is unset, we fall back to "first sign-up = owner" so
 // a fresh install still bootstraps (a startup warning nudges you to set it).
-const OWNER_EMAILS = (process.env.OWNER_EMAIL || '')
-    .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+const OWNER_EMAILS = config.ownerEmails;
 if (OWNER_EMAILS.length === 0) {
     console.warn('[auth] OWNER_EMAIL is not set — the FIRST sign-up will auto-become owner. Set OWNER_EMAIL in server/.env to lock owner claims to specific addresses.');
 }
@@ -152,12 +155,8 @@ function sendEmail(to, subject, html) {
             let body = '';
             r.on('data', (d) => { body += d; });
             r.on('end', () => {
-                if (r.statusCode >= 200 && r.statusCode < 300) {
-                    let id = '';
-                    try { id = JSON.parse(body).id || ''; } catch (e) { /* non-JSON success body */ }
-                    console.log(`[email sent] to=${to}${id ? ' id=' + id : ''}`);
-                    resolve({ ok: true });
-                } else { console.error(`[email failed ${r.statusCode}] ${body}`); resolve({ ok: false }); }
+                if (r.statusCode >= 200 && r.statusCode < 300) resolve({ ok: true });
+                else { console.error(`[email failed ${r.statusCode}] ${body}`); resolve({ ok: false }); }
             });
         });
         request.on('error', (e) => { console.error('[email error]', e.message); resolve({ ok: false }); });
@@ -685,7 +684,7 @@ const isDuplicateSku = (err) => err && /UNIQUE constraint failed: products\.sku/
 // Category-prefix + sequential SKU, e.g. "CLO-0001". Walks forward past any
 // existing number (including gaps from deleted products or manually-typed
 // SKUs) so it always lands on something genuinely free.
-const SKU_PREFIXES = { clothing: 'CLO', shoes: 'SHO', accessories: 'ACC', newborn: 'NEW', bedding: 'BED', essentials: 'ESS' };
+const SKU_PREFIXES = { clothing: 'CLO', shoes: 'SHO', accessories: 'ACC', newborn: 'NEW', bedding: 'BED', essentials: 'ESS', feeding: 'FEE', gear: 'GEA', bathcare: 'BAT' };
 function skuPrefixFor(cat) {
     return SKU_PREFIXES[cat] || (String(cat || 'GEN').replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() || 'GEN');
 }
@@ -1239,7 +1238,7 @@ app.get('/api/orders/:id/item-preview', authenticateToken, (req, res) => {
                 
                 // Fallback details if product doesn't exist anymore
                 const pName = product ? product.name : primaryItem.product_name;
-                const pImg = product ? product.img : 'images/placeholder.png';
+                const pImg = product ? product.img : 'images/placeholder.svg';
                 const pCat = product ? product.cat : 'clothing';
                 const pPrice = product ? product.price : primaryItem.price_at_time;
                 const pSize = product ? product.size : 'Standard';
@@ -1298,7 +1297,7 @@ app.get('/api/orders/:id/item-preview', authenticateToken, (req, res) => {
                                 quantity: row.quantity,
                                 price_at_time: row.price_at_time,
                                 product_id: row.product_id,
-                                image: imgById[row.product_id] || pImg || 'images/placeholder.png',
+                                image: imgById[row.product_id] || pImg || 'images/placeholder.svg',
                                 category: catById[row.product_id] || pCat
                             }))
                         });
@@ -1709,7 +1708,7 @@ app.get('/api/analytics/sales/export', authenticateToken, async (req, res) => {
 //   routes (me/addresses/wishlist) stay mounted: without login nobody can mint
 //   a customer token, so they are unreachable until the flag is on.
 // ===========================================================================
-const CUSTOMER_ACCOUNTS_ENABLED = String(process.env.CUSTOMER_ACCOUNTS_ENABLED || '').toLowerCase() === 'true';
+const CUSTOMER_ACCOUNTS_ENABLED = config.customerAccountsEnabled;
 const requireCustomerAccountsEnabled = (req, res, next) => {
     if (!CUSTOMER_ACCOUNTS_ENABLED) return res.status(404).json({ error: 'Customer accounts are not available' });
     next();
@@ -2108,9 +2107,8 @@ app.put('/api/users/:id', authenticateToken, requireManager, (req, res) => {
 //   check getUpdates) OR a channel/group id (add the bot as an admin). To add a
 //   new owner, just append their id — every destination receives the alert.
 // ===========================================================================
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const TELEGRAM_CHAT_IDS  = (process.env.TELEGRAM_CHAT_ID || '')
-    .split(',').map(s => s.trim()).filter(Boolean);
+const TELEGRAM_BOT_TOKEN = config.telegramBotToken;
+const TELEGRAM_CHAT_IDS = config.telegramChatIds;
 
 function sendOwnerWhatsAppAlert(order) {
     const now       = new Date();
@@ -2269,13 +2267,144 @@ app.post('/api/products/bulk-import', authenticateToken, requireManager, (req, r
 });
 
 // ===========================================================================
+//   PRODUCT IMAGE HEALTH + TRANSACTIONAL BULK MAPPING (manager only)
+// ===========================================================================
+const PROJECT_ROOT = path.resolve(__dirname, '..');
+const STATIC_IMAGES_DIR = path.join(PROJECT_ROOT, 'images');
+const UPLOAD_FILENAME_RE = /^product_upload_\d+_[a-f0-9]+\.(?:jpg|jpeg|png|webp)$/i;
+const PERSISTENT_UPLOAD_RE = /^images\/uploads\/product_upload_\d+_[a-f0-9]+\.(?:jpg|jpeg|png|webp)$/i;
+const SERVER_ISSUED_IMAGE_RE = /^(?:images\/product_upload_\d+_(?:\d+|[a-f0-9]+)|images\/uploads\/product_upload_\d+_[a-f0-9]+)\.(?:jpg|jpeg|png|webp)$/i;
+
+function isWithinDirectory(base, target) {
+    const relative = path.relative(path.resolve(base), path.resolve(target));
+    return relative !== '' && !relative.startsWith('..' + path.sep) && relative !== '..' && !path.isAbsolute(relative);
+}
+
+function resolveProductImageFile(imagePath) {
+    const normalized = String(imagePath || '').replace(/\\/g, '/');
+    if (PERSISTENT_UPLOAD_RE.test(normalized)) {
+        const target = path.resolve(config.uploadDir, normalized.slice('images/uploads/'.length));
+        return isWithinDirectory(config.uploadDir, target) ? target : null;
+    }
+    if (/^images\/[a-zA-Z0-9_./-]+$/.test(normalized)) {
+        const target = path.resolve(PROJECT_ROOT, ...normalized.split('/'));
+        return isWithinDirectory(STATIC_IMAGES_DIR, target) ? target : null;
+    }
+    return null;
+}
+
+function uploadedImagePaths() {
+    const persistent = fs.readdirSync(config.uploadDir, { withFileTypes: true })
+        .filter((entry) => entry.isFile() && UPLOAD_FILENAME_RE.test(entry.name))
+        .map((entry) => 'images/uploads/' + entry.name);
+    let legacy;
+    try {
+        legacy = fs.readdirSync(STATIC_IMAGES_DIR, { withFileTypes: true })
+            .filter((entry) => entry.isFile() && /^product_upload_/i.test(entry.name))
+            .map((entry) => 'images/' + entry.name);
+    } catch (error) {
+        legacy = [];
+    }
+    return persistent.concat(legacy);
+}
+
+app.get('/api/products/image-health', authenticateToken, requireManager, (req, res) => {
+    db.all(`SELECT id, name, sku, img FROM products ORDER BY id`, [], (err, products) => {
+        if (err) return serverError(res, err);
+        db.all(`SELECT image_url FROM product_images`, [], (err2, galleryRows) => {
+            if (err2) return serverError(res, err2);
+            const placeholderRe = /(^|\/)placeholder\.(?:svg|png|jpe?g|webp)$/i;
+            const categoryArtworkRe = /^images\/category-fallbacks\/(?:newborn|clothing|shoes|feeding|gear|bathcare|essentials|accessories|bedding)\.webp$/i;
+            const knownLogoPlaceholderRe = /(^|\/)product_(?:1|5\d|6\d|7\d|8[0-3])\.jpg$/i;
+            const missingImages = [];
+            const missingSkus = [];
+            const invalidPaths = [];
+            const skuCounts = new Map();
+            const used = new Set();
+            (products || []).forEach((product) => {
+                const img = String(product.img || '').replace(/\\/g, '/');
+                const sku = String(product.sku || '').trim();
+                if (!img || placeholderRe.test(img) || categoryArtworkRe.test(img) || knownLogoPlaceholderRe.test(img)) missingImages.push({ id: product.id, name: product.name });
+                if (!sku) missingSkus.push({ id: product.id, name: product.name });
+                else skuCounts.set(sku, (skuCounts.get(sku) || 0) + 1);
+                if (img) used.add(img);
+                if (img && !placeholderRe.test(img)) {
+                    const absolute = resolveProductImageFile(img);
+                    if (!absolute || !fs.existsSync(absolute)) invalidPaths.push({ id: product.id, img });
+                }
+            });
+            (galleryRows || []).forEach((row) => { if (row.image_url) used.add(String(row.image_url).replace(/\\/g, '/')); });
+            const duplicateSkus = Array.from(skuCounts.entries()).filter((entry) => entry[1] > 1).map((entry) => ({ sku: entry[0], count: entry[1] }));
+            let uploadFiles;
+            try { uploadFiles = uploadedImagePaths(); } catch (error) { uploadFiles = []; }
+            const unusedUploads = uploadFiles.filter((img) => !used.has(img));
+            res.json({ missingImages, missingSkus, duplicateSkus, invalidPaths, unusedUploads });
+        });
+    });
+});
+
+app.post('/api/products/bulk-images', authenticateToken, requireManager, (req, res) => {
+    const items = req.body && req.body.items;
+    if (!Array.isArray(items) || items.length === 0 || items.length > 500) return res.status(400).json({ error: 'items must be a non-empty array (max 500)' });
+    const ids = [];
+    const paths = new Set();
+    for (const item of items) {
+        const id = Number(item && item.id);
+        const img = String(item && item.img || '').replace(/\\/g, '/');
+        if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'Every item needs a valid positive product id' });
+        if (ids.includes(id)) return res.status(400).json({ error: 'Duplicate product id: ' + id });
+        if (paths.has(img)) return res.status(400).json({ error: 'Duplicate image path: ' + img });
+        if (!SERVER_ISSUED_IMAGE_RE.test(img)) return res.status(400).json({ error: 'Unsafe or non-server-issued image path' });
+        const absolute = resolveProductImageFile(img);
+        if (!absolute || !fs.existsSync(absolute)) return res.status(400).json({ error: 'Uploaded image file does not exist: ' + img });
+        ids.push(id); paths.add(img);
+    }
+    const placeholders = ids.map(() => '?').join(',');
+    db.all(`SELECT id FROM products WHERE id IN (${placeholders})`, ids, (err, rows) => {
+        if (err) return serverError(res, err);
+        const found = new Set((rows || []).map((row) => Number(row.id)));
+        const unknown = ids.filter((id) => !found.has(id));
+        if (unknown.length) return res.status(404).json({ error: 'Unknown product id(s): ' + unknown.join(', ') });
+        db.run('BEGIN IMMEDIATE TRANSACTION', (beginErr) => {
+            if (beginErr) return serverError(res, beginErr);
+            const updateNext = (index) => {
+                if (index >= items.length) {
+                    return db.run('COMMIT', (commitErr) => {
+                        if (commitErr) return db.run('ROLLBACK', () => serverError(res, commitErr));
+                        res.json({ success: true, updated: items.length });
+                    });
+                }
+                db.run(`UPDATE products SET img = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [items[index].img, Number(items[index].id)], function(updateErr) {
+                    if (updateErr || this.changes !== 1) {
+                        return db.run('ROLLBACK', () => {
+                            if (updateErr) return serverError(res, updateErr);
+                            res.status(409).json({ error: 'Bulk mapping changed no rows; transaction rolled back' });
+                        });
+                    }
+                    updateNext(index + 1);
+                });
+            };
+            updateNext(0);
+        });
+    });
+});
+
+// ===========================================================================
 //   PRODUCT IMAGE UPLOAD (manager only)
 //   Accepts a base64 data-URI (already resized/compressed in the browser),
 //   writes it to /images as a real file, returns the path. This is the ONLY
 //   sanctioned way to set a product image — it guarantees we store a file
 //   PATH in the DB, never a multi-KB inline blob.
 // ===========================================================================
+function imageBytesMatchExtension(buffer, extension) {
+    if (extension === 'png') return buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    if (extension === 'jpg') return buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff;
+    if (extension === 'webp') return buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP';
+    return false;
+}
+
 app.post('/api/upload-image', authenticateToken, requireManager, (req, res) => {
+    let temporaryFile = '';
     try {
         const { dataUrl } = req.body || {};
         if (!dataUrl || typeof dataUrl !== 'string') return res.status(400).json({ error: 'dataUrl required' });
@@ -2291,15 +2420,21 @@ app.post('/api/upload-image', authenticateToken, requireManager, (req, res) => {
         if (buf.length > MAX_BYTES) {
             return res.status(413).json({ error: 'Image too large after compression (max 5MB). Try a smaller photo.' });
         }
+        if (!imageBytesMatchExtension(buf, ext)) {
+            return res.status(400).json({ error: 'Image bytes do not match the declared format' });
+        }
 
-        const fs = require('fs');
-        const imagesDir = path.join(__dirname, '..', 'images');
-        if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
-
-        const fname = 'product_upload_' + Date.now() + '_' + Math.floor(Math.random() * 1e4) + '.' + ext;
-        fs.writeFileSync(path.join(imagesDir, fname), buf);
-        res.json({ success: true, path: 'images/' + fname, bytes: buf.length });
+        const fname = 'product_upload_' + Date.now() + '_' + crypto.randomBytes(6).toString('hex') + '.' + ext;
+        const finalFile = path.join(config.uploadDir, fname);
+        temporaryFile = path.join(config.uploadDir, '.' + fname + '.' + process.pid + '.tmp');
+        fs.writeFileSync(temporaryFile, buf, { flag: 'wx' });
+        fs.renameSync(temporaryFile, finalFile);
+        temporaryFile = '';
+        res.json({ success: true, path: 'images/uploads/' + fname, bytes: buf.length });
     } catch (e) {
+        if (temporaryFile) {
+            try { fs.unlinkSync(temporaryFile); } catch (cleanupError) { /* best effort */ }
+        }
         serverError(res, e);
     }
 });
@@ -2314,15 +2449,56 @@ app.use((err, req, res, next) => {
     res.status(500).json({ error: 'Internal Server Error' });
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = config.port;
 // Start listening only after the database schema is ready, so requests can't
 // arrive before the tables exist (which crashed a fresh clone with
 // "no such table: orders"). Falls back to listening directly if whenReady
 // isn't available, for safety.
 if (typeof db.whenReady === 'function') {
-    db.whenReady(() => {
-        app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    db.whenReady((readyError) => {
+        if (readyError) {
+            console.error('FATAL: database initialization failed.');
+            return shutdown('database initialization failure', 1);
+        }
+        httpServer = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
     });
 } else {
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    httpServer = app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
+
+function shutdown(reason, exitCode = 0, options = {}) {
+    if (shutdownPromise) return shutdownPromise;
+    console.log(`[shutdown] ${reason}`);
+    shutdownPromise = new Promise((resolve) => {
+        let complete = false;
+        const timeout = setTimeout(() => {
+            if (complete) return;
+            console.error('[shutdown] forced after 10 seconds');
+            if (options.exitProcess === false) return resolve();
+            process.exit(exitCode || 1);
+        }, 10000);
+
+        const finish = () => {
+            if (complete) return;
+            complete = true;
+            clearTimeout(timeout);
+            if (options.exitProcess === false) return resolve();
+            process.exit(exitCode);
+        };
+        const closeDatabase = () => {
+            db.close((error) => {
+                if (error && error.code !== 'SQLITE_MISUSE') console.error('[shutdown] database close failed:', error.message);
+                finish();
+            });
+        };
+
+        if (httpServer && httpServer.listening) httpServer.close(closeDatabase);
+        else closeDatabase();
+    });
+    return shutdownPromise;
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM', 0));
+process.on('SIGINT', () => shutdown('SIGINT', 0));
+
+module.exports = { app, shutdown, getServer: () => httpServer, config };

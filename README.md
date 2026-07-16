@@ -142,3 +142,15 @@ See **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full checklist. In short: serve o
   HTML/JS/CSS, cache-first for images/fonts).
 - **Images:** product/promo images are downscaled to ≤1000px and recompressed; pre-edit
   originals are kept in the gitignored `_image_originals_backup/`.
+
+
+## Catalogue images and production data
+
+SQLite (`server/inventory.db`, or `DB_PATH`) is authoritative once the app is running in production. `products.json` is the fresh-install seed and offline catalogue snapshot; editing it does not update an existing production database.
+
+Products without genuine photography reuse clearly labelled category artwork from `images/category-fallbacks/`; startup also backfills existing placeholder rows to their matching category asset. These images remain marked **Category image** and still appear in the missing-real-photo report. Managers can use **Products ? Bulk photos** to upload JPG, PNG, or WebP files named by SKU (for example `CLO-0001.jpg`) or `product-<id>.jpg`. The admin preview reports matched, unmatched, and duplicate files before upload, processes three files concurrently, and updates successful mappings transactionally.
+
+The product catalogue CSV export/import includes both `sku` and `img`. Use **Image health** to find missing images, missing or duplicate SKUs, invalid image paths, and unused uploaded files.
+## Tailwind CSS build
+
+Tailwind is compiled locally rather than loaded from the development CDN. From `server/`, run `npm run build:css` after changing utility classes in `index.html`, `app.js`, `admin.html`, or `admin.js`. The command regenerates `tailwind-storefront.css` and `tailwind-admin.css`; the admin bundle intentionally disables Tailwind preflight so it does not reset `admin.css`.

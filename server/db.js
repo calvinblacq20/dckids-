@@ -1,10 +1,63 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const config = require('./config');
 
-const dbPath = process.env.DB_PATH || path.resolve(__dirname, 'inventory.db');
+const dbPath = config.dbPath;
+const SKU_PREFIXES = { clothing: 'CLO', shoes: 'SHO', accessories: 'ACC', newborn: 'NEW', bedding: 'BED', essentials: 'ESS', feeding: 'FEE', gear: 'GEA', bathcare: 'BAT' };
+const CATEGORY_IMAGES = { clothing: 'images/category-fallbacks/clothing.webp', shoes: 'images/category-fallbacks/shoes.webp', accessories: 'images/category-fallbacks/accessories.webp', newborn: 'images/category-fallbacks/newborn.webp', bedding: 'images/category-fallbacks/bedding.webp', essentials: 'images/category-fallbacks/essentials.webp', feeding: 'images/category-fallbacks/feeding.webp', gear: 'images/category-fallbacks/gear.webp', bathcare: 'images/category-fallbacks/bathcare.webp' };
+function skuPrefixForCategory(cat) {
+    return SKU_PREFIXES[String(cat || '').toLowerCase()] || (String(cat || 'GEN').replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() || 'GEN');
+}
+function backfillMissingProductSkus(done) {
+    db.all(`SELECT id, sku, cat FROM products ORDER BY id`, [], (err, rows) => {
+        if (err) { console.error('SKU backfill read failed:', err.message); return done(); }
+        const used = new Set((rows || []).map((row) => String(row.sku || '').trim()).filter(Boolean));
+        const nextByPrefix = {};
+        const updates = [];
+        (rows || []).forEach((row) => {
+            if (String(row.sku || '').trim()) return;
+            const prefix = skuPrefixForCategory(row.cat);
+            let number = nextByPrefix[prefix] || 1;
+            let sku = prefix + '-' + String(number).padStart(4, '0');
+            while (used.has(sku)) { number++; sku = prefix + '-' + String(number).padStart(4, '0'); }
+            nextByPrefix[prefix] = number + 1;
+            used.add(sku);
+            updates.push({ id: row.id, sku });
+        });
+        if (!updates.length) return done();
+        const stmt = db.prepare(`UPDATE products SET sku = ? WHERE id = ? AND (sku IS NULL OR trim(sku) = '')`);
+        updates.forEach((item) => stmt.run(item.sku, item.id));
+        stmt.finalize((finalizeErr) => {
+            if (finalizeErr) console.error('SKU backfill failed:', finalizeErr.message);
+            else console.log(`SKU backfill: assigned ${updates.length} missing SKU(s).`);
+            done();
+        });
+    });
+}
+
+function backfillCategoryArtwork(done) {
+    const normalizedImageSql = `lower(replace(img, '\\', '/'))`;
+    const missingImageSql = `(img IS NULL OR trim(img) = '' OR ${normalizedImageSql} IN ('images/placeholder.svg', 'images/placeholder.png', 'images/product_1.jpg') OR ${normalizedImageSql} GLOB 'images/product_[5-7][0-9].jpg' OR ${normalizedImageSql} GLOB 'images/product_8[0-3].jpg')`;
+    const entries = Object.entries(CATEGORY_IMAGES);
+    let pending = entries.length;
+    let updated = 0;
+    entries.forEach(([category, image]) => {
+        db.run(`UPDATE products SET img = ? WHERE lower(cat) = ? AND ${missingImageSql}`, [image, category], function (err) {
+            if (err) console.error(`Category artwork backfill (${category}) failed:`, err.message);
+            else updated += this.changes || 0;
+            pending--;
+            if (!pending) {
+                if (updated) console.log(`Category artwork backfill: assigned ${updated} product image(s).`);
+                done();
+            }
+        });
+    });
+}
+
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error opening database', err.message);
+        _markDbFailed(err);
     } else {
         console.log('Connected to the SQLite database.');
 
@@ -633,15 +686,30 @@ const db = new sqlite3.Database(dbPath, (err) => {
         // so it's a reliable "schema ready" signal. The server waits on this via
         // db.whenReady() before listening — otherwise a request arriving on a
         // fresh database (no tables yet) crashes with "no such table: orders".
-        db.run('SELECT 1', () => { _markDbReady(); });
+        // A second queue barrier lets dynamically queued seed statements finish,
+        // then assigns only blank SKUs before the server begins listening.
+        db.run('SELECT 1', () => {
+            db.run('SELECT 1', () => backfillMissingProductSkus(() => backfillCategoryArtwork(_markDbReady)));
+        });
     }
 });
 
 // ── Readiness gate ──
 // Lets server.js delay app.listen() until the schema exists on a fresh DB.
 let _dbReady = false;
+let _dbReadyError = null;
 const _dbReadyCbs = [];
-function _markDbReady() { _dbReady = true; while (_dbReadyCbs.length) _dbReadyCbs.shift()(); }
-db.whenReady = function (cb) { if (_dbReady) cb(); else _dbReadyCbs.push(cb); };
+function _flushDbReadyCallbacks() {
+    while (_dbReadyCbs.length) _dbReadyCbs.shift()(_dbReadyError);
+}
+function _markDbReady() { _dbReady = true; _flushDbReadyCallbacks(); }
+function _markDbFailed(err) { _dbReadyError = err || new Error('Database initialization failed'); _flushDbReadyCallbacks(); }
+db.whenReady = function (cb) {
+    if (_dbReady || _dbReadyError) cb(_dbReadyError);
+    else _dbReadyCbs.push(cb);
+};
+db.storagePath = dbPath;
+db.backfillMissingProductSkus = backfillMissingProductSkus;
+db.backfillCategoryArtwork = backfillCategoryArtwork;
 
 module.exports = db;

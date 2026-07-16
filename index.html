@@ -41,28 +41,8 @@
   <!-- Google Fonts: Inter & Playfair Display -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,600&display=swap" rel="stylesheet">
   
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            serif: ['Playfair Display', 'serif'],
-          },
-          colors: {
-            brand: {
-              green: '#5E9C7E',
-              darkgreen: '#0F4C3A',
-              bg: '#FAFAF8',
-              pink: '#FCECEC'
-            }
-          }
-        }
-      }
-    }
-  </script>
+  <!-- Locally compiled Tailwind utilities; rebuild with npm run build:css in server/. -->
+  <link rel="stylesheet" href="tailwind-storefront.css?v=1">
   
   <style>
     body { background-color: #FAFAF8; }
@@ -914,7 +894,8 @@
   </div>
 
   <script src="gradient.js?v=3"></script>
-  <script src="app.js?v=21"></script>
+  <script src="image-resolver.js?v=1"></script>
+  <script src="app.js?v=22"></script>
 
   <!-- ===== CHECKOUT MODAL ===== -->
   <div id="checkoutModal" style="display:none;position:fixed;inset:0;z-index:3000;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">

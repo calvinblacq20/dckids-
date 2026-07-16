@@ -1,77 +1,104 @@
-/* DC Kids — database backup
+/* DC Kids database backup.
  *
- * The DB runs in WAL mode, so a plain file copy of inventory.db is UNSAFE while
- * the server is running: recently-committed rows may still live in the
- * inventory.db-wal sidecar and not yet be merged into the main file. A naive
- * copy can capture a stale or torn snapshot.
- *
- * This uses SQLite's online backup API (sqlite3 .backup), which produces a
- * single consistent .db file with the WAL fully merged in — safe even while
- * the server is actively reading and writing. The output is a normal,
- * self-contained SQLite file (no sidecars needed to restore it).
- *
- * Usage:  node server/backup_db.js
- * Restore: stop the server, replace inventory.db with a backup file
- *          (delete any leftover inventory.db-wal / -shm first), restart.
+ * Uses SQLite's online backup API so WAL contents are included in one
+ * transactionally consistent file. Paths come from the shared configuration:
+ * DB_PATH overrides DATA_DIR/inventory.db and BACKUP_DIR overrides
+ * DATA_DIR/backups.
  */
 const fs = require('fs');
 const path = require('path');
 const sqlite3 = require('sqlite3');
+const config = require('./config');
 
-const dbFile = path.join(__dirname, 'inventory.db');
-const backupDir = path.join(__dirname, 'backups');
+const RETENTION_COUNT = 30;
+const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+const backupFile = path.join(config.backupDir, `inventory_${timestamp}.db`);
+const temporaryFile = backupFile + `.tmp-${process.pid}`;
 
-if (!fs.existsSync(dbFile)) {
-  console.error('Database file not found:', dbFile);
-  process.exit(1);
-}
-if (!fs.existsSync(backupDir)) {
-  fs.mkdirSync(backupDir, { recursive: true });
-}
-
-const timestamp = new Date().toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '-');
-const backupFile = path.join(backupDir, `inventory_${timestamp}.db`);
-
-const source = new sqlite3.Database(dbFile, sqlite3.OPEN_READONLY, (err) => {
-  if (err) {
-    console.error('Error opening source database:', err.message);
-    process.exit(1);
-  }
-});
-
-// node-sqlite3 exposes the online backup API as db.backup(filename).
-// It copies a transactionally-consistent snapshot, WAL included.
-source.serialize(() => {
-  const backup = source.backup(backupFile);
-
-  backup.step(-1, function stepDone(err) {
-    if (err) {
-      console.error('Error during backup:', err.message);
-      backup.finish(() => source.close());
-      process.exit(1);
-      return;
-    }
-    if (backup.remaining > 0) {
-      // Large DB still copying — keep stepping.
-      return backup.step(-1, stepDone);
-    }
-    backup.finish((finishErr) => {
-      source.close();
-      if (finishErr) {
-        console.error('Error finalizing backup:', finishErr.message);
-        process.exit(1);
-      }
-      // Prune to the 30 most recent backups so the folder doesn't grow forever.
-      try {
-        const files = fs.readdirSync(backupDir)
-          .filter(f => /^inventory_.*\.db$/.test(f))
-          .map(f => ({ f, t: fs.statSync(path.join(backupDir, f)).mtimeMs }))
-          .sort((a, b) => b.t - a.t);
-        files.slice(30).forEach(({ f }) => fs.unlinkSync(path.join(backupDir, f)));
-      } catch (e) { /* pruning is best-effort */ }
-
-      const sizeKb = (fs.statSync(backupFile).size / 1024).toFixed(0);
-      console.log(`Backed up database (WAL-safe) to ${backupFile} (${sizeKb} KB)`);
+function cleanupTemporaryArtifacts() {
+    ['', '-journal', '-wal', '-shm'].forEach((suffix) => {
+        try { fs.rmSync(temporaryFile + suffix, { force: true }); } catch (error) { /* best effort */ }
     });
-  });
+}
+
+function openDatabase(file, mode) {
+    return new Promise((resolve, reject) => {
+        const database = new sqlite3.Database(file, mode, (error) => {
+            if (error) reject(error);
+            else resolve(database);
+        });
+    });
+}
+
+function closeDatabase(database) {
+    return new Promise((resolve) => {
+        if (!database) return resolve();
+        database.close(() => resolve());
+    });
+}
+
+function copyDatabase(source, destination) {
+    return new Promise((resolve, reject) => {
+        const backup = source.backup(destination);
+        const finishWith = (error) => {
+            backup.finish((finishError) => {
+                if (error || finishError) reject(error || finishError);
+                else resolve();
+            });
+        };
+        const step = (error) => {
+            if (error) return finishWith(error);
+            if (backup.remaining > 0) return backup.step(-1, step);
+            finishWith();
+        };
+        backup.step(-1, step);
+    });
+}
+
+async function verifyDatabase(file) {
+    const database = await openDatabase(file, sqlite3.OPEN_READONLY);
+    try {
+        const result = await new Promise((resolve, reject) => {
+            database.get('PRAGMA integrity_check', [], (error, row) => error ? reject(error) : resolve(row));
+        });
+        const value = result && Object.values(result)[0];
+        if (String(value || '').toLowerCase() !== 'ok') throw new Error('SQLite integrity check failed');
+    } finally {
+        await closeDatabase(database);
+    }
+}
+
+function pruneSuccessfulBackups() {
+    const files = fs.readdirSync(config.backupDir)
+        .filter((file) => /^inventory_.*\.db$/.test(file))
+        .map((file) => ({ file, modified: fs.statSync(path.join(config.backupDir, file)).mtimeMs }))
+        .sort((a, b) => b.modified - a.modified);
+    files.slice(RETENTION_COUNT).forEach(({ file }) => fs.unlinkSync(path.join(config.backupDir, file)));
+}
+
+async function main() {
+    if (!fs.existsSync(config.dbPath)) throw new Error('Database file not found');
+    fs.mkdirSync(config.backupDir, { recursive: true });
+    cleanupTemporaryArtifacts();
+
+    const source = await openDatabase(config.dbPath, sqlite3.OPEN_READONLY);
+    try {
+        await copyDatabase(source, temporaryFile);
+    } finally {
+        await closeDatabase(source);
+    }
+
+    await verifyDatabase(temporaryFile);
+    fs.renameSync(temporaryFile, backupFile);
+    cleanupTemporaryArtifacts();
+    pruneSuccessfulBackups();
+
+    const sizeKb = (fs.statSync(backupFile).size / 1024).toFixed(0);
+    console.log(`Backed up database to ${backupFile} (${sizeKb} KB, integrity check passed)`);
+}
+
+main().catch((error) => {
+    cleanupTemporaryArtifacts();
+    console.error('Database backup failed:', error.message);
+    process.exitCode = 1;
 });

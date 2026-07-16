@@ -13,6 +13,34 @@
 let products = [];
 let searchQuery = '';
 
+// Genuine product photography stays distinct from temporary category artwork.
+// Products without genuine photography use shared category artwork. The
+// resolver keeps it visibly labelled instead of presenting it as an exact photo.
+const CATEGORY_FALLBACK_IMAGES = DCImageResolver.CATEGORY_IMAGES;
+
+function hasGenuineProductImage(img) {
+  return DCImageResolver.isGenuineImage(img);
+}
+
+function resolveProductImage(product) {
+  return DCImageResolver.resolve(product);
+}
+
+function categoryImageBadge() {
+  return '<span class="category-image-badge">Category image</span>';
+}
+
+function useCategoryFallback(img, category) {
+  if (!img || img.dataset.categoryFallbackApplied === '1') return;
+  img.dataset.categoryFallbackApplied = '1';
+  const categoryImage = CATEGORY_FALLBACK_IMAGES[String(category || '').toLowerCase()];
+  img.src = categoryImage || 'images/placeholder.svg';
+  const wrap = img.parentElement;
+  if (wrap && !wrap.querySelector('.category-image-badge') && categoryImage) {
+    wrap.insertAdjacentHTML('beforeend', categoryImageBadge());
+  }
+}
+
 // Promotional/brand images used elsewhere (not product cards):
 // product_1.jpg  = Logo
 // product_11.jpg = Xmas Discount Sales flyer
@@ -169,7 +197,8 @@ function renderCard(p, index) {
   // single-quote escape and HTML escaping; nameHtml/imgHtml cover plain markup.
   const escName = escapeStr((p.name || '').replace(/'/g, "\\'"));
   const nameHtml = escapeStr(p.name || '');
-  const imgHtml = escapeStr(p.img || '');
+  const image = resolveProductImage(p);
+  const imgHtml = escapeStr(image.src);
   let badgeHTML = '';
   let isSoldOut = false;
   if (p.stock === 0) {
@@ -306,7 +335,8 @@ function renderCard(p, index) {
   return `
     <article class="${cardClass}" data-category="${escapeStr(p.cat || '')}" data-product-id="${p.id}" style="animation-delay: ${index * 0.04}s">
       <div class="product-card__img-wrap">
-        <img class="product-card__img" src="${imgHtml}" alt="${nameHtml}" loading="lazy" onerror="this.onerror=null;this.src='images/placeholder.svg';">
+        <img class="product-card__img" src="${imgHtml}" alt="${nameHtml}" loading="lazy" onerror="useCategoryFallback(this, '${escapeStr(p.cat || '')}')">
+        ${image.isCategoryFallback ? categoryImageBadge() : ''}
         ${badgeHTML}
         ${lowStockHTML}
         <button type="button" class="wishlist-heart" data-wishlist-id="${p.id}" aria-label="Add to wishlist" onclick="toggleWishlist(event, ${p.id})">
@@ -661,7 +691,7 @@ function addToCart(id) {
   const qtyToAdd      = (isWholesale && bulkQtyEl) ? parseInt(bulkQtyEl.value) : 1;
   const existing      = cart.find(item => item.id === id && item.size === size);
   if (existing) { existing.qty += qtyToAdd; }
-  else { cart.push({ id: product.id, name: product.name, size, price: adjustedPrice, qty: qtyToAdd, img: product.img, ws: isWholesale ? 1 : 0 }); }
+  else { cart.push({ id: product.id, name: product.name, size, price: adjustedPrice, qty: qtyToAdd, img: product.img, cat: product.cat, ws: isWholesale ? 1 : 0 }); }
   saveCart(); renderCartDrawer(); openCart();
 }
 
@@ -695,9 +725,12 @@ function renderCartDrawer() {
   cart.forEach((item, index) => {
     const itemTotal = item.price * item.qty;
     subtotal += itemTotal;
+    const catalogueProduct = products.find(p => Number(p.id) === Number(item.id));
+    const itemCategory = item.cat || (catalogueProduct && catalogueProduct.cat) || '';
+    const cartImage = resolveProductImage({ img: item.img, cat: itemCategory });
     html += `
       <div class="cart-item">
-        <img src="${escapeStr(item.img || '')}" alt="${escapeStr(item.name || '')}" class="cart-item__img">
+        <div class="cart-item__img-wrap"><img src="${escapeStr(cartImage.src)}" alt="${escapeStr(item.name || '')}" class="cart-item__img" onerror="useCategoryFallback(this, '${escapeStr(itemCategory)}')">${cartImage.isCategoryFallback ? categoryImageBadge() : ''}</div>
         <div class="cart-item__details">
           <div class="cart-item__title">${escapeStr(item.name || '')}</div>
           <div class="cart-item__size">${escapeStr(item.size || '')}${item.ws ? ' · Wholesale (' + item.qty + ' pcs)' : ''}</div>
@@ -1256,9 +1289,11 @@ function renderWishlist() {
     body.innerHTML = '<div style="padding:32px 24px;text-align:center;color:#999;font-size:15px;line-height:1.7;">Your wishlist is empty.<br>Tap the ♥ on any product to save it here.</div>';
     return;
   }
-  body.innerHTML = items.map(p => `
+  body.innerHTML = items.map(p => {
+    const image = resolveProductImage(p);
+    return `
     <div class="cart-item">
-      <img src="${escapeStr(p.img || '')}" alt="${escapeStr(p.name || '')}" class="cart-item__img">
+      <div class="cart-item__img-wrap"><img src="${escapeStr(image.src)}" alt="${escapeStr(p.name || '')}" class="cart-item__img" onerror="useCategoryFallback(this, '${escapeStr(p.cat || '')}')">${image.isCategoryFallback ? categoryImageBadge() : ''}</div>
       <div class="cart-item__details">
         <div class="cart-item__title">${escapeStr(p.name || '')}</div>
         <div class="cart-item__price">${p.price ? 'GH₵ ' + gh(p.price) : 'Ask for price'}</div>
@@ -1270,7 +1305,8 @@ function renderWishlist() {
       <button class="cart-item__remove" aria-label="Remove from wishlist" onclick="toggleWishlist(event, ${p.id})">
         <svg viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
       </button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 /* ── Reviews ── */
@@ -1354,6 +1390,10 @@ function ensureReviewsModal() {
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
         <h3 id="rv-modal-title" style="margin:0;font-size:18px;font-weight:700;color:#0F4C3A;font-family:'Playfair Display',serif;">Product</h3>
         <button type="button" id="rv-close" style="background:none;border:none;font-size:24px;cursor:pointer;color:#888;line-height:1;padding:4px;">&times;</button>
+      </div>
+      <div id="rv-product-media" class="review-product-media">
+        <img id="rv-product-image" src="images/placeholder.svg" alt="">
+        <span id="rv-category-image-badge" class="category-image-badge" style="display:none;">Category image</span>
       </div>
       <div id="rv-description" style="display:none;font-size:13px;color:#555;line-height:1.6;margin-bottom:16px;"></div>
       <div style="font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;">Reviews</div>
@@ -1443,6 +1483,15 @@ async function openReviewsModal(productId, productName) {
   document.getElementById('rv-modal-title').textContent = productName || 'Product';
 
   const product = products.find(p => p.id === productId);
+  const productImage = resolveProductImage(product);
+  const imageEl = document.getElementById('rv-product-image');
+  const imageBadgeEl = document.getElementById('rv-category-image-badge');
+  if (imageEl) {
+    imageEl.src = productImage.src;
+    imageEl.alt = productName || 'Product';
+    imageEl.onerror = () => useCategoryFallback(imageEl, product && product.cat);
+  }
+  if (imageBadgeEl) imageBadgeEl.style.display = productImage.isCategoryFallback ? 'inline-flex' : 'none';
   const descEl = document.getElementById('rv-description');
   if (product && product.description) {
     descEl.textContent = product.description;

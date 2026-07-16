@@ -8,6 +8,25 @@
 const API_URL = '/api';
 let globalProducts = [];
 
+const ADMIN_CATEGORY_IMAGES = DCImageResolver.CATEGORY_IMAGES;
+
+function isMissingProductImage(product) {
+    return !DCImageResolver.isGenuineImage(product && product.img);
+}
+
+function resolveAdminProductImage(product) {
+    var image = DCImageResolver.resolve(product);
+    return { src: image.src, isCategory: image.isCategoryFallback };
+}
+
+function adminImageMarkup(product, style) {
+    var image = resolveAdminProductImage(product);
+    var fallback = ADMIN_CATEGORY_IMAGES[String(product && product.cat || '').toLowerCase()] || 'images/placeholder.svg';
+    return '<span class="admin-image-wrap"><img src="' + escapeHtml(image.src) + '" alt="' + escapeHtml(product.name || '') + '"' +
+        (style ? ' style="' + style + '"' : '') + ' onerror="this.onerror=null;this.src=\'' + escapeHtml(fallback) + '\'">' +
+        (image.isCategory ? '<span class="admin-image-badge">Category image</span>' : '') + '</span>';
+}
+
 /* Transparent 1x1 GIF — safe empty-image placeholder (never requests the page URL). */
 var BLANK_IMG = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
 if (typeof window !== 'undefined') window.BLANK_IMG = BLANK_IMG;
@@ -343,7 +362,7 @@ function initSeedData() {
 var _loginEmail = '';
 
 function _loginShowStep(step) {
-    ['accounts', 'email', 'code', 'recovery'].forEach(function (s) {
+    ['email', 'code', 'recovery'].forEach(function (s) {
         var el = document.getElementById('login-step-' + s);
         if (el) el.style.display = (s === step) ? 'block' : 'none';
     });
@@ -355,160 +374,6 @@ function _loginError(msg) {
 function _loginInfo(msg) {
     var el = document.getElementById('login-info');
     if (el) el.textContent = msg || '';
-}
-
-// ── Remembered accounts ("Welcome back") ──
-// Emails of people who have signed in on THIS device — stored so they can
-// sign in with one tap. Emails only, never tokens: this is convenience, not a
-// live session (a code is still required every time). Kept per-device.
-var _REMEMBER_KEY = 'dckids_admin_emails';
-function _rememberedEmails() {
-    try { var a = JSON.parse(localStorage.getItem(_REMEMBER_KEY)); return Array.isArray(a) ? a : []; }
-    catch (e) { return []; }
-}
-function _saveRememberedEmail(email) {
-    email = (email || '').trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
-    var list = _rememberedEmails().filter(function (x) { return x !== email; });
-    list.unshift(email);
-    try { localStorage.setItem(_REMEMBER_KEY, JSON.stringify(list.slice(0, 4))); } catch (e) { /* storage full/blocked */ }
-}
-function _removeRememberedEmail(email) {
-    var list = _rememberedEmails().filter(function (x) { return x !== email; });
-    try { localStorage.setItem(_REMEMBER_KEY, JSON.stringify(list)); } catch (e) { /* ignore */ }
-}
-function _renderLoginAccounts() {
-    var wrap = document.getElementById('login-accounts-list');
-    if (!wrap) return 0;
-    var list = _rememberedEmails();
-    wrap.innerHTML = list.map(function (email) {
-        var initial = escapeHtml(email.charAt(0));
-        var safe = escapeHtml(email);
-        var enc = encodeURIComponent(email);
-        return '<div class="account-chip" role="listitem" onclick="pickAccount(\'' + enc + '\')">' +
-            '<span class="account-chip__avatar">' + initial + '</span>' +
-            '<span class="account-chip__body"><span class="account-chip__label">Sign in</span>' +
-            '<span class="account-chip__email">' + safe + '</span></span>' +
-            '<button type="button" class="account-chip__remove" title="Forget this email" ' +
-            'onclick="forgetAccount(event, \'' + enc + '\')">&times;</button></div>';
-    }).join('');
-    return list.length;
-}
-// Show the accounts step when we remember someone here, else the email step.
-function showLoginAccounts() {
-    _loginError('');
-    if (_renderLoginAccounts() > 0) { _loginShowStep('accounts'); }
-    else { _loginShowStep('email'); }
-}
-function pickAccount(enc) {
-    var email = decodeURIComponent(enc);
-    var el = document.getElementById('login-email');
-    if (el) el.value = email;
-    requestLoginCode();
-}
-function forgetAccount(e, enc) {
-    if (e) { e.preventDefault(); e.stopPropagation(); }
-    _removeRememberedEmail(decodeURIComponent(enc));
-    showLoginAccounts();
-}
-// One-tap wipe for a shared/store computer: clear every remembered email and
-// drop to a blank email entry. Sign-in still works, it just won't suggest anyone.
-function forgetAllAccounts(e) {
-    if (e) e.preventDefault();
-    try { localStorage.removeItem(_REMEMBER_KEY); } catch (err) { /* ignore */ }
-    useDifferentEmail();
-}
-function useDifferentEmail(e) {
-    if (e) e.preventDefault();
-    _loginShowStep('email');
-    var el = document.getElementById('login-email');
-    if (el) { el.value = ''; el.focus(); }
-}
-
-// ── Idle session timeout ──
-// Server tokens live 12h and are re-checked every request, but an unattended
-// dashboard on a shared computer shouldn't stay open. Auto sign-out after
-// inactivity. Reset by any interaction; only runs while signed in.
-var _IDLE_MS = 30 * 60 * 1000; // 30 minutes
-var _idleTimer = null;
-function _resetIdleTimer() {
-    if (!document.body.classList.contains('is-authed')) return;
-    if (_idleTimer) clearTimeout(_idleTimer);
-    _idleTimer = setTimeout(function () {
-        if (typeof showToast === 'function') showToast('Signed out after 30 minutes of inactivity.', 'warning');
-        logout();
-    }, _IDLE_MS);
-}
-function _startIdleTracking() {
-    ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'].forEach(function (ev) {
-        document.addEventListener(ev, _resetIdleTimer, { passive: true });
-    });
-    _resetIdleTimer();
-}
-function _stopIdleTimer() { if (_idleTimer) { clearTimeout(_idleTimer); _idleTimer = null; } }
-
-// ── Segmented 6-digit OTP input ──
-// Six single-char boxes drive a hidden #login-code field, so verifyLoginCode /
-// resend keep reading one value while the shopper sees a boxed code entry.
-function _otpBoxes() {
-    return Array.prototype.slice.call(document.querySelectorAll('#otp-input .otp-box'));
-}
-function _syncOtpHidden() {
-    var hidden = document.getElementById('login-code');
-    if (hidden) hidden.value = _otpBoxes().map(function (b) { return b.value; }).join('');
-}
-function resetOtpInput() {
-    var boxes = _otpBoxes();
-    boxes.forEach(function (b) { b.value = ''; b.classList.remove('filled'); });
-    _syncOtpHidden();
-    if (boxes[0]) boxes[0].focus();
-}
-function initOtpInput() {
-    var boxes = _otpBoxes();
-    if (!boxes.length) return;
-    boxes.forEach(function (box, i) {
-        box.addEventListener('input', function () {
-            box.value = box.value.replace(/\D/g, '').slice(0, 1);
-            box.classList.toggle('filled', !!box.value);
-            _syncOtpHidden();
-            if (box.value && boxes[i + 1]) boxes[i + 1].focus();
-        });
-        box.addEventListener('keydown', function (e) {
-            if (e.key === 'Backspace' && !box.value && boxes[i - 1]) {
-                boxes[i - 1].focus();
-                boxes[i - 1].value = '';
-                boxes[i - 1].classList.remove('filled');
-                _syncOtpHidden();
-                e.preventDefault();
-            } else if (e.key === 'ArrowLeft' && boxes[i - 1]) {
-                boxes[i - 1].focus(); e.preventDefault();
-            } else if (e.key === 'ArrowRight' && boxes[i + 1]) {
-                boxes[i + 1].focus(); e.preventDefault();
-            } else if (e.key === 'Enter') {
-                verifyLoginCode(e);
-            }
-        });
-        box.addEventListener('paste', function (e) {
-            e.preventDefault();
-            var data = (e.clipboardData || window.clipboardData).getData('text') || '';
-            var digits = data.replace(/\D/g, '').slice(0, 6).split('');
-            if (!digits.length) return;
-            boxes.forEach(function (b, j) {
-                b.value = digits[j] || '';
-                b.classList.toggle('filled', !!b.value);
-            });
-            _syncOtpHidden();
-            boxes[Math.min(digits.length, boxes.length - 1)].focus();
-        });
-        box.addEventListener('focus', function () { box.select(); });
-    });
-    // Auto sign-in the moment all six digits are present (typed or pasted),
-    // so there's no separate "verify" tap — matches modern OTP flows.
-    var container = document.getElementById('otp-input');
-    if (container) container.addEventListener('input', function () {
-        var hidden = document.getElementById('login-code');
-        if (hidden && /^\d{6}$/.test(hidden.value)) verifyLoginCode();
-    });
 }
 
 function requestLoginCode(e) {
@@ -529,7 +394,8 @@ function requestLoginCode(e) {
         var to = document.getElementById('login-code-sent-to');
         if (to) to.textContent = email;
         _loginShowStep('code');
-        resetOtpInput();
+        var codeEl = document.getElementById('login-code');
+        if (codeEl) { codeEl.value = ''; codeEl.focus(); }
     })
     .catch(function (err) {
         _loginError(err.message === 'Failed to fetch' ? 'Server unavailable — try again later.' : err.message);
@@ -562,8 +428,6 @@ function showRecoveryLogin(e) {
 function _finishLogin(data) {
     localStorage.setItem('adminToken', data.accessToken);
     localStorage.setItem('adminRole', data.role);
-    // Remember this email on this device for one-tap sign-in next time.
-    _saveRememberedEmail(_loginEmail || (data && data.email));
     _loginError('');
     var proceed = function () { showDashboard(data.role); };
     if (data.recoveryCodes && data.recoveryCodes.length) {
@@ -761,7 +625,6 @@ function showDashboard(role) {
     document.getElementById('login-container').style.display = 'none';
     document.getElementById('dashboard-container').style.display = 'block';
     document.body.classList.add('is-authed');
-    _startIdleTracking();
 
     var badge = document.getElementById('user-role-badge');
     if (badge) {
@@ -797,12 +660,9 @@ function logout() {
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminRole');
     currentRole = '';
-    _stopIdleTimer();
     document.body.classList.remove('is-authed');
     document.getElementById('dashboard-container').style.display = 'none';
     document.getElementById('login-container').style.display = 'flex';
-    // Land on "Welcome back" if we remember anyone on this device.
-    showLoginAccounts();
 }
 
 // A protected endpoint answered 401/403: the token is missing, invalid, or
@@ -1503,14 +1363,8 @@ function renderDashboardRecentProducts(products) {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    // Fixed demo products matching reference screenshot exactly
-    var demoProducts = [
-        { id: 1, name: 'Pretty Pink Dress', sku: 'DCK-DR-001', cat: 'Dresses', price: 180.00, stock: 45, img: 'images/product_1.jpg' },
-        { id: 2, name: 'Cool Boy Shirt', sku: 'DCK-SH-002', cat: 'Tops', price: 120.00, stock: 18, img: 'images/product_2.jpg' },
-        { id: 3, name: 'Teddy Bear', sku: 'DCK-TOY-003', cat: 'Toys', price: 90.00, stock: 0, img: 'images/product_3.jpg' },
-        { id: 4, name: 'Sporty Sneakers', sku: 'DCK-SN-004', cat: 'Footwear', price: 200.00, stock: 32, img: 'images/product_4.jpg' },
-        { id: 5, name: 'Green Shorts', sku: 'DCK-SH-005', cat: 'Bottoms', price: 80.00, stock: 12, img: 'images/product_5.jpg' }
-    ];
+    // Show the newest real catalogue records so image provenance stays honest.
+    var demoProducts = (products || []).slice().sort(function(a, b) { return (b.id || 0) - (a.id || 0); }).slice(0, 5);
 
     demoProducts.forEach(function(p) {
         var statusHTML;
@@ -1524,7 +1378,7 @@ function renderDashboardRecentProducts(products) {
 
         var tr = document.createElement('tr');
         tr.innerHTML =
-            '<td class="table-card-header" data-label="Product"><div class="table-product"><img src="' + escapeHtml(p.img) + '" alt="' + escapeHtml(p.name) + '" style="width: 44px; height: 44px; object-fit: cover; border-radius: 8px;"><div class="table-product-info"><h4>' + escapeHtml(p.name) + '</h4><p>' + escapeHtml(p.cat) + '</p></div></div></td>' +
+            '<td class="table-card-header" data-label="Product"><div class="table-product">' + adminImageMarkup(p, 'width:44px;height:44px;object-fit:cover;border-radius:8px;') + '<div class="table-product-info"><h4>' + escapeHtml(p.name) + '</h4><p>' + escapeHtml(p.cat) + '</p></div></div></td>' +
             '<td data-label="SKU" style="font-family: monospace; color: var(--text-secondary); font-size: 12px;">' + p.sku + '</td>' +
             '<td data-label="Category">' + escapeHtml(p.cat) + '</td>' +
             '<td data-label="Price" style="font-weight: 600;">GHS ' + p.price.toFixed(2) + '</td>' +
@@ -1703,7 +1557,7 @@ function buildProductRow(p) {
     actionsHTML += '</div>';
 
     return '<td class="table-card-header" data-label="Product"><div class="table-product">' +
-        '<img src="' + escapeHtml(p.img || 'images/product_1.jpg') + '" alt="' + escapeHtml(p.name) + '">' +
+        adminImageMarkup(p) +
         '<div class="table-product-info"><h4 onclick="openEditModal(' + p.id + ')">' + escapeHtml(p.name) + '</h4><p>Size: ' + escapeHtml(p.size || 'N/A') + '</p></div></div></td>' +
         '<td data-label="SKU" style="color:var(--admin-subtext);font-family:monospace;">' + escapeHtml(displaySku(p)) + '</td>' +
         '<td data-label="Category">' + escapeHtml(category) + preorderHTML + '</td>' +
@@ -1730,7 +1584,16 @@ function openProductDetail(productId) {
 
     function set(id, val){ var el = document.getElementById(id); if (el) el.textContent = val; }
     var img = document.getElementById('pd-img');
-    if (img) { img.src = p.img || 'images/placeholder.svg'; img.alt = p.name || ''; }
+    if (img) {
+        var detailImage = resolveAdminProductImage(p);
+        img.src = detailImage.src;
+        img.alt = p.name || '';
+        img.onerror = function() { this.onerror = null; this.src = ADMIN_CATEGORY_IMAGES[String(p.cat || '').toLowerCase()] || 'images/placeholder.svg'; };
+        var media = img.parentElement;
+        var oldBadge = media && media.querySelector('.admin-image-badge');
+        if (oldBadge) oldBadge.remove();
+        if (media && detailImage.isCategory) media.insertAdjacentHTML('beforeend', '<span class="admin-image-badge">Category image</span>');
+    }
     set('pd-name', p.name || 'Product');
     set('pd-size', 'Size: ' + (p.size || '—'));
     set('pd-size2', p.size || '—');
@@ -1783,6 +1646,7 @@ function updateProductStats() {
     var lowEl = document.getElementById('prod-stat-low');
     var instockEl = document.getElementById('prod-stat-instock');
     var outEl = document.getElementById('prod-stat-out');
+    var missingEl = document.getElementById('prod-stat-missing');
     
     if (!totalEl) return;
     
@@ -1805,6 +1669,7 @@ function updateProductStats() {
     lowEl.textContent = low;
     instockEl.textContent = instock;
     outEl.textContent = out;
+    if (missingEl) missingEl.textContent = globalProducts.filter(isMissingProductImage).length;
 }
 
 
@@ -1840,7 +1705,7 @@ function renderProductsGrid() {
                     '</div>';
                 }
 
-                card.innerHTML = '<div style="position:relative;"><img src="' + escapeHtml(p.img || 'images/product_1.jpg') + '" alt="' + escapeHtml(p.name) + '" style="width:100%;height:180px;object-fit:cover;">' +
+                card.innerHTML = '<div style="position:relative;">' + adminImageMarkup(p, 'width:100%;height:180px;object-fit:cover;') +
                     (p.badge ? '<span style="position:absolute;top:8px;right:8px;background:#F35E7A;color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;">' + escapeHtml(p.badge) + '</span>' : '') +
                     '</div>' +
                     '<div style="padding:16px;">' +
@@ -1901,7 +1766,7 @@ function renderProductsGrid() {
             tr.innerHTML = '<td class="table-checkbox-cell" data-label="Select" style="width:36px; text-align:center;"><input type="checkbox" class="prod-bulk-check" data-id="' + p.id + '"' + (preChecked ? ' checked' : '') + ' onclick="event.stopPropagation(); prodBulkOnRowToggle(' + p.id + ', this.checked)"></td>' +
                 '<td class="table-card-header" data-label="Product">' +
                 '<div class="table-product">' +
-                '<img src="' + escapeHtml(p.img || localInitialsAvatar(p.name, '#f3f4f6', '#9aa0a6')) + '" alt="' + escapeHtml(p.name) + '" onerror="this.onerror=null;this.src=localInitialsAvatar(this.alt,&quot;#f3f4f6&quot;,&quot;#9aa0a6&quot;)">' +
+                adminImageMarkup(p) +
                 '<div class="table-product-info">' +
                 '<h4 onclick="openEditModal(' + p.id + ')">' + escapeHtml(p.name) + '</h4>' +
                 '<p>Size: ' + escapeHtml(p.size || 'N/A') + '</p>' +
@@ -1930,12 +1795,14 @@ function getFilteredProducts() {
     var catEl = document.getElementById('prod-cat-filter');
     var statusEl = document.getElementById('prod-status-filter');
     var fulfillmentEl = document.getElementById('prod-fulfillment-filter');
+    var imageEl = document.getElementById('prod-image-filter');
     var sortEl = document.getElementById('prod-sort');
 
     var query = searchEl ? searchEl.value.toLowerCase() : '';
     var cat = catEl ? catEl.value : 'all';
     var status = statusEl ? statusEl.value : '';
     var fulfillment = fulfillmentEl ? fulfillmentEl.value : '';
+    var imageFilter = imageEl ? imageEl.value : '';
     var sort = sortEl ? sortEl.value : 'newest';
 
     var adv = (typeof prodAdvancedFilters !== 'undefined') ? prodAdvancedFilters : { priceMin: null, priceMax: null, stockMin: null, stockMax: null, badge: '' };
@@ -1961,8 +1828,10 @@ function getFilteredProducts() {
             matchesBadge = (adv.badge === 'none') ? !badgeVal : badgeVal === adv.badge;
         }
         var matchesFulfillment = !fulfillment || (p.fulfillment_type || 'in_stock') === fulfillment;
+        var missingImage = isMissingProductImage(p);
+        var matchesImage = !imageFilter || (imageFilter === 'missing' ? missingImage : !missingImage);
 
-        return matchesSearch && matchesCat && matchesStatus
+        return matchesSearch && matchesCat && matchesStatus && matchesImage
             && matchesPriceMin && matchesPriceMax
             && matchesStockMin && matchesStockMax
             && matchesBadge && matchesFulfillment;
@@ -2098,8 +1967,8 @@ function openEditModal(id) {
             if (descEl) descEl.value = p.description || '';
             if (idEl) idEl.value = p.id;
             if (fulfillmentEl) fulfillmentEl.value = p.fulfillment_type || 'in_stock';
-            if (imgPreview) imgPreview.src = p.img || 'images/product_1.jpg';
-            if (imgSrcEl) imgSrcEl.value = p.img || 'images/product_1.jpg';
+            if (imgPreview) imgPreview.src = resolveAdminProductImage(p).src;
+            if (imgSrcEl) imgSrcEl.value = p.img || 'images/placeholder.svg';
             if (typeof setSizeRows === 'function') setSizeRows('modal-product', p.sizes);
             if (typeof populateSizePresetDropdowns === 'function') populateSizePresetDropdowns();
         }
@@ -2115,8 +1984,8 @@ function openEditModal(id) {
         if (descEl) descEl.value = '';
         if (idEl) idEl.value = '';
         if (fulfillmentEl) fulfillmentEl.value = 'in_stock';
-        if (imgPreview) imgPreview.src = 'images/product_1.jpg';
-        if (imgSrcEl) imgSrcEl.value = 'images/product_1.jpg';
+        if (imgPreview) imgPreview.src = ADMIN_CATEGORY_IMAGES.clothing;
+        if (imgSrcEl) imgSrcEl.value = 'images/placeholder.svg';
         if (typeof setSizeRows === 'function') setSizeRows('modal-product', []);
         if (typeof populateSizePresetDropdowns === 'function') populateSizePresetDropdowns();
     }
@@ -2755,9 +2624,15 @@ function openOrderItemPreviewModal(orderDbId) {
             statusEl.className = 'preview-status-badge ' + statusVal;
         }
 
-        // Set Main Image
+        // Set Main Image with the same real-photo/category-art distinction.
         if (mainImg) {
-            mainImg.src = data.product_image || 'images/placeholder.png';
+            var mainMeta = resolveAdminProductImage({ img: data.product_image, cat: data.category, name: data.item_name });
+            mainImg.src = mainMeta.src;
+            mainImg.onerror = function() { this.onerror = null; this.src = ADMIN_CATEGORY_IMAGES[String(data.category || '').toLowerCase()] || 'images/placeholder.svg'; };
+            var mainWrap = mainImg.parentElement;
+            var mainBadge = mainWrap && mainWrap.querySelector('.admin-image-badge');
+            if (mainBadge) mainBadge.remove();
+            if (mainWrap && mainMeta.isCategory) mainWrap.insertAdjacentHTML('beforeend', '<span class="admin-image-badge">Category image</span>');
         }
 
         // Populate Thumbnails Carousel — one thumbnail per ordered product, so the
@@ -2770,10 +2645,12 @@ function openOrderItemPreviewModal(orderDbId) {
                 : [{ product_name: data.item_name, image: data.product_image, price_at_time: data.price, quantity: data.quantity, category: data.category }];
 
             galleryItems.forEach(function(it, idx) {
-                var imgUrl = it.image || data.product_image || 'images/placeholder.png';
+                var thumbMeta = resolveAdminProductImage({ img: it.image || data.product_image, cat: it.category || data.category, name: it.product_name });
+                var imgUrl = thumbMeta.src;
                 var card = document.createElement('div');
                 card.className = 'preview-thumb-card' + (idx === 0 ? ' active' : '');
-                card.innerHTML = '<img src="' + escapeHtml(imgUrl) + '" alt="' + escapeHtml(it.product_name || 'Product') + '" onerror="this.src=\'images/placeholder.png\';">';
+                card.style.position = 'relative';
+                card.innerHTML = '<img src="' + escapeHtml(imgUrl) + '" alt="' + escapeHtml(it.product_name || 'Product') + '" onerror="this.src=\'images/placeholder.svg\';">' + (thumbMeta.isCategory ? '<span class="admin-image-badge">Category</span>' : '');
                 card.onclick = function() {
                     var activeCard = track.querySelector('.preview-thumb-card.active');
                     if (activeCard) activeCard.classList.remove('active');
@@ -7198,7 +7075,7 @@ function setupEventListeners() {
         if (e.target.id === 'order-type-filter') { orderCurrentPage = 1; renderOrdersTable(); }
         if (e.target.id === 'order-date-filter') { orderCurrentPage = 1; renderOrdersTable(); }
         if (e.target.id === 'cust-group-filter') { custCurrentPage = 1; renderCustomersTable(); }
-        if (e.target.id === 'prod-cat-filter' || e.target.id === 'prod-status-filter' || e.target.id === 'prod-fulfillment-filter' || e.target.id === 'prod-sort') { prodCurrentPage = 1; renderProductsGrid(); }
+        if (e.target.id === 'prod-cat-filter' || e.target.id === 'prod-status-filter' || e.target.id === 'prod-fulfillment-filter' || e.target.id === 'prod-image-filter' || e.target.id === 'prod-sort') { prodCurrentPage = 1; renderProductsGrid(); }
     });
 
     // Products "Filter" button — apply the current filters (icon click included via closest)
@@ -7443,9 +7320,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Render "Continue with Google" on the login screen (self-gating on config)
     initGoogleSignIn();
 
-    // Wire the segmented 6-digit code boxes
-    initOtpInput();
-
     // Check if already logged in — verify token is still valid
     var token = localStorage.getItem('adminToken');
     if (token) {
@@ -7466,7 +7340,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 localStorage.removeItem('adminRole');
                 document.getElementById('dashboard-container').style.display = 'none';
                 document.getElementById('login-container').style.display = 'flex';
-                showLoginAccounts();
             }
         })
         .catch(function() {
@@ -7475,11 +7348,7 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.removeItem('adminRole');
             document.getElementById('dashboard-container').style.display = 'none';
             document.getElementById('login-container').style.display = 'flex';
-            showLoginAccounts();
         });
-    } else {
-        // No session — open on "Welcome back" if we remember anyone here.
-        showLoginAccounts();
     }
 });
 
@@ -7505,7 +7374,7 @@ function openAddProductModal() {
     document.getElementById('add-product-size').value = '';
     document.getElementById('add-product-badge').value = '';
     document.getElementById('add-product-desc').value = '';
-    document.getElementById('add-product-img-src').value = 'images/product_1.jpg';
+    document.getElementById('add-product-img-src').value = 'images/placeholder.svg';
     
     var img = document.querySelector('#add-product-img-preview img');
     if (img) {
@@ -8909,6 +8778,183 @@ function prodBulkApplyFields(fields, label) {
 }
 
 // ============================================================
+//   Product image health + bulk photo matching/upload
+// ============================================================
+var bulkImageItems = [];
+
+function openBulkImageModal() {
+    bulkImageItems.forEach(function(item) { if (item.previewUrl) URL.revokeObjectURL(item.previewUrl); });
+    bulkImageItems = [];
+    var input = document.getElementById('bulk-image-files');
+    var summary = document.getElementById('bulk-image-summary');
+    var list = document.getElementById('bulk-image-list');
+    var status = document.getElementById('bulk-image-status');
+    var upload = document.getElementById('bulk-image-upload');
+    var retry = document.getElementById('bulk-image-retry');
+    if (input) input.value = '';
+    if (summary) { summary.style.display = 'none'; summary.innerHTML = ''; }
+    if (list) list.innerHTML = '';
+    if (status) status.textContent = '';
+    if (upload) upload.disabled = true;
+    if (retry) retry.style.display = 'none';
+    if (typeof openModal === 'function') openModal('modal-bulk-images');
+}
+function closeBulkImageModal() {
+    bulkImageItems.forEach(function(item) { if (item.previewUrl) URL.revokeObjectURL(item.previewUrl); });
+    bulkImageItems = [];
+    if (typeof closeModal === 'function') closeModal('modal-bulk-images');
+}
+function normalizeImageFilename(name) {
+    return String(name || '').trim().replace(/\.(jpe?g|png|webp)$/i, '').toLowerCase();
+}
+function previewBulkImageFiles(fileList) {
+    bulkImageItems.forEach(function(item) { if (item.previewUrl) URL.revokeObjectURL(item.previewUrl); });
+    var bySku = {};
+    var byId = {};
+    globalProducts.forEach(function(p) {
+        if (p.sku) bySku[String(p.sku).toLowerCase()] = p;
+        byId[String(p.id)] = p;
+    });
+    var usedProducts = {};
+    var usedNames = {};
+    bulkImageItems = Array.prototype.slice.call(fileList || []).map(function(file) {
+        var key = normalizeImageFilename(file.name);
+        var supported = /\.(jpe?g|png|webp)$/i.test(file.name) && /^(image\/(jpeg|png|webp))$/i.test(file.type || 'image/jpeg');
+        var product = bySku[key] || null;
+        var idMatch = /^product-(\d+)$/i.exec(key);
+        if (!product && idMatch) product = byId[idMatch[1]] || null;
+        var duplicate = !!usedNames[key] || !!(product && usedProducts[String(product.id)]);
+        usedNames[key] = true;
+        if (product) usedProducts[String(product.id)] = true;
+        var state = !supported ? 'invalid' : (duplicate ? 'duplicate' : (product ? 'matched' : 'unmatched'));
+        return { file: file, key: key, product: product, state: state, message: '', progress: 0, previewUrl: URL.createObjectURL(file), uploadedPath: '' };
+    });
+    renderBulkImagePreview();
+}
+function renderBulkImagePreview() {
+    var matched = bulkImageItems.filter(function(x) { return x.state === 'matched'; }).length;
+    var unmatched = bulkImageItems.filter(function(x) { return x.state === 'unmatched' || x.state === 'invalid'; }).length;
+    var duplicates = bulkImageItems.filter(function(x) { return x.state === 'duplicate'; }).length;
+    var failed = bulkImageItems.filter(function(x) { return x.state === 'failed'; }).length;
+    var summary = document.getElementById('bulk-image-summary');
+    var list = document.getElementById('bulk-image-list');
+    var upload = document.getElementById('bulk-image-upload');
+    var retry = document.getElementById('bulk-image-retry');
+    if (summary) {
+        summary.style.display = 'grid';
+        summary.innerHTML = '<div><strong>' + matched + '</strong><br><span>Matched</span></div><div><strong>' + unmatched + '</strong><br><span>Unmatched / invalid</span></div><div><strong>' + duplicates + '</strong><br><span>Duplicates</span></div>';
+    }
+    if (list) list.innerHTML = bulkImageItems.map(function(item, index) {
+        var productLabel = item.product ? escapeHtml(item.product.sku + ' ? ' + item.product.name) : 'No matching product';
+        var label = item.state === 'uploading' ? (item.message || 'Uploading?') : item.state;
+        var retryButton = item.state === 'failed' ? '<button type="button" class="btn btn-outline-small" onclick="retryBulkImageItem(' + index + ')">Retry</button>' : '';
+        return '<div class="bulk-image-row"><img src="' + item.previewUrl + '" alt=""><div><strong style="font-size:12px;">' + escapeHtml(item.file.name) + '</strong><div style="font-size:11px;color:#777;margin-top:2px;">' + productLabel + '</div><div class="bulk-image-progress"><span style="width:' + item.progress + '%"></span></div></div><div class="bulk-image-row__status">' + escapeHtml(label) + retryButton + '</div></div>';
+    }).join('');
+    if (upload) upload.disabled = matched === 0;
+    if (retry) retry.style.display = failed ? '' : 'none';
+}
+async function runBulkWorkers(items, worker, concurrency) {
+    var cursor = 0;
+    async function next() {
+        while (cursor < items.length) {
+            var item = items[cursor++];
+            await worker(item);
+        }
+    }
+    await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, next));
+}
+async function uploadBulkImageItem(item) {
+    item.state = 'uploading'; item.message = 'Optimizing?'; item.progress = 10; renderBulkImagePreview();
+    try {
+        var dataUrl = await compressImageFile(item.file, 1600, 0.85);
+        item.message = 'Uploading?'; item.progress = 45; renderBulkImagePreview();
+        var uploaded = await uploadProductImage(dataUrl);
+        item.uploadedPath = uploaded.path;
+        item.message = 'Ready to map'; item.progress = 80; renderBulkImagePreview();
+    } catch (err) {
+        item.state = 'failed'; item.message = err.message || 'Upload failed'; item.progress = 0; item.uploadedPath = '';
+        renderBulkImagePreview();
+    }
+}
+async function startBulkImageUpload(specificItems) {
+    var queue = specificItems || bulkImageItems.filter(function(x) { return x.state === 'matched'; });
+    if (!queue.length) return;
+    var upload = document.getElementById('bulk-image-upload');
+    var status = document.getElementById('bulk-image-status');
+    if (upload) upload.disabled = true;
+    if (status) status.textContent = 'Uploading up to three photos at a time?';
+    await runBulkWorkers(queue, uploadBulkImageItem, 3);
+    var ready = queue.filter(function(x) { return x.uploadedPath && x.product; });
+    if (ready.length) {
+        try {
+            var token = localStorage.getItem('adminToken');
+            var response = await fetch(API_URL + '/products/bulk-images', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (token || '') },
+                body: JSON.stringify({ items: ready.map(function(x) { return { id: x.product.id, img: x.uploadedPath }; }) })
+            });
+            var data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Could not map uploaded photos');
+            ready.forEach(function(x) { x.state = 'complete'; x.message = 'Complete'; x.progress = 100; });
+            if (status) status.textContent = 'Mapped ' + data.updated + ' photo' + (data.updated === 1 ? '' : 's') + '. Failed files were left unchanged.';
+            await fetchProducts().then(function(rows) { globalProducts = rows; renderProductsGrid(); });
+        } catch (err) {
+            ready.forEach(function(x) { x.state = 'failed'; x.message = err.message || 'Mapping failed'; x.progress = 0; });
+            if (status) status.textContent = 'Uploaded files could not be mapped: ' + (err.message || 'unknown error') + '. Products were left unchanged.';
+        }
+    } else if (status) {
+        status.textContent = 'No photos uploaded successfully. Products were left unchanged.';
+    }
+    renderBulkImagePreview();
+}
+function retryBulkImageItem(index) {
+    var item = bulkImageItems[index];
+    if (!item || item.state !== 'failed') return;
+    item.state = 'matched'; item.message = ''; item.progress = 0; item.uploadedPath = '';
+    startBulkImageUpload([item]);
+}
+function retryFailedBulkImages() {
+    var failed = bulkImageItems.filter(function(x) { return x.state === 'failed'; });
+    failed.forEach(function(x) { x.state = 'matched'; x.message = ''; x.progress = 0; x.uploadedPath = ''; });
+    startBulkImageUpload(failed);
+}
+
+function openImageHealthModal() {
+    if (typeof openModal === 'function') openModal('modal-image-health');
+    loadImageHealthReport();
+}
+function closeImageHealthModal() { if (typeof closeModal === 'function') closeModal('modal-image-health'); }
+function loadImageHealthReport() {
+    var target = document.getElementById('image-health-content');
+    if (target) target.textContent = 'Loading report?';
+    var token = localStorage.getItem('adminToken');
+    fetch(API_URL + '/products/image-health', { headers: { 'Authorization': 'Bearer ' + (token || '') } })
+        .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error || 'Report failed'); return d; }); })
+        .then(function(data) {
+            if (!target) return;
+            var cards = [
+                ['Missing real photos', data.missingImages.length], ['Missing SKUs', data.missingSkus.length],
+                ['Duplicate SKUs', data.duplicateSkus.length], ['Invalid paths', data.invalidPaths.length],
+                ['Unused uploads', data.unusedUploads.length]
+            ];
+            var detail = function(title, rows) { return rows.length ? '<details style="margin-top:10px;"><summary><strong>' + title + ' (' + rows.length + ')</strong></summary><div style="font-size:12px;line-height:1.7;margin-top:6px;max-height:150px;overflow:auto;">' + rows.map(function(x) { return escapeHtml(typeof x === 'string' ? x : JSON.stringify(x)); }).join('<br>') + '</div></details>' : ''; };
+            target.innerHTML = '<div class="health-grid">' + cards.map(function(c) { return '<div class="health-card"><strong style="font-size:24px;">' + c[1] + '</strong><div style="font-size:12px;color:#777;">' + c[0] + '</div></div>'; }).join('') + '</div>' +
+                detail('Missing real photos', data.missingImages) + detail('Missing SKUs', data.missingSkus) + detail('Duplicate SKUs', data.duplicateSkus) + detail('Invalid paths', data.invalidPaths) + detail('Unused uploads', data.unusedUploads);
+        }).catch(function(err) { if (target) target.innerHTML = '<span style="color:#dc2626;">' + escapeHtml(err.message) + '</span>'; });
+}
+
+function exportProductCatalogueCSV() {
+    var headers = ['id', 'name', 'sku', 'price', 'stock', 'cat', 'size', 'badge', 'img', 'fulfillment_type', 'description'];
+    function cell(value) { return '"' + String(value == null ? '' : value).replace(/"/g, '""') + '"'; }
+    var lines = [headers.join(',')].concat(globalProducts.map(function(p) { return headers.map(function(h) { return cell(p[h]); }).join(','); }));
+    var blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url; a.download = 'dc-kids-product-catalogue.csv'; a.click();
+    setTimeout(function() { URL.revokeObjectURL(url); }, 0);
+    showToast('Product catalogue exported with SKU and image path', 'success');
+}
+
+// ============================================================
 //   Product CSV Import
 // ============================================================
 function openProductImportModal() {
@@ -9025,7 +9071,7 @@ function submitProductImport() {
 
 function downloadProductCsvTemplate() {
     var csv = 'name,price,stock,cat,size,badge,img,fulfillment_type,sku,description\n' +
-              '"Baby Romper Set",97,12,clothing,"0-3M,3-6M,6-9M",new,images/product_1.jpg,in_stock,,"Soft cotton romper set — leave sku blank to auto-assign"\n' +
+              '"Baby Romper Set",97,12,clothing,"0-3M,3-6M,6-9M",new,images/placeholder.svg,in_stock,,"Soft cotton romper set — leave sku blank to auto-assign"\n' +
               '"Knit Sweater",128,8,clothing,2Y,hot,images/product_2.jpg,preorder,CLO-0050,"Warm winter knit — China pre-order, with our own SKU"\n';
     var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     var url = URL.createObjectURL(blob);
