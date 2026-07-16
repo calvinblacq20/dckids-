@@ -43,11 +43,16 @@ remains, ranked by risk. **No code was changed during this audit.**
   (0 errors; legacy patterns surface as warnings without blocking).
 - **M2 · ~~HIGH~~ FIXED 2026-07-11** — `privacy.html` + `terms.html` written for how the
   store actually works, linked in the footer and sitemap (stale preorder.html entry removed).
-- **M3 · MEDIUM — Backups are manual.** `backup_db.js` works (verified today) but nothing
-  schedules it; schedule daily on the host + do one restore drill per quarter.
-- **M4 · MEDIUM — No error alerting.** Telegram alerts cover new orders only; server
-  errors go to console. Minimum: persist logs on the host and check on a cadence; better:
-  a free error tracker.
+- **M3 · ~~MEDIUM~~ FIXED 2026-07-14** — daily WAL-safe backup now runs in-process
+  (newest 30 kept, Telegram alert on failure). Quarterly restore drill still applies.
+- **M4 · ~~MEDIUM~~ FIXED 2026-07-14** — server errors (uncaught/unhandled/500 paths)
+  send rate-limited Telegram alerts through the existing bot. Host log persistence
+  still recommended.
+- **M7 · ~~HIGH~~ FIXED 2026-07-14** — admin customer book moved from browser
+  localStorage to the DB (`/api/customers` + bulk sync, phone-matched upserts, legacy
+  data auto-migrates). Owner and staff now see the same customers on any device.
+  Also added 2026-07-14: `/healthz` + `/readyz`, and checkout idempotency keys
+  (double-submit/network-retry safe).
 - **M5 · LOW — Unbounded default fetches.** `/api/products` and `/api/orders` return the
   full table unless pagination params are passed (playbook: paginate everything). Fine at
   267 products / 27 orders; flip the default before the catalogue grows ~10×.

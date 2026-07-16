@@ -16,9 +16,11 @@ app.set('trust proxy', 1); // accurate req.ip behind a reverse proxy (nginx/rend
 // DEPLOYMENT.md) so the server also auto-restarts if it ever does exit.
 process.on('uncaughtException', (err) => {
     console.error('[uncaughtException]', (err && err.stack) ? err.stack : err);
+    try { notifyErrorTelegram('uncaughtException', err); } catch { /* alerting must never crash */ }
 });
 process.on('unhandledRejection', (reason) => {
     console.error('[unhandledRejection]', (reason && reason.stack) ? reason.stack : reason);
+    try { notifyErrorTelegram('unhandledRejection', reason); } catch { /* alerting must never crash */ }
 });
 
 const IS_PROD = process.env.NODE_ENV === 'production';
@@ -101,6 +103,7 @@ if (IS_PROD && !process.env.RESEND_API_KEY) {
 // messages are unaffected — they're written for users.
 function serverError(res, err) {
     console.error('[server error]', (err && err.stack) ? err.stack : err);
+    try { notifyErrorTelegram('server error', err); } catch { /* alerting must never break a response */ }
     return res.status(500).json({ error: 'Something went wrong. Please try again.' });
 }
 
@@ -604,6 +607,94 @@ app.post('/api/admin/access-requests/:id/reject', authenticateToken, requireMana
     );
 });
 
+// ---------------- CUSTOMER BOOK (admin) ----------------
+// The DB is the single source of truth for the admin's customer list, so the
+// owner and staff see the same data on any device. The client keeps computing
+// order-count/spend from live orders; here we persist the editable fields.
+
+app.get('/api/customers', authenticateToken, (req, res) => {
+    db.all(
+        `SELECT id, client_id, name, email, phone, address, status, notes, join_date, created_at
+         FROM customers ORDER BY id DESC LIMIT 5000`,
+        [],
+        (err, rows) => {
+            if (err) return serverError(res, err);
+            res.json(rows);
+        }
+    );
+});
+
+// Full-list sync (replace-all): upserts every incoming customer (matching by
+// client_id, then by phone so storefront-created rows merge instead of
+// duplicating) and removes admin-managed rows (client_id set) that the admin
+// deleted. Rows without a client_id — created automatically at checkout and not
+// yet adopted by the admin UI — are never deleted here. Last writer wins, which
+// is acceptable for a 1–2 person back office.
+app.post('/api/customers/bulk', authenticateToken, (req, res) => {
+    const incoming = (req.body && req.body.customers) || [];
+    if (!Array.isArray(incoming) || incoming.length > 2000) {
+        return res.status(400).json({ error: 'customers must be an array (max 2000)' });
+    }
+    const clean = [];
+    for (const c of incoming) {
+        const clientId = String(c.id || '').trim();
+        const name = String(c.name || '').trim();
+        if (!/^[\w-]{1,40}$/.test(clientId) || !name || name.length > 100) {
+            return res.status(400).json({ error: 'Each customer needs a valid id and name' });
+        }
+        clean.push({
+            client_id: clientId,
+            name,
+            email: String(c.email || '').slice(0, 254) || null,
+            phone: String(c.phone || '').slice(0, 30) || null,
+            address: String(c.address || '').slice(0, 300) || null,
+            status: c.status === 'active' ? 'active' : 'inactive',
+            notes: String(c.notes || '').slice(0, 1000) || null,
+            join_date: String(c.joinDate || c.join_date || '').slice(0, 30) || null
+        });
+    }
+
+    const upsertNext = (i) => {
+        if (i >= clean.length) {
+            // Remove admin-managed rows the admin deleted from their list.
+            if (clean.length === 0) {
+                return db.run(`DELETE FROM customers WHERE client_id IS NOT NULL`, [], (delErr) => {
+                    if (delErr) return serverError(res, delErr);
+                    res.json({ success: true, synced: 0 });
+                });
+            }
+            const keep = clean.map(c => c.client_id);
+            const ph = keep.map(() => '?').join(',');
+            return db.run(`DELETE FROM customers WHERE client_id IS NOT NULL AND client_id NOT IN (${ph})`, keep, (delErr) => {
+                if (delErr) return serverError(res, delErr);
+                res.json({ success: true, synced: clean.length });
+            });
+        }
+        const c = clean[i];
+        db.get(
+            `SELECT id FROM customers WHERE client_id = ? OR (phone IS NOT NULL AND phone = ?) LIMIT 1`,
+            [c.client_id, c.phone],
+            (err, row) => {
+                if (err) return serverError(res, err);
+                if (row) {
+                    db.run(
+                        `UPDATE customers SET client_id = ?, name = ?, email = ?, phone = ?, address = ?, status = ?, notes = ?, join_date = ? WHERE id = ?`,
+                        [c.client_id, c.name, c.email, c.phone, c.address, c.status, c.notes, c.join_date, row.id],
+                        (e2) => { if (e2) return serverError(res, e2); upsertNext(i + 1); }
+                    );
+                } else {
+                    db.run(
+                        `INSERT INTO customers (client_id, name, email, phone, address, status, notes, join_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [c.client_id, c.name, c.email, c.phone, c.address, c.status, c.notes, c.join_date],
+                        (e2) => { if (e2) return serverError(res, e2); upsertNext(i + 1); }
+                    );
+                }
+            }
+        );
+    };
+    upsertNext(0);
+});
+
 // ---------------- PUBLIC ROUTES ---------------- //
 app.get('/api/products', (req, res) => {
     // Backward-compatible: with no query params, return the full array (the storefront
@@ -1029,6 +1120,12 @@ function getPriceModifier(sizeLabel) {
 app.post('/api/orders', (req, res) => {
     const { customer_name, customer_phone, order_type, items, payment_method, delivery_area, notes } = req.body;
 
+    // Idempotency: the storefront sends a random key per checkout attempt. If a
+    // retry (double-tap, network drop + resubmit) reaches us with a key we've
+    // already fulfilled, return that order instead of creating a duplicate.
+    const idemKey = typeof req.body.idempotency_key === 'string' && /^[\w-]{8,64}$/.test(req.body.idempotency_key)
+        ? req.body.idempotency_key : null;
+
     if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ error: 'Order must contain items' });
     }
@@ -1056,10 +1153,19 @@ app.post('/api/orders', (req, res) => {
     if (delivery_area && String(delivery_area).length > 200) return res.status(400).json({ error: 'Delivery area is too long' });
     if (notes && String(notes).length > 1000) return res.status(400).json({ error: 'Notes are too long (max 1000 characters)' });
     
+    // Replay of an already-created order? Answer with the original.
+    const replayExisting = (next) => {
+        if (!idemKey) return next();
+        db.get(`SELECT order_number, total_amount FROM orders WHERE idempotency_key = ?`, [idemKey], (e, row) => {
+            if (!e && row) return res.json({ success: true, order_number: row.order_number, total_amount: row.total_amount, replayed: true });
+            next();
+        });
+    };
+
     // 1. Fetch store settings for wholesale math
-    db.get(`SELECT * FROM store_settings WHERE id = 1`, (err, settings) => {
+    replayExisting(() => db.get(`SELECT * FROM store_settings WHERE id = 1`, (err, settings) => {
         if (err) return serverError(res, err);
-        
+
         const moq = settings ? settings.wholesale_moq : 10;
         const discount = settings ? settings.wholesale_discount : 0;
 
@@ -1131,10 +1237,20 @@ app.post('/api/orders', (req, res) => {
                 const tempNumber = 'TMP-' + Date.now() + '-' + Math.floor(Math.random() * 1e6);
 
                 db.run(
-                    `INSERT INTO orders (order_number, customer_name, customer_phone, order_type, total_amount, status, delivery_area, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [tempNumber, customer_name, customer_phone, order_type, total_amount, initialStatus, delivery_area || null, notes || null],
+                    `INSERT INTO orders (order_number, customer_name, customer_phone, order_type, total_amount, status, delivery_area, notes, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [tempNumber, customer_name, customer_phone, order_type, total_amount, initialStatus, delivery_area || null, notes || null, idemKey],
                     function(err) {
-                        if (err) return serverError(res, err);
+                        if (err) {
+                            // Two identical retries raced: the first one won the
+                            // unique idempotency slot — hand back its order.
+                            if (idemKey && /UNIQUE/.test(String(err.message)) && /idempotency|idx_orders_idem/.test(String(err.message))) {
+                                return db.get(`SELECT order_number, total_amount FROM orders WHERE idempotency_key = ?`, [idemKey], (e2, row) => {
+                                    if (!e2 && row) return res.json({ success: true, order_number: row.order_number, total_amount: row.total_amount, replayed: true });
+                                    serverError(res, err);
+                                });
+                            }
+                            return serverError(res, err);
+                        }
 
                         const order_id = this.lastID;
                         const order_number = 'ORD-' + String(10000 + order_id);
@@ -1179,7 +1295,7 @@ app.post('/api/orders', (req, res) => {
                 if (err.status) return res.status(err.status).json({ error: err.message });
                 serverError(res, err);
             });
-    });
+    }));
 });
 
 // List orders (Admin)
@@ -2164,6 +2280,98 @@ ${itemLines || '  (no items)'}
 
 // Expose so the order POST handler (above) can call it without restructuring.
 app.set('sendOwnerWhatsAppAlert', sendOwnerWhatsAppAlert);
+
+// ===========================================================================
+//   SERVER ERROR ALERTS — same Telegram bot as order alerts
+//   Rate-limited per error signature so a crash loop sends one message per
+//   5 minutes, not thousands. No-op (console only) when Telegram isn't set.
+// ===========================================================================
+const _errAlertLast = new Map(); // signature -> last-sent ms
+function notifyErrorTelegram(label, err) {
+    if (!TELEGRAM_BOT_TOKEN || TELEGRAM_CHAT_IDS.length === 0) return;
+    const msgText = String((err && err.message) ? err.message : err).slice(0, 300);
+    const signature = label + '|' + msgText.slice(0, 80);
+    const now = Date.now();
+    if ((_errAlertLast.get(signature) || 0) > now - 5 * 60 * 1000) return;
+    _errAlertLast.set(signature, now);
+    if (_errAlertLast.size > 200) _errAlertLast.clear(); // bound memory
+
+    const text = `⚠️ *DC Kids server error* (${label})\n\`${msgText.replace(/`/g, "'")}\`\n⏰ ${new Date().toLocaleString('en-GH')}`;
+    TELEGRAM_CHAT_IDS.forEach(chatId => {
+        const payload = JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' });
+        const reqT = https.request({
+            hostname: 'api.telegram.org',
+            path: `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
+        }, (r) => { r.on('data', () => {}); r.on('end', () => {}); });
+        reqT.on('error', () => { /* alerting is best-effort */ });
+        reqT.write(payload);
+        reqT.end();
+    });
+}
+
+// ===========================================================================
+//   DAILY DB BACKUP — in-process scheduler (same WAL-safe online backup API
+//   as server/backup_db.js). Keeps the newest 30; alerts on failure. Skipped
+//   for throwaway test DBs (DB_PATH set) so the smoke suite stays clean.
+// ===========================================================================
+function runDbBackup() {
+    const fs = require('fs');
+    const sqlite3 = require('sqlite3');
+    const dbFile = path.join(__dirname, 'inventory.db');
+    const backupDir = path.join(__dirname, 'backups');
+    try {
+        if (!fs.existsSync(dbFile)) return;
+        if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+        const stamp = new Date().toISOString().replace(/T/, '_').replace(/\..+/, '').replace(/:/g, '-');
+        const backupFile = path.join(backupDir, `inventory_${stamp}.db`);
+        const source = new sqlite3.Database(dbFile, sqlite3.OPEN_READONLY, (openErr) => {
+            if (openErr) { notifyErrorTelegram('backup failed', openErr); return; }
+            const backup = source.backup(backupFile);
+            backup.step(-1, function stepDone(err) {
+                if (err) {
+                    notifyErrorTelegram('backup failed', err);
+                    backup.finish(() => source.close());
+                    return;
+                }
+                if (backup.remaining > 0) return backup.step(-1, stepDone);
+                backup.finish((finErr) => {
+                    source.close();
+                    if (finErr) return notifyErrorTelegram('backup failed', finErr);
+                    try {
+                        const files = fs.readdirSync(backupDir)
+                            .filter(f => /^inventory_.*\.db$/.test(f))
+                            .map(f => ({ f, t: fs.statSync(path.join(backupDir, f)).mtimeMs }))
+                            .sort((a, b) => b.t - a.t);
+                        files.slice(30).forEach(({ f }) => fs.unlinkSync(path.join(backupDir, f)));
+                    } catch { /* pruning is best-effort */ }
+                    console.log(`[backup] daily snapshot written: ${backupFile}`);
+                });
+            });
+        });
+    } catch (e) {
+        notifyErrorTelegram('backup failed', e);
+    }
+}
+if (!process.env.DB_PATH) {
+    // First snapshot a minute after boot, then every 24h. unref() so the
+    // timers never hold the process open.
+    setTimeout(runDbBackup, 60 * 1000).unref();
+    setInterval(runDbBackup, 24 * 60 * 60 * 1000).unref();
+}
+
+// ===========================================================================
+//   HEALTH — /healthz (process up) and /readyz (DB reachable), for uptime
+//   monitors and hosts. Public by design; they reveal nothing.
+// ===========================================================================
+app.get('/healthz', (req, res) => res.json({ ok: true }));
+app.get('/readyz', (req, res) => {
+    db.get('SELECT 1 AS ok', [], (err) => {
+        if (err) return res.status(503).json({ ok: false });
+        res.json({ ok: true });
+    });
+});
 
 // ===========================================================================
 //   BULK PRODUCT ACTIONS (admin)

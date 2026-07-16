@@ -25,18 +25,20 @@ Status as of 2026-07-11 (pre-deploy). ✅ verified · ⚠️ partial/needs actio
 
 ## Deploy safety
 - [x] Env vars fail loudly: server refuses to start in production without JWT_SECRET or RESEND_API_KEY (Google-only fallback warns)
-- [ ] DB backup: `node server/backup_db.js` works on demand — ⚠️ schedule it (host cron) + verify a restore once
+- [x] DB backup: daily WAL-safe snapshot runs in-process (keeps newest 30, Telegram alert on failure, 2026-07-14); restore verified 2026-07-11 — ⚠️ keep the quarterly restore drill
 - [ ] Rollback: git history is the rollback path — ⚠️ pin the previous deploy on the host once hosting is chosen
 - [x] Migrations: additive-only (`CREATE TABLE IF NOT EXISTS` + guarded `ALTER TABLE ADD COLUMN`); existing DBs upgrade in place — fresh-clone boot test-proven
 
 ## Operations
-- [ ] Error tracking/alerts: Telegram alerts cover new orders only — ❌ no error alerting; at minimum pipe server logs somewhere readable and check them
+- [x] Error alerting: server errors (uncaught, unhandled, 500 paths) send a rate-limited Telegram alert via the existing order-alert bot (2026-07-14); logs still go to the console — persist them on the host
 - [ ] Dependency-update reminder — ❌ set a monthly reminder to run `npm audit` + `npm update`
 - [x] Smoke tests: `npm test` — 43 end-to-end checks on a throwaway DB, all green (2026-07-11)
+- [x] Health endpoints for monitors: `/healthz` (process) + `/readyz` (DB reachable) (2026-07-14)
+- [x] Customer book in the DB: admin customers/notes sync via `/api/customers` — owner and staff see the same data on any device; legacy localStorage books auto-migrate on next sign-in (2026-07-14)
 
 ## Unhappy paths (playbook: test deliberately)
 - [x] Empty forms rejected (client + server validation)
 - [x] Wrong password ×50 → N/A (passwordless); wrong OTP ×5 → code invalidated, limiter caps requests
 - [x] Other users' URLs: tracking with wrong phone → 403 (test); staff route without manager role → 403
 - [x] Malformed payloads → 400, server stays up (test)
-- [ ] Network drop mid-checkout / double-submit — ⚠️ retest manually on the live deploy
+- [x] Network drop mid-checkout / double-submit: checkout sends an idempotency key — a retry returns the already-created order instead of duplicating (2026-07-14) — ⚠️ still retest manually on the live deploy

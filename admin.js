@@ -140,12 +140,84 @@ function startOrderNotificationPolling() {
 function saveOrders(orders) {
     // Deprecated for direct API saving
 }
+/* Customer book lives in the DB (single source of truth across devices/staff).
+   getCustomers/saveCustomers keep their old signatures so every call site
+   works unchanged — only the persistence moved from localStorage to the API. */
+window.adminCustomers = [];
+var _custSyncTimer = null;
+
 function getCustomers() {
-    try { return JSON.parse(localStorage.getItem('dcKidsCustomers')) || []; }
-    catch (e) { return []; }
+    return window.adminCustomers;
 }
 function saveCustomers(customers) {
-    localStorage.setItem('dcKidsCustomers', JSON.stringify(customers));
+    window.adminCustomers = customers || [];
+    // Debounced full-list sync: bursts of edits (e.g. syncCustomersWithOrders
+    // updating 20 rows) collapse into one request.
+    if (_custSyncTimer) clearTimeout(_custSyncTimer);
+    _custSyncTimer = setTimeout(pushCustomersToServer, 800);
+}
+function pushCustomersToServer() {
+    var token = localStorage.getItem('adminToken');
+    if (!token || token.indexOf('fallback-token') === 0) return; // offline mode: in-memory only
+    fetch(API_URL + '/customers/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify({ customers: window.adminCustomers })
+    })
+    .then(function(r) {
+        if (r.status === 401 || r.status === 403) { handleSessionExpiry(); return null; }
+        return r.json();
+    })
+    .catch(function(e) {
+        console.warn('Customer sync failed (will retry on next change):', e && e.message ? e.message : e);
+    });
+}
+function loadCustomersFromServer(callback) {
+    var token = localStorage.getItem('adminToken');
+    if (!token || token.indexOf('fallback-token') === 0) { if (callback) callback(); return; }
+    fetch(API_URL + '/customers', { headers: { 'Authorization': 'Bearer ' + token } })
+    .then(function(r) {
+        if (r.status === 401 || r.status === 403) { handleSessionExpiry(); return null; }
+        return r.json();
+    })
+    .then(function(rows) {
+        if (!Array.isArray(rows)) { if (callback) callback(); return; }
+        window.adminCustomers = rows.map(function(r) {
+            return {
+                id: r.client_id || ('CUST-' + (1000 + r.id)),
+                name: r.name || '',
+                email: r.email || '',
+                phone: r.phone || '',
+                address: r.address || '',
+                joinDate: r.join_date || (r.created_at ? String(r.created_at).slice(0, 10) : ''),
+                totalSpent: 0,  // recomputed from live orders by syncCustomersWithOrders
+                orderCount: 0,
+                status: r.status || 'inactive',
+                notes: r.notes || ''
+            };
+        });
+        // One-time migration: adopt any customer book left in this browser's
+        // localStorage (pre-DB era), then remove the key for good.
+        try {
+            var legacy = JSON.parse(localStorage.getItem('dcKidsCustomers') || 'null');
+            if (Array.isArray(legacy) && legacy.length) {
+                legacy.forEach(function(lc) {
+                    var exists = window.adminCustomers.some(function(c) {
+                        return c.id === lc.id || (lc.phone && c.phone &&
+                            String(c.phone).replace(/[^0-9]/g, '') === String(lc.phone).replace(/[^0-9]/g, ''));
+                    });
+                    if (!exists) window.adminCustomers.push(lc);
+                });
+                localStorage.removeItem('dcKidsCustomers');
+                saveCustomers(window.adminCustomers); // push the merged book up
+            }
+        } catch (e) { /* legacy data unreadable — DB copy wins */ }
+        if (callback) callback();
+    })
+    .catch(function(e) {
+        console.warn('Customers API unavailable, using in-memory list:', e && e.message ? e.message : e);
+        if (callback) callback();
+    });
 }
 function customerMatchesOrder(c, o) {
     var nameMatch = o.customer && c.name && o.customer.toLowerCase().trim() === c.name.toLowerCase().trim();
@@ -282,18 +354,9 @@ function initSeedData() {
         saveOrders(orders);
     }
 
-    // Customers
-    if (!localStorage.getItem('dcKidsCustomers')) {
-        var customers = [
-            { id: 'CUST-001', name: 'Akua Mensah', email: 'akua@email.com', phone: '+233 24 555 0101', address: 'Accra, East Legon', joinDate: '2025-01-15', totalSpent: 425, orderCount: 3, status: 'active' },
-            { id: 'CUST-002', name: 'Kwame Asante', email: 'kwame@email.com', phone: '+233 20 555 0202', address: 'Kumasi, Ahodwo', joinDate: '2025-03-20', totalSpent: 215, orderCount: 1, status: 'active' },
-            { id: 'CUST-003', name: 'Ama Owusu', email: 'ama@email.com', phone: '+233 27 555 0303', address: 'Cape Coast', joinDate: '2025-05-10', totalSpent: 150, orderCount: 1, status: 'active' },
-            { id: 'CUST-004', name: 'Yaw Boateng', email: 'yaw@email.com', phone: '+233 55 555 0404', address: 'Takoradi', joinDate: '2024-11-08', totalSpent: 780, orderCount: 5, status: 'active' },
-            { id: 'CUST-005', name: 'Efua Darko', email: 'efua@email.com', phone: '+233 24 555 0505', address: 'Tema', joinDate: '2025-06-01', totalSpent: 0, orderCount: 0, status: 'inactive' },
-            { id: 'CUST-006', name: 'Kofi Amoah', email: 'kofi@email.com', phone: '+233 50 555 0606', address: 'Accra, Osu', joinDate: '2025-02-14', totalSpent: 340, orderCount: 2, status: 'active' }
-        ];
-        saveCustomers(customers);
-    }
+    // Customers: no demo seed — the book lives in the DB and fills itself from
+    // real orders (syncCustomersWithOrders). Seeding here would push fake
+    // customers into the shared database.
 
     // Suppliers
     if (!localStorage.getItem('dcKidsSuppliers')) {
@@ -1283,12 +1346,15 @@ function loadDashboard() {
     document.body.classList.add('dash-active');
     fetchProducts().then(function(products) {
         globalProducts = products;
-        fetchOrdersFromServer(function() {
-            updateDashboardWidgets(products);
-            renderRevenueChart();
-            renderInventoryChart(products);
-            renderActivityTimeline();
-            renderDashboardRecentProducts(products);
+        // Customers must arrive before the order sync recomputes their stats.
+        loadCustomersFromServer(function() {
+            fetchOrdersFromServer(function() {
+                updateDashboardWidgets(products);
+                renderRevenueChart();
+                renderInventoryChart(products);
+                renderActivityTimeline();
+                renderDashboardRecentProducts(products);
+            });
         });
     }).catch(function(err) {
         console.error('Dashboard load error:', err);

@@ -449,6 +449,27 @@ const db = new sqlite3.Database(dbPath, (err) => {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`, (err) => {
             if (err) console.error("Error creating customers table", err);
+
+            // Migration: the admin's customer book used to live in browser
+            // localStorage (one browser = one copy). These columns make the DB
+            // the single source of truth so owner and staff see the same data.
+            // client_id keeps the admin UI's stable 'CUST-nnn' ids across devices.
+            db.all("PRAGMA table_info(customers)", (e, cols) => {
+                if (e || !cols) return;
+                const names = cols.map(c => c.name);
+                const addCol = (ddl, label) => db.run("ALTER TABLE customers ADD COLUMN " + ddl, (er) => {
+                    if (er) console.error("Migration (customers." + label + ") failed:", er.message);
+                    else console.log("Migration: added customers." + label);
+                });
+                if (names.indexOf('client_id') === -1) addCol("client_id TEXT", "client_id");
+                if (names.indexOf('address') === -1) addCol("address TEXT", "address");
+                if (names.indexOf('status') === -1) addCol("status TEXT", "status");
+                if (names.indexOf('notes') === -1) addCol("notes TEXT", "notes");
+                if (names.indexOf('join_date') === -1) addCol("join_date TEXT", "join_date");
+                db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_client_id ON customers(client_id) WHERE client_id IS NOT NULL", (er) => {
+                    if (er) console.error("Migration (idx_customers_client_id) failed:", er.message);
+                });
+            });
         });
 
         // Create orders table
@@ -482,6 +503,18 @@ const db = new sqlite3.Database(dbPath, (err) => {
                         if (er) console.error("Migration (notes) failed:", er.message);
                         else console.log("Migration: added orders.notes");
                     });
+                }
+                // Migration: idempotency_key lets a checkout retry (double-tap,
+                // network drop + resubmit) return the already-created order
+                // instead of charging/booking twice. Unique per key.
+                if (names.indexOf('idempotency_key') === -1) {
+                    db.run("ALTER TABLE orders ADD COLUMN idempotency_key TEXT", (er) => {
+                        if (er) { console.error("Migration (idempotency_key) failed:", er.message); return; }
+                        console.log("Migration: added orders.idempotency_key");
+                        db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL");
+                    });
+                } else {
+                    db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL");
                 }
             });
         });

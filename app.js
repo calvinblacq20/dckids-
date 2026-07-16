@@ -843,6 +843,16 @@ function showReceiptStep(orderNumber, totalAmount, customerName, customerPhone, 
 }
 
 // ── Checkout / Pre-Order API Integration ──
+// One idempotency key per checkout attempt, kept across retries and cleared
+// only on success: if the order was created but the response got lost (network
+// drop, double-tap), the retry returns the SAME order instead of a duplicate.
+let checkoutIdemKey = null;
+function newIdemKey() {
+  return (window.crypto && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : 'idem-' + Date.now() + '-' + Math.random().toString(36).slice(2, 12);
+}
+
 if (checkoutBtn) {
   checkoutBtn.addEventListener('click', async () => {
     if (cart.length === 0) { showToast('Your cart is empty!', 'warning'); return; }
@@ -870,12 +880,14 @@ if (checkoutBtn) {
     // Snapshot cart for the WhatsApp message before it gets cleared
     const orderedItems = cart.map(c => ({ name: c.name, size: c.size, qty: c.qty, price: c.price }));
 
+    if (!checkoutIdemKey) checkoutIdemKey = newIdemKey();
     const orderPayload = {
         customer_name,
         customer_phone,
         order_type: order_type,
         delivery_area: delivery_area,
         notes: order_notes,
+        idempotency_key: checkoutIdemKey,
         items: cart.map(c => ({ id: c.id, size: c.size, quantity: c.qty }))
     };
 
@@ -907,6 +919,9 @@ if (checkoutBtn) {
             }
             const whatsappNum = siteConfig.whatsapp_number || '233549193805';
             const whatsappURL = `https://wa.me/${whatsappNum}?text=${encodeURIComponent(message)}`;
+
+            // Order confirmed — next checkout is a new attempt with a new key.
+            checkoutIdemKey = null;
 
             // Show receipt (Step 3)
             showReceiptStep(data.order_number, data.total_amount, customer_name, customer_phone, cart, whatsappURL);
