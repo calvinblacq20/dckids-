@@ -411,6 +411,13 @@ function forgetAccount(e, enc) {
     _removeRememberedEmail(decodeURIComponent(enc));
     showLoginAccounts();
 }
+// One-tap wipe for a shared/store computer: clear every remembered email and
+// drop to a blank email entry. Sign-in still works, it just won't suggest anyone.
+function forgetAllAccounts(e) {
+    if (e) e.preventDefault();
+    try { localStorage.removeItem(_REMEMBER_KEY); } catch (err) { /* ignore */ }
+    useDifferentEmail();
+}
 function useDifferentEmail(e) {
     if (e) e.preventDefault();
     _loginShowStep('email');

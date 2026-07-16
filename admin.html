@@ -343,6 +343,9 @@
     .login-legal { margin-top: 18px; font-size: 11.5px; line-height: 1.6; color: #9ca3af; text-align: center; }
     .login-legal a { color: #0F4C3A; font-weight: 600; text-decoration: none; }
     .login-legal a:hover { text-decoration: underline; }
+    .login-forget-all { margin-top: 12px; text-align: center; }
+    .login-forget-all a { font-size: 12.5px; color: #9ca3af; text-decoration: none; }
+    .login-forget-all a:hover { color: #dc2626; text-decoration: underline; }
 
     .login-code-hint {
       display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -383,6 +386,7 @@
         <p class="login-substep login-substep--center">Choose an account to sign in.</p>
         <div id="login-accounts-list" class="login-accounts" role="list"></div>
         <button type="button" class="login-other-account" onclick="useDifferentEmail(event)">Use a different email</button>
+        <p class="login-forget-all"><a href="#" onclick="forgetAllAccounts(event)">Not you? Forget accounts on this device</a></p>
       </div>
 
       <!-- Step 1: enter email -->
@@ -6250,7 +6254,7 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="admin.js?v=116"></script>
+  <script src="admin.js?v=117"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
