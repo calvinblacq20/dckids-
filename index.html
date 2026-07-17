@@ -43,34 +43,16 @@
        mobile networks (the target market). -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://cdn.tailwindcss.com">
 
   <!-- Google Fonts: Inter & Playfair Display -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,600&display=swap" rel="stylesheet">
-  
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            serif: ['Playfair Display', 'serif'],
-          },
-          colors: {
-            brand: {
-              green: '#5E9C7E',
-              darkgreen: '#0F4C3A',
-              bg: '#FAFAF8',
-              pink: '#FCECEC'
-            }
-          }
-        }
-      }
-    }
-  </script>
-  
+
+  <!-- Tailwind: pre-built, purged stylesheet. Replaces the runtime Play CDN
+       (~300KB compiler in the browser) so the storefront paints fast on cheap
+       phones / 3G. Rebuild after adding new Tailwind classes: npm run build:css
+       (from server/). Loaded before styles.css so custom CSS still overrides. -->
+  <link rel="stylesheet" href="tailwind.store.css?v=1">
+
   <style>
     body { background-color: #FAFAF8; }
     .hide-scroll::-webkit-scrollbar { display: none; }
