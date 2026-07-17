@@ -1525,6 +1525,20 @@ input:focus-visible {
   .product-card__lowstock-dot { animation: none; }
 }
 
+/* Global reduced-motion path (playbook: every animation needs a reduced/none
+   route — accessibility, and battery/CPU on the cheap Android devices this
+   store targets). Near-instant transitions instead of hard 0s so state changes
+   are still perceptible; auto-scrolling carousels and looping effects stop. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .product-card:hover .product-card__img { transform: none; }
+}
+
 /* ─── Storefront: supplemental mobile fixes ─── */
 
 /* Product grid: tighter gap on very small phones */
