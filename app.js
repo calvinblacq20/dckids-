@@ -192,6 +192,15 @@ function renderCard(p, index) {
     lowStockHTML = '<div class="product-card__lowstock" style="position:absolute;left:8px;bottom:8px;z-index:2;display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.95);color:#B91C1C;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;box-shadow:0 1px 4px rgba(0,0,0,0.12);"><span style="width:6px;height:6px;border-radius:50%;background:#EF4444;display:inline-block;"></span>Only ' + p.stock + ' left</div>';
   }
 
+  // Products without their own photo show a per-category stock image, labelled
+  // honestly so shoppers know it isn't the actual product. The chip disappears
+  // automatically once a real photo is uploaded (img no longer a fallback).
+  // Skipped when a badge occupies the same corner.
+  const usesCategoryImage = /category-fallbacks\//.test(p.img || '');
+  const catChipHTML = (usesCategoryImage && !badgeHTML)
+    ? '<div style="position:absolute;left:8px;top:8px;z-index:2;background:rgba(15,76,58,0.85);color:#fff;font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:999px;letter-spacing:0.2px;">Category image</div>'
+    : '';
+
   const isWholesale = (storeMode === 'wholesale');
   const moq = siteConfig.wholesale_moq || 10;
   const discount = siteConfig.wholesale_discount || 0;
@@ -308,6 +317,7 @@ function renderCard(p, index) {
       <div class="product-card__img-wrap">
         <img class="product-card__img" src="${imgHtml}" alt="${nameHtml}" loading="lazy" onerror="this.onerror=null;this.src='images/placeholder.svg';">
         ${badgeHTML}
+        ${catChipHTML}
         ${lowStockHTML}
         <button type="button" class="wishlist-heart" data-wishlist-id="${p.id}" aria-label="Add to wishlist" onclick="toggleWishlist(event, ${p.id})">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
