@@ -646,6 +646,13 @@ ul { list-style: none; }
   color: var(--green-primary);
   letter-spacing: 0.4px;
 }
+/* Admin-typed custom state labels (anything besides new/hot/pre-order) —
+   without this they'd inherit no pill background and vanish on photos. */
+.product-card__badge--custom {
+  background: rgba(15,76,58,0.85);
+  color: #fff;
+  letter-spacing: 0.4px;
+}
 
 /* Ask-for-price button */
 .product-card__cta--ask {

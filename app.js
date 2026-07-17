@@ -175,12 +175,23 @@ function renderCard(p, index) {
   if (p.stock === 0) {
     badgeHTML = '<span class="product-card__badge product-card__badge--hot" style="background-color: #ef4444;"><svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Sold Out</span>';
     isSoldOut = true;
-  } else if (p.badge) {
-    badgeHTML = '<span class="product-card__badge product-card__badge--' + p.badge + '">' +
-        (p.badge === 'new' ? '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3l1.9 5.8 1.9-5.8a2 2 0 0 1 1.3-1.3l5.8-1.9-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z"></path></svg> New' : 
-         p.badge === 'hot' ? '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg> Hot' : 
-         '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg> Pre-Order') +
-      '</span>';
+  } else if (p.badge || p.fulfillment_type === 'preorder') {
+    // The photo corner is the product-STATE corner: New / Hot / Pre-Order /
+    // Sold Out (above), or any custom label the admin typed, shown verbatim.
+    // Pre-orders show their state even when no badge was set. Known states map
+    // to their styled modifier ('china' historically meant pre-order); custom
+    // labels get the --custom pill so they never render unstyled.
+    const svgNew = '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3l1.9 5.8 1.9-5.8a2 2 0 0 1 1.3-1.3l5.8-1.9-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z"></path></svg>';
+    const svgHot = '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>';
+    const svgGlobe = '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>';
+    const b = String(p.badge || 'china').trim();
+    const isPreorderState = b === 'china' || b === 'preorder';
+    const mod = b === 'new' ? 'new' : b === 'hot' ? 'hot' : isPreorderState ? 'preorder' : 'custom';
+    const label = b === 'new' ? (svgNew + ' New')
+      : b === 'hot' ? (svgHot + ' Hot')
+      : isPreorderState ? (svgGlobe + ' Pre-Order')
+      : (svgNew + ' ' + escapeStr(b.charAt(0).toUpperCase() + b.slice(1)));
+    badgeHTML = '<span class="product-card__badge product-card__badge--' + mod + '">' + label + '</span>';
   }
 
   // Genuine low-stock urgency only — never faked. Retail only (wholesale sells in bulk),
@@ -192,14 +203,6 @@ function renderCard(p, index) {
     lowStockHTML = '<div class="product-card__lowstock" style="position:absolute;left:8px;bottom:8px;z-index:2;display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.95);color:#B91C1C;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;box-shadow:0 1px 4px rgba(0,0,0,0.12);"><span style="width:6px;height:6px;border-radius:50%;background:#EF4444;display:inline-block;"></span>Only ' + p.stock + ' left</div>';
   }
 
-  // Products without their own photo show a per-category stock image, labelled
-  // honestly so shoppers know it isn't the actual product. The chip disappears
-  // automatically once a real photo is uploaded (img no longer a fallback).
-  // Skipped when a badge occupies the same corner.
-  const usesCategoryImage = /category-fallbacks\//.test(p.img || '');
-  const catChipHTML = (usesCategoryImage && !badgeHTML)
-    ? '<div style="position:absolute;left:8px;top:8px;z-index:2;background:rgba(15,76,58,0.85);color:#fff;font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:999px;letter-spacing:0.2px;">Category image</div>'
-    : '';
 
   const isWholesale = (storeMode === 'wholesale');
   const moq = siteConfig.wholesale_moq || 10;
@@ -317,7 +320,6 @@ function renderCard(p, index) {
       <div class="product-card__img-wrap">
         <img class="product-card__img" src="${imgHtml}" alt="${nameHtml}" loading="lazy" onerror="this.onerror=null;this.src='images/placeholder.svg';">
         ${badgeHTML}
-        ${catChipHTML}
         ${lowStockHTML}
         <button type="button" class="wishlist-heart" data-wishlist-id="${p.id}" aria-label="Add to wishlist" onclick="toggleWishlist(event, ${p.id})">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
