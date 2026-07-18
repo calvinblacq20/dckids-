@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=112">
+  <link rel="stylesheet" href="admin.css?v=113">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -364,6 +364,8 @@
   </style>
 </head>
 <body>
+  <!-- Shader Gradient Background Canvas -->
+  <canvas id="shader-bg-canvas"></canvas>
 
   <!-- ======================== LOGIN CONTAINER ======================== -->
   <div id="login-container" class="login-container">
@@ -910,10 +912,10 @@
         <!-- Stat Widgets -->
         <div class="stats-grid">
           <!-- Total Products -->
-          <div class="stat-card" style="background: var(--card-bg); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: 0 4px 12px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+          <div class="stat-card" style="background: var(--card-bg); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-card); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
               <span style="color: var(--text-secondary); font-size: 14px; font-weight: 500;">Total Products</span>
-              <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(252, 76, 122, 0.1); display: flex; align-items: center; justify-content: center; color: var(--primary);">
+              <div class="stat-icon pink" style="width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
               </div>
             </div>
@@ -925,10 +927,10 @@
           </div>
 
           <!-- Low Stock Alert -->
-          <div class="stat-card" style="background: var(--card-bg); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: 0 4px 12px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+          <div class="stat-card" style="background: var(--card-bg); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-card); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
               <span style="color: var(--text-secondary); font-size: 14px; font-weight: 500;">Low Stock Alert</span>
-              <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(245, 184, 66, 0.1); display: flex; align-items: center; justify-content: center; color: var(--warning);">
+              <div class="stat-icon amber" style="width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
               </div>
             </div>
@@ -940,10 +942,10 @@
           </div>
 
           <!-- Today's Sales -->
-          <div class="stat-card" style="background: var(--card-bg); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: 0 4px 12px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+          <div class="stat-card" style="background: var(--card-bg); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-card); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
               <span style="color: var(--text-secondary); font-size: 14px; font-weight: 500;">Today's Sales</span>
-              <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(91, 192, 139, 0.1); display: flex; align-items: center; justify-content: center; color: var(--success);">
+              <div class="stat-icon green" style="width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
               </div>
             </div>
@@ -955,10 +957,10 @@
           </div>
 
           <!-- New Arrivals -->
-          <div class="stat-card" style="background: var(--card-bg); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: 0 4px 12px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+          <div class="stat-card" style="background: var(--card-bg); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-card); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
               <span style="color: var(--text-secondary); font-size: 14px; font-weight: 500;">New Arrivals</span>
-              <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(252, 76, 122, 0.1); display: flex; align-items: center; justify-content: center; color: var(--primary);">
+              <div class="stat-icon pink" style="width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>
               </div>
             </div>
@@ -6254,7 +6256,8 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="admin.js?v=118"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="admin.js?v=119"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
