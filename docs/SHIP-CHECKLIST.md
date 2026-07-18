@@ -31,8 +31,8 @@ Status as of 2026-07-11 (pre-deploy). ✅ verified · ⚠️ partial/needs actio
 
 ## Operations
 - [x] Error alerting: server errors (uncaught, unhandled, 500 paths) send a rate-limited Telegram alert via the existing order-alert bot (2026-07-14); logs still go to the console — persist them on the host
-- [ ] Dependency-update reminder — ❌ set a monthly reminder to run `npm audit` + `npm update`
-- [x] Smoke tests: `npm test` — 43 end-to-end checks on a throwaway DB, all green (2026-07-11)
+- [x] Maintenance cadence: docs/maintenance-reminders.ics (import once) — monthly audit/update, quarterly restore drill + key rotation
+- [x] Smoke tests: `npm test` — 47 end-to-end checks on a throwaway DB, all green (2026-07-17)
 - [x] Health endpoints for monitors: `/healthz` (process) + `/readyz` (DB reachable) (2026-07-14)
 - [x] Customer book in the DB: admin customers/notes sync via `/api/customers` — owner and staff see the same data on any device; legacy localStorage books auto-migrate on next sign-in (2026-07-14)
 

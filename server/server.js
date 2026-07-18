@@ -28,12 +28,39 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
 
 // ----- Security headers (helmet-equivalent, zero extra deps) -----
+// Content-Security-Policy: even with 'unsafe-inline' (required by the inline
+// scripts/handlers throughout the pages), the origin allowlists still block
+// injected external scripts, plugin/object embeds, and framing — the common
+// XSS escalation paths. The admin page alone additionally needs the Tailwind
+// Play CDN (which compiles CSS in-browser, hence 'unsafe-eval') and Google
+// Identity; the storefront gets the stricter policy.
+const CSP_STORE =
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline'; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "font-src https://fonts.gstatic.com; " +
+    "img-src 'self' data: blob:; " +
+    "media-src 'self'; " +
+    "connect-src 'self'; " +
+    "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'";
+const CSP_ADMIN =
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://accounts.google.com; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; " +
+    "font-src https://fonts.gstatic.com; " +
+    "img-src 'self' data: blob: https:; " +
+    "media-src 'self'; " +
+    "connect-src 'self' https://accounts.google.com; " +
+    "frame-src https://accounts.google.com; " +
+    "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'";
+
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');           // block MIME sniffing
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');                // anti-clickjacking
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('X-XSS-Protection', '0');                        // modern browsers: rely on CSP, disable legacy auditor
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    res.setHeader('Content-Security-Policy', req.path.startsWith('/admin') ? CSP_ADMIN : CSP_STORE);
     if (IS_PROD) {
         // Only send HSTS in prod (over HTTPS); never on localhost http.
         res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
@@ -107,6 +134,15 @@ function serverError(res, err) {
     return res.status(500).json({ error: 'Something went wrong. Please try again.' });
 }
 
+// Append-only audit trail for sensitive admin actions — who did what, when.
+// Reuses the transactions table (its schema is exactly this shape); a failed
+// audit write logs privately and never breaks the action being audited.
+function audit(username, action, productId) {
+    db.run(`INSERT INTO transactions (product_id, username, action) VALUES (?, ?, ?)`,
+        [productId || null, username || 'system', String(action).slice(0, 200)],
+        (e) => { if (e) console.error('[audit] failed:', e.message); });
+}
+
 // ---------------- Passwordless auth: email (Resend) + code helpers ----------------
 const https = require('https');
 const crypto = require('crypto');
@@ -136,16 +172,16 @@ if (OWNER_EMAILS.length === 0) {
 // extra dependency). Fully graceful: a missing key or a failed send is logged
 // and swallowed — email problems must never break registration or sign-in.
 function sendEmail(to, subject, html) {
-    return new Promise((resolve) => {
-        if (!RESEND_API_KEY) {
-            console.log(`[email skipped: no RESEND_API_KEY] to=${to} subject="${subject}"`);
-            return resolve({ skipped: true });
-        }
+    // Sign-in codes ride on this, so delivery gets a timeout and ONE retry
+    // (network blips and Resend 5xx are transient; a duplicate code email is
+    // harmless). 4xx responses are configuration errors — retrying won't help.
+    const attempt = () => new Promise((resolve) => {
         const payload = JSON.stringify({ from: RESEND_FROM, to: [to], subject, html });
         const request = https.request({
             hostname: 'api.resend.com',
             path: '/emails',
             method: 'POST',
+            timeout: 10000,
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + RESEND_API_KEY,
@@ -160,13 +196,31 @@ function sendEmail(to, subject, html) {
                     try { id = JSON.parse(body).id || ''; } catch (e) { /* non-JSON success body */ }
                     console.log(`[email sent] to=${to}${id ? ' id=' + id : ''}`);
                     resolve({ ok: true });
-                } else { console.error(`[email failed ${r.statusCode}] ${body}`); resolve({ ok: false }); }
+                } else {
+                    console.error(`[email failed ${r.statusCode}] ${body}`);
+                    resolve({ ok: false, retryable: r.statusCode >= 500 });
+                }
             });
         });
-        request.on('error', (e) => { console.error('[email error]', e.message); resolve({ ok: false }); });
+        request.on('timeout', () => { request.destroy(new Error('timeout after 10s')); });
+        request.on('error', (e) => { console.error('[email error]', e.message); resolve({ ok: false, retryable: true }); });
         request.write(payload);
         request.end();
     });
+
+    return (async () => {
+        if (!RESEND_API_KEY) {
+            console.log(`[email skipped: no RESEND_API_KEY] to=${to} subject="${subject}"`);
+            return { skipped: true };
+        }
+        let result = await attempt();
+        if (!result.ok && result.retryable) {
+            await new Promise((r) => setTimeout(r, 2000));
+            console.log(`[email retry] to=${to}`);
+            result = await attempt();
+        }
+        return result;
+    })();
 }
 
 function escapeHtmlServer(s) {
@@ -590,6 +644,7 @@ app.post('/api/admin/access-requests/:id/approve', authenticateToken, requireMan
         function (err) {
             if (err) return serverError(res, err);
             if (this.changes === 0) return res.status(404).json({ error: 'Request not found or already handled' });
+            audit(req.user.username, `approved access request #${req.params.id} as ${role}`);
             res.json({ success: true, role });
         }
     );
@@ -602,6 +657,7 @@ app.post('/api/admin/access-requests/:id/reject', authenticateToken, requireMana
         function (err) {
             if (err) return serverError(res, err);
             if (this.changes === 0) return res.status(404).json({ error: 'Request not found or already handled' });
+            audit(req.user.username, `rejected access request #${req.params.id}`);
             res.json({ success: true });
         }
     );
@@ -763,6 +819,7 @@ app.put('/api/settings', authenticateToken, requireManager, (req, res) => {
         [whatsapp_number, wholesale_enabled ? 1 : 0, wholesale_moq, wholesale_discount, banner_enabled ? 1 : 0, banner_text],
         function(err) {
             if (err) return serverError(res, err);
+            audit(req.user.username, 'updated store settings');
             res.json({ success: true, message: 'Settings updated successfully' });
         }
     );
@@ -843,6 +900,7 @@ app.post('/api/products', authenticateToken, requireManager, (req, res) => {
             function (err) {
                 if (isDuplicateSku(err)) return res.status(409).json({ error: 'That SKU is already in use by another product.' });
                 if (err) return serverError(res, err);
+                audit(req.user.username, `created product "${name}"`, this.lastID);
                 res.json({ id: this.lastID, sku: finalSku || null });
             }
         );
@@ -888,6 +946,7 @@ app.delete('/api/products/:id', authenticateToken, requireManager, (req, res) =>
                 if (err3) return serverError(res, err3);
                 db.run(`DELETE FROM products WHERE id = ?`, [productId], function (err4) {
                     if (err4) return serverError(res, err4);
+                    audit(req.user.username, `deleted product #${productId}`);
                     res.json({ changes: this.changes });
                 });
             });
@@ -1076,6 +1135,7 @@ app.post('/api/users', authenticateToken, requireManager, (req, res) => {
             sendEmail(mail, 'You now have DC Kids admin access',
                 `<p>Hi ${escapeHtmlServer(name)}, you've been given ${finalRole} access to the DC Kids dashboard.</p>
                  <p>Sign in at <a href="${APP_URL}/admin.html">${APP_URL}/admin.html</a> — we'll email you a 6-digit code each time.</p>`);
+            audit(req.user.username, `added staff ${mail} as ${finalRole}`);
             res.status(201).json({ id: this.lastID, email: mail, full_name: name, role: finalRole });
         }
     );
@@ -1099,6 +1159,7 @@ app.delete('/api/users/:id', authenticateToken, requireManager, (req, res) => {
             db.run(`DELETE FROM users WHERE id = ?`, [userId], function (err3) {
                 if (err3) return serverError(res, err3);
                 if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
+                audit(req.user.username, `deleted staff account #${userId}`);
                 res.json({ success: true, message: 'User deleted successfully' });
             });
         });
@@ -1212,16 +1273,44 @@ app.post('/api/orders', (req, res) => {
                         return reject(e);
                     }
 
-                    total_amount += unitPrice * finalQty;
+                    const acceptItem = () => {
+                        total_amount += unitPrice * finalQty;
+                        processedItems.push({
+                            product_id: product.id,
+                            product_name: `${product.name} (${item.size || 'Standard'})`,
+                            quantity: finalQty,
+                            price_at_time: unitPrice
+                        });
+                        resolve();
+                    };
 
-                    processedItems.push({
-                        product_id: product.id,
-                        product_name: `${product.name} (${item.size || 'Standard'})`,
-                        quantity: finalQty,
-                        price_at_time: unitPrice
-                    });
+                    // Inventory reservation guard (e-commerce module rule:
+                    // double-selling prevention). Stock only decrements when an
+                    // order turns 'paid', so units sitting in earlier
+                    // pending/processing orders are already promised — count
+                    // them as reserved and refuse to promise the same pieces
+                    // twice. Pre-order items are sourced on demand and skip this.
+                    if (product.fulfillment_type === 'preorder') return acceptItem();
 
-                    resolve();
+                    db.get(
+                        `SELECT COALESCE(SUM(oi.quantity), 0) AS reserved
+                         FROM order_items oi
+                         JOIN orders o ON o.id = oi.order_id
+                         WHERE oi.product_id = ? AND o.status IN ('pending', 'processing')`,
+                        [product.id],
+                        (rerr, rrow) => {
+                            if (rerr) return reject(rerr);
+                            const available = (product.stock || 0) - ((rrow && rrow.reserved) || 0);
+                            if (finalQty > available) {
+                                const e = new Error(available > 0
+                                    ? `Only ${available} of "${product.name}" ${available === 1 ? 'is' : 'are'} still available (the rest are in pending orders). Reduce the quantity or message us on WhatsApp.`
+                                    : `"${product.name}" is out of stock right now. Message us on WhatsApp to be notified when it's back.`);
+                                e.status = 400;
+                                return reject(e);
+                            }
+                            acceptItem();
+                        }
+                    );
                 });
             });
         });
@@ -1455,7 +1544,8 @@ app.put('/api/orders/:id', authenticateToken, (req, res) => {
                         }
                     });
                 }
-                
+
+                audit(req.user.username, `order #${orderId}: status ${order.status} -> ${normStatus}`);
                 res.json({ success: true, changes: this.changes });
             }
         );
@@ -1473,7 +1563,8 @@ app.delete('/api/orders/:id', authenticateToken, (req, res) => {
             db.run(`DELETE FROM payments WHERE order_id = ?`, [orderId], () => {
                 db.run(`DELETE FROM orders WHERE id = ?`, [orderId], function(err) {
                     if (err) return serverError(res, err);
-                    res.json({ success: true, deleted: orderId });
+                    audit(req.user.username, `deleted order #${orderId}`);
+                res.json({ success: true, deleted: orderId });
                 });
             });
         });

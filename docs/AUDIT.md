@@ -32,8 +32,11 @@ ranked by risk. **No code was changed during this audit.**
   comes from the DB rather than the token. Test: "deleted staff token revoked instantly".
 - **S2 · ~~LOW~~ FIXED 2026-07-11** — the three admin `innerHTML` error sinks (toast,
   upload preview, staff-table error row) now escape their message.
-- **S3 · LOW — No Content-Security-Policy header.** Inline scripts and the Tailwind CDN
-  make a strict CSP a real project; document as post-launch hardening, not a quick fix.
+- **S3 · ~~LOW~~ FIXED 2026-07-17** — Content-Security-Policy shipped: the storefront gets a
+  strict policy (self-only scripts/connect, fonts allowlisted, no objects/frames); the admin
+  page gets a variant allowing its Tailwind CDN and Google Sign-In. Verified no violations
+  on any page. ('unsafe-inline' remains until inline handlers are refactored — the origin
+  allowlists still block injected external scripts, the main escalation path.)
 - **S4 · ~~INFO~~ FIXED 2026-07-11** — stale `server/test_flow_runner.js` deleted.
 
 ## 2. Missing structure (ranked)
@@ -78,3 +81,29 @@ users (`cd61271`). The only open code-level items are S2 and S4 above.
 3. **S2 + S4** — escape the three sinks, delete the stale test runner (one commit)
 4. **S1** — decide: accept-and-document or add status re-check middleware (one commit)
 5. **M3/M4/M6** — host-level: scheduled backup, log persistence, uptime ping (at deploy)
+
+---
+
+## 2026-07-17 completions (this pass)
+
+- **Inventory reservations (Phase 15)** — checkout now refuses to promise pieces already
+  sitting in pending/processing orders (per-item availability check; pre-orders exempt).
+  Tests: full-stock order accepted, oversell rejected, out-of-stock rejected. Suite: 47 checks.
+- **Audit trail (Phase 13)** — append-only log (transactions table) for sensitive admin
+  actions: order status changes/deletions, product create/delete, staff add/delete,
+  access approve/reject, settings changes — who, what, when.
+- **CSP (S3)** — shipped, see above.
+- **Email delivery hardening (Phase 11)** — sign-in/staff emails get a 10s timeout and one
+  retry on network errors / Resend 5xx.
+- **ADRs (Phase 11)** — docs/decisions/0001–0004: WhatsApp checkout, passwordless auth
+  (deliberate deviation, reasoned), SQLite + self-seeding, vanilla frontend + prebuilt Tailwind.
+- **RUNBOOK (Phase 12)** — docs/RUNBOOK.md: restart, health, lockout, backup/restore drill,
+  rollback, common failures.
+- **Collaboration rules (Phase 17)** — docs/CONTRIBUTING.md: protected main via PRs, CI-green
+  to merge, ownership map, dev1 resolution item. Branch protection itself is a 2-minute
+  owner action on GitHub (steps included).
+- **Maintenance cadence (Phase 10)** — docs/maintenance-reminders.ics: monthly + quarterly
+  recurring reminders, import once into any calendar.
+- **Deploy prep (Phase 5)** — render.yaml blueprint: one-service deploy, persistent disk via
+  DB_PATH, health checks, env vars declared (secrets entered in dashboard). Remaining
+  deploy-day items need the live domain: securityheaders scan, uptime monitor, Search Console.

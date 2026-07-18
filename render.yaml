@@ -1,0 +1,46 @@
+# Render blueprint — deploys the whole app (storefront + admin + API) as one
+# Node web service. In the Render dashboard: New → Blueprint → point at this
+# repo. The SQLite database lives on a persistent disk via DB_PATH; the values
+# marked sync:false are entered once in the dashboard (never committed).
+#
+# After first deploy: verify /healthz, sign in as owner, then run the
+# deploy-day items in docs/SHIP-CHECKLIST.md (securityheaders.com scan,
+# uptime monitor on /healthz, Search Console).
+services:
+  - type: web
+    name: dckids-brand
+    runtime: node
+    plan: starter
+    branch: main
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: node server.js
+    healthCheckPath: /healthz
+    autoDeploy: true
+    disk:
+      name: dckids-data
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DB_PATH
+        value: /var/data/inventory.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: RESEND_API_KEY
+        sync: false
+      - key: OWNER_EMAIL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: RESEND_FROM
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false

@@ -154,15 +154,29 @@ async function run() {
     // ---- guest checkout: retail, server-side total ----
     // Expected totals derive from the seeded product so the test tracks the
     // catalogue: managed sizes win, otherwise base price (+0 modifier size).
-    const p1 = products.find(p => p.id === 1);
-    let managed = null;
-    try { const arr = JSON.parse(p1.sizes); if (Array.isArray(arr) && arr.length) managed = arr; } catch (e) { /* no managed sizes → base price path */ }
-    const sizeLabel = managed ? managed[0].label : '6M';
-    const unitRetail = managed ? (managed[0].price != null ? managed[0].price : p1.price) : p1.price;
+    // Products are picked by STOCK because the reservation guard now refuses
+    // to promise more pieces than are genuinely available.
+    const settings = await (await fetch(`${BASE}/api/settings`)).json();
+    const moq = settings.wholesale_moq;
+    const disc = settings.wholesale_discount;
+
+    const unitFor = (p) => {
+        let managed = null;
+        try { const arr = JSON.parse(p.sizes); if (Array.isArray(arr) && arr.length) managed = arr; } catch (e) { /* base price path */ }
+        return {
+            sizeLabel: managed ? managed[0].label : '6M',
+            unit: managed ? (managed[0].price != null ? managed[0].price : p.price) : p.price
+        };
+    };
+    const sellable = (p) => p.fulfillment_type !== 'preorder' && p.price > 0;
+    const retailP = products.find(p => sellable(p) && p.stock >= 3);
+    const wholesaleP = products.find(p => sellable(p) && p.id !== retailP.id && p.stock >= moq + 2);
+    check('seed has testable stock levels', !!retailP && !!wholesaleP);
+    const { sizeLabel, unit: unitRetail } = unitFor(retailP);
 
     r = await fetch(`${BASE}/api/orders`, json('POST', {
         customer_name: 'Smoke Test', customer_phone: '0241234567',
-        order_type: 'retail', items: [{ id: 1, quantity: 2, size: sizeLabel }]
+        order_type: 'retail', items: [{ id: retailP.id, quantity: 2, size: sizeLabel }]
     }));
     const order = await r.json();
     check('guest checkout creates order', r.status === 200 && order.success === true);
@@ -170,14 +184,12 @@ async function run() {
     check(`retail total = unit x 2 (${unitRetail} x 2)`, close(order.total_amount, unitRetail * 2), `got ${order.total_amount}`);
 
     // ---- wholesale: per-piece discount, MOQ floor ----
-    const settings = await (await fetch(`${BASE}/api/settings`)).json();
-    const moq = settings.wholesale_moq;
-    const disc = settings.wholesale_discount;
-    const unitWs = Math.round(unitRetail * (1 - disc / 100) * 100) / 100;
+    const w = unitFor(wholesaleP);
+    const unitWs = Math.round(w.unit * (1 - disc / 100) * 100) / 100;
 
     r = await fetch(`${BASE}/api/orders`, json('POST', {
         customer_name: 'Bulk Buyer', customer_phone: '0242222222',
-        order_type: 'wholesale', items: [{ id: 1, quantity: moq, size: sizeLabel }]
+        order_type: 'wholesale', items: [{ id: wholesaleP.id, quantity: moq, size: w.sizeLabel }]
     }));
     const wsOrder = await r.json();
     check(`wholesale total = discounted unit x MOQ (${unitWs} x ${moq})`,
@@ -185,9 +197,32 @@ async function run() {
 
     r = await fetch(`${BASE}/api/orders`, json('POST', {
         customer_name: 'Bulk Buyer', customer_phone: '0242222222',
-        order_type: 'wholesale', items: [{ id: 1, quantity: moq - 1, size: sizeLabel }]
+        order_type: 'wholesale', items: [{ id: wholesaleP.id, quantity: moq - 1, size: w.sizeLabel }]
     }));
     check('wholesale below MOQ rejected', r.status === 400, `status ${r.status}`);
+
+    // ---- inventory reservations: pieces in pending orders can't sell twice ----
+    const smallP = products.find(p => sellable(p) && p.id !== retailP.id && p.id !== wholesaleP.id && p.stock >= 1 && p.stock <= 5);
+    const s = unitFor(smallP);
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'First Buyer', customer_phone: '0243333333',
+        order_type: 'retail', items: [{ id: smallP.id, quantity: smallP.stock, size: s.sizeLabel }]
+    }));
+    check('order for the entire remaining stock accepted', r.status === 200, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Second Buyer', customer_phone: '0244444444',
+        order_type: 'retail', items: [{ id: smallP.id, quantity: 1, size: s.sizeLabel }]
+    }));
+    check('overselling reserved stock rejected', r.status === 400, `status ${r.status}`);
+
+    const emptyP = products.find(p => p.fulfillment_type !== 'preorder' && p.stock === 0);
+    if (emptyP) {
+        r = await fetch(`${BASE}/api/orders`, json('POST', {
+            customer_name: 'X', customer_phone: '024', order_type: 'retail',
+            items: [{ id: emptyP.id, quantity: 1, size: unitFor(emptyP).sizeLabel }]
+        }));
+        check('out-of-stock product rejected', r.status === 400, `status ${r.status}`);
+    }
 
     // ---- checkout validation ----
     const badOrders = [
