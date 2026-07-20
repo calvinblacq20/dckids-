@@ -262,5 +262,1500 @@ function renderCard(p, index) {
       const label = (hasPrice && sUnit > 0) ? s + ' â€” GHâ‚µ ' + gh(sUnit) : s;
       return '<div class="premium-selector__option' + (i === 0 ? ' premium-selector__option--selected' : '') + '" data-value="' + s + '" onclick="premiumSelect(this)" role="option" tabindex="0">' +
         '<span class="premium-selector__radio"></span>' +
-        '<span class="premium-selector__option-text">' ×ß|öÚ$z{-®éÜj×FW'2Â&öG“¢¥4ôâç7G&–æv–g’†&öG’’Ò“°¢6öç7BFFÒv—B&W2æ§6öâ‚“°¢–b‚&W2æö²’F‡&÷ræWrW'&÷"†FFæW'&÷"ÇÂtf–ÆVBFò7V&Ö—Br“°¢6†÷uFö7B‚uF†æ²–÷Rf÷"–÷W"&Wf–WrrÂw7V66W72r“°¢Fö7VÖVçBævWDVÆVÖVçD'”–B‚w'bÖf÷&Òr’ç&W6WB‚“°¢ÖöFÂåõ÷&W6WE&F–ær‚“°¢&Wf–Wu7VÖÖ'”66†RæFVÆWFR„çVÖ&W"‡–B’“°¢v—BÆöE&Wf–Wu7VÖÖ&–W2…´çVÖ&W"‡–B•Ò“°¢÷Vå&Wf–Ww4ÖöFÂ‡–BÂÖöFÂåõ÷&öGV7DæÖR“²òò&Vg&W6€¢Ò6F6‚†W'"’²6†÷uFö7B†W'"æÖW76vRÂvW'&÷"r“²Ğ¢Ò“°§Ğ ¦7–æ2gVæ7F–öâ÷Vå&Wf–Ww4ÖöFÂ‡&öGV7D–BÂ&öGV7DæÖR’°¢Vç7W&U&Wf–Ww4ÖöFÂ‚“°¢6öç7BÖöFÂÒFö7VÖVçBævWDVÆVÖVçD'”–B‚w&Wf–Ww2ÖÖöFÂr“°¢ÖöFÂåõ÷&öGV7D–BÒ&öGV7D–C°¢ÖöFÂåõ÷&öGV7DæÖRÒ&öGV7DæÖS°¢Fö7VÖVçBævWDVÆVÖVçD'”–B‚w'bÖÖöFÂ×F—FÆRr’çFW‡D6öçFVçBÒ&öGV7DæÖRÇÂu&öGV7Bs° ¢6öç7B&öGV7BÒ&öGV7G2æf–æB‡Óâæ–BÓÓÒ&öGV7D–B“°¢6öç7B&öGV7D–ÖvRÒ&W6öÇfU&öGV7D–ÖvR‡&öGV7B“°¢6öç7B–ÖvTVÂÒFö7VÖVçBævWDVÆVÖVçD'”–B‚w'b×&öGV7BÖ–ÖvRr“°¢6öç7B–ÖvT&FvTVÂÒFö7VÖVçBævWDVÆVÖVçD'”–B‚w'bÖ6FVv÷'’Ö–ÖvRÖ&FvRr“°¢–b†–ÖvTVÂ’°¢–ÖvTVÂç7&2Ò&öGV7D–ÖvRç7&3°¢–ÖvTVÂæÇBÒ&öGV7DæÖRÇÂu&öGV7Bs°¢–ÖvTVÂæöæW'&÷"Ò‚’ÓâW6T6FVv÷'”fÆÆ&6²†–ÖvTVÂÂ&öGV7Bbb&öGV7Bæ6B“°¢Ğ¢–b†–ÖvT&FvTVÂ’–ÖvT&FvTVÂç7G–ÆRæF—7Æ’Ò&öGV7D–ÖvRæ—46FVv÷'”fÆÆ&6²òv–æÆ–æRÖfÆW‚r¢væöæRs°¢6öç7BFW64VÂÒFö7VÖVçBævWDVÆVÖVçD'”–B‚w'bÖFW67&—F–öâr“°¢–b‡&öGV7Bbb&öGV7BæFW67&—F–öâ’°¢FW64VÂçFW‡D6öçFVçBÒ&öGV7BæFW67&—F–öã°¢FW64VÂç7G–ÆRæF—7Æ’Òv&Æö6²s°¢ÒVÇ6R°¢FW64VÂç7G–ÆRæF—7Æ’ÒvæöæRs°¢Ğ ¢Fö7VÖVçBævWDVÆVÖVçD'”–B‚w'bÖÆ—7Br’æ–ææW$…DÔÂÒsÆF—b7G–ÆSÒ'FW‡BÖÆ–vã¦6VçFW#¶6öÆ÷#¢3ƒƒƒ·FF–æs£#Gƒ¶föçB×6—¦S£7ƒ²#äÆöF–æ~(
-cÂöF—câs°¢ÖöFÂç7G–ÆRæF—7Æ’ÒvfÆW‚s° ¢G'’°¢6öç7B&W2Òv—BfWF6‚‚rö’÷&öGV7G2òr²&öGV7D–B²r÷&Wf–Ww2r“°¢6öç7BFFÒv—B&W2æ§6öâ‚“°¢Fö7VÖVçBævWDVÆVÖVçD'”–B‚w'bÖfrr’çFW‡D6öçFVçBÒFFç7VÖÖ'’æ6÷VçBòFFç7VÖÖ'’æfW&vRçFôf—†VBƒ’¢~(	Bs°¢6öç7B7F'2Ò~)ˆ^)ˆ^)ˆ^)ˆ^)ˆ^)ˆn)ˆn)ˆn)ˆn)ˆbrç6Æ–6RƒRÒÖF‚ç&÷VæB†FFç7VÖÖ'’æfW&vRÇÂ’ÂÒÖF‚ç&÷VæB†FFç7VÖÖ'’æfW&vRÇÂ’“°¢Fö7VÖVçBævWDVÆVÖVçD'”–B‚w'b×7F'2r’çFW‡D6öçFVçBÒ7F'3°¢Fö7VÖVçBævWDVÆVÖVçD'”–B‚w'bÖ6÷VçBr’çFW‡D6öçFVçBÒFFç7VÖÖ'’æ6÷VçBòFFç7VÖÖ'’æ6÷VçB²r&Wf–Wrr²†FFç7VÖÖ'’æ6÷VçBÓÓÒòrr¢w2r’¢tæò&Wf–Ww2–WB(	B&RF†Rf—'7Bs° ¢6öç7BÆ—7DVÂÒFö7VÖVçBævWDVÆVÖVçD'”–B‚w'bÖÆ—7Br“°¢–b‚FFç&Wf–Ww2æÆVæwF‚’°¢Æ—7DVÂæ–ææW$…DÔÂÒsÆF—b7G–ÆSÒ'FW‡BÖÆ–vã¦6VçFW#¶6öÆ÷#¢3ƒƒƒ·FF–æs£‡ƒ¶föçB×6—¦S£7ƒ²#äæò&Wf–Ww2–WB(	BÆVfRF†Rf—'7BöæR&VÆ÷rãÂöF—câs°¢ÒVÇ6R°¢Æ—7DVÂæ–ææW$…DÔÂÒFFç&Wf–Ww2æÖ‡"Óâ°¢6öç7B'7F'2Ò~)ˆ^)ˆ^)ˆ^)ˆ^)ˆ^)ˆn)ˆn)ˆn)ˆn)ˆbrç6Æ–6RƒRÒ"ç&F–ærÂÒ"ç&F–ær“°¢6öç7BFFRÒ"æ7&VFVEöBòæWrFFR‡"æ7&VFVEöB’çFôÆö6ÆTFFU7G&–ær‚’¢rs°¢&WGW&âÆF—b7G–ÆSÒ'FF–æs£'‚¶&÷&FW"Ö&÷GFöÓ£‚6öÆ–B4cDcDcC²#à¢ÆF—b7G–ÆSÒ&F—7Æ“¦fÆWƒ¶§W7F–g’Ö6öçFVçC§76RÖ&WGvVVã¶Æ–vâÖ—FV×3¦6VçFW#²#à¢ÆF—b7G–ÆSÒ&föçB×vV–v‡C£s¶föçB×6—¦S£7ƒ¶6öÆ÷#¢3###²#âG¶W66U7G"‡"æWF†÷%öæÖR—ÓÂöF—cà¢ÆF—b7G–ÆSÒ&6öÆ÷#¢6f3F3v¶föçB×6—¦S£'ƒ¶ÆWGFW"×76–æs£ãWƒ²#âG·'7F'7ÓÂöF—cà¢ÂöF—cà¢G·"çF—FÆRòsÆF—b7G–ÆSÒ&föçB×6—¦S£7ƒ¶föçB×vV–v‡C£c¶6öÆ÷#¢3CCC¶Ö&v–â×F÷£Gƒ²#âr²W66U7G"‡"çF—FÆR’²sÂöF—câr¢rwĞ¢ÆF—b7G–ÆSÒ&föçB×6—¦S£7ƒ¶6öÆ÷#¢3CCC¶Ö&v–â×F÷£Gƒ¶Æ–æRÖ†V–v‡C£ãS²#âG¶W66U7G"‡"æ&öG’—ÓÂöF—cà¢ÆF—b7G–ÆSÒ&föçB×6—¦S£ƒ¶6öÆ÷#¢3“““¶Ö&v–â×F÷£gƒ²#âG¶FFWÓÂöF—cà¢ÂöF—cæ°¢Ò’æ¦ö–â‚rr“°¢Ğ¢Ò6F6‚†R’°¢Fö7VÖVçBævWDVÆVÖVçD'”–B‚w'bÖÆ—7Br’æ–ææW$…DÔÂÒsÆF—b7G–ÆSÒ'FW‡BÖÆ–vã¦6VçFW#¶6öÆ÷#¢6F3#c#c·FF–æs£‡ƒ¶föçB×6—¦S£7ƒ²#ä6÷VÆBæ÷BÆöB&Wf–Ww2ãÂöF—câs°¢Ğ§Ğ ¢ò¢)H)H†öö·3¢ÆöBv—6†Æ—7B÷&Wf–WrFFv†VæWfW"F†Rw&–B&R×&VæFW'2)H)H¢ğ¦6öç7Bö÷&–u&VæFW%&öGV7G2ÒG—Vöb&VæFW%&öGV7G2ÓÓÒvgVæ7F–öârò&VæFW%&öGV7G2¢çVÆÃ°¦–b…ö÷&–u&VæFW%&öGV7G2’°¢v–æF÷rç&VæFW%&öGV7G2ÒgVæ7F–öâ‚’°¢6öç7B÷WBÒö÷&–u&VæFW%&öGV7G2æÇ’‡F†—2Â&wVÖVçG2“°¢–çEv—6†Æ—7D†V'G2‚“°¢6öç7B–G2Ò'&’æg&öÒ†Fö7VÖVçBçVW'•6VÆV7F÷$ÆÂ‚u¶FF×&F–ærÖ–EÒr’’æÖ†VÂÓâçVÖ&W"†VÂævWDGG&–'WFR‚vFF×&F–ærÖ–Br’’“°¢–b†–G2æÆVæwF‚’ÆöE&Wf–Wu7VÖÖ&–W2†–G2“°¢&WGW&â÷WC°¢Ó°§Ğ ¢òòÖ–æ–ÖÂFö7Bf÷"7F÷&Vg&öçB†fÆÆ&6²–bæ÷B&W6VçBVÇ6Wv†W&R¦gVæ7F–öâ6†÷uFö7B†×6rÂ¶–æB’°¢6öç7BVÂÒFö7VÖVçBæ7&VFTVÆVÖVçB‚vF—br“°¢VÂçFW‡D6öçFVçBÒ×6s°¢VÂç7G–ÆRæ775FW‡BÒw÷6—F–öã¦f—†VC¶&÷GFöÓ£#Gƒ¶ÆVgC£SS·G&ç6f÷&Ó§G&ç6ÆFU‚‚ÓSR“¶&6¶w&÷VæC¢r²†¶–æBÓÓÒvW'&÷"ròr6F3#c#br¢¶–æBÓÓÒwv&æ–ærròr6C“ssbr¢¶–æBÓÓÒv–æfòròr3cD34r¢r3TS”3tRr’²s¶6öÆ÷#¢6ffc·FF–æs£‚‡ƒ¶&÷&FW"×&F—W3£ƒ¶föçB×6—¦S£7ƒ·¢Ö–æFWƒ£““““¶&÷‚×6†F÷s£‡‚#‡‚&v&ƒÃÃÃã‚“¶föçBÖfÖ–Ç“¤–çFW"Ç6ç2×6W&–c²s°¢Fö7VÖVçBæ&öG’æVæD6†–ÆB†VÂ“°¢6WEF–ÖV÷WB‚‚’ÓâVÂç&VÖ÷fR‚’Â#S“°§Ğ¦gVæ7F–öâW66U7G"‡2’²&WGW&â7G&–ær‡2ÓÒçVÆÂòrr¢2’ç&WÆ6R‚õ²cÃâ"uÒörÂ2Óâ‡²rbs¢rf×²rÂsÂs¢rfÇC²rÂsâs¢rfwC²rÂr"s¢rgV÷C²rÂ"r#¢rb33“²rÒ•¶5Ò“²Ğ ¢òò&ö÷Bv—6†Æ—7B7–æ2öæ6RöâvRÆöB†gFW"w&–Bf—'7B&VæFW'2§v–æF÷ræFDWfVçDÆ—7FVæW"‚vÆöBrÂ‚’Óâ²6WEF–ÖV÷WB‡7–æ5v—6†Æ—7E7FFRÂ#“²Ò“° ¢ò¢)H)H–çWBwV&G3¢&Æö6²w&öær6†&7FW"6Æ72–âf–VÆG2)H)H ¢çVÖ&W"f–VÆG3¢&Æö6²RôRò²òÒ†æB"â"öâ–çFVvW"f–VÆG2“°¢FVÂf–VÆG3¢F–v—G2æB²Ò‚’76RöæÇ“²W'6öâÖæÖRf–VÆG3¢&Æö6²F–v—G2â¢ğ¢†gVæ7F–öâ–ç7FÆÄ–çWDwV&G2‚’°¢f"ÄUEDU%5ôôäÅ•ô”E2Ò²v6†V6¶÷WDæÖRrÂw'bÖWF†÷"uÓ°¢gVæ7F–öâ6WDf–ÇFW&VB†VÂÂ6ÆVæVB’°¢f"6&WBÒVÂç6VÆV7F–öå7F'BÂ&VÖ÷fVBÒVÂçfÇVRæÆVæwF‚Ò6ÆVæVBæÆVæwFƒ°¢VÂçfÇVRÒ6ÆVæVC°¢G'’²VÂç6WE6VÆV7F–öå&ævR†6&WBÒ&VÖ÷fVBÂ6&WBÒ&VÖ÷fVB“²Ò6F6‚†R’·Ğ¢Ğ¢Fö7VÖVçBæFDWfVçDÆ—7FVæW"‚v¶W–F÷vârÂgVæ7F–öâ†R’°¢f"VÂÒRçF&vWC°¢–b‚VÂÇÂVÂçFtæÖRÓÒt”åUBrÇÂ†VÂçG—RÇÂrr’çFôÆ÷vW$66R‚’ÓÒvçVÖ&W"r’&WGW&ã°¢–b†Ræ7G&Ä¶W’ÇÂRæÖWF¶W’ÇÂRæÇD¶W’’&WGW&ã°¢f"ÆÆ÷w4FV6–ÖÂÒõÂâòçFW7B†VÂævWDGG&–'WFR‚w7FWr’ÇÂrr’ÇÂVÂævWDGG&–'WFR‚v–çWFÖöFRr’ÓÓÒvFV6–ÖÂs°¢–b†Ræ¶W’ÓÓÒvRrÇÂRæ¶W’ÓÓÒtRrÇÂRæ¶W’ÓÓÒr²rÇÂRæ¶W’ÓÓÒrÒr’²Rç&WfVçDFVfVÇB‚“²&WGW&ã²Ğ¢–b†Ræ¶W’ÓÓÒrârbbÆÆ÷w4FV6–ÖÂ’²Rç&WfVçDFVfVÇB‚“²Ğ¢Ò“°¢Fö7VÖVçBæFDWfVçDÆ—7FVæW"‚v–çWBrÂgVæ7F–öâ†R’°¢f"VÂÒRçF&vWC°¢–b‚VÂÇÂVÂçFtæÖRÓÒt”åUBr’&WGW&ã°¢–b‚†VÂçG—RÇÂrr’çFôÆ÷vW$66R‚’ÓÓÒwFVÂr’°¢f"†öæRÒVÂçfÇVRç&WÆ6R‚õµãÓ’µÂÒ‚•Ç5ÒörÂrr“°¢–b‡†öæRÓÒVÂçfÇVR’6WDf–ÇFW&VB†VÂÂ†öæR“°¢ÒVÇ6R–b„ÄUEDU%5ôôäÅ•ô”E2æ–æFW„öb†VÂæ–B’ÓÒÓ’°¢f"ÆWGFW'2ÒVÂçfÇVRç&WÆ6R‚õ³Ó•ÒörÂrr“°¢–b†ÆWGFW'2ÓÒVÂçfÇVR’6WDf–ÇFW&VB†VÂÂÆWGFW'2“°¢Ğ¢Ò“°§Ò’‚“° ¢ò¢ÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓĞ¢E”äÔ”25Dõ$Te$ôåB4DTtõ%’ä`¢&V'V–ÆG2F†R6FVv÷'’–ÆÇ2²6–FRÖG&vW"g&öÒF†R÷væW"w0¢ÖævVB6FVv÷'’Æ—7B‡6†&VBf–6ÖRÖ÷&–v–âÆö6Å7F÷&vR¢ÖW&vVBv—F‚6FVv÷&–W2&W6VçBöâ&öGV7G2(	B6ò6FVv÷&–W2F†P¢÷væW"FG2†Rærâ%$ô4µ2"’V"–âF†R7F÷&Vg&öçB–ÖÖVF–FVÇ’à¢ÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÓÒ¢ğ¢†gVæ7F–öâ‚’°¢wW6R7G&–7Bs°¢gVæ7F–öâW64‚‡2—²&WGW&â7G&–ær‡3ÓÖçVÆÃòrs§2’ç&WÆ6R‚õ²cÃâ"uÒörÂgVæ7F–öâ†Ò—·&WGW&â²rbs¢rf×²rÂsÂs¢rfÇC²rÂsâs¢rfwC²rÂr"s¢rgV÷C²rÂ"r#¢rb33“²wÕ¶ÕÓ·Ò“²Ğ ¢f"”ÄÅô”4ôâÒ°¢æWv&÷&ã¢vfÖ&'’rÂ6Æ÷F†–æs¢vf×G6†—'BrÂ6†öW3¢vf×6†öR×&–çG2rÀ¢fVVF–æs¢vfÖ&÷GFÆR×vFW"rÂvV#¢vfÖ&'’Ö6'&–vRrÂ&F†6&S¢vfÖ&F‚rÀ¢W76VçF–Ç3¢vfÖ†æBÖ†öÆF–ærÖ†V'BrÂ66W76÷&–W3¢vf×6†÷–ærÖ&rrÂ&VFF–æs¢vfÖ&VBp¢Ó° ¢gVæ7F–öâ7F÷&Vg&öçD6G2‚’°¢f"÷WBÒµÒÂ6VVâÒ·Ó°¢gVæ7F–öâW6‚†–BÂÆ&VÂ—°¢–b‚–BÇÂ–BÓÓÒw&V÷&FW"rÇÂ6VVå¶–EÒ’&WGW&ã°¢6VVå¶–EÒÒ°¢f"Æ&ÂÒÆ&VÀ¢ÇÂ‡G—Vöb´äõtåô4DTtõ%•ôÄ$TÅ2ÓÒwVæFVf–æVBrbb´äõtåô4DTtõ%•ôÄ$TÅ5¶–EÒ¢ÇÂ‡G—Vöb‡VÖæ—¦T6FVv÷'’ÓÓÒvgVæ7F–öârò‡VÖæ—¦T6FVv÷'’†–B’¢–B“°¢÷WBçW6‚‡²–C¢–BÂÆ&VÃ¢Æ&ÂÒ“°¢Ğ¢f"7F÷&VBÒµÓ°¢G'’²7F÷&VBÒvWE7F÷&VD6FVv÷'”Æ—7B‚’ÇÂµÓ²Ò6F6‚†R’·Ğ¢–b‡7F÷&VBæÆVæwF‚’°¢òòF†R÷væW"w2ÖævVBÆ—7B—2F†R6÷W&6RöbG'WF‚‡6òFVÆWFW27F–6²’à¢7F÷&VBæf÷$V6‚†gVæ7F–öâ†2’²–b†2bb2æ–B’W6‚†2æ–BÂ2æÆ&VÂ“²Ò“°¢ÒVÇ6R°¢òòæòÖævVBÆ—7B–WB(i"fÆÂ&6²Fò'V–ÇBÖ–âFVfVÇG2à¢G'’²†6FVv÷'”ÖÇÂµÒ’æf÷$V6‚†gVæ7F–öâ†2’²W6‚†2æ–BÂ2æÆ&VÂ“²Ò“²Ò6F6‚†R’·Ğ¢Ğ¢òòç’6FVv÷'’F†B7GVÆÇ’†2&öGV7G2Çv—26†÷w2(	BWfVâf÷"6†÷W'0¢òòv†÷6R'&÷w6W"FöW6âwB†fRF†RÖævVBÆ—7B†—Bw2&öGV7BFFÂ6W'fW"×6–FR’à¢G'’²„'&’æ—4'&’‡&öGV7G2’ò&öGV7G2¢µÒ’æf÷$V6‚†gVæ7F–öâ‡’²–b‡æ6B’W6‚‡æ6B“²Ò“²Ò6F6‚†R’·Ğ¢òò†–FR6FVv÷&–W2v—F‚æ÷F†–ær–âF†VÒ(	BâV×G’w&–B&VG22'&ö¶VâFğ¢òò6†÷W'2âöæÇ’f–ÇFW"öæ6RF†R6FÆöwVR†2ÆöFVBÂ6òf–ÆVBfWF6€¢òò6âwB&Ææ²÷WBF†Ræbà¢–b„'&’æ—4'&’‡&öGV7G2’bb&öGV7G2æÆVæwF‚’°¢f"†fRÒ·Ó°¢&öGV7G2æf÷$V6‚†gVæ7F–öâ‡’²–b‡æ6B’†fU·æ6EÒÒ²Ò“°¢÷WBÒ÷WBæf–ÇFW"†gVæ7F–öâ†2’²&WGW&â†fU¶2æ–EÓ²Ò“°¢Ğ¢&WGW&â÷WC°¢Ğ ¢gVæ7F–öâ6VÆV7D6FVv÷'’†6B’°¢G'’²7W'&VçD6FVv÷'’Ò6C²Ò6F6‚†R’·Ğ¢G'’²6FVv÷'•vW5¶6EÒÒ²Ò6F6‚†R’·Ğ¢–b‡G—Vöb–çfVçF÷'”'Fç2ÓÒwVæFVf–æVBrbb–çfVçF÷'”'Fç2’°¢–b†–çfVçF÷'”'Fç5³Ò’–çfVçF÷'”'Fç5³Òæ6Æ74Æ—7Bç&VÖ÷fR‚v7F—fRr“°¢–b†–çfVçF÷'”'Fç5³Ò’–çfVçF÷'”'Fç5³Òæ6Æ74Æ—7BæFB‚v7F—fRr“°¢Ğ¢–b‡G—VöbG–æÖ–56V7F–öç2ÓÒwVæFVf–æVBrbbG–æÖ–56V7F–öç2’G–æÖ–56V7F–öç2æ6Æ74Æ—7Bç&VÖ÷fR‚v†–FFVâr“°¢–b‡G—Vöb&V÷&FW%6V2ÓÒwVæFVf–æVBrbb&V÷&FW%6V2’&V÷&FW%6V2æ6Æ74Æ—7BæFB‚v†–FFVâr“°¢G'’²7W'&VçE7Fö6²Òvf–Æ&ÆRs²Ò6F6‚†R’·Ğ¢–b†6FVv÷'•–ÆÇ2’6FVv÷'•–ÆÇ2çVW'•6VÆV7F÷$ÆÂ‚ræ6FVv÷'’×–ÆÂr’æf÷$V6‚†gVæ7F–öâ‡’°¢æ6Æ74Æ—7BçFövvÆR‚v7F—fRrÂ‡ævWDGG&–'WFR‚vFFÖf–ÇFW"r’ÇÂvÆÂr’ÓÓÒ6B“°¢Ò“°¢–b†ædG&vW"’ædG&vW"çVW'•6VÆV7F÷$ÆÂ‚rææbÖG&vW%õö—FVÕ¶FFÖ6FVv÷'•Òr’æf÷$V6‚†gVæ7F–öâ†â’°¢âæ6Æ74Æ—7BçFövvÆR‚v7F—fRrÂ†âævWDGG&–'WFR‚vFFÖ6FVv÷'’r’ÇÂrr’ÓÓÒ6B“°¢Ò“°¢‡v–æF÷rç&VæFW%&öGV7G2ÇÂ&VæFW%&öGV7G2’‚“°¢f"6V2ÒFö7VÖVçBævWDVÆVÖVçD'”–B‚w&öGV7DÆ—7E6V7F–öâr“°¢–b‡6V2’v–æF÷rç67&öÆÅFò‡²F÷¢6V2ævWD&÷VæF–æt6Æ–VçE&V7B‚’çF÷²v–æF÷rçvU”öfg6WBÒ“Â&V†f–÷#¢w6Öö÷F‚rÒ“°¢Ğ ¢gVæ7F–öâ&V'V–ÆE–ÆÇ2‚’°¢–b‚6FVv÷'•–ÆÇ2’&WGW&ã°¢f"6G2Ò7F÷&Vg&öçD6G2‚“°¢f"7F—fRÒ‡G—Vöb7W'&VçD6FVv÷'’ÓÒwVæFVf–æVBrbb7W'&VçD6FVv÷'’’ò7W'&VçD6FVv÷'’¢vÆÂs°¢f"‡FÖÂÒsÆ‡&VcÒ"6ÆÂ"6Æ73Ò&6FVv÷'’×–ÆÂfÆW‚—FV×2Ö6VçFW"vÓ"‚ÓR’Ó"ãR&÷VæFVBÖgVÆÂ&÷&FW"FW‡B×6ÒföçBÖÖVF—VÒG&ç6—F–öâÖÆÂr²†7F—fRÓÓÒvÆÂròr7F—fRr¢rr’²r"FFÖf–ÇFW#Ò&ÆÂ#ãÇ7frv–GFƒÒ#2"†V–v‡CÒ#2"f–Wt&÷ƒÒ##B#B"f–ÆÃÒ&æöæR"7G&ö¶SÒ&7W'&VçD6öÆ÷""7G&ö¶R×v–GFƒÒ#"ã""7G&ö¶RÖÆ–æV6Ò'&÷VæB"7G&ö¶RÖÆ–æV¦ö–ãÒ'&÷VæB"7G–ÆSÒ&÷6—G“£ã‚#ãÇ&V7BƒÒ#2"“Ò#2"v–GFƒÒ#r"†V–v‡CÒ#r"'ƒÒ#"óãÇ&V7BƒÒ#B"“Ò#2"v–GFƒÒ#r"†V–v‡CÒ#r"'ƒÒ#"óãÇ&V7BƒÒ#2"“Ò#B"v–GFƒÒ#r"†V–v‡CÒ#r"'ƒÒ#"óãÇ&V7BƒÒ#B"“Ò#B"v–GFƒÒ#r"†V–v‡CÒ#r"'ƒÒ#"óãÂ÷7fsâÆÃÂöâs°¢‡FÖÂ³Ò6G2æÖ†gVæ7F–öâ†2’°¢f"–2Ò”ÄÅô”4ôå¶2æ–EÒÇÂvf×Frs°¢&WGW&âsÆ‡&VcÒ"2r²W64‚†2æ–B’²r"6Æ73Ò&6FVv÷'’×–ÆÂfÆW‚—FV×2Ö6VçFW"vÓ"‚ÓR’Ó"ãR&÷VæFVBÖgVÆÂ&÷&FW"&r×v†—FRFW‡BÖw&’Óc&÷&FW"Öw&’Ó†÷fW#¦&rÖw&’ÓSFW‡B×6ÒföçBÖÖVF—VÒG&ç6—F–öâÖÆÂr²†7F—fRÓÓÒ2æ–Bòr7F—fRr¢rr’²r"FFÖf–ÇFW#Ò"r²W64‚†2æ–B’²r#ãÆ’6Æ73Ò&f2r²–2²rFW‡B×‡2÷6—G’Óƒ#ãÂö“âr²W64‚†2æÆ&VÂ’²sÂöâs°¢Ò’æ¦ö–â‚rr“°¢6FVv÷'•–ÆÇ2æ–ææW$…DÔÂÒ‡FÖÃ°¢Ğ ¢gVæ7F–öâ&V'V–ÆDæb‚’°¢–b‚ædG&vW"’&WGW&ã°¢f"6G2Ò7F÷&Vg&öçD6G2‚“°¢òò&W6W'fRV6‚6FVv÷'’w2õ$”t”äÂvÇ—‚–6öã¢6æ6†÷BF†RW†—7F–ær5dr'¢òò6FVv÷'’–BÂF†VâG&÷F†R÷&–v–æÇ2‡6òF†V—"öÆB6Æ–6²†æFÆW'2Föâw@¢òòF÷V&ÆRÖf—&Rv—F‚F†RFVÆVvFVBöæR’âæWr6FVv÷&–W2vWBvVæW&–2Frà¢f"–6öä'”–BÒ·Ó°¢ædG&vW"çVW'•6VÆV7F÷$ÆÂ‚rææbÖG&vW%õö—FVÕ¶FFÖ6FVv÷'•Òr’æf÷$V6‚†gVæ7F–öâ†â’°¢f"F2ÒâævWDGG&–'WFR‚vFFÖ6FVv÷'’r“°¢–b†F2ÓÓÒvÆÂrÇÂF2ÓÓÒw&V÷&FW"r’&WGW&ã°¢f"7frÒâçVW'•6VÆV7F÷"‚w7frr“°¢–b‡7frbb–6öä'”–E¶F5Ò’–6öä'”–E¶F5ÒÒ7fræ÷WFW$…DÔÃ°¢âç&VçDæöFRç&VÖ÷fT6†–ÆB†â“°¢Ò“°¢f"ÆÄ—FVÒÒædG&vW"çVW'•6VÆV7F÷"‚rææbÖG&vW%õö—FVÕ¶FFÖ6FVv÷'“Ò&ÆÂ%Òr“°¢f"æ6†÷"ÒÆÄ—FVÒòÆÄ—FVÒææW‡E6–&Æ–ær¢çVÆÃ°¢f"Fu7frÒsÇ7frf–Wt&÷ƒÒ##B#B"f–ÆÃÒ&æöæR"7G&ö¶SÒ&7W'&VçD6öÆ÷""7G&ö¶R×v–GFƒÒ#""7G&ö¶RÖÆ–æV6Ò'&÷VæB"7G&ö¶RÖÆ–æV¦ö–ãÒ'&÷VæB"v–GFƒÒ##B"†V–v‡CÒ##B#ãÇF‚CÒ$Ó#ãS’2ãCÂÓrãrrãv""Ó"ãƒ2Ã"%c&ƒÃ‚ãS’‚ãS–"""ãƒ'¢"óãÆÆ–æRƒÒ#r"“Ò#r"ƒ#Ò#rã"“#Ò#r"óãÂ÷7fsâs°¢6G2æf÷$V6‚†gVæ7F–öâ†2’°¢f"ÒFö7VÖVçBæ7&VFTVÆVÖVçB‚vr“°¢æ‡&VbÒr2r²2æ–C°¢æ6Æ74æÖRÒvæbÖG&vW%õö—FVÒs°¢ç6WDGG&–'WFR‚vFFÖ6FVv÷'’rÂ2æ–B“°¢æ–ææW$…DÔÂÒ†–6öä'”–E¶2æ–EÒÇÂFu7fr’²rr²W64‚†2æÆ&VÂ“°¢–b†ÆÄ—FVÒ’ædG&vW"æ–ç6W'D&Vf÷&R†Âæ6†÷"“²VÇ6RædG&vW"æVæD6†–ÆB†“°¢Ò“°¢Ğ ¢gVæ7F–öâv—&TFVÆVvF–öâ‚’°¢–b†6FVv÷'•–ÆÇ2bb6FVv÷'•–ÆÇ2åõö6DFVÆVr’°¢6FVv÷'•–ÆÇ2åõö6DFVÆVrÒG'VS°¢6FVv÷'•–ÆÇ2æFDWfVçDÆ—7FVæW"‚v6Æ–6²rÂgVæ7F–öâ†R’°¢f"–ÆÂÒRçF&vWBæ6Æ÷6W7B‚ræ6FVv÷'’×–ÆÂr“°¢–b‚–ÆÂÇÂ6FVv÷'•–ÆÇ2æ6öçF–ç2‡–ÆÂ’’&WGW&ã°¢Rç&WfVçDFVfVÇB‚“°¢6VÆV7D6FVv÷'’‡–ÆÂævWDGG&–'WFR‚vFFÖf–ÇFW"r’ÇÂvÆÂr“°¢Ò“°¢Ğ¢–b†ædG&vW"bbædG&vW"åõö6DFVÆVr’°¢ædG&vW"åõö6DFVÆVrÒG'VS°¢ædG&vW"æFDWfVçDÆ—7FVæW"‚v6Æ–6²rÂgVæ7F–öâ†R’°¢f"—FVÒÒRçF&vWBæ6Æ÷6W7B‚rææbÖG&vW%õö—FVÕ¶FFÖ6FVv÷'•Òr“°¢–b‚—FVÒÇÂædG&vW"æ6öçF–ç2†—FVÒ’’&WGW&ã°¢f"6BÒ—FVÒævWDGG&–'WFR‚vFFÖ6FVv÷'’r“°¢–b†6BÓÓÒvÆÂrÇÂ6BÓÓÒw&V÷&FW"r’&WGW&ã²òò÷&–v–æÇ2†æFÆRF†W6P¢Rç&WfVçDFVfVÇB‚“°¢–b‡G—Vöb6Æ÷6TæbÓÓÒvgVæ7F–öâr’6Æ÷6Tæb‚“°¢6VÆV7D6FVv÷'’†6B“°¢Ò“°¢Ğ¢Ğ ¢gVæ7F–öâ7–æ46FVv÷'”æb‚’²&V'V–ÆE–ÆÇ2‚“²&V'V–ÆDæb‚“²v—&TFVÆVvF–öâ‚“²Ğ¢v–æF÷rç7–æ46FVv÷'”æbÒ7–æ46FVv÷'”æc° ¢òò&R×7–æ2F†R7F÷&Vg&öçBæb²w&–Bv†VæWfW"F†R6FVv÷'’Æ—7B6†ævW2à¢gVæ7F–öâ&W7–æ2‚’°¢G'’²7–æ46FVv÷'”æb‚“²Ò6F6‚†R’·Ğ¢G'’²‡v–æF÷rç&VæFW%&öGV7G2ÇÂ&VæFW%&öGV7G2’‚“²Ò6F6‚†R’·Ğ¢Ğ¢òòf—&W2v†VâF†RFÖ–â†æ÷F†W"F"Â6ÖR'&÷w6W"’FG2÷&VæÖW2öFVÆWFW26FVv÷'’à¢v–æF÷ræFDWfVçDÆ—7FVæW"‚w7F÷&vRrÂgVæ7F–öâ†R’°¢–b‚RÇÂRæ¶W’ÓÓÒvF4¶–G46FVv÷&–W2rÇÂRæ¶W’ÓÓÒçVÆÂ’&W7–æ2‚“°¢Ò“°¢òò6F6‚6†ævW2ÖFR–âF†—26ÖRF"‡7F÷&vRWfVçBFöW6âwBf—&Rf÷"F†Rw&—FW"’à¢v–æF÷ræFDWfVçDÆ—7FVæW"‚vfö7W2rÂ&W7–æ2“°¢Fö7VÖVçBæFDWfVçDÆ—7FVæW"‚wf—6–&–Æ—G–6†ævRrÂgVæ7F–öâ‚’²–b‚Fö7VÖVçBæ†–FFVâ’&W7–æ2‚“²Ò“° ¢Fö7VÖVçBæFDWfVçDÆ—7FVæW"‚tDôÔ6öçFVçDÆöFVBrÂgVæ7F–öâ‚’°¢6WEF–ÖV÷WB‡7–æ46FVv÷'”æbÂc“°¢6WEF–ÖV÷WB‡7–æ46FVv÷'”æbÂƒ“°¢Ò“°§Ò’‚“° 
+        '<span class="premium-selector__option-text">' + label + '</span>' +
+      '</div>';
+    }).join('');
+    sizeHTML = '<div class="premium-selector' + (isSoldOut ? ' premium-selector--disabled' : '') + '" data-product-id="' + p.id + '" data-type="size">' +
+      '<input type="hidden" id="size-select-' + p.id + '" value="' + firstSize + '" class="premium-selector__native">' +
+      '<div class="premium-selector__trigger" onclick="togglePremiumSelector(this)" role="combobox" tabindex="0" aria-expanded="false">' +
+        '<span class="premium-selector__label">' + firstLabel + '</span>' +
+        '<svg class="premium-selector__arrow" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      '</div>' +
+      '<div class="premium-selector__dropdown" role="listbox">' + optionsHTML + '</div>' +
+    '</div>';
+  } else {
+    const singleLabel = sizeOptions[0] || p.size || 'One Size';
+    sizeHTML = '<div class="product-card__size">' + singleLabel + '</div>' +
+                '<input type="hidden" id="size-select-' + p.id + '" value="' + singleLabel + '">';
+  }
+
+  // Bulk quantity selector (wholesale only)
+  let bulkQtyHTML = '';
+  if (isWholesale && !isSoldOut) {
+    const multiples = [1, 2, 3, 5, 10];
+    const firstBulk = multiples[0] * moq;
+    const firstBulkLabel = firstBulk + ' pcs (Ã—' + multiples[0] + ' MOQ)';
+    const bulkOptionsHTML = multiples.map((m, i) => {
+      const val = m * moq;
+      const label = val + ' pcs (Ã—' + m + ' MOQ)';
+      return '<div class="premium-selector__option' + (i === 0 ? ' premium-selector__option--selected' : '') + '" data-value="' + val + '" onclick="premiumSelect(this)" role="option" tabindex="0">' +
+        '<span class="premium-selector__radio"></span>' +
+        '<span class="premium-selector__option-text">' + label + '</span>' +
+      '</div>';
+    }).join('');
+    bulkQtyHTML = '<div class="premium-selector" data-product-id="' + p.id + '" data-type="bulk" style="margin-top:6px;">' +
+      '<input type="hidden" id="bulk-qty-' + p.id + '" value="' + firstBulk + '" class="premium-selector__native">' +
+      '<div class="premium-selector__trigger" onclick="togglePremiumSelector(this)" role="combobox" tabindex="0" aria-expanded="false">' +
+        '<span class="premium-selector__label">' + firstBulkLabel + '</span>' +
+        '<svg class="premium-selector__arrow" viewBox="0 0 16 16" fill="none"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      '</div>' +
+      '<div class="premium-selector__dropdown" role="listbox">' + bulkOptionsHTML + '</div>' +
+    '</div>';
+  }
+
+  let ctaHTML = '';
+  if (isSoldOut) {
+    ctaHTML = `<button disabled class="product-card__cta" style="background-color: #ccc; cursor: not-allowed; color: #666; border: none;">Out of Stock</button>`;
+  } else if (isWholesale) {
+    ctaHTML = `<button onclick="addToCart(${p.id})" class="product-card__cta" style="display:flex;align-items:center;justify-content:center;gap:6px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+        Add Bulk to Cart
+      </button>`;
+  } else if (isPreorder) {
+    ctaHTML = p.price
+        ? `<button onclick="addToCart(${p.id})" class="product-card__cta">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path><path d="M12 10h6"></path><path d="M15 7v6"></path></svg>
+            Add to Cart
+          </button>`
+        : `<a href="${waUrl(p.name)}" target="_blank" class="product-card__cta product-card__cta--ask" style="text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.82 9.82 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.81 11.81 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.88 11.88 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.82 11.82 0 0 0-3.48-8.413z"/></svg>
+            Ask for Price
+          </a>`;
+  } else {
+    ctaHTML = `<button onclick="addToCart(${p.id})" class="product-card__cta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path><path d="M12 10h6"></path><path d="M15 7v6"></path></svg>
+        Add to Cart
+      </button>`;
+  }
+
+  let moqHTML = isWholesale ? `<div class="product-card__moq">MOQ: ${moq}</div>` : '';
+
+  return `
+    <article class="${cardClass}" data-category="${escapeStr(p.cat || '')}" data-product-id="${p.id}" style="animation-delay: ${index * 0.04}s">
+      <div class="product-card__img-wrap">
+        <img class="product-card__img" src="${imgHtml}" alt="${nameHtml}" loading="lazy" onerror="useCategoryFallback(this, '${escapeStr(p.cat || '')}')">
+        ${image.isCategoryFallback ? categoryImageBadge() : ''}
+        ${badgeHTML}
+        ${lowStockHTML}
+        <button type="button" class="wishlist-heart" data-wishlist-id="${p.id}" aria-label="Add to wishlist" onclick="toggleWishlist(event, ${p.id})">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
+      </div>
+      <div class="product-card__body">
+        <button type="button" class="product-card__name" onclick="openReviewsModal(${p.id}, '${escName}')" aria-label="View details for ${nameHtml}">${nameHtml}</button>
+        <button type="button" class="product-card__rating" data-rating-id="${p.id}" onclick="openReviewsModal(${p.id}, '${escName}')" aria-label="View or write a review for ${nameHtml}" style="display:none;">
+          <span class="rating-stars" data-stars-for="${p.id}"></span>
+          <span class="rating-count" data-count-for="${p.id}"></span>
+        </button>
+        ${moqHTML}
+        ${sizeHTML}
+        ${bulkQtyHTML}
+        <div class="product-card__price" id="price-display-${p.id}">${initialPrice}</div>
+        ${ctaHTML}
+      </div>
+    </article>
+  `;
+}
+
+// â”€â”€ Live price update when size or bulk-qty dropdown changes â”€â”€
+function updateCardPrice(productId) {
+  const product = products.find(p => p.id === productId);
+  if (!product) return;
+  const priceEl = document.getElementById(`price-display-${productId}`);
+  if (!priceEl) return;
+  const unitPrice = getCardPrice(productId);
+  if (unitPrice === null) {
+    priceEl.innerText = 'Ask for price';
+    return;
+  }
+  const isWholesale = (storeMode === 'wholesale');
+  const bulkQtyEl = document.getElementById(`bulk-qty-${productId}`);
+  const qty = (isWholesale && bulkQtyEl) ? parseInt(bulkQtyEl.value) : 1;
+  const total = Math.round(unitPrice * qty * 100) / 100;
+  priceEl.innerHTML = `GHâ‚µ ${gh(total)}` + (isWholesale ? ` <span style="font-size:11px;color:#888;font-weight:400;">(${qty} pcs @ GHâ‚µ ${gh(unitPrice)})</span>` : '');
+  priceEl.style.transition = 'color 0.2s';
+  priceEl.style.color = 'var(--green-primary)';
+}
+
+// â”€â”€ Render grids (Dynamic Sections for Smooth Scroll) â”€â”€
+// Preferred display order + pretty labels for KNOWN categories. New categories
+// the owner creates in the admin still appear automatically (see getActiveCategories).
+const categoryMap = [
+  { id: 'newborn', label: 'Newborn' },
+  { id: 'clothing', label: 'Kids Clothing' },
+  { id: 'shoes', label: 'Footwear' },
+  { id: 'feeding', label: 'Feeding & Bottles' },
+  { id: 'gear', label: 'Baby Gear' },
+  { id: 'bathcare', label: 'Bath & Care' },
+  { id: 'essentials', label: 'Baby Essentials' },
+  { id: 'accessories', label: 'Bags & Accessories' },
+  { id: 'bedding', label: 'Bedding' }
+];
+const KNOWN_CATEGORY_LABELS = categoryMap.reduce((m, c) => { m[c.id] = c.label; return m; }, {});
+
+// Turn a raw category id into a readable label, e.g. "party-wear" -> "Party Wear".
+function humanizeCategory(id) {
+  return String(id || '')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/\b\w/g, ch => ch.toUpperCase());
+}
+
+// Owner-managed category list (shared with the admin via same-origin localStorage).
+function getStoredCategoryList() {
+  try { return JSON.parse(localStorage.getItem('dcKidsCategories')) || []; }
+  catch (e) { return []; }
+}
+
+// Build the storefront category list from the categories actually present on
+// products. Order + labels follow the owner's managed list first, then the
+// known defaults, then any remaining new categories (humanized) alphabetically.
+function getActiveCategories(items) {
+  const present = new Set(
+    items.map(p => p.cat).filter(c => c)
+  );
+  const result = [];
+  const seen = new Set();
+  const add = (id, label) => {
+    if (present.has(id) && !seen.has(id)) {
+      seen.add(id);
+      result.push({ id, label: label || KNOWN_CATEGORY_LABELS[id] || humanizeCategory(id) });
+    }
+  };
+  getStoredCategoryList().forEach(c => { if (c && c.id) add(c.id, c.label); });
+  categoryMap.forEach(c => add(c.id, c.label));
+  [...present].filter(id => !seen.has(id)).sort().forEach(id => add(id));
+  return result;
+}
+
+// â”€â”€ Storefront pagination (page through products instead of endless scroll) â”€â”€
+const PRODUCTS_PER_PAGE = 12;
+let categoryPages = {};   // catId (or 'all') -> current page (1-based)
+let preorderPage = 1;
+
+function renderStorePagination(key, page, totalPages) {
+  if (totalPages <= 1) return '';
+  return `
+    <div class="store-pagination">
+      <button class="store-pagination__btn" ${page <= 1 ? 'disabled' : ''} onclick="goToStorePage('${key}', ${page - 1})" aria-label="Previous page">
+        <i class="fas fa-chevron-left"></i> Prev
+      </button>
+      <span class="store-pagination__info">Page ${page} of ${totalPages}</span>
+      <button class="store-pagination__btn" ${page >= totalPages ? 'disabled' : ''} onclick="goToStorePage('${key}', ${page + 1})" aria-label="Next page">
+        Next <i class="fas fa-chevron-right"></i>
+      </button>
+    </div>`;
+}
+
+function goToStorePage(key, page) {
+  if (key === '__preorder__') preorderPage = page; else categoryPages[key] = page;
+  (window.renderProducts || renderProducts)();
+  const sec = key === '__preorder__' ? document.getElementById('preorderSection') : document.getElementById('productListSection');
+  if (sec) window.scrollTo({ top: sec.getBoundingClientRect().top + window.pageYOffset - 90, behavior: 'smooth' });
+}
+
+function renderProducts() {
+  let filteredProducts = products;
+
+  if (searchQuery) {
+      filteredProducts = products.filter(p => {
+          const searchStr = searchQuery.toLowerCase();
+          const matchName = p.name && p.name.toLowerCase().includes(searchStr);
+          const matchCat = p.cat && p.cat.toLowerCase().includes(searchStr);
+          const matchSize = p.size && p.size.toLowerCase().includes(searchStr);
+          return matchName || matchCat || matchSize;
+      });
+  }
+
+  // Pre-order items keep their real category, so they show up in their normal
+  // category grid too (badged as pre-order) â€” not just tucked away in a
+  // separate section invisible to anyone browsing by category.
+  const avail = filteredProducts;
+  const pre   = filteredProducts.filter(p => p.fulfillment_type === 'preorder');
+
+  if (dynamicSections) {
+    // ONE paginated grid filtered by the active category â€” shoppers move
+    // page-by-page (Prev/Next) instead of scrolling every category at once.
+    const cats = getActiveCategories(avail);
+    // A category is valid to filter on if it has products OR the owner manages it
+    // (so a brand-new empty category like "ROCKS" shows its own grid, not "All").
+    const managed = (typeof getStoredCategoryList === 'function' ? getStoredCategoryList() : []);
+    const isValidCat = currentCategory && currentCategory !== 'all' && currentCategory !== 'preorder' &&
+      (cats.some(c => c.id === currentCategory) || managed.some(c => c && c.id === currentCategory));
+    const activeCat = isValidCat ? currentCategory : 'all';
+    const list = activeCat === 'all' ? avail : avail.filter(p => p.cat === activeCat);
+    const totalPages = Math.max(1, Math.ceil(list.length / PRODUCTS_PER_PAGE));
+    let page = categoryPages[activeCat] || 1;
+    if (page > totalPages) page = totalPages;
+    if (page < 1) page = 1;
+    categoryPages[activeCat] = page;
+    const start = (page - 1) * PRODUCTS_PER_PAGE;
+    const pageProducts = list.slice(start, start + PRODUCTS_PER_PAGE);
+    const label = activeCat === 'all'
+      ? (searchQuery ? 'Search Results' : 'All Products')
+      : ((cats.find(c => c.id === activeCat) || managed.find(c => c && c.id === activeCat) || {}).label || humanizeCategory(activeCat));
+
+    dynamicSections.innerHTML = `
+      <section id="productListSection" class="category-section pb-4">
+        <div class="section-header flex justify-between items-center mb-4 px-4 md:px-0">
+          <h2 class="section-header__title text-lg font-bold text-gray-800 font-sans">${label}</h2>
+          <span class="section-header__count text-sm text-gray-500 font-medium">${list.length} item${list.length === 1 ? '' : 's'}</span>
+        </div>
+        <div class="product-grid">
+          ${pageProducts.length ? pageProducts.map((p, i) => renderCard(p, i)).join('') : '<p style="grid-column:1/-1;text-align:center;padding:48px 16px;color:#999;">No products found.</p>'}
+        </div>
+        ${renderStorePagination(activeCat, page, totalPages)}
+      </section>`;
+  }
+
+  if (preorderGrid) {
+    preorderGrid.innerHTML = pre.map((p,i) => renderCard(p,i)).join('') || '<p style="grid-column:1/-1;text-align:center;padding:40px;color:#999;">No pre-order items available.</p>';
+  }
+}
+
+// â”€â”€ Inventory Toggle â”€â”€
+inventoryBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    inventoryBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentStock = btn.dataset.stock;
+    if (currentStock === 'available') {
+      if (dynamicSections) dynamicSections.classList.remove('hidden');
+      if (preorderSec) preorderSec.classList.add('hidden');
+    } else {
+      if (dynamicSections) dynamicSections.classList.add('hidden');
+      if (preorderSec) preorderSec.classList.remove('hidden');
+    }
+  });
+});
+
+// â”€â”€ Category pills â†’ filter the single grid (paginated), not scroll â”€â”€
+if (categoryPills) {
+  categoryPills.querySelectorAll('.category-pill').forEach(pill => {
+    pill.addEventListener('click', (e) => {
+      e.preventDefault();
+      const cat = pill.getAttribute('data-filter') || 'all';
+      currentCategory = cat;
+      categoryPages[cat] = 1;
+      categoryPills.querySelectorAll('.category-pill').forEach(p => p.classList.toggle('active', p === pill));
+      if (dynamicSections) dynamicSections.classList.remove('hidden');
+      if (preorderSec) preorderSec.classList.add('hidden');
+      if (inventoryBtns[1]) inventoryBtns[1].classList.remove('active');
+      if (inventoryBtns[0]) inventoryBtns[0].classList.add('active');
+      currentStock = 'available';
+      (window.renderProducts || renderProducts)();
+      const sec = document.getElementById('productListSection');
+      if (sec) window.scrollTo({ top: sec.getBoundingClientRect().top + window.pageYOffset - 90, behavior: 'smooth' });
+    });
+  });
+}
+
+// â”€â”€ Nav Drawer Category / Page Navigation â”€â”€
+navItems.forEach(item => {
+  item.addEventListener('click', (e) => {
+    e.preventDefault();
+    navItems.forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+    currentCategory = item.dataset.category;
+
+    if (categoryPills) {
+      categoryPills.querySelectorAll('.category-pill').forEach(p => {
+        p.classList.toggle('active', p.dataset.filter === currentCategory);
+      });
+    }
+
+    if (currentCategory === 'preorder') {
+      if(inventoryBtns[0]) inventoryBtns[0].classList.remove('active');
+      if(inventoryBtns[1]) inventoryBtns[1].classList.add('active');
+      if(dynamicSections) dynamicSections.classList.add('hidden');
+      if(preorderSec) preorderSec.classList.remove('hidden');
+      currentStock = 'preorder';
+    } else {
+      if(inventoryBtns[1]) inventoryBtns[1].classList.remove('active');
+      if(inventoryBtns[0]) inventoryBtns[0].classList.add('active');
+      if(dynamicSections) dynamicSections.classList.remove('hidden');
+      if(preorderSec) preorderSec.classList.add('hidden');
+      currentStock = 'available';
+    }
+    
+    closeNav();
+    if (currentCategory !== 'preorder') {
+      categoryPages[currentCategory] = 1;
+      (window.renderProducts || renderProducts)();
+    }
+    const sec = currentCategory === 'preorder'
+      ? document.getElementById('preorderSection')
+      : document.getElementById('productListSection');
+    const y = sec ? sec.getBoundingClientRect().top + window.pageYOffset - 90 : 0;
+    window.scrollTo({ top: y, behavior: 'smooth' });
+  });
+});
+
+// â”€â”€ Mobile Nav â”€â”€
+function openNav() {
+  navDrawer.classList.add('open');
+  navOverlay.classList.add('open');
+  menuBtn.classList.add('active');
+}
+function closeNav() {
+  navDrawer.classList.remove('open');
+  navOverlay.classList.remove('open');
+  menuBtn.classList.remove('active');
+}
+menuBtn.addEventListener('click', () => navDrawer.classList.contains('open') ? closeNav() : openNav());
+navOverlay.addEventListener('click', closeNav);
+
+// â”€â”€ Sticky Header â”€â”€
+window.addEventListener('scroll', () => header.classList.toggle('scrolled', window.scrollY > 10), { passive: true });
+
+// â”€â”€ Close Urgency Banner â”€â”€
+if (closeBanner && urgencyBanner) {
+  closeBanner.addEventListener('click', () => {
+    urgencyBanner.style.maxHeight = urgencyBanner.scrollHeight + 'px';
+    requestAnimationFrame(() => {
+      urgencyBanner.style.transition = 'max-height .3s ease, opacity .3s ease, padding .3s ease';
+      urgencyBanner.style.maxHeight = '0';
+      urgencyBanner.style.opacity = '0';
+      urgencyBanner.style.padding = '0 16px';
+      urgencyBanner.style.overflow = 'hidden';
+    });
+  });
+}
+
+// â”€â”€ Promo Carousel â”€â”€
+(function initCarousel() {
+  const track = document.getElementById('promoTrack');
+  const dotsContainer = document.getElementById('promoDots');
+  if (!track || !dotsContainer) return;
+  const slides = track.querySelectorAll('.promo-carousel__slide');
+  let current = 0;
+  const total = slides.length;
+  for (let i = 0; i < total; i++) {
+    const dot = document.createElement('button');
+    dot.className = 'promo-carousel__dot' + (i === 0 ? ' active' : '');
+    dot.setAttribute('aria-label', `Slide ${i + 1}`);
+    dot.addEventListener('click', () => goTo(i));
+    dotsContainer.appendChild(dot);
+  }
+  function goTo(index) {
+    current = ((index % total) + total) % total;
+    track.style.transform = `translateX(-${current * 100}%)`;
+    dotsContainer.querySelectorAll('.promo-carousel__dot').forEach((d, i) => d.classList.toggle('active', i === current));
+  }
+  // Expose carousel control globally for the arrow buttons
+  window.__carouselGoTo = function(direction) {
+    if (direction === 'prev') goTo(current - 1);
+    else if (direction === 'next') goTo(current + 1);
+    else if (typeof direction === 'number') goTo(direction);
+  };
+  setInterval(() => goTo((current + 1) % total), 4000);
+  let startX = 0;
+  track.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+  track.addEventListener('touchend', e => {
+    const diff = startX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) goTo(diff > 0 ? Math.min(current + 1, total - 1) : Math.max(current - 1, 0));
+  }, { passive: true });
+})();
+
+// â”€â”€ Cart State & LocalStorage â”€â”€
+let cart = JSON.parse(localStorage.getItem('dcKidsCart')) || [];
+function saveCart() { localStorage.setItem('dcKidsCart', JSON.stringify(cart)); }
+
+// â”€â”€ Cart DOM Refs â”€â”€
+const cartBtn      = document.getElementById('cartBtn');
+const cartDrawer   = document.getElementById('cartDrawer');
+const cartOverlay  = document.getElementById('cartOverlay');
+const closeCartBtn = document.getElementById('closeCartBtn');
+const cartBody     = document.getElementById('cartBody');
+const cartSubtotal = document.getElementById('cartSubtotal');
+const checkoutBtn  = document.getElementById('checkoutBtn');
+
+function openCart()  { if(cartDrawer) cartDrawer.classList.add('open');    if(cartOverlay) cartOverlay.classList.add('open');    renderCartDrawer(); }
+function closeCart() { if(cartDrawer) cartDrawer.classList.remove('open'); if(cartOverlay) cartOverlay.classList.remove('open'); }
+if(cartBtn)      cartBtn.addEventListener('click', openCart);
+if(closeCartBtn) closeCartBtn.addEventListener('click', closeCart);
+if(cartOverlay)  cartOverlay.addEventListener('click', closeCart);
+
+// â”€â”€ Cart Operations â”€â”€
+function addToCart(id) {
+  const selectEl   = document.getElementById(`size-select-${id}`);
+  const product    = products.find(p => p.id === id);
+  if (!product) return;
+  const size          = selectEl ? selectEl.value : product.size;
+  const adjustedPrice = getCardPrice(id) || product.price || 0;
+  const isWholesale   = (storeMode === 'wholesale');
+  const bulkQtyEl     = document.getElementById(`bulk-qty-${id}`);
+  const qtyToAdd      = (isWholesale && bulkQtyEl) ? parseInt(bulkQtyEl.value) : 1;
+  const existing      = cart.find(item => item.id === id && item.size === size);
+  if (existing) { existing.qty += qtyToAdd; }
+  else { cart.push({ id: product.id, name: product.name, size, price: adjustedPrice, qty: qtyToAdd, img: product.img, cat: product.cat, ws: isWholesale ? 1 : 0 }); }
+  saveCart(); renderCartDrawer(); openCart();
+}
+
+function updateCartQty(index, change) {
+  if (!cart[index]) return;
+  // Wholesale lines step by the MOQ (they're bulk pieces, e.g. 10 at a time)
+  // and can't drop below it â€” the server rejects sub-MOQ wholesale items.
+  const item = cart[index];
+  const moq = (item.ws && siteConfig.wholesale_moq) ? siteConfig.wholesale_moq : 1;
+  item.qty += change * moq;
+  if (item.qty < moq) cart.splice(index, 1);
+  saveCart(); renderCartDrawer();
+}
+
+function removeFromCart(index) { cart.splice(index, 1); saveCart(); renderCartDrawer(); }
+
+function renderCartDrawer() {
+  if (!cartBody) return;
+  const badgeEl = document.querySelector('.cart-badge') || document.querySelector('#cartCount') || document.querySelector('#cartBtn span');
+  if (badgeEl) {
+    const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+    badgeEl.innerText = totalQty > 99 ? '99+' : totalQty;
+    badgeEl.style.display = totalQty > 0 ? 'flex' : 'none';
+  }
+  if (cart.length === 0) {
+    cartBody.innerHTML = '<div style="padding:32px 24px;text-align:center;color:#999;font-size:15px;">Your cart is empty.<br><br>Add some amazing styles!</div>';
+    if (cartSubtotal) cartSubtotal.innerText = 'GHâ‚µ 0.00';
+    return;
+  }
+  let html = '', subtotal = 0;
+  cart.forEach((item, index) => {
+    const itemTotal = item.price * item.qty;
+    const product = products.find(p => Number(p.id) === Number(item.id));
+    const itemCategory = item.cat || (product && product.cat) || '';
+    const cartImage = resolveProductImage({ img: item.img, cat: itemCategory });
+    subtotal += itemTotal;
+    html += `
+      <div class="cart-item">
+        <span class="cart-item__img-wrap"><img src="${escapeStr(cartImage.src)}" alt="${escapeStr(item.name || '')}" class="cart-item__img" onerror="useCategoryFallback(this, '${escapeStr(itemCategory)}')">${cartImage.isCategoryFallback ? categoryImageBadge() : ''}</span>
+        <div class="cart-item__details">
+          <div class="cart-item__title">${escapeStr(item.name || '')}</div>
+          <div class="cart-item__size">${escapeStr(item.size || '')}${item.ws ? ' Â· Wholesale (' + item.qty + ' pcs)' : ''}</div>
+          <div class="cart-item__price">GHâ‚µ ${gh(item.price)}${item.ws ? ' <span style="font-size:11px;color:#888;">/pc</span>' : ''}</div>
+        </div>
+        <div class="cart-item__controls">
+          <button class="cart-item__btn" onclick="updateCartQty(${index}, -1)">-</button>
+          <span class="cart-item__qty">${item.qty}</span>
+          <button class="cart-item__btn" onclick="updateCartQty(${index}, 1)">+</button>
+        </div>
+        <button class="cart-item__remove" onclick="removeFromCart(${index})">
+          <svg viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+        </button>
+      </div>`;
+  });
+  cartBody.innerHTML = html;
+  if (cartSubtotal) cartSubtotal.innerText = `GHâ‚µ ${gh(subtotal)}`;
+}
+
+// â”€â”€ Custom Checkout Modal â”€â”€
+function showCheckoutModal() {
+  return new Promise((resolve, reject) => {
+    const modal   = document.getElementById('checkoutModal');
+    const step1   = document.getElementById('checkoutStep1');
+    const step2   = document.getElementById('checkoutStep2');
+    const nameEl  = document.getElementById('checkoutName');
+    const phoneEl = document.getElementById('checkoutPhone');
+    const areaEl  = document.getElementById('checkoutArea');
+    const notesEl = document.getElementById('checkoutNotes');
+    const cancelBtn   = document.getElementById('checkoutModalCancel');
+    const okBtn       = document.getElementById('checkoutModalOk');
+    const continueBtn = document.getElementById('checkoutModalContinue');
+    let data = null;
+
+    step1.style.display = 'block';
+    step2.style.display = 'none';
+    nameEl.value = ''; phoneEl.value = '';
+    if (areaEl) areaEl.value = '';
+    if (notesEl) notesEl.value = '';
+    nameEl.style.borderColor = '#e0e4e8';
+    phoneEl.style.borderColor = '#e0e4e8';
+    closeCart();
+    modal.style.display = 'flex';
+    modal.style.pointerEvents = 'auto';
+    setTimeout(() => { nameEl.focus(); nameEl.click(); }, 150);
+
+    function closeModal() {
+      modal.style.display = 'none';
+      cancelBtn.removeEventListener('click', onCancel);
+      okBtn.removeEventListener('click', onOk);
+      continueBtn.removeEventListener('click', onContinue);
+    }
+    function onCancel() { closeModal(); reject(); }
+    function onOk() {
+      const name  = nameEl.value.trim();
+      const phone = phoneEl.value.trim();
+      if (!name)  { nameEl.style.borderColor  = '#dc2626'; nameEl.focus();  return; }
+      if (!phone) { phoneEl.style.borderColor = '#dc2626'; phoneEl.focus(); return; }
+      data = {
+        customer_name: name,
+        customer_phone: phone,
+        delivery_area: areaEl ? areaEl.value.trim() : '',
+        notes: notesEl ? notesEl.value.trim() : ''
+      };
+      step1.style.display = 'none';
+      step2.style.display = 'block';
+    }
+    function onContinue() { closeModal(); resolve(data); }
+
+    cancelBtn.addEventListener('click', onCancel);
+    okBtn.addEventListener('click', onOk);
+    continueBtn.addEventListener('click', onContinue);
+    modal.addEventListener('click', e => { if (e.target === modal) onCancel(); }, { once: true });
+  });
+}
+
+// â”€â”€ Receipt Step (Step 3) â”€â”€
+function showReceiptStep(orderNumber, totalAmount, customerName, customerPhone, cartItems, whatsappURL) {
+  const modal = document.getElementById('checkoutModal');
+  const step1 = document.getElementById('checkoutStep1');
+  const step2 = document.getElementById('checkoutStep2');
+  const step3 = document.getElementById('checkoutStep3');
+
+  // Hide previous steps, show receipt
+  step1.style.display = 'none';
+  step2.style.display = 'none';
+  step3.style.display = 'block';
+  modal.style.display = 'flex';
+  modal.style.pointerEvents = 'auto';
+
+  // Populate receipt data
+  document.getElementById('receiptOrderNum').textContent = orderNumber;
+  document.getElementById('receiptDate').textContent = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  document.getElementById('receiptCustomer').textContent = customerName;
+  document.getElementById('receiptPhone').textContent = customerPhone;
+
+  // Build items list
+  const itemsEl = document.getElementById('receiptItems');
+  itemsEl.innerHTML = '';
+  cartItems.forEach(c => {
+    const prod = products.find(p => p.id === c.id);
+    if (!prod) return;
+    // Use the price captured when the item was added â€” it already reflects the
+    // chosen size (managed or legacy) and any wholesale discount, and matches
+    // the authoritative total the server computed.
+    const unitPrice = Math.round((c.price || 0) * 100) / 100;
+    const lineTotal = unitPrice * c.qty;
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px;';
+    row.innerHTML = `
+      <div style="flex:1;">
+        <div style="font-weight:600;color:#1f2937;">${prod.name}</div>
+        <div style="font-size:11px;color:#9ca3af;">Size: ${c.size} &times; ${c.qty}</div>
+      </div>
+      <div style="font-weight:700;color:#0F4C3A;white-space:nowrap;">GHâ‚µ ${lineTotal.toFixed(2)}</div>
+    `;
+    itemsEl.appendChild(row);
+  });
+
+  // Total
+  document.getElementById('receiptTotal').textContent = `GHâ‚µ ${Number(totalAmount).toFixed(2)}`;
+
+  // Wire buttons
+  const printBtn = document.getElementById('receiptPrintBtn');
+  const waBtn = document.getElementById('receiptWhatsAppBtn');
+  const closeBtn = document.getElementById('receiptCloseBtn');
+
+  // Remove old listeners by cloning
+  const newPrint = printBtn.cloneNode(true);
+  const newWA = waBtn.cloneNode(true);
+  const newClose = closeBtn.cloneNode(true);
+  printBtn.parentNode.replaceChild(newPrint, printBtn);
+  waBtn.parentNode.replaceChild(newWA, waBtn);
+  closeBtn.parentNode.replaceChild(newClose, closeBtn);
+
+  newPrint.addEventListener('click', () => window.print());
+  newWA.addEventListener('click', () => window.open(whatsappURL, '_blank'));
+  newClose.addEventListener('click', () => {
+    modal.style.display = 'none';
+    step3.style.display = 'none';
+    step1.style.display = 'block'; // reset for next use
+  });
+}
+
+// â”€â”€ Checkout / Pre-Order API Integration â”€â”€
+// One idempotency key per checkout attempt, kept across retries and cleared
+// only on success: if the order was created but the response got lost (network
+// drop, double-tap), the retry returns the SAME order instead of a duplicate.
+let checkoutIdemKey = null;
+function newIdemKey() {
+  return (window.crypto && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : 'idem-' + Date.now() + '-' + Math.random().toString(36).slice(2, 12);
+}
+
+if (checkoutBtn) {
+  checkoutBtn.addEventListener('click', async () => {
+    if (cart.length === 0) { showToast('Your cart is empty!', 'warning'); return; }
+
+    let customer_name, customer_phone, details;
+    try {
+      details = await showCheckoutModal();
+      customer_name  = details.customer_name;
+      customer_phone = details.customer_phone;
+    } catch { return; }
+
+    checkoutBtn.disabled = true;
+    checkoutBtn.innerHTML = 'Processing...';
+
+    // If any item is a preorder, mark the whole order as a preorder
+    const hasPreorder = cart.some(c => {
+        const prod = products.find(p => p.id === c.id);
+        return prod && prod.fulfillment_type === 'preorder';
+    });
+    
+    const order_type = hasPreorder ? 'preorder' : storeMode;
+    const delivery_area = details.delivery_area || '';
+    const order_notes = details.notes || '';
+
+    // Snapshot cart for the WhatsApp message before it gets cleared
+    const orderedItems = cart.map(c => ({ name: c.name, size: c.size, qty: c.qty, price: c.price }));
+
+    if (!checkoutIdemKey) checkoutIdemKey = newIdemKey();
+    const orderPayload = {
+        customer_name,
+        customer_phone,
+        order_type: order_type,
+        delivery_area: delivery_area,
+        notes: order_notes,
+        idempotency_key: checkoutIdemKey,
+        items: cart.map(c => ({ id: c.id, size: c.size, quantity: c.qty }))
+    };
+
+    try {
+        const res = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderPayload)
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            // Build an itemised WhatsApp message
+            let message = `Hello DC Kids! I'd like to confirm my order.\n\n`;
+            message += `*Order Ref:* ${data.order_number}\n`;
+            message += `*Name:* ${customer_name}\n`;
+            if (delivery_area) message += `*Delivery area:* ${delivery_area}\n`;
+            message += `\n*Items:*\n`;
+            orderedItems.forEach(it => {
+                message += `â€¢ ${it.qty} Ã— ${it.name} (${it.size}) â€” GHâ‚µ ${gh(it.price * it.qty)}\n`;
+            });
+            message += `\n*Total:* GHâ‚µ ${gh(data.total_amount)}\n`;
+            if (order_notes) message += `*Notes:* ${order_notes}\n`;
+            message += `\n`;
+            if (order_type === 'preorder') {
+                message += `This includes China Pre-Order items. Please let me know the required deposit and next steps.`;
+            } else {
+                message += `Please let me know how to proceed with payment and delivery. Thank you!`;
+            }
+            const whatsappNum = siteConfig.whatsapp_number || '233549193805';
+            const whatsappURL = `https://wa.me/${whatsappNum}?text=${encodeURIComponent(message)}`;
+
+            // Order confirmed â€” next checkout is a new attempt with a new key.
+            checkoutIdemKey = null;
+
+            // Show receipt (Step 3)
+            showReceiptStep(data.order_number, data.total_amount, customer_name, customer_phone, cart, whatsappURL);
+
+            // Clear cart
+            cart = [];
+            renderCartDrawer();
+            closeCart();
+        } else {
+            showToast('Error submitting order: ' + (data.error || 'Unknown error'), 'error');
+        }
+    } catch (e) {
+        showToast('Could not submit order: ' + e.message, 'error');
+    } finally {
+        checkoutBtn.disabled = false;
+        checkoutBtn.innerHTML = `
+          <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.82 9.82 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.81 11.81 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.88 11.88 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.82 11.82 0 0 0-3.48-8.413z"/></svg>
+          Checkout via WhatsApp
+        `;
+    }
+  });
+}
+
+// â”€â”€ Initial Setup â”€â”€
+async function initApp() {
+  try {
+    // Fetch Settings â€” always bypass any cache so banner/discount/WhatsApp changes
+    // made in admin show up for shoppers on their next load (not a stale cached copy).
+    try {
+        const settingsRes = await fetch('/api/settings', { cache: 'no-store' });
+        if (settingsRes.ok) {
+            siteConfig = await settingsRes.json();
+        }
+    } catch (e) {
+        console.warn("Could not load settings:", e);
+    }
+
+    const res = await fetch('/api/products');
+    const contentType = res.headers.get('content-type') || '';
+    if (res.ok && contentType.includes('application/json')) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        products = data;
+        products.forEach(p => {
+          if (p.cat === 'baby') p.cat = 'newborn';
+          if (p.cat === 'bags') p.cat = 'accessories';
+        });
+      } else {
+        throw new Error("Empty or invalid product list");
+      }
+    } else {
+      throw new Error("API not returning JSON");
+    }
+  } catch (err) {
+    console.warn("Using local fallback product data:", err.message);
+    try {
+      const fallbackRes = await fetch('products.json');
+      if (fallbackRes.ok) {
+        const fallbackData = await fallbackRes.json();
+        if (Array.isArray(fallbackData) && fallbackData.length > 0) {
+          products = fallbackData;
+          products.forEach(p => {
+            if (p.cat === 'baby') p.cat = 'newborn';
+            if (p.cat === 'bags') p.cat = 'accessories';
+          });
+        } else { products = []; }
+      } else { products = []; }
+    } catch (e2) { products = []; }
+  }
+
+  // Drop cart lines whose product no longer exists in the catalogue (e.g. a
+  // stale cart saved before a catalogue swap). Left in place they render with
+  // old names/prices and the server rejects the whole order at checkout.
+  if (Array.isArray(products) && products.length && cart.length) {
+    const liveIds = new Set(products.map(p => Number(p.id)));
+    const beforeCount = cart.length;
+    cart = cart.filter(item => liveIds.has(Number(item.id)));
+    if (cart.length !== beforeCount) { saveCart(); renderCartDrawer(); }
+  }
+
+  // Setup Search
+  const storeSearchInput = document.getElementById('storeSearchInput');
+  if (storeSearchInput) {
+      storeSearchInput.addEventListener('input', (e) => {
+          searchQuery = e.target.value;
+          // Search spans the whole catalogue â€” drop any active category filter
+          if (searchQuery) {
+              currentCategory = 'all';
+              if (categoryPills) categoryPills.querySelectorAll('.category-pill').forEach(p => p.classList.toggle('active', p.dataset.filter === 'all'));
+          }
+          categoryPages = {};
+          preorderPage = 1;
+          (window.renderProducts || renderProducts)();
+      });
+  }
+  
+  // Init Store Mode toggle
+  if (storeMode === 'wholesale') {
+    if (btnWholesale) btnWholesale.classList.add('active');
+    if (btnRetail) btnRetail.classList.remove('active');
+    document.body.classList.add('wholesale-theme');
+  } else {
+    if (btnRetail) btnRetail.classList.add('active');
+    if (btnWholesale) btnWholesale.classList.remove('active');
+    document.body.classList.remove('wholesale-theme');
+  }
+
+  function setStoreMode(mode) {
+    storeMode = mode;
+    localStorage.setItem('storeMode', mode);
+    if (mode === 'wholesale') {
+      if (btnWholesale) btnWholesale.classList.add('active');
+      if (btnRetail) btnRetail.classList.remove('active');
+      document.body.classList.add('wholesale-theme');
+    } else {
+      if (btnRetail) btnRetail.classList.add('active');
+      if (btnWholesale) btnWholesale.classList.remove('active');
+      document.body.classList.remove('wholesale-theme');
+    }
+    updateFloatingWaBtn();
+    renderProducts();
+  }
+
+  if (btnRetail) btnRetail.addEventListener('click', () => setStoreMode('retail'));
+  if (btnWholesale) btnWholesale.addEventListener('click', () => setStoreMode('wholesale'));
+
+  // Apply site configurations
+  if (siteConfig) {
+      // Only touch the banner when settings actually loaded. If the settings
+      // fetch failed (server hiccup / offline), 'banner_enabled' is absent â€”
+      // leave the default HTML banner visible instead of blanking the top of the
+      // page on a refresh. This was why the banner "sometimes disappeared".
+      if ('banner_enabled' in siteConfig) {
+          if (siteConfig.banner_enabled) {
+              if (urgencyBanner) {
+                  urgencyBanner.style.display = 'block';
+                  const tracks = urgencyBanner.querySelectorAll('.banner-track');
+                  if (tracks.length > 0 && siteConfig.banner_text) {
+                      const content = `<i class="fas fa-bullhorn text-gray-600 text-sm" style="margin-right:8px;"></i> <strong>UPDATE:</strong> ${siteConfig.banner_text} &nbsp;&bull;&nbsp;`;
+                      tracks.forEach(t => { t.innerHTML = content; });
+                  }
+              }
+          } else {
+              if (urgencyBanner) urgencyBanner.style.display = 'none';
+          }
+      }
+
+      const storeModeBar = document.querySelector('.store-mode-bar');
+      if (storeModeBar) {
+          storeModeBar.style.display = siteConfig.wholesale_enabled ? 'flex' : 'none';
+      }
+      
+      // If wholesale is disabled but we are in wholesale mode, force retail
+      if (!siteConfig.wholesale_enabled && storeMode === 'wholesale') {
+          setStoreMode('retail');
+      }
+  }
+  applyWhatsAppNumber();
+  updateFloatingWaBtn();
+
+  renderProducts();
+  renderCartDrawer();
+  console.log(`DC Kids Brand loaded â€” ${products.length} products`);
+}
+
+initApp();
+
+// â”€â”€ Premium Selector Interactions â”€â”€
+function togglePremiumSelector(triggerEl) {
+  const selector = triggerEl.closest('.premium-selector');
+  if (!selector) return;
+  const wasOpen = selector.classList.contains('premium-selector--open');
+  closeAllPremiumSelectors();
+  if (!wasOpen) {
+    selector.classList.add('premium-selector--open');
+    triggerEl.setAttribute('aria-expanded', 'true');
+  }
+}
+
+function premiumSelect(optionEl) {
+  const selector = optionEl.closest('.premium-selector');
+  if (!selector) return;
+  const value = optionEl.dataset.value;
+  const productId = selector.dataset.productId;
+  const type = selector.dataset.type;
+
+  selector.querySelectorAll('.premium-selector__option').forEach(o => o.classList.remove('premium-selector__option--selected'));
+  optionEl.classList.add('premium-selector__option--selected');
+
+  const hiddenInput = type === 'bulk'
+    ? document.getElementById('bulk-qty-' + productId)
+    : document.getElementById('size-select-' + productId);
+  if (hiddenInput) hiddenInput.value = value;
+
+  const label = selector.querySelector('.premium-selector__label');
+  if (label) label.textContent = optionEl.querySelector('.premium-selector__option-text').textContent;
+
+  setTimeout(() => {
+    selector.classList.remove('premium-selector--open');
+    const trigger = selector.querySelector('.premium-selector__trigger');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+  }, 150);
+
+  updateCardPrice(parseInt(productId));
+}
+
+function closeAllPremiumSelectors() {
+  document.querySelectorAll('.premium-selector--open').forEach(s => {
+    s.classList.remove('premium-selector--open');
+    const trigger = s.querySelector('.premium-selector__trigger');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+  });
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.premium-selector')) closeAllPremiumSelectors();
+});
+
+document.addEventListener('keydown', function(e) {
+  const openSelector = document.querySelector('.premium-selector--open');
+  if (!openSelector) {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('premium-selector__trigger')) {
+      e.preventDefault();
+      togglePremiumSelector(e.target);
+    }
+    return;
+  }
+  const options = Array.from(openSelector.querySelectorAll('.premium-selector__option:not(.premium-selector__option--unavailable)'));
+  const current = openSelector.querySelector('.premium-selector__option--selected');
+  let idx = options.indexOf(current);
+
+  if (e.key === 'Escape') { closeAllPremiumSelectors(); e.preventDefault(); }
+  else if (e.key === 'ArrowDown') { idx = Math.min(idx + 1, options.length - 1); premiumSelect(options[idx]); e.preventDefault(); }
+  else if (e.key === 'ArrowUp') { idx = Math.max(idx - 1, 0); premiumSelect(options[idx]); e.preventDefault(); }
+  else if (e.key === 'Enter' || e.key === ' ') { if (current) premiumSelect(current); e.preventDefault(); }
+});
+
+// â”€â”€ Global Helper: Filter by category (used by "View all" links) â”€â”€
+function filterByCategory(catId) {
+  const pill = document.querySelector('[data-filter="' + catId + '"]');
+  if (pill) pill.click();
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   WISHLIST + REVIEWS â€” storefront integration
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+
+// Local cache of wishlist product IDs (set). Mirrored to server when signed in.
+let wishlistSet = new Set();
+const WISHLIST_LS_KEY = 'dcKidsGuestWishlist';
+const CUSTOMER_TOKEN_KEY = 'dcKidsCustomerToken';
+
+function getCustomerToken() { return localStorage.getItem(CUSTOMER_TOKEN_KEY); }
+function isSignedIn() { return !!getCustomerToken(); }
+
+function loadGuestWishlist() {
+  try { return new Set(JSON.parse(localStorage.getItem(WISHLIST_LS_KEY)) || []); }
+  catch (e) { return new Set(); }
+}
+function saveGuestWishlist() {
+  localStorage.setItem(WISHLIST_LS_KEY, JSON.stringify(Array.from(wishlistSet)));
+}
+
+async function syncWishlistState() {
+  if (isSignedIn()) {
+    try {
+      const res = await fetch('/api/wishlist', { headers: { 'Authorization': 'Bearer ' + getCustomerToken() } });
+      if (res.ok) {
+        const rows = await res.json();
+        wishlistSet = new Set(rows.map(r => Number(r.product_id)));
+      }
+    } catch (e) { /* fall back to guest set */ }
+  } else {
+    wishlistSet = loadGuestWishlist();
+  }
+  paintWishlistHearts();
+}
+
+function paintWishlistHearts() {
+  document.querySelectorAll('.wishlist-heart').forEach(btn => {
+    const id = Number(btn.getAttribute('data-wishlist-id'));
+    btn.classList.toggle('is-active', wishlistSet.has(id));
+  });
+  updateWishlistCount();
+  const drawer = document.getElementById('wishlistDrawer');
+  if (drawer && drawer.classList.contains('open')) renderWishlist();
+}
+
+async function toggleWishlist(event, productId) {
+  event.preventDefault();
+  event.stopPropagation();
+  const id = Number(productId);
+  const wasActive = wishlistSet.has(id);
+  // Optimistic UI
+  if (wasActive) wishlistSet.delete(id); else wishlistSet.add(id);
+  paintWishlistHearts();
+
+  if (isSignedIn()) {
+    try {
+      const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getCustomerToken() };
+      if (wasActive) {
+        await fetch('/api/wishlist/' + id, { method: 'DELETE', headers });
+      } else {
+        await fetch('/api/wishlist', { method: 'POST', headers, body: JSON.stringify({ product_id: id }) });
+      }
+    } catch (e) {
+      // Revert on error
+      if (wasActive) wishlistSet.add(id); else wishlistSet.delete(id);
+      paintWishlistHearts();
+    }
+  } else {
+    saveGuestWishlist();
+    if (!wasActive) showToast('Saved to wishlist', 'success');
+  }
+}
+
+/* â”€â”€ Wishlist panel (opened from the hamburger menu) â”€â”€ */
+function updateWishlistCount() {
+  const el = document.getElementById('wishlistNavCount');
+  if (!el) return;
+  const n = wishlistSet.size;
+  el.textContent = n;
+  el.style.display = n > 0 ? 'inline-flex' : 'none';
+}
+
+function openWishlist() {
+  closeNav();
+  renderWishlist();
+  const drawer = document.getElementById('wishlistDrawer');
+  const overlay = document.getElementById('wishlistOverlay');
+  if (drawer) drawer.classList.add('open');
+  if (overlay) overlay.classList.add('open');
+}
+
+function closeWishlist() {
+  const drawer = document.getElementById('wishlistDrawer');
+  const overlay = document.getElementById('wishlistOverlay');
+  if (drawer) drawer.classList.remove('open');
+  if (overlay) overlay.classList.remove('open');
+}
+
+function renderWishlist() {
+  const body = document.getElementById('wishlistBody');
+  if (!body) return;
+  const items = products.filter(p => wishlistSet.has(Number(p.id)));
+  if (items.length === 0) {
+    body.innerHTML = '<div style="padding:32px 24px;text-align:center;color:#999;font-size:15px;line-height:1.7;">Your wishlist is empty.<br>Tap the â™¥ on any product to save it here.</div>';
+    return;
+  }
+  body.innerHTML = items.map(p => {
+    const image = resolveProductImage(p);
+    return `
+    <div class="cart-item">
+      <span class="cart-item__img-wrap"><img src="${escapeStr(image.src)}" alt="${escapeStr(p.name || '')}" class="cart-item__img" onerror="useCategoryFallback(this, '${escapeStr(p.cat || '')}')">${image.isCategoryFallback ? categoryImageBadge() : ''}</span>
+      <div class="cart-item__details">
+        <div class="cart-item__title">${escapeStr(p.name || '')}</div>
+        <div class="cart-item__price">${p.price ? 'GHâ‚µ ' + gh(p.price) : 'Ask for price'}</div>
+        <button type="button" onclick="closeWishlist(); addToCart(${p.id});" style="margin-top:8px;background:#0F4C3A;color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+          Add to Cart
+        </button>
+      </div>
+      <button class="cart-item__remove" aria-label="Remove from wishlist" onclick="toggleWishlist(event, ${p.id})">
+        <svg viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>
+      </button>
+    </div>`;
+  }).join('');
+}
+
+/* â”€â”€ Reviews â”€â”€ */
+
+// Cached review summaries by product id, used to render the star line on cards.
+const reviewSummaryCache = new Map();
+
+async function loadReviewSummaries(productIds) {
+  // Repaint anything already cached FIRST. The rating row is re-rendered as
+  // display:none on every grid rebuild (mode toggle, category filter,
+  // pagination, search), so without repainting here the rating silently
+  // disappears on any re-render once summaries are cached.
+  productIds.forEach(id => { if (reviewSummaryCache.has(id)) paintProductRating(id); });
+
+  // One request for the whole batch â€” a per-product fetch (267 separate
+  // round trips on the full catalog) meant any single slow/failed request
+  // left that one card permanently unrated for the page load.
+  const ids = productIds.filter(id => !reviewSummaryCache.has(id));
+  if (!ids.length) return;
+  try {
+    const res = await fetch('/api/products/reviews-summary?ids=' + ids.join(','));
+    if (res.ok) {
+      const data = await res.json();
+      ids.forEach(id => {
+        reviewSummaryCache.set(id, data[id] || { count: 0, average: 0 });
+        paintProductRating(id);
+      });
+      return;
+    }
+  } catch (e) { /* fall through to per-product */ }
+  // Fallback for a server that predates the batch endpoint (e.g. not yet
+  // restarted): fetch each summary individually so ratings still appear.
+  await loadReviewSummariesIndividually(ids);
+}
+
+async function loadReviewSummariesIndividually(ids) {
+  const queue = ids.slice();
+  while (queue.length) {
+    const batch = queue.splice(0, 6);
+    await Promise.all(batch.map(async (id) => {
+      try {
+        const res = await fetch('/api/products/' + id + '/reviews');
+        if (!res.ok) return;
+        const data = await res.json();
+        reviewSummaryCache.set(id, data.summary || { count: 0, average: 0 });
+        paintProductRating(id);
+      } catch (e) { /* silent */ }
+    }));
+  }
+}
+function paintProductRating(id) {
+  const sum = reviewSummaryCache.get(id);
+  const starsEl = document.querySelector('[data-stars-for="' + id + '"]');
+  const countEl = document.querySelector('[data-count-for="' + id + '"]');
+  if (!starsEl || !countEl || !sum) return;
+  const wrap = starsEl.closest('.product-card__rating');
+  // Every product accepts reviews, even with zero so far â€” show a "write a
+  // review" invite instead of a fake average rather than hiding the button.
+  if (!sum.count) {
+    starsEl.textContent = 'â˜†â˜†â˜†â˜†â˜†';
+    starsEl.classList.remove('has-reviews');
+    countEl.textContent = 'Write a review';
+    if (wrap) wrap.style.display = '';
+    return;
+  }
+  const full = Math.round(sum.average);
+  starsEl.textContent = 'â˜…â˜…â˜…â˜…â˜…â˜†â˜†â˜†â˜†â˜†'.slice(5 - full, 10 - full);
+  starsEl.classList.add('has-reviews');
+  countEl.textContent = sum.average.toFixed(1) + ' (' + sum.count + ')';
+  if (wrap) wrap.style.display = '';
+}
+
+/* â”€â”€ Reviews modal â”€â”€ */
+function ensureReviewsModal() {
+  if (document.getElementById('reviews-modal')) return;
+  const modal = document.createElement('div');
+  modal.id = 'reviews-modal';
+  modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:9500;align-items:center;justify-content:center;padding:20px;';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:18px;max-width:560px;width:100%;padding:24px;max-height:90vh;overflow-y:auto;font-family:'Inter',sans-serif;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <h3 id="rv-modal-title" style="margin:0;font-size:18px;font-weight:700;color:#0F4C3A;font-family:'Playfair Display',serif;">Product</h3>
+        <button type="button" id="rv-close" style="background:none;border:none;font-size:24px;cursor:pointer;color:#888;line-height:1;padding:4px;">&times;</button>
+      </div>
+      <div id="rv-product-media" class="review-product-media">
+        <img id="rv-product-image" src="images/placeholder.svg" alt="">
+        <span id="rv-category-image-badge" class="category-image-badge" style="display:none;">Category image</span>
+      </div>
+      <div id="rv-description" style="display:none;font-size:13px;color:#555;line-height:1.6;margin-bottom:16px;"></div>
+      <div style="font-size:12px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px;">Reviews</div>
+      <div id="rv-summary" style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#FFF5F7;border-radius:12px;margin-bottom:18px;">
+        <div id="rv-avg" style="font-size:28px;font-weight:700;color:#fc4c7a;">â€”</div>
+        <div>
+          <div id="rv-stars" style="color:#fc4c7a;font-size:16px;letter-spacing:2px;">â˜†â˜†â˜†â˜†â˜†</div>
+          <div id="rv-count" style="font-size:12px;color:#888;margin-top:2px;">No reviews yet</div>
+        </div>
+      </div>
+      <div id="rv-list" style="max-height:280px;overflow-y:auto;margin-bottom:18px;"></div>
+      <details id="rv-write-wrap" style="border-top:1px solid #EEE;padding-top:14px;">
+        <summary style="cursor:pointer;font-weight:600;color:#fc4c7a;font-size:14px;">Write a review</summary>
+        <form id="rv-form" style="margin-top:12px;">
+          <div style="margin-bottom:10px;">
+            <label style="font-size:12px;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:6px;">Your rating</label>
+            <div id="rv-rating-input" style="display:flex;gap:4px;font-size:24px;cursor:pointer;color:#DDD;">
+              <span data-rate="1">â˜…</span><span data-rate="2">â˜…</span><span data-rate="3">â˜…</span><span data-rate="4">â˜…</span><span data-rate="5">â˜…</span>
+            </div>
+          </div>
+          <div style="margin-bottom:10px;">
+            <label style="font-size:12px;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:6px;">Your name</label>
+            <input id="rv-author" type="text" placeholder="Akua" style="width:100%;padding:10px 12px;border:1px solid #DDD;border-radius:10px;font-size:13px;font-family:inherit;">
+          </div>
+          <div style="margin-bottom:10px;">
+            <label style="font-size:12px;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:6px;">Title (optional)</label>
+            <input id="rv-title" type="text" placeholder="Love this!" style="width:100%;padding:10px 12px;border:1px solid #DDD;border-radius:10px;font-size:13px;font-family:inherit;">
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="font-size:12px;font-weight:600;color:#444;text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:6px;">Your review</label>
+            <textarea id="rv-body" required minlength="4" rows="4" placeholder="Tell other parents what you thoughtâ€¦" style="width:100%;padding:10px 12px;border:1px solid #DDD;border-radius:10px;font-size:13px;font-family:inherit;resize:vertical;"></textarea>
+          </div>
+          <button type="submit" style="width:100%;padding:12px;background:#fc4c7a;color:#fff;border:none;border-radius:12px;font-weight:600;cursor:pointer;font-family:inherit;">Submit review</button>
+        </form>
+      </details>
+    </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('rv-close').addEventListener('click', () => modal.style.display = 'none');
+  modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+
+  // Star input
+  let chosenRating = 0;
+  modal.querySelectorAll('#rv-rating-input span').forEach(s => {
+    s.addEventListener('click', () => {
+      chosenRating = Number(s.getAttribute('data-rate'));
+      modal.querySelectorAll('#rv-rating-input span').forEach(x => {
+        x.style.color = Number(x.getAttribute('data-rate')) <= chosenRating ? '#fc4c7a' : '#DDD';
+      });
+    });
+  });
+  modal.__getRating = () => chosenRating;
+  modal.__resetRating = () => { chosenRating = 0; modal.querySelectorAll('#rv-rating-input span').forEach(x => x.style.color = '#DDD'); };
+
+  // Submit
+  document.getElementById('rv-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const pid = modal.__productId;
+    const rating = modal.__getRating();
+    if (!rating) { showToast('Please tap a star to rate this product', 'warning'); return; }
+    const body = {
+      rating,
+      author_name: document.getElementById('rv-author').value.trim() || 'Anonymous',
+      title: document.getElementById('rv-title').value.trim(),
+      body: document.getElementById('rv-body').value.trim()
+    };
+    const headers = { 'Content-Type': 'application/json' };
+    if (isSignedIn()) headers['Authorization'] = 'Bearer ' + getCustomerToken();
+    try {
+      const res = await fetch('/api/products/' + pid + '/reviews', { method: 'POST', headers, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to submit');
+      showToast('Thank you for your review!', 'success');
+      document.getElementById('rv-form').reset();
+      modal.__resetRating();
+      reviewSummaryCache.delete(Number(pid));
+      await loadReviewSummaries([Number(pid)]);
+      openReviewsModal(pid, modal.__productName); // refresh
+    } catch (err) { showToast(err.message, 'error'); }
+  });
+}
+
+async function openReviewsModal(productId, productName) {
+  ensureReviewsModal();
+  const modal = document.getElementById('reviews-modal');
+  modal.__productId = productId;
+  modal.__productName = productName;
+  document.getElementById('rv-modal-title').textContent = productName || 'Product';
+
+  const product = products.find(p => p.id === productId);
+  const productImage = resolveProductImage(product);
+  const imageEl = document.getElementById('rv-product-image');
+  const imageBadgeEl = document.getElementById('rv-category-image-badge');
+  if (imageEl) {
+    imageEl.src = productImage.src;
+    imageEl.alt = productName || 'Product';
+    imageEl.onerror = () => useCategoryFallback(imageEl, product && product.cat);
+  }
+  if (imageBadgeEl) imageBadgeEl.style.display = productImage.isCategoryFallback ? 'inline-flex' : 'none';
+  const descEl = document.getElementById('rv-description');
+  if (product && product.description) {
+    descEl.textContent = product.description;
+    descEl.style.display = 'block';
+  } else {
+    descEl.style.display = 'none';
+  }
+
+  document.getElementById('rv-list').innerHTML = '<div style="text-align:center;color:#888;padding:24px;font-size:13px;">Loadingâ€¦</div>';
+  modal.style.display = 'flex';
+
+  try {
+    const res = await fetch('/api/products/' + productId + '/reviews');
+    const data = await res.json();
+    document.getElementById('rv-avg').textContent = data.summary.count ? data.summary.average.toFixed(1) : 'â€”';
+    const stars = 'â˜…â˜…â˜…â˜…â˜…â˜†â˜†â˜†â˜†â˜†'.slice(5 - Math.round(data.summary.average || 0), 10 - Math.round(data.summary.average || 0));
+    document.getElementById('rv-stars').textContent = stars;
+    document.getElementById('rv-count').textContent = data.summary.count ? data.summary.count + ' review' + (data.summary.count === 1 ? '' : 's') : 'No reviews yet â€” be the first!';
+
+    const listEl = document.getElementById('rv-list');
+    if (!data.reviews.length) {
+      listEl.innerHTML = '<div style="text-align:center;color:#888;padding:18px;font-size:13px;">No reviews yet â€” leave the first one below.</div>';
+    } else {
+      listEl.innerHTML = data.reviews.map(r => {
+        const rstars = 'â˜…â˜…â˜…â˜…â˜…â˜†â˜†â˜†â˜†â˜†'.slice(5 - r.rating, 10 - r.rating);
+        const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
+        return `<div style="padding:12px 0;border-bottom:1px solid #F4F4F4;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div style="font-weight:700;font-size:13px;color:#222;">${escapeStr(r.author_name)}</div>
+            <div style="color:#fc4c7a;font-size:12px;letter-spacing:1.5px;">${rstars}</div>
+          </div>
+          ${r.title ? '<div style="font-size:13px;font-weight:600;color:#444;margin-top:4px;">' + escapeStr(r.title) + '</div>' : ''}
+          <div style="font-size:13px;color:#444;margin-top:4px;line-height:1.5;">${escapeStr(r.body)}</div>
+          <div style="font-size:11px;color:#999;margin-top:6px;">${date}</div>
+        </div>`;
+      }).join('');
+    }
+  } catch (e) {
+    document.getElementById('rv-list').innerHTML = '<div style="text-align:center;color:#dc2626;padding:18px;font-size:13px;">Could not load reviews.</div>';
+  }
+}
+
+/* â”€â”€ Hooks: load wishlist/review data whenever the grid re-renders â”€â”€ */
+const _origRenderProducts = typeof renderProducts === 'function' ? renderProducts : null;
+if (_origRenderProducts) {
+  window.renderProducts = function () {
+    const out = _origRenderProducts.apply(this, arguments);
+    paintWishlistHearts();
+    const ids = Array.from(document.querySelectorAll('[data-rating-id]')).map(el => Number(el.getAttribute('data-rating-id')));
+    if (ids.length) loadReviewSummaries(ids);
+    return out;
+  };
+}
+
+// Minimal toast for storefront (fallback if not present elsewhere)
+function showToast(msg, kind) {
+  const el = document.createElement('div');
+  el.textContent = msg;
+  el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:' + (kind === 'error' ? '#dc2626' : kind === 'warning' ? '#d97706' : kind === 'info' ? '#0F4C3A' : '#5E9C7E') + ';color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:9999;box-shadow:0 8px 28px rgba(0,0,0,0.18);font-family:Inter,sans-serif;';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 2500);
+}
+function escapeStr(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]); }
+
+// Boot wishlist sync once on page load (after grid first renders)
+window.addEventListener('load', () => { setTimeout(syncWishlistState, 200); });
+
+/* â”€â”€ Input guards: block wrong character class in fields â”€â”€
+   number fields: block e/E/+/- (and "." on integer fields);
+   tel fields: digits and + - ( ) space only; person-name fields: block digits. */
+(function installInputGuards() {
+  var LETTERS_ONLY_IDS = ['checkoutName', 'rv-author'];
+  function setFiltered(el, cleaned) {
+    var caret = el.selectionStart, removed = el.value.length - cleaned.length;
+    el.value = cleaned;
+    try { el.setSelectionRange(caret - removed, caret - removed); } catch (e) {}
+  }
+  document.addEventListener('keydown', function (e) {
+    var el = e.target;
+    if (!el || el.tagName !== 'INPUT' || (el.type || '').toLowerCase() !== 'number') return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var allowsDecimal = /\./.test(el.getAttribute('step') || '') || el.getAttribute('inputmode') === 'decimal';
+    if (e.key === 'e' || e.key === 'E' || e.key === '+' || e.key === '-') { e.preventDefault(); return; }
+    if (e.key === '.' && !allowsDecimal) { e.preventDefault(); }
+  });
+  document.addEventListener('input', function (e) {
+    var el = e.target;
+    if (!el || el.tagName !== 'INPUT') return;
+    if ((el.type || '').toLowerCase() === 'tel') {
+      var phone = el.value.replace(/[^0-9+\-()\s]/g, '');
+      if (phone !== el.value) setFiltered(el, phone);
+    } else if (LETTERS_ONLY_IDS.indexOf(el.id) !== -1) {
+      var letters = el.value.replace(/[0-9]/g, '');
+      if (letters !== el.value) setFiltered(el, letters);
+    }
+  });
+})();
+
+/* ============================================================
+   DYNAMIC STOREFRONT CATEGORY NAV
+   Rebuilds the category pills + side-drawer from the owner's
+   managed category list (shared via same-origin localStorage)
+   merged with categories present on products â€” so categories the
+   owner adds (e.g. "ROCKS") appear in the storefront immediately.
+   ============================================================ */
+(function () {
+  'use strict';
+  function escH(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];}); }
+
+  var PILL_ICON = {
+    newborn:'fa-baby', clothing:'fa-tshirt', shoes:'fa-shoe-prints',
+    feeding:'fa-bottle-water', gear:'fa-baby-carriage', bathcare:'fa-bath',
+    essentials:'fa-hand-holding-heart', accessories:'fa-shopping-bag', bedding:'fa-bed'
+  };
+
+  function storefrontCats() {
+    var out = [], seen = {};
+    function push(id, label){
+      if (!id || id === 'preorder' || seen[id]) return;
+      seen[id] = 1;
+      var lbl = label
+        || (typeof KNOWN_CATEGORY_LABELS !== 'undefined' && KNOWN_CATEGORY_LABELS[id])
+        || (typeof humanizeCategory === 'function' ? humanizeCategory(id) : id);
+      out.push({ id: id, label: lbl });
+    }
+    var stored = [];
+    try { stored = getStoredCategoryList() || []; } catch (e) {}
+    if (stored.length) {
+      // The owner's managed list is the source of truth (so deletes stick).
+      stored.forEach(function (c) { if (c && c.id) push(c.id, c.label); });
+    } else {
+      // No managed list yet â†’ fall back to built-in defaults.
+      try { (categoryMap || []).forEach(function (c) { push(c.id, c.label); }); } catch (e) {}
+    }
+    // Any category that actually has products always shows â€” even for shoppers
+    // whose browser doesn't have the managed list (it's product data, server-side).
+    try { (Array.isArray(products) ? products : []).forEach(function (p) { if (p.cat) push(p.cat); }); } catch (e) {}
+    // Hide categories with nothing in them â€” an empty grid reads as broken to
+    // shoppers. Only filter once the catalogue has loaded, so a failed fetch
+    // can't blank out the nav.
+    if (Array.isArray(products) && products.length) {
+      var have = {};
+      products.forEach(function (p) { if (p.cat) have[p.cat] = 1; });
+      out = out.filter(function (c) { return have[c.id]; });
+    }
+    return out;
+  }
+
+  function selectCategory(cat) {
+    try { currentCategory = cat; } catch (e) {}
+    try { categoryPages[cat] = 1; } catch (e) {}
+    if (typeof inventoryBtns !== 'undefined' && inventoryBtns) {
+      if (inventoryBtns[1]) inventoryBtns[1].classList.remove('active');
+      if (inventoryBtns[0]) inventoryBtns[0].classList.add('active');
+    }
+    if (typeof dynamicSections !== 'undefined' && dynamicSections) dynamicSections.classList.remove('hidden');
+    if (typeof preorderSec !== 'undefined' && preorderSec) preorderSec.classList.add('hidden');
+    try { currentStock = 'available'; } catch (e) {}
+    if (categoryPills) categoryPills.querySelectorAll('.category-pill').forEach(function (p) {
+      p.classList.toggle('active', (p.getAttribute('data-filter') || 'all') === cat);
+    });
+    if (navDrawer) navDrawer.querySelectorAll('.nav-drawer__item[data-category]').forEach(function (n) {
+      n.classList.toggle('active', (n.getAttribute('data-category') || '') === cat);
+    });
+    (window.renderProducts || renderProducts)();
+    var sec = document.getElementById('productListSection');
+    if (sec) window.scrollTo({ top: sec.getBoundingClientRect().top + window.pageYOffset - 90, behavior: 'smooth' });
+  }
+
+  function rebuildPills() {
+    if (!categoryPills) return;
+    var cats = storefrontCats();
+    var active = (typeof currentCategory !== 'undefined' && currentCategory) ? currentCategory : 'all';
+    var html = '<a href="#all" class="category-pill flex items-center gap-2 px-5 py-2.5 rounded-full border text-sm font-medium transition-all' + (active === 'all' ? ' active' : '') + '" data-filter="all"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> All</a>';
+    html += cats.map(function (c) {
+      var ic = PILL_ICON[c.id] || 'fa-tag';
+      return '<a href="#' + escH(c.id) + '" class="category-pill flex items-center gap-2 px-5 py-2.5 rounded-full border bg-white text-gray-600 border-gray-100 hover:bg-gray-50 text-sm font-medium transition-all' + (active === c.id ? ' active' : '') + '" data-filter="' + escH(c.id) + '"><i class="fas ' + ic + ' text-xs opacity-80"></i> ' + escH(c.label) + '</a>';
+    }).join('');
+    categoryPills.innerHTML = html;
+  }
+
+  function rebuildNav() {
+    if (!navDrawer) return;
+    var cats = storefrontCats();
+    // Preserve each category's ORIGINAL glyph icon: snapshot the existing SVG by
+    // category id, then drop the originals (so their old click handlers don't
+    // double-fire with the delegated one). New categories get a generic tag.
+    var iconById = {};
+    navDrawer.querySelectorAll('.nav-drawer__item[data-category]').forEach(function (n) {
+      var dc = n.getAttribute('data-category');
+      if (dc === 'all' || dc === 'preorder') return;
+      var svg = n.querySelector('svg');
+      if (svg && !iconById[dc]) iconById[dc] = svg.outerHTML;
+      n.parentNode.removeChild(n);
+    });
+    var allItem = navDrawer.querySelector('.nav-drawer__item[data-category="all"]');
+    var anchor = allItem ? allItem.nextSibling : null;
+    var tagSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>';
+    cats.forEach(function (c) {
+      var a = document.createElement('a');
+      a.href = '#' + c.id;
+      a.className = 'nav-drawer__item';
+      a.setAttribute('data-category', c.id);
+      a.innerHTML = (iconById[c.id] || tagSvg) + ' ' + escH(c.label);
+      if (allItem) navDrawer.insertBefore(a, anchor); else navDrawer.appendChild(a);
+    });
+  }
+
+  function wireDelegation() {
+    if (categoryPills && !categoryPills.__catDeleg) {
+      categoryPills.__catDeleg = true;
+      categoryPills.addEventListener('click', function (e) {
+        var pill = e.target.closest('.category-pill');
+        if (!pill || !categoryPills.contains(pill)) return;
+        e.preventDefault();
+        selectCategory(pill.getAttribute('data-filter') || 'all');
+      });
+    }
+    if (navDrawer && !navDrawer.__catDeleg) {
+      navDrawer.__catDeleg = true;
+      navDrawer.addEventListener('click', function (e) {
+        var item = e.target.closest('.nav-drawer__item[data-category]');
+        if (!item || !navDrawer.contains(item)) return;
+        var cat = item.getAttribute('data-category');
+        if (cat === 'all' || cat === 'preorder') return; // originals handle these
+        e.preventDefault();
+        if (typeof closeNav === 'function') closeNav();
+        selectCategory(cat);
+      });
+    }
+  }
+
+  function syncCategoryNav() { rebuildPills(); rebuildNav(); wireDelegation(); }
+  window.syncCategoryNav = syncCategoryNav;
+
+  // Re-sync the storefront nav + grid whenever the category list changes.
+  function resync() {
+    try { syncCategoryNav(); } catch (e) {}
+    try { (window.renderProducts || renderProducts)(); } catch (e) {}
+  }
+  // Fires when the admin (another tab, same browser) adds/renames/deletes a category.
+  window.addEventListener('storage', function (e) {
+    if (!e || e.key === 'dcKidsCategories' || e.key === null) resync();
+  });
+  // Catch changes made in this same tab (storage event doesn't fire for the writer).
+  window.addEventListener('focus', resync);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) resync(); });
+
+  document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(syncCategoryNav, 600);
+    setTimeout(syncCategoryNav, 1800);
+  });
+})();
+
