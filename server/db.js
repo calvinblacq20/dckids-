@@ -1,10 +1,59 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const config = require('./config');
 
-const dbPath = process.env.DB_PATH || path.resolve(__dirname, 'inventory.db');
+const dbPath = config.dbPath;
+const SKU_PREFIXES = { clothing: 'CLO', shoes: 'SHO', accessories: 'ACC', newborn: 'NEW', bedding: 'BED', essentials: 'ESS', feeding: 'FEE', gear: 'GEA', bathcare: 'BAT' };
+
+function skuPrefixForCategory(category) {
+    const normalized = String(category || '').trim().toLowerCase();
+    return SKU_PREFIXES[normalized] || (normalized.replace(/[^a-z]/g, '').slice(0, 3).toUpperCase() || 'GEN');
+}
+
+function ensureSkuIndex(done) {
+    db.get("SELECT sku FROM products WHERE sku IS NOT NULL AND trim(sku) <> '' GROUP BY sku HAVING COUNT(*) > 1 LIMIT 1", [], (readError, duplicate) => {
+        if (readError) return done(readError);
+        if (duplicate) {
+            console.warn('SKU uniqueness index deferred: duplicate manual SKUs are reported by image health.');
+            return done(null);
+        }
+        db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_products_sku ON products(sku) WHERE sku IS NOT NULL AND trim(sku) <> ''", (error) => done(error || null));
+    });
+}
+
+function backfillMissingProductSkus(done) {
+    db.all('SELECT id, sku, cat FROM products ORDER BY id', [], (err, rows) => {
+        if (err) return done(err);
+        const used = new Set((rows || []).map((row) => String(row.sku || '').trim()).filter(Boolean));
+        const nextByPrefix = new Map();
+        const updates = [];
+        for (const row of rows || []) {
+            if (String(row.sku || '').trim()) continue;
+            const prefix = skuPrefixForCategory(row.cat);
+            let sequence = nextByPrefix.get(prefix) || 1;
+            let sku = `${prefix}-${String(sequence).padStart(4, '0')}`;
+            while (used.has(sku)) {
+                sequence += 1;
+                sku = `${prefix}-${String(sequence).padStart(4, '0')}`;
+            }
+            nextByPrefix.set(prefix, sequence + 1);
+            used.add(sku);
+            updates.push({ id: row.id, sku });
+        }
+        if (!updates.length) return ensureSkuIndex(done);
+        const statement = db.prepare("UPDATE products SET sku = ? WHERE id = ? AND (sku IS NULL OR trim(sku) = '')");
+        updates.forEach((item) => statement.run(item.sku, item.id));
+        statement.finalize((finalizeError) => {
+            if (finalizeError) return done(finalizeError);
+            console.log(`SKU backfill: assigned ${updates.length} missing SKU(s).`);
+            ensureSkuIndex(done);
+        });
+    });
+}
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error opening database', err.message);
+        _markDbFailed(err);
     } else {
         console.log('Connected to the SQLite database.');
 
@@ -666,15 +715,35 @@ const db = new sqlite3.Database(dbPath, (err) => {
         // so it's a reliable "schema ready" signal. The server waits on this via
         // db.whenReady() before listening — otherwise a request arriving on a
         // fresh database (no tables yet) crashes with "no such table: orders".
-        db.run('SELECT 1', () => { _markDbReady(); });
+        db.run('SELECT 1', () => {
+            db.run('SELECT 1', () => {
+                backfillMissingProductSkus((backfillError) => {
+                    if (backfillError) return _markDbFailed(backfillError);
+                    _markDbReady();
+                });
+            });
+        });
     }
 });
 
 // ── Readiness gate ──
 // Lets server.js delay app.listen() until the schema exists on a fresh DB.
 let _dbReady = false;
+let _dbReadyError = null;
 const _dbReadyCbs = [];
-function _markDbReady() { _dbReady = true; while (_dbReadyCbs.length) _dbReadyCbs.shift()(); }
-db.whenReady = function (cb) { if (_dbReady) cb(); else _dbReadyCbs.push(cb); };
+function _flushDbReadyCallbacks() {
+    while (_dbReadyCbs.length) _dbReadyCbs.shift()(_dbReadyError);
+}
+function _markDbReady() { _dbReady = true; _flushDbReadyCallbacks(); }
+function _markDbFailed(error) {
+    _dbReadyError = error || new Error('Database initialization failed');
+    _flushDbReadyCallbacks();
+}
+db.whenReady = function (callback) {
+    if (_dbReady || _dbReadyError) callback(_dbReadyError);
+    else _dbReadyCbs.push(callback);
+};
+db.storagePath = dbPath;
+db.backfillMissingProductSkus = backfillMissingProductSkus;
 
 module.exports = db;

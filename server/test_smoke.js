@@ -6,20 +6,24 @@ const fs = require('fs');
 const path = require('path');
 
 const TEST_PORT = 3041;
-const TEST_DB = path.join(__dirname, '_smoketest.db');
+const TEST_DATA_DIR = path.join(__dirname, '_smoketest_data');
+const TEST_DB = path.join(TEST_DATA_DIR, 'inventory.db');
 const BASE = `http://localhost:${TEST_PORT}`;
 
 // Set (not delete) every env var the server reads: dotenv loads server/.env at
 // require time but never overrides variables that are already set, so explicit
 // values here insulate the test from whatever the operator has in .env.
 process.env.PORT = String(TEST_PORT);
+process.env.DATA_DIR = TEST_DATA_DIR;
 process.env.DB_PATH = TEST_DB;
+process.env.BACKUP_SCHEDULE_DISABLED = 'true';
 process.env.NODE_ENV = 'test';              // dev mode: localhost bypasses rate limits
 process.env.RESEND_API_KEY = '';            // emails log to console instead of sending
 process.env.OWNER_EMAIL = 'owner@test.com'; // the test's first sign-up is the owner
 
 let passed = 0;
 let failed = 0;
+const uploadedTestFiles = [];
 function check(name, cond, detail) {
     if (cond) { passed++; console.log(`  PASS  ${name}`); }
     else { failed++; console.error(`  FAIL  ${name}${detail ? ' — ' + detail : ''}`); }
@@ -27,9 +31,11 @@ function check(name, cond, detail) {
 const close = (a, b) => Math.abs(Number(a) - Number(b)) < 0.01;
 
 function cleanupDb() {
-    ['', '-wal', '-shm'].forEach(ext => {
-        try { fs.unlinkSync(TEST_DB + ext); } catch (e) { /* not present */ }
-    });
+    const resolved = path.resolve(TEST_DATA_DIR);
+    if (path.dirname(resolved) !== path.resolve(__dirname) || path.basename(resolved) !== '_smoketest_data') {
+        throw new Error('Refusing to clean an unexpected test data directory');
+    }
+    fs.rmSync(resolved, { recursive: true, force: true });
 }
 
 // The OTP flow emails a 6-digit code; without RESEND_API_KEY the server prints
@@ -62,10 +68,17 @@ const json = (method, body, extraHeaders) => ({
 
 async function run() {
     cleanupDb();
-    require('./server'); // boots on TEST_PORT against TEST_DB
+    const runtime = require('./server'); // boots on TEST_PORT against TEST_DB
+    const db = require('./db');
+    const dbRun = (sql, params) => new Promise((resolve, reject) => db.run(sql, params || [], function(err) { err ? reject(err) : resolve(this); }));
+    const dbGet = (sql, params) => new Promise((resolve, reject) => db.get(sql, params || [], (err, row) => err ? reject(err) : resolve(row)));
 
     const up = await waitForServer(30);
     if (!up) { console.error('FATAL: server did not start'); process.exit(1); }
+
+    let healthResponse = await fetch(`${BASE}/api/health`);
+    const runtimeHealth = await healthResponse.json();
+    check('health reports database and storage ready', healthResponse.status === 200 && runtimeHealth.status === 'ok' && runtimeHealth.database === 'ok' && runtimeHealth.storage === 'ok');
 
     // ---- fresh-database boot: seeded from the products.json snapshot ----
     const products = await (await fetch(`${BASE}/api/products`)).json();
@@ -74,6 +87,31 @@ async function run() {
     check('all storefront categories populated',
         ['clothing', 'shoes', 'feeding', 'gear', 'bathcare', 'bedding'].every(c => catsWithProducts.has(c)),
         `cats: ${[...catsWithProducts].join(',')}`);
+
+    const seededSkus = products.map(p => String(p.sku || ''));
+    check('fresh catalogue has no blank SKUs', seededSkus.every(Boolean));
+    check('fresh catalogue SKUs are unique', new Set(seededSkus).size === seededSkus.length);
+    check('SKU prefixes cover every category', products.every(p => /^(CLO|SHO|ACC|NEW|BED|ESS|FEE|GEA|BAT)-\d{4}$/.test(p.sku)), 'unexpected SKU prefix');
+    const categoryAssets = ['newborn','clothing','shoes','feeding','gear','bathcare','essentials','accessories','bedding'];
+    const categoryImageCount = products.filter(p => /^images\/category-fallbacks\/[a-z]+\.webp$/.test(p.img || '')).length;
+    check('placeholder products reuse category artwork', categoryImageCount >= 180, `got ${categoryImageCount}`);
+    check('all category fallback assets exist', categoryAssets.every(name => fs.existsSync(path.join(__dirname, '..', 'images', 'category-fallbacks', name + '.webp'))));
+    const imageResolver = require('../image-resolver');
+    check('all categories resolve to their matching fallback', categoryAssets.every(name => imageResolver.resolve({ cat: name, img: 'images/placeholder.svg' }).src === 'images/category-fallbacks/' + name + '.webp'));
+    check('stored category artwork remains visibly labelled', categoryAssets.every(name => {
+        const resolved = imageResolver.resolve({ cat: name, img: 'images/category-fallbacks/' + name + '.webp' });
+        return resolved.src === 'images/category-fallbacks/' + name + '.webp' && resolved.isCategoryFallback === true && imageResolver.isGenuineImage(resolved.src) === false;
+    }));
+    check('legacy logo duplicates resolve as category artwork', ['product_50.jpg', 'product_66.jpg', 'product_83.jpg'].every(name => {
+        const resolved = imageResolver.resolve({ cat: 'shoes', img: 'images/' + name });
+        return resolved.src === 'images/category-fallbacks/shoes.webp' && resolved.isCategoryFallback === true;
+    }));
+    check('source catalogue contains no known logo placeholders', products.every(p => !imageResolver.isKnownLogoPlaceholder(p.img)));
+    const realImage = imageResolver.resolve({ cat: 'clothing', img: 'images/product_42.jpg' });
+    check('genuine product images remain unchanged', realImage.src === 'images/product_42.jpg' && realImage.isCategoryFallback === false);
+    const swSource = fs.readFileSync(path.join(__dirname, '..', 'service-worker.js'), 'utf8');
+    check('service worker caches category fallbacks', categoryAssets.every(name => swSource.includes('/images/category-fallbacks/' + name + '.webp')));
+    check('service worker image failure returns SVG placeholder', swSource.includes("isImage ? caches.match('/images/placeholder.svg')"));
 
     // ---- static frontend ----
     for (const page of ['/', '/admin.html', '/track.html']) {
@@ -108,6 +146,52 @@ async function run() {
 
     r = await fetch(`${BASE}/api/orders`, { headers: auth });
     check('orders list works with token', r.status === 200, `status ${r.status}`);
+
+    // ---- deterministic SKU backfill preserves manual assignments ----
+    await dbRun(`UPDATE products SET sku = 'MANUAL-KEEP' WHERE id = 1`);
+    await dbRun(`UPDATE products SET sku = NULL WHERE id = 2`);
+    await new Promise(resolve => db.backfillMissingProductSkus(resolve));
+    const skuRows = await Promise.all([dbGet(`SELECT sku FROM products WHERE id = 1`), dbGet(`SELECT sku FROM products WHERE id = 2`)]);
+    check('SKU backfill preserves manually assigned SKU', skuRows[0].sku === 'MANUAL-KEEP', skuRows[0].sku);
+    check('SKU backfill deterministically fills blank SKU', /^(CLO|SHO|ACC|NEW|BED|ESS|FEE|GEA|BAT)-\d{4}$/.test(skuRows[1].sku), skuRows[1].sku);
+    const firstBackfill = skuRows[1].sku;
+    await new Promise(resolve => db.backfillMissingProductSkus(resolve));
+    check('SKU backfill is stable on rerun', (await dbGet(`SELECT sku FROM products WHERE id = 2`)).sku === firstBackfill);
+
+    // ---- bulk image upload + transactional mapping ----
+    const tinyPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9Z5xkAAAAASUVORK5CYII=';
+    async function uploadTiny() {
+        const response = await fetch(`${BASE}/api/upload-image`, json('POST', { dataUrl: tinyPng }, auth));
+        const body = await response.json();
+        if (body.path) uploadedTestFiles.push(body.path);
+        return { response, body };
+    }
+    const uploadA = await uploadTiny();
+    const uploadB = await uploadTiny();
+    check('product image upload returns persistent path', uploadA.response.status === 200 && /^images\/uploads\/product_upload_/.test(uploadA.body.path || ''));
+    const servedUpload = await fetch(`${BASE}/${uploadA.body.path}`);
+    check('persistent product image is served', servedUpload.status === 200 && String(servedUpload.headers.get('content-type') || '').startsWith('image/png'));
+    r = await fetch(`${BASE}/api/upload-image`, json('POST', { dataUrl: 'data:image/png;base64,ZmFrZQ==' }, auth));
+    check('product image upload rejects mismatched bytes', r.status === 400, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/products/bulk-images`, json('POST', { items: [{ id: 1, img: 'images/placeholder.svg' }] }, auth));
+    check('bulk mapping rejects unsafe image path', r.status === 400, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/products/bulk-images`, json('POST', { items: [{ id: 1, img: 'images/uploads/../secrets.png' }] }, auth));
+    check('bulk mapping rejects traversal path', r.status === 400, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/products/bulk-images`, json('POST', { items: [{ id: 1, img: uploadA.body.path }, { id: 1, img: uploadB.body.path }] }, auth));
+    check('bulk mapping rejects duplicate IDs', r.status === 400, `status ${r.status}`);
+    const imageBeforeRollback = (await dbGet(`SELECT img FROM products WHERE id = 1`)).img;
+    r = await fetch(`${BASE}/api/products/bulk-images`, json('POST', { items: [{ id: 1, img: uploadA.body.path }, { id: 999999, img: uploadB.body.path }] }, auth));
+    check('bulk mapping rejects unknown products', r.status === 404, `status ${r.status}`);
+    check('bulk mapping rollback leaves valid product unchanged', (await dbGet(`SELECT img FROM products WHERE id = 1`)).img === imageBeforeRollback);
+    r = await fetch(`${BASE}/api/products/bulk-images`, json('POST', { items: [{ id: 1, img: uploadA.body.path }] }, auth));
+    const bulkMapped = await r.json();
+    check('bulk mapping updates valid item', r.status === 200 && bulkMapped.updated === 1, `status ${r.status}`);
+    check('bulk mapping persists image path', (await dbGet(`SELECT img FROM products WHERE id = 1`)).img === uploadA.body.path);
+    r = await fetch(`${BASE}/api/products/image-health`, { headers: auth });
+    const health = await r.json();
+    check('image health report includes all safeguards', r.status === 200 && ['missingImages','missingSkus','duplicateSkus','invalidPaths','unusedUploads'].every(k => Array.isArray(health[k])));
+
+
 
     // Recovery code is a valid backup sign-in.
     r = await fetch(`${BASE}/api/auth/recovery`, json('POST', { email: 'owner@test.com', code: reg.recoveryCodes[0] }));
@@ -273,6 +357,12 @@ async function run() {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{bad json'
     });
     check('malformed JSON returns 400', r.status === 400, `status ${r.status}`);
+
+    await runtime.shutdown('smoke test complete', 0, { exitProcess: false });
+    check('graceful shutdown closes HTTP listener', !runtime.getServer().listening);
+    let databaseClosed = false;
+    try { await dbGet('SELECT 1'); } catch (error) { databaseClosed = true; }
+    check('graceful shutdown closes SQLite', databaseClosed);
 
     console.log(`\n${passed} passed, ${failed} failed`);
     cleanupDb();

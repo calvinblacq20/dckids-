@@ -9,7 +9,7 @@
     "stock": 4,
     "badge": null,
     "updated_at": "2026-06-22 06:44:22",
-    "sku": null,
+    "sku": "CLO-0001",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -24,7 +24,7 @@
     "stock": 1,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "ACC-0001",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -39,7 +39,7 @@
     "stock": 1,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "ACC-0002",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -54,7 +54,7 @@
     "stock": 9,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "ACC-0003",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -69,7 +69,7 @@
     "stock": 13,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "ACC-0004",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -84,7 +84,7 @@
     "stock": 14,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "ACC-0005",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -99,7 +99,7 @@
     "stock": 16,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "ACC-0006",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -114,7 +114,7 @@
     "stock": 27,
     "badge": null,
     "updated_at": "2026-05-23 05:35:02",
-    "sku": null,
+    "sku": "NEW-0001",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -129,7 +129,7 @@
     "stock": 12,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "NEW-0002",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -144,7 +144,7 @@
     "stock": 16,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "NEW-0003",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -159,7 +159,7 @@
     "stock": 20,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "ESS-0001",
     "description": null,
     "fulfillment_type": "preorder",
     "sizes": null
@@ -174,7 +174,7 @@
     "stock": 6,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "CLO-0002",
     "description": null,
     "fulfillment_type": "preorder",
     "sizes": null
@@ -189,7 +189,7 @@
     "stock": 29,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "BED-0001",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -204,7 +204,7 @@
     "stock": 21,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "BED-0002",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -219,7 +219,7 @@
     "stock": 19,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "BED-0003",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -234,7 +234,7 @@
     "stock": 20,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "BED-0004",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -249,7 +249,7 @@
     "stock": 11,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "BED-0005",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -264,7 +264,7 @@
     "stock": 19,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "BED-0006",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -279,7 +279,7 @@
     "stock": 8,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "BED-0007",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -294,7 +294,7 @@
     "stock": 10,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "BED-0008",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -309,7 +309,7 @@
     "stock": 20,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "BED-0009",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -324,7 +324,7 @@
     "stock": 1,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "BED-0010",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -339,7 +339,7 @@
     "stock": 21,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "BED-0011",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -354,7 +354,7 @@
     "stock": 15,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "CLO-0003",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -369,7 +369,7 @@
     "stock": 4,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "CLO-0004",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -384,7 +384,7 @@
     "stock": 16,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "CLO-0005",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -399,7 +399,7 @@
     "stock": 23,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "CLO-0006",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -414,7 +414,7 @@
     "stock": 28,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "NEW-0004",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -429,7 +429,7 @@
     "stock": 2,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "ACC-0007",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -444,7 +444,7 @@
     "stock": 28,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "ACC-0008",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -459,7 +459,7 @@
     "stock": 9,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "ACC-0009",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -474,7 +474,7 @@
     "stock": 25,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "ACC-0010",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -489,7 +489,7 @@
     "stock": 25,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "ACC-0011",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -504,7 +504,7 @@
     "stock": 18,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "ACC-0012",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -519,7 +519,7 @@
     "stock": 3,
     "badge": "",
     "updated_at": "2026-05-23 00:21:07",
-    "sku": null,
+    "sku": "ACC-0013",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -534,7 +534,7 @@
     "stock": 6,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0007",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -549,7 +549,7 @@
     "stock": 23,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0008",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -564,7 +564,7 @@
     "stock": 13,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0009",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -579,7 +579,7 @@
     "stock": 0,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0010",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -594,7 +594,7 @@
     "stock": 20,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0011",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -609,7 +609,7 @@
     "stock": 6,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0012",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -624,7 +624,7 @@
     "stock": 3,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0013",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -639,7 +639,7 @@
     "stock": 11,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0014",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -654,7 +654,7 @@
     "stock": 12,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0015",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -669,7 +669,7 @@
     "stock": 4,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0016",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -684,7 +684,7 @@
     "stock": 26,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0017",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -699,7 +699,7 @@
     "stock": 26,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0018",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -714,7 +714,7 @@
     "stock": 24,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0019",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -729,7 +729,7 @@
     "stock": 14,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0020",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -744,7 +744,7 @@
     "stock": 17,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0021",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -759,7 +759,7 @@
     "stock": 3,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0022",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -774,7 +774,7 @@
     "stock": 2,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "NEW-0005",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -789,7 +789,7 @@
     "stock": 10,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "NEW-0006",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -804,7 +804,7 @@
     "stock": 22,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0023",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -819,7 +819,7 @@
     "stock": 15,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0024",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -834,7 +834,7 @@
     "stock": 23,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0025",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -849,7 +849,7 @@
     "stock": 2,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0026",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -864,7 +864,7 @@
     "stock": 2,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0027",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -879,7 +879,7 @@
     "stock": 0,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0028",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -894,7 +894,7 @@
     "stock": 0,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0029",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -909,7 +909,7 @@
     "stock": 2,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0030",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -924,7 +924,7 @@
     "stock": 29,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0031",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -939,7 +939,7 @@
     "stock": 5,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0032",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -954,7 +954,7 @@
     "stock": 14,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0033",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -969,7 +969,7 @@
     "stock": 8,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "SHO-0001",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -984,7 +984,7 @@
     "stock": 8,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "SHO-0002",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -999,7 +999,7 @@
     "stock": 8,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "SHO-0003",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1014,7 +1014,7 @@
     "stock": 18,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "SHO-0004",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1029,7 +1029,7 @@
     "stock": 0,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "SHO-0005",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1044,7 +1044,7 @@
     "stock": 27,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "SHO-0006",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1059,7 +1059,7 @@
     "stock": 6,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "SHO-0007",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1074,7 +1074,7 @@
     "stock": 29,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "SHO-0008",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1089,7 +1089,7 @@
     "stock": 21,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "SHO-0009",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1104,7 +1104,7 @@
     "stock": 21,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "SHO-0010",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1119,7 +1119,7 @@
     "stock": 29,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "SHO-0011",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1134,7 +1134,7 @@
     "stock": 27,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "SHO-0012",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1149,7 +1149,7 @@
     "stock": 17,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "ESS-0002",
     "description": null,
     "fulfillment_type": "preorder",
     "sizes": null
@@ -1164,7 +1164,7 @@
     "stock": 29,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0034",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1179,7 +1179,7 @@
     "stock": 5,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0035",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1194,7 +1194,7 @@
     "stock": 9,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0036",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1209,7 +1209,7 @@
     "stock": 24,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0037",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1224,7 +1224,7 @@
     "stock": 16,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0038",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1239,7 +1239,7 @@
     "stock": 24,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0039",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1254,7 +1254,7 @@
     "stock": 22,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0040",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1269,7 +1269,7 @@
     "stock": 9,
     "badge": "",
     "updated_at": "2026-05-23 00:21:08",
-    "sku": null,
+    "sku": "CLO-0041",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1284,7 +1284,7 @@
     "stock": 15,
     "badge": null,
     "updated_at": "2026-05-23 18:58:20",
-    "sku": null,
+    "sku": "CLO-0042",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1299,7 +1299,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "NEW-0007",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1314,7 +1314,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0014",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1329,7 +1329,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0015",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1344,7 +1344,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0001",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1359,7 +1359,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0002",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1374,7 +1374,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0003",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1389,7 +1389,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "NEW-0008",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1404,7 +1404,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "NEW-0009",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1419,7 +1419,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0016",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1434,7 +1434,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "NEW-0010",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1449,7 +1449,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "NEW-0011",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1464,7 +1464,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0001",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1479,7 +1479,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0002",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1494,7 +1494,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0017",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1509,7 +1509,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "NEW-0012",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1524,7 +1524,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0004",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1539,7 +1539,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0018",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1554,7 +1554,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0001",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1569,7 +1569,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0002",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1584,7 +1584,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BED-0012",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1599,7 +1599,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0003",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1614,7 +1614,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0004",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1629,7 +1629,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0005",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1644,7 +1644,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0006",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1659,7 +1659,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0005",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1674,7 +1674,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0006",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1689,7 +1689,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0007",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1704,7 +1704,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0008",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1719,7 +1719,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0007",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1734,7 +1734,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0008",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1749,7 +1749,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0009",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1764,7 +1764,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0010",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1779,7 +1779,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0019",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1794,7 +1794,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0020",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1809,7 +1809,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0009",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1824,7 +1824,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0010",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1839,7 +1839,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0011",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1854,7 +1854,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0012",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1869,7 +1869,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0013",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1884,7 +1884,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0011",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1899,7 +1899,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0012",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1914,7 +1914,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0013",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1929,7 +1929,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0014",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1944,7 +1944,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0015",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1959,7 +1959,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0016",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1974,7 +1974,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0017",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -1989,7 +1989,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0003",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2004,7 +2004,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0004",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2019,7 +2019,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0014",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2034,7 +2034,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0015",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2049,7 +2049,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0021",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2064,7 +2064,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0016",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2079,7 +2079,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0022",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2094,7 +2094,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0005",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2109,7 +2109,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "NEW-0013",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2124,7 +2124,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0018",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2139,7 +2139,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0019",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2154,7 +2154,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0006",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2169,7 +2169,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0007",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2184,7 +2184,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0008",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2199,7 +2199,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0009",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2214,7 +2214,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0010",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2229,7 +2229,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0011",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2244,7 +2244,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0043",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2259,7 +2259,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "NEW-0014",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2274,7 +2274,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "NEW-0015",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2289,7 +2289,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0017",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2304,7 +2304,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0018",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2319,7 +2319,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0019",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2334,7 +2334,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0012",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2349,7 +2349,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0013",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2364,7 +2364,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0014",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2379,7 +2379,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0020",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2394,7 +2394,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BED-0013",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2409,7 +2409,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0044",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2424,7 +2424,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0045",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2439,7 +2439,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0046",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2454,7 +2454,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0047",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2469,7 +2469,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0048",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2484,7 +2484,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0049",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2499,7 +2499,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0050",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2514,7 +2514,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0023",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2529,7 +2529,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0051",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2544,7 +2544,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0052",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2559,7 +2559,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0053",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2574,7 +2574,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0054",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2589,7 +2589,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0024",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2604,7 +2604,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0055",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2619,7 +2619,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0056",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2634,7 +2634,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0057",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2649,7 +2649,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0058",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2664,7 +2664,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0059",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2679,7 +2679,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "NEW-0016",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2694,7 +2694,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0025",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2709,7 +2709,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0026",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2724,7 +2724,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0013",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2739,7 +2739,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0014",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2754,7 +2754,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0015",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2769,7 +2769,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0016",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2784,7 +2784,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0017",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2799,7 +2799,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0018",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2814,7 +2814,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0019",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2829,7 +2829,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0020",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2844,7 +2844,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0021",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2859,7 +2859,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0022",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2874,7 +2874,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0023",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2889,7 +2889,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0024",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2904,7 +2904,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0027",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2919,7 +2919,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0028",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2934,7 +2934,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0029",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2949,7 +2949,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0030",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2964,7 +2964,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0031",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2979,7 +2979,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0021",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -2994,7 +2994,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0022",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3009,7 +3009,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0023",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3024,7 +3024,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0032",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3039,7 +3039,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0033",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3054,7 +3054,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0034",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3069,7 +3069,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0035",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3084,7 +3084,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0025",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3099,7 +3099,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0026",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3114,7 +3114,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0036",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3129,7 +3129,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0037",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3144,7 +3144,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0060",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3159,7 +3159,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0038",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3174,7 +3174,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0039",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3189,7 +3189,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0040",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3204,7 +3204,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0041",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3219,7 +3219,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0042",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3234,7 +3234,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "NEW-0017",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3249,7 +3249,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0024",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3264,7 +3264,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0025",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3279,7 +3279,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0026",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3294,7 +3294,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0061",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3309,7 +3309,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0062",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3324,7 +3324,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0063",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3339,7 +3339,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0064",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3354,7 +3354,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0065",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3369,7 +3369,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0066",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3384,7 +3384,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0015",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3399,7 +3399,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0027",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3414,7 +3414,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0028",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3429,7 +3429,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0029",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3444,7 +3444,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0030",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3459,7 +3459,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0031",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3474,7 +3474,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0016",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3489,7 +3489,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0067",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3504,7 +3504,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0068",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3519,7 +3519,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0069",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3534,7 +3534,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0070",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3549,7 +3549,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0027",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3564,7 +3564,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0032",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3579,7 +3579,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0033",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3594,7 +3594,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0034",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3609,7 +3609,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0043",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3624,7 +3624,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0044",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3639,7 +3639,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0045",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3654,7 +3654,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "FEE-0035",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3669,7 +3669,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0028",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3684,7 +3684,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0046",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3699,7 +3699,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0047",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3714,7 +3714,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0071",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3729,7 +3729,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0072",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3744,7 +3744,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0073",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3759,7 +3759,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0048",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3774,7 +3774,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0029",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3789,7 +3789,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0030",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3804,7 +3804,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0031",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3819,7 +3819,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "GEA-0020",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3834,7 +3834,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0032",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3849,7 +3849,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "SHO-0033",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3864,7 +3864,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0049",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3879,7 +3879,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0050",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3894,7 +3894,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0051",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3909,7 +3909,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "CLO-0074",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3924,7 +3924,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BED-0014",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3939,7 +3939,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0052",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3954,7 +3954,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0053",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3969,7 +3969,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "BAT-0017",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3984,7 +3984,7 @@
     "stock": 10,
     "badge": null,
     "updated_at": "2026-06-03 00:48:44",
-    "sku": null,
+    "sku": "ACC-0054",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -3999,7 +3999,7 @@
     "stock": 10,
     "badge": "freshhhh",
     "updated_at": "2026-06-03 10:06:53",
-    "sku": null,
+    "sku": "CLO-0075",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null

@@ -59,3 +59,6 @@ IMG_7941.MP4
 IMG_8427.PNG
 icon.jpg
 photo_2026-*.jpg
+
+# Persistent runtime data (local development only)
+server/uploads/
