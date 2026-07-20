@@ -119,16 +119,17 @@ npm run backup         # integrity-checked online SQLite backup
 ```
 
 ---
+
 ## Data, images & backups
 
 - SQLite is the production source of truth; `products.json` seeds only a fresh database.
 - Local development defaults to `server/inventory.db`, `server/uploads/`, and `server/backups/`. Render uses one persistent disk with `DATA_DIR=/var/data`.
 - New uploads are stored as `images/uploads/product_upload_*`; legacy `images/product_upload_*` records remain compatible.
-- Run
-pm run backup` from `server/` for an integrity-checked online backup. Stop the service before restoring and remove stale `-wal`/`-shm` sidecars.
+- Run `npm run backup` from `server/` for an integrity-checked online backup. Stop the service before restoring and remove stale `-wal`/`-shm` sidecars.
 - Keep one app instance with SQLite and configure Render disk snapshots separately.
 
 ---
+
 ## Deployment
 
 See **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full checklist. Render serves the app over HTTPS with one instance and `DATA_DIR=/var/data`. Production also requires a strong `JWT_SECRET`, HTTPS `ALLOWED_ORIGINS`/`APP_URL`, `OWNER_EMAIL`, and verified Resend credentials.
