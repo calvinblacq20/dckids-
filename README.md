@@ -33,8 +33,11 @@ web prototype 1/
 └── server/
     ├── server.js       Express API + static file server
     ├── db.js           SQLite schema, migrations, seed data
-    ├── backup_db.js    One-off database backup script
-    ├── test_flow_runner.js  Integration test (register → reset → login)
+    ├── config.js       Central validated runtime/storage configuration
+    ├── health.js       Database and writable-storage checks
+    ├── backup_db.js    Shared online SQLite backup utility
+    ├── test_operations.js  Storage/config/backup tests
+    ├── test_smoke.js       End-to-end API smoke tests
     ├── verify_assets.js     Asset sanity check
     ├── inventory.db    SQLite database (gitignored — holds real data)
     └── .env            Secrets & config (gitignored)
@@ -76,63 +79,61 @@ npm install
 node server.js
 ```
 
-The server prints the port it's listening on (default **3000**). Then open:
+The server prints the port it is listening on (default **3001**). Then open:
 
-- Storefront: <http://localhost:3000/>
-- Admin: <http://localhost:3000/admin.html>
+- Storefront: <http://localhost:3001/>
+- Admin: <http://localhost:3001/admin.html>
 
-> **First-boot admin account:** username `admin`. On a fresh database the password is
-> taken from the `ADMIN_PASSWORD` env var, or a strong random one is generated and
-> **printed once** in the server log. (The bundled local dev database uses `admin123` —
-> change it before deploying.)
+Admin sign-in is passwordless. On a fresh database, addresses listed in `OWNER_EMAIL` become owners; other sign-ups wait for approval. Email codes use Resend and one-time recovery codes provide backup access.
 
 ---
 
 ## Configuration
 
-Set these in `server/.env` (see `DEPLOYMENT.md` for the full table):
+Set these in `server/.env`; production values belong in the Render dashboard:
 
 | Variable | Purpose |
 |---|---|
-| `NODE_ENV` | Set to `production` to enable strict CORS, HSTS, and tight rate limits. |
-| `JWT_SECRET` | **Required.** Strong random string for signing sessions. The server refuses to start in production on the built-in fallback. |
-| `ALLOWED_ORIGINS` | Comma-separated origins allowed by CORS in production. |
-| `ADMIN_PASSWORD` | First-boot admin password (else a random one is printed once). |
-| `PORT` | Listening port (default 3000; most hosts inject this). |
-| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Optional order alerts. `TELEGRAM_CHAT_ID` accepts multiple comma-separated chat/channel IDs. |
-| `SHOP_NOTIFY_EMAIL`, `SMTP_*` | Optional transactional email. |
+| `NODE_ENV` | Set to `production` for strict validation, CORS, HSTS, and rate limits. |
+| `DATA_DIR` | Persistent root (`/var/data` on Render); defaults DB, uploads, and backups beneath it. |
+| `DB_PATH` / `UPLOAD_DIR` / `BACKUP_DIR` | Optional storage-path overrides. |
+| `JWT_SECRET` | Unique session-signing secret of at least 32 characters. |
+| `ALLOWED_ORIGINS` / `APP_URL` | HTTPS public origins; `APP_URL` must be allowed. |
+| `OWNER_EMAIL` | Comma-separated owner email allowlist. |
+| `RESEND_API_KEY` / `RESEND_FROM` | Required production email credentials and verified sender. |
+| `PORT` | Listening port (default 3001; Render injects it). |
+| `GOOGLE_CLIENT_ID` | Optional Google admin sign-in. |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Optional order and error alerts. |
 
 ---
-
 ## Scripts
 
+From `server/`:
+
 ```bash
-node server/server.js          # start the app (API + static site)
-node server/backup_db.js       # write a backup copy of inventory.db
-node server/test_flow_runner.js  # run the auth/reset integration flow
-node server/verify_assets.js   # sanity-check referenced assets exist
+npm start             # app/API/static server
+npm test              # operational + smoke tests
+npm run lint          # ESLint
+npm run build          # storefront and admin Tailwind CSS
+npm run backup         # integrity-checked online SQLite backup
 ```
 
 ---
+## Data, images & backups
 
-## Data & backups
-
-- All data lives in **`server/inventory.db`** (SQLite, WAL mode). It's **gitignored** —
-  it holds customer/order PII and must never be committed.
-- On a host with ephemeral storage, put `inventory.db` on a **persistent volume** or a
-  redeploy will wipe it.
-- Schedule `backup_db.js` (e.g. daily cron) and keep copies **off the server**.
+- SQLite is the production source of truth; `products.json` seeds only a fresh database.
+- Local development defaults to `server/inventory.db`, `server/uploads/`, and `server/backups/`. Render uses one persistent disk with `DATA_DIR=/var/data`.
+- New uploads are stored as `images/uploads/product_upload_*`; legacy `images/product_upload_*` records remain compatible.
+- Run
+pm run backup` from `server/` for an integrity-checked online backup. Stop the service before restoring and remove stale `-wal`/`-shm` sidecars.
+- Keep one app instance with SQLite and configure Render disk snapshots separately.
 
 ---
-
 ## Deployment
 
-See **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full checklist. In short: serve over
-**HTTPS**, set `NODE_ENV=production`, a fresh `JWT_SECRET`, `ALLOWED_ORIGINS`, an
-`ADMIN_PASSWORD`, and persist the database.
+See **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full checklist. Render serves the app over HTTPS with one instance and `DATA_DIR=/var/data`. Production also requires a strong `JWT_SECRET`, HTTPS `ALLOWED_ORIGINS`/`APP_URL`, `OWNER_EMAIL`, and verified Resend credentials.
 
 ---
-
 ## Tech notes
 
 - **Security:** bcrypt password hashing, JWT auth with role-gated routes, parameterized

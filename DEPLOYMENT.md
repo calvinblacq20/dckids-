@@ -69,14 +69,14 @@ code printed to the server log). The first owner is claimed like this:
 - **Recovery codes** are the backup sign-in if email is ever unavailable; each
   works once.
 
-## 4. Data & backups
+## 4. Data, uploads & backups
 
-- SQLite database lives at `server/inventory.db` (plus `-wal`/`-shm` sidecars).
-- It is **gitignored** — it holds customer/order data and must not be committed.
-- Persist this file across deploys (mount a volume / persistent disk). If it is
-  wiped, the catalogue re-seeds and a new admin account is created.
-- `node server/backup_db.js` writes a backup copy.
-
+- In production set `DATA_DIR=/var/data` on the Render persistent disk. The app resolves the database to `/var/data/inventory.db`, uploaded product photos to `/var/data/uploads`, and local backups to `/var/data/backups`.
+- `DB_PATH`, `UPLOAD_DIR`, and `BACKUP_DIR` remain optional absolute overrides. Legacy `images/product_upload_*` records continue to render.
+- SQLite is authoritative in production. `products.json` is only the fresh-install seed and must not overwrite an existing database.
+- `npm run backup` creates a WAL-safe online backup, verifies it with `PRAGMA integrity_check`, renames it atomically, and retains the newest 30 successful files.
+- Restore only while the service is stopped: copy the selected backup over the resolved database path, remove stale `inventory.db-wal` and `inventory.db-shm` sidecars, restart, then verify `/readyz` and `/api/health`.
+- Configure Render persistent-disk snapshots separately (daily, weekly, and monthly). Local files on the same disk complement snapshots; they do not replace off-disk recovery.
 ## 5. Production checklist
 
 - [ ] `NODE_ENV=production` set on the host
@@ -85,7 +85,7 @@ code printed to the server log). The first owner is claimed like this:
 - [ ] `OWNER_EMAIL` set to your owner address(es) — so a stranger can't claim owner
 - [ ] `RESEND_API_KEY` + `RESEND_FROM` set (and a domain verified in Resend) so sign-in codes actually email
 - [ ] `APP_URL` set to your public URL (used in emails)
-- [ ] `server/inventory.db` on persistent storage
+- [ ] `DATA_DIR=/var/data` on the Render persistent disk (database, uploads, and backups)
 - [ ] Served over HTTPS (required for the PWA service worker and HSTS)
 
 ## 6. Google Sign-In setup (optional but recommended)

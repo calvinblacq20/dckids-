@@ -1,10 +1,59 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const config = require('./config');
 
-const dbPath = process.env.DB_PATH || path.resolve(__dirname, 'inventory.db');
+const dbPath = config.dbPath;
+const SKU_PREFIXES = { clothing: 'CLO', shoes: 'SHO', accessories: 'ACC', newborn: 'NEW', bedding: 'BED', essentials: 'ESS', feeding: 'FEE', gear: 'GEA', bathcare: 'BAT' };
+
+function skuPrefixForCategory(category) {
+    const normalized = String(category || '').trim().toLowerCase();
+    return SKU_PREFIXES[normalized] || (normalized.replace(/[^a-z]/g, '').slice(0, 3).toUpperCase() || 'GEN');
+}
+
+function ensureSkuIndex(done) {
+    db.get("SELECT sku FROM products WHERE sku IS NOT NULL AND trim(sku) <> '' GROUP BY sku HAVING COUNT(*) > 1 LIMIT 1", [], (readError, duplicate) => {
+        if (readError) return done(readError);
+        if (duplicate) {
+            console.warn('SKU uniqueness index deferred: duplicate manual SKUs are reported by image health.');
+            return done(null);
+        }
+        db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_products_sku ON products(sku) WHERE sku IS NOT NULL AND trim(sku) <> ''", (error) => done(error || null));
+    });
+}
+
+function backfillMissingProductSkus(done) {
+    db.all('SELECT id, sku, cat FROM products ORDER BY id', [], (err, rows) => {
+        if (err) return done(err);
+        const used = new Set((rows || []).map((row) => String(row.sku || '').trim()).filter(Boolean));
+        const nextByPrefix = new Map();
+        const updates = [];
+        for (const row of rows || []) {
+            if (String(row.sku || '').trim()) continue;
+            const prefix = skuPrefixForCategory(row.cat);
+            let sequence = nextByPrefix.get(prefix) || 1;
+            let sku = `${prefix}-${String(sequence).padStart(4, '0')}`;
+            while (used.has(sku)) {
+                sequence += 1;
+                sku = `${prefix}-${String(sequence).padStart(4, '0')}`;
+            }
+            nextByPrefix.set(prefix, sequence + 1);
+            used.add(sku);
+            updates.push({ id: row.id, sku });
+        }
+        if (!updates.length) return ensureSkuIndex(done);
+        const statement = db.prepare("UPDATE products SET sku = ? WHERE id = ? AND (sku IS NULL OR trim(sku) = '')");
+        updates.forEach((item) => statement.run(item.sku, item.id));
+        statement.finalize((finalizeError) => {
+            if (finalizeError) return done(finalizeError);
+            console.log(`SKU backfill: assigned ${updates.length} missing SKU(s).`);
+            ensureSkuIndex(done);
+        });
+    });
+}
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error opening database', err.message);
+        _markDbFailed(err);
     } else {
         console.log('Connected to the SQLite database.');
 
@@ -208,473 +257,4 @@ const db = new sqlite3.Database(dbPath, (err) => {
                                 : (typeof p.sizes === 'string' && p.sizes.trim() ? p.sizes : null);
                             snapStmt.run(p.id, p.name, p.sku || null, p.size || '', p.price, p.img || '', p.cat || '',
                                 Number.isFinite(Number(p.stock)) ? Number(p.stock) : 10, p.badge || '',
-                                p.description || null, p.fulfillment_type || 'in_stock', sizes);
-                        });
-                        snapStmt.finalize(() => console.log("Database seeded from catalogue snapshot."));
-                        return;
-                    }
-
-                    console.log("Seeding initial products...");
-                    const productsData = [
-                        { id:1,  name:"Boys 3-Piece Sailor Set",         size:"6M â€“ 24M",   price:85,   img:"images/product_56.jpg", cat:"clothing",    stock:10, badge:"new" },
-                        { id:2,  name:"Girls Floral Summer Dress",        size:"2Y â€“ 5Y",    price:70,   img:"images/product_57.jpg", cat:"clothing",    stock:5, badge:"hot" },
-                        { id:3,  name:"Kids' Casual 2-Piece Set",         size:"1Y â€“ 4Y",    price:65,   img:"images/product_58.jpg", cat:"clothing",    stock:12, badge:"new" },
-                        { id:4,  name:"Baby Romper & Hat Set",             size:"0 â€“ 12M",   price:55,   img:"images/product_59.jpg", cat:"clothing",    stock:8, badge:"" },
-                        { id:5,  name:"Boys Shirt & Shorts Combo",        size:"1Y â€“ 5Y",    price:60,   img:"images/product_60.jpg", cat:"clothing",    stock:15, badge:"" },
-                        { id:6,  name:"Girls Party Dress",                size:"3Y â€“ 8Y",    price:95,   img:"images/product_61.jpg", cat:"clothing",    stock:3, badge:"hot" },
-                        { id:7,  name:"Toddler Dungaree Set",             size:"6M â€“ 3Y",   price:75,   img:"images/product_62.jpg", cat:"clothing",    stock:9, badge:"new" },
-                        { id:8,  name:"Kids' Printed T-Shirt",            size:"2Y â€“ 8Y",    price:40,   img:"images/product_63.jpg", cat:"clothing",    stock:20, badge:"" },
-                        { id:9,  name:"Trendy Boys Outfit",               size:"3Y â€“ 10Y",   price:80,   img:"images/product_64.jpg", cat:"clothing",    stock:7, badge:"" },
-                        { id:10, name:"Girls Plaid Dress Set",             size:"4Y â€“ 10Y",  price:90,   img:"images/product_38.jpg", cat:"clothing",    stock:6, badge:"hot" },
-                        { id:11, name:"Boys Formal Shirt & Shorts",       size:"2Y â€“ 8Y",    price:85,   img:"images/product_39.jpg", cat:"clothing",    stock:10, badge:"new" },
-                        { id:12, name:"Kids' Casual Summer Wear",         size:"1Y â€“ 6Y",    price:55,   img:"images/product_40.jpg", cat:"clothing",    stock:11, badge:"" },
-                        { id:13, name:"Baby Girl Dress",                  size:"6M â€“ 3Y",   price:65,   img:"images/product_41.jpg", cat:"clothing",    stock:14, badge:"" },
-                        { id:14, name:"Boys Polo Collection",             size:"3Y â€“ 10Y",   price:50,   img:"images/product_42.jpg", cat:"clothing",    stock:18, badge:"" },
-                        { id:15, name:"Kids' Denim & Tee Set",            size:"2Y â€“ 8Y",    price:75,   img:"images/product_43.jpg", cat:"clothing",    stock:8, badge:"new" },
-                        { id:16, name:"Party Wear Outfit",                size:"1Y â€“ 6Y",    price:100,  img:"images/product_44.jpg", cat:"clothing",    stock:5, badge:"hot" },
-                        { id:17, name:"Unisex Cotton Romper",             size:"0 â€“ 18M",   price:45,   img:"images/product_45.jpg", cat:"clothing",    stock:25, badge:"" },
-                        { id:18, name:"Girls Floral Skirt Set",           size:"2Y â€“ 7Y",    price:70,   img:"images/product_46.jpg", cat:"clothing",    stock:6, badge:"" },
-                        { id:19, name:"Boys Tracksuit",                   size:"3Y â€“ 10Y",   price:85,   img:"images/product_47.jpg", cat:"clothing",    stock:4, badge:"" },
-                        { id:20, name:"Character Print Outfit",           size:"1Y â€“ 5Y",    price:60,   img:"images/product_48.jpg", cat:"clothing",    stock:15, badge:"new" },
-                        { id:21, name:"Kids' Smart Casual Set",           size:"4Y â€“ 12Y",   price:90,   img:"images/product_49.jpg", cat:"clothing",    stock:7, badge:"" },
-                        { id:22, name:"Baby Bodysuit Pack",               size:"0 â€“ 12M",   price:35,   img:"images/product_50.jpg", cat:"clothing",    stock:30, badge:"" },
-                        { id:23, name:"Wholesale Kids' Mix",              size:"Assorted",    price:40,   img:"images/product_51.jpg", cat:"clothing",    stock:50, badge:"" },
-                        { id:24, name:"Store Collection Display",         size:"0 â€“ 12Y",   price:null, img:"images/product_81.jpg", cat:"clothing",    stock:10, badge:"" },
-                        { id:25, name:"Kids' Fashion Mix",                size:"Assorted",    price:null, img:"images/product_82.jpg", cat:"clothing",    stock:10, badge:"" },
-                        
-                        { id:26, name:"Kids' White Sneakers",             size:"Size 25â€“35", price:60,   img:"images/product_66.jpg", cat:"shoes",       stock:10, badge:"new" },
-                        { id:27, name:"Girls' Pink Sandals",              size:"Size 22â€“30", price:50,   img:"images/product_67.jpg", cat:"shoes",       stock:5, badge:"" },
-                        { id:28, name:"Boys' Formal School Shoes",        size:"Size 28â€“36", price:70,   img:"images/product_68.jpg", cat:"shoes",       stock:12, badge:"" },
-                        { id:29, name:"Baby First-Walker Shoes",          size:"Size 15â€“21", price:45,   img:"images/product_69.jpg", cat:"shoes",       stock:8, badge:"hot" },
-                        { id:30, name:"Kids' Crocs & Clogs",              size:"Size 24â€“34", price:40,   img:"images/product_70.jpg", cat:"shoes",       stock:20, badge:"" },
-                        { id:31, name:"Sports Running Sneakers",          size:"Size 26â€“36", price:65,   img:"images/product_71.jpg", cat:"shoes",       stock:15, badge:"new" },
-                        { id:32, name:"Canvas Slip-On Shoes",             size:"Size 22â€“30", price:55,   img:"images/product_72.jpg", cat:"shoes",       stock:10, badge:"" },
-                        { id:33, name:"LED Light-Up Sneakers",            size:"Size 25â€“34", price:75,   img:"images/product_73.jpg", cat:"shoes",       stock:7, badge:"hot" },
-                        { id:34, name:"Velcro Strap Shoes",               size:"Size 20â€“28", price:50,   img:"images/product_74.jpg", cat:"shoes",       stock:14, badge:"" },
-                        { id:35, name:"Boys' Football Boots",             size:"Size 28â€“38", price:85,   img:"images/product_75.jpg", cat:"shoes",       stock:6, badge:"" },
-                        { id:36, name:"Girls' Ballet Flats",              size:"Size 24â€“32", price:55,   img:"images/product_76.jpg", cat:"shoes",       stock:11, badge:"new" },
-                        { id:37, name:"Kids' Winter Boots",               size:"Size 25â€“35", price:90,   img:"images/product_77.jpg", cat:"shoes",       stock:4, badge:"" },
-                        
-                        { id:38, name:"Designer Sunglasses",              size:"One Size",   price:25,   img:"images/product_2.jpg",  cat:"accessories", stock:25, badge:"hot" },
-                        { id:39, name:"Kids' Baseball Cap",               size:"Adjustable", price:30,   img:"images/product_3.jpg",  cat:"accessories", stock:18, badge:"" },
-                        { id:40, name:"Girls' Hair Accessories",          size:"Pack of 5",  price:20,   img:"images/product_4.jpg",  cat:"accessories", stock:30, badge:"new" },
-                        { id:41, name:"Winter Beanie & Scarf",            size:"2Y â€“ 8Y",    price:45,   img:"images/product_5.jpg",  cat:"accessories", stock:12, badge:"" },
-                        { id:42, name:"Kids' Digital Watch",              size:"Adjustable", price:35,   img:"images/product_6.jpg",  cat:"accessories", stock:15, badge:"" },
-                        { id:43, name:"Novelty Fun Socks",                size:"3 Pairs",    price:20,   img:"images/product_7.jpg",  cat:"accessories", stock:40, badge:"" },
-                        
-                        { id:44, name:"Baby Essentials Bundle",           size:"0 â€“ 6M",    price:120,  img:"images/product_8.jpg",  cat:"baby",        stock:5, badge:"hot" },
-                        { id:45, name:"Premium Baby Bedding",             size:"Standard",   price:150,  img:"images/product_9.jpg",  cat:"baby",        stock:8, badge:"" },
-                        { id:46, name:"Baby Gear & Carrier",              size:"Up to 15kg", price:200,  img:"images/product_10.jpg", cat:"baby",        stock:4, badge:"new" },
-                        { id:47, name:"Newborn Starter Kit",              size:"0 â€“ 3M",    price:85,   img:"images/product_53.jpg", cat:"baby",        stock:10, badge:"" },
-                        { id:48, name:"Soft Cotton Swaddles",             size:"Pack of 3",  price:45,   img:"images/product_54.jpg", cat:"baby",        stock:20, badge:"" },
-                        
-                        { id:49, name:"Primary School Backpack",          size:"Standard",   price:65,   img:"images/product_29.jpg", cat:"bags",        stock:15, badge:"new" },
-                        { id:50, name:"Kindergarten Mini Bag",            size:"Small",      price:45,   img:"images/product_30.jpg", cat:"bags",        stock:12, badge:"" },
-                        { id:51, name:"Cartoon Character Bag",            size:"Medium",     price:55,   img:"images/product_31.jpg", cat:"bags",        stock:8, badge:"hot" },
-                        { id:52, name:"Waterproof School Bag",            size:"Large",      price:80,   img:"images/product_32.jpg", cat:"bags",        stock:10, badge:"" },
-                        { id:53, name:"Girls' Sequin Backpack",           size:"Standard",   price:70,   img:"images/product_33.jpg", cat:"bags",        stock:6, badge:"" },
-                        { id:54, name:"Boys' Superhero Bag",              size:"Standard",   price:70,   img:"images/product_34.jpg", cat:"bags",        stock:14, badge:"new" },
-                        { id:55, name:"Trolley School Bag",               size:"Large",      price:120,  img:"images/product_35.jpg", cat:"bags",        stock:5, badge:"" },
-                        
-                        { id:56, name:"Luxury Kids' Bedding Set",         size:"Single Bed", price:180,  img:"images/product_13.jpg", cat:"bedding",     stock:4, badge:"hot" },
-                        { id:57, name:"Cartoon Print Bedsheet",           size:"Single Bed", price:85,   img:"images/product_14.jpg", cat:"bedding",     stock:10, badge:"" },
-                        { id:58, name:"Cozy Baby Blanket",                size:"Standard",   price:50,   img:"images/product_15.jpg", cat:"bedding",     stock:15, badge:"new" },
-                        { id:59, name:"Toddler Pillow & Cover",           size:"Small",      price:35,   img:"images/product_16.jpg", cat:"bedding",     stock:20, badge:"" },
-                        { id:60, name:"Girls' Princess Bedding",          size:"Single Bed", price:120,  img:"images/product_17.jpg", cat:"bedding",     stock:7, badge:"" },
-                        { id:61, name:"Boys' Cars Bedding Set",           size:"Single Bed", price:120,  img:"images/product_18.jpg", cat:"bedding",     stock:8, badge:"" },
-                        { id:62, name:"Soft Fleece Throw",                size:"Standard",   price:40,   img:"images/product_19.jpg", cat:"bedding",     stock:25, badge:"" },
-                        { id:63, name:"Premium Crib Mattress",            size:"Crib Size",  price:200,  img:"images/product_20.jpg", cat:"bedding",     stock:3, badge:"" },
-                        { id:64, name:"Waterproof Mattress Protector",    size:"Single Bed", price:60,   img:"images/product_21.jpg", cat:"bedding",     stock:12, badge:"" },
-                        { id:65, name:"Dinosaur Print Bedding",           size:"Single Bed", price:90,   img:"images/product_22.jpg", cat:"bedding",     stock:9, badge:"new" },
-                        { id:66, name:"Unicorn Dream Bedding",            size:"Single Bed", price:90,   img:"images/product_23.jpg", cat:"bedding",     stock:6, badge:"" },
-                        { id:67, name:"Space Theme Bedsheet",             size:"Single Bed", price:85,   img:"images/product_24.jpg", cat:"bedding",     stock:11, badge:"" },
-                        { id:68, name:"Baby Sleep Sack",                  size:"0 â€“ 12M",   price:45,   img:"images/product_25.jpg", cat:"bedding",     stock:14, badge:"" },
-                        { id:69, name:"Cotton Muslin Quilt",              size:"Standard",   price:75,   img:"images/product_26.jpg", cat:"bedding",     stock:10, badge:"" },
-                        { id:70, name:"Kids' Travel Neck Pillow",         size:"One Size",   price:25,   img:"images/product_27.jpg", cat:"bedding",     stock:18, badge:"" },
-                        
-                        // China Pre-Order Items â€” real category + fulfillment_type:"preorder",
-                        // so they show up under their actual category (badged as pre-order)
-                        // instead of only inside a fake "preorder" category.
-                        { id:71, name:"Pre-Order: Luxury Winter Coat",    size:"2Y â€“ 10Y",   price:150,  img:"images/product_78.jpg", cat:"clothing",    stock:10, badge:"china", fulfillment_type:"preorder" },
-                        { id:72, name:"Pre-Order: Designer Sneakers",     size:"Size 26â€“36", price:120,  img:"images/product_83.jpg", cat:"shoes",       stock:10, badge:"china", fulfillment_type:"preorder" },
-                        { id:73, name:"Pre-Order: Formal Suit Set",       size:"3Y â€“ 12Y",   price:200,  img:"images/product_11.jpg", cat:"clothing",    stock:10, badge:"china", fulfillment_type:"preorder" },
-                        { id:74, name:"Pre-Order: Princess Gown",         size:"4Y â€“ 10Y",   price:180,  img:"images/product_12.jpg", cat:"clothing",    stock:10, badge:"china", fulfillment_type:"preorder" },
-                        { id:75, name:"Pre-Order: Premium Baby Gear",     size:"One Size",   price:250,  img:"images/product_28.jpg", cat:"newborn",     stock:10, badge:"china", fulfillment_type:"preorder" },
-                        { id:76, name:"Pre-Order: School Tech Bundle",    size:"Assorted",    price:300,  img:"images/product_36.jpg", cat:"essentials",  stock:10, badge:"china", fulfillment_type:"preorder" },
-                        { id:77, name:"Pre-Order: Boutique Shoe Mix",     size:"Assorted",    price:null, img:"images/product_37.jpg", cat:"shoes",       stock:10, badge:"china", fulfillment_type:"preorder" },
-                        { id:78, name:"Pre-Order: Kids Smartwatch",       size:"One Size",   price:85,   img:"images/product_55.jpg", cat:"accessories", stock:10, badge:"china", fulfillment_type:"preorder" },
-                        { id:79, name:"Pre-Order: Playroom Furniture",    size:"Standard",   price:450,  img:"images/product_65.jpg", cat:"bedding",     stock:10, badge:"china", fulfillment_type:"preorder" },
-                        { id:80, name:"Pre-Order: Bulk Stock Request",    size:"Custom",     price:null, img:"images/product_79.jpg", cat:"essentials",  stock:10, badge:"china", fulfillment_type:"preorder" }
-                    ];
-
-                    const stmt = db.prepare("INSERT INTO products (id, name, size, price, img, cat, stock, badge, fulfillment_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                    productsData.forEach(p => {
-                        stmt.run(p.id, p.name, p.size, p.price, p.img, p.cat, p.stock, p.badge, p.fulfillment_type || 'in_stock');
-                    });
-                    stmt.finalize();
-                    console.log("Database seeded successfully.");
-                }
-            });
-        });
-
-        // Create transactions table for audit logging
-        db.run(`CREATE TABLE IF NOT EXISTS transactions (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_id INTEGER,
-            username TEXT,
-            action TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`, (err) => {
-            if (err) console.error("Error creating transactions table", err);
-        });
-
-        // Create store_settings table
-        db.run(`CREATE TABLE IF NOT EXISTS store_settings (
-            id INTEGER PRIMARY KEY CHECK (id = 1),
-            whatsapp_number TEXT NOT NULL,
-            wholesale_enabled BOOLEAN NOT NULL DEFAULT 1,
-            wholesale_moq INTEGER NOT NULL DEFAULT 10,
-            wholesale_discount INTEGER NOT NULL DEFAULT 0,
-            banner_enabled BOOLEAN NOT NULL DEFAULT 1,
-            banner_text TEXT
-        )`, (err) => {
-            if (err) console.error("Error creating store_settings table", err);
-            
-            // Seed the initial defaults (safely ignores if row 1 already exists)
-            db.run(`INSERT OR IGNORE INTO store_settings 
-                (id, whatsapp_number, wholesale_enabled, wholesale_moq, wholesale_discount, banner_enabled, banner_text) 
-                VALUES 
-                (1, '233549193805', 1, 10, 20, 1, "China Pre-Order Window OPEN! Orders close May 18th â€” Don't miss out!")`, 
-                (err) => {
-                    if (err) console.error("Error seeding store_settings", err);
-                    else console.log("Default store settings verified.");
-                }
-            );
-        });
-
-        // Create suppliers table
-        db.run(`CREATE TABLE IF NOT EXISTS suppliers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            supplier_name TEXT NOT NULL UNIQUE,
-            contact_person TEXT NOT NULL,
-            email TEXT NOT NULL,
-            phone TEXT NOT NULL,
-            business_address TEXT NOT NULL,
-            products_supplied TEXT NOT NULL,
-            status TEXT NOT NULL DEFAULT 'active',
-            notes TEXT,
-            supplier_logo TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`, (err) => {
-            if (err) console.error("Error creating suppliers table", err);
-
-            const suppliersData = [
-                {
-                    supplier_name: 'Little Stars Textiles',
-                    contact_person: 'Grace Adjei',
-                    email: 'grace@littlestars.com',
-                    phone: '+233302221111',
-                    business_address: 'Accra Central, Ghana',
-                    products_supplied: 'Clothing, Baby Essentials',
-                    status: 'active',
-                    notes: 'Core clothing and romper supplier.',
-                    supplier_logo: ''
-                },
-                {
-                    supplier_name: 'TinyFeet Footwear',
-                    contact_person: 'Michael Osei',
-                    email: 'michael@tinyfeet.com',
-                    phone: '+233302222222',
-                    business_address: 'Spintex Road, Accra',
-                    products_supplied: 'Shoes, Accessories',
-                    status: 'active',
-                    notes: 'Kids shoes and sandal supplier.',
-                    supplier_logo: ''
-                },
-                {
-                    supplier_name: 'BabyComfort Ltd',
-                    contact_person: 'Sarah Mensah',
-                    email: 'sarah@babycomfort.com',
-                    phone: '+233302223333',
-                    business_address: 'North Kaneshie, Accra',
-                    products_supplied: 'Baby Essentials, Toys',
-                    status: 'active',
-                    notes: 'Baby care and essentials partner.',
-                    supplier_logo: ''
-                },
-                {
-                    supplier_name: 'KidsBag World',
-                    contact_person: 'Daniel Tetteh',
-                    email: 'daniel@kidsbag.com',
-                    phone: '+233302224444',
-                    business_address: 'Kasoa, Central Region',
-                    products_supplied: 'Accessories, Toys',
-                    status: 'inactive',
-                    notes: 'Seasonal bags and accessories supplier.',
-                    supplier_logo: ''
-                }
-            ];
-
-            db.get(`SELECT COUNT(*) as count FROM suppliers`, (err, row) => {
-                if (err || !row || row.count > 0) return;
-
-                const stmt = db.prepare(`INSERT INTO suppliers
-                    (supplier_name, contact_person, email, phone, business_address, products_supplied, status, notes, supplier_logo)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-
-                suppliersData.forEach((s) => {
-                    stmt.run(
-                        s.supplier_name,
-                        s.contact_person,
-                        s.email,
-                        s.phone,
-                        s.business_address,
-                        s.products_supplied,
-                        s.status,
-                        s.notes,
-                        s.supplier_logo
-                    );
-                });
-                stmt.finalize();
-                console.log("Default suppliers verified.");
-            });
-        });
-
-        // Create customers table for analytics relationships
-        db.run(`CREATE TABLE IF NOT EXISTS customers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            phone TEXT UNIQUE,
-            email TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`, (err) => {
-            if (err) console.error("Error creating customers table", err);
-
-            // Migration: the admin's customer book used to live in browser
-            // localStorage (one browser = one copy). These columns make the DB
-            // the single source of truth so owner and staff see the same data.
-            // client_id keeps the admin UI's stable 'CUST-nnn' ids across devices.
-            db.all("PRAGMA table_info(customers)", (e, cols) => {
-                if (e || !cols) return;
-                const names = cols.map(c => c.name);
-                const addCol = (ddl, label) => db.run("ALTER TABLE customers ADD COLUMN " + ddl, (er) => {
-                    if (er) console.error("Migration (customers." + label + ") failed:", er.message);
-                    else console.log("Migration: added customers." + label);
-                });
-                if (names.indexOf('client_id') === -1) addCol("client_id TEXT", "client_id");
-                if (names.indexOf('address') === -1) addCol("address TEXT", "address");
-                if (names.indexOf('status') === -1) addCol("status TEXT", "status");
-                if (names.indexOf('notes') === -1) addCol("notes TEXT", "notes");
-                if (names.indexOf('join_date') === -1) addCol("join_date TEXT", "join_date");
-                db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_client_id ON customers(client_id) WHERE client_id IS NOT NULL", (er) => {
-                    if (er) console.error("Migration (idx_customers_client_id) failed:", er.message);
-                });
-            });
-        });
-
-        // Create orders table
-        db.run(`CREATE TABLE IF NOT EXISTS orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            order_number TEXT UNIQUE NOT NULL,
-            customer_name TEXT,
-            customer_phone TEXT,
-            order_type TEXT,
-            total_amount REAL,
-            status TEXT,
-            delivery_area TEXT,
-            notes TEXT,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`, (err) => {
-            if (err) console.error("Error creating orders table", err);
-
-            // Migration: add delivery_area / notes to pre-existing DBs that lack them.
-            db.all("PRAGMA table_info(orders)", (e, cols) => {
-                if (e || !cols) return;
-                const names = cols.map(c => c.name);
-                if (names.indexOf('delivery_area') === -1) {
-                    db.run("ALTER TABLE orders ADD COLUMN delivery_area TEXT", (er) => {
-                        if (er) console.error("Migration (delivery_area) failed:", er.message);
-                        else console.log("Migration: added orders.delivery_area");
-                    });
-                }
-                if (names.indexOf('notes') === -1) {
-                    db.run("ALTER TABLE orders ADD COLUMN notes TEXT", (er) => {
-                        if (er) console.error("Migration (notes) failed:", er.message);
-                        else console.log("Migration: added orders.notes");
-                    });
-                }
-                // Migration: idempotency_key lets a checkout retry (double-tap,
-                // network drop + resubmit) return the already-created order
-                // instead of charging/booking twice. Unique per key.
-                if (names.indexOf('idempotency_key') === -1) {
-                    db.run("ALTER TABLE orders ADD COLUMN idempotency_key TEXT", (er) => {
-                        if (er) { console.error("Migration (idempotency_key) failed:", er.message); return; }
-                        console.log("Migration: added orders.idempotency_key");
-                        db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL");
-                    });
-                } else {
-                    db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL");
-                }
-            });
-        });
-
-        // Create order_items table
-        db.run(`CREATE TABLE IF NOT EXISTS order_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            order_id INTEGER,
-            product_id INTEGER,
-            product_name TEXT,
-            quantity INTEGER,
-            price_at_time REAL,
-            FOREIGN KEY (order_id) REFERENCES orders (id)
-        )`, (err) => {
-            if (err) console.error("Error creating order_items table", err);
-        });
-
-        // Create payments table for analytics insights
-        db.run(`CREATE TABLE IF NOT EXISTS payments (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            order_id INTEGER NOT NULL,
-            payment_method TEXT NOT NULL DEFAULT 'Mobile Money',
-            amount REAL NOT NULL DEFAULT 0,
-            status TEXT NOT NULL DEFAULT 'pending',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (order_id) REFERENCES orders (id)
-        )`, (err) => {
-            if (err) console.error("Error creating payments table", err);
-        });
-
-        // Create product_images table for the preview gallery
-        db.run(`CREATE TABLE IF NOT EXISTS product_images (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_id INTEGER,
-            image_url TEXT,
-            FOREIGN KEY (product_id) REFERENCES products (id)
-        )`, (err) => {
-            if (err) console.error("Error creating product_images table", err);
-            
-            // Seed product_images table if empty
-            db.get(`SELECT COUNT(*) as count FROM product_images`, (err, row) => {
-                if (!err && row && row.count === 0) {
-                    console.log("Seeding product images gallery...");
-                    db.all("SELECT id, img, cat FROM products", [], (err, products) => {
-                        if (err || !products) return;
-                        const stmt = db.prepare("INSERT INTO product_images (product_id, image_url) VALUES (?, ?)");
-                        products.forEach(p => {
-                            // Main image
-                            stmt.run(p.id, p.img);
-                            // Alternate images (siblings in the same category)
-                            const siblings = products.filter(s => s.cat === p.cat && s.id !== p.id).slice(0, 3);
-                            siblings.forEach(sib => {
-                                stmt.run(p.id, sib.img);
-                            });
-                            // Fill in if fewer than 4 images
-                            for (let i = siblings.length; i < 3; i++) {
-                                stmt.run(p.id, p.img);
-                            }
-                        });
-                        stmt.finalize();
-                        console.log("Product images gallery seeded successfully.");
-                    });
-                }
-            });
-        });
-
-        // ===== Customer accounts (storefront login) =====
-        db.run(`CREATE TABLE IF NOT EXISTS customer_accounts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            phone TEXT,
-            name TEXT,
-            password_hash TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            last_login_at DATETIME
-        )`, (err) => { if (err) console.error("Error creating customer_accounts table", err); });
-
-        // Saved delivery addresses per customer
-        db.run(`CREATE TABLE IF NOT EXISTS customer_addresses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            label TEXT,
-            recipient_name TEXT,
-            phone TEXT,
-            address_line1 TEXT NOT NULL,
-            address_line2 TEXT,
-            city TEXT,
-            region TEXT,
-            country TEXT DEFAULT 'Ghana',
-            is_default INTEGER DEFAULT 0,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (customer_id) REFERENCES customer_accounts (id)
-        )`, (err) => { if (err) console.error("Error creating customer_addresses table", err); });
-
-        // Product reviews
-        db.run(`CREATE TABLE IF NOT EXISTS product_reviews (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            product_id INTEGER NOT NULL,
-            customer_id INTEGER,
-            author_name TEXT NOT NULL,
-            rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
-            title TEXT,
-            body TEXT,
-            verified_purchase INTEGER DEFAULT 0,
-            status TEXT DEFAULT 'approved',
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (product_id) REFERENCES products (id),
-            FOREIGN KEY (customer_id) REFERENCES customer_accounts (id)
-        )`, (err) => { if (err) console.error("Error creating product_reviews table", err); });
-
-        // Wishlist (per-customer favourites)
-        db.run(`CREATE TABLE IF NOT EXISTS wishlist_items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
-            product_id INTEGER NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(customer_id, product_id),
-            FOREIGN KEY (customer_id) REFERENCES customer_accounts (id),
-            FOREIGN KEY (product_id) REFERENCES products (id)
-        )`, (err) => { if (err) console.error("Error creating wishlist_items table", err); });
-
-        // Link a server-side customer account to existing orders by phone match.
-        // We don't ALTER orders schema â€” instead resolve via phone lookup at query time.
-
-        // Indexes for the lookups that run on every page/admin load. Keep these
-        // fast as rows grow into the tens/hundreds of thousands.
-        db.run(`CREATE INDEX IF NOT EXISTS idx_orders_created_at   ON orders (created_at DESC)`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_orders_phone        ON orders (customer_phone)`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_orders_number       ON orders (order_number)`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_order_items_order   ON order_items (order_id)`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_reviews_product     ON product_reviews (product_id)`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_wishlist_customer   ON wishlist_items (customer_id)`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_products_cat        ON products (cat)`);
-        db.run(`CREATE INDEX IF NOT EXISTS idx_payments_order      ON payments (order_id)`);
-
-        // Sweep rows that reference products which no longer exist (deleted
-        // before the delete route cleaned its dependents, or replaced in a
-        // catalogue swap). They violate the FK on reads with foreign_keys=ON
-        // and serve no purpose without their product. No-op when clean.
-        [['product_images', 'gallery rows'], ['product_reviews', 'reviews'], ['wishlist_items', 'wishlist rows']].forEach(([table, label]) => {
-            db.run(`DELETE FROM ${table} WHERE product_id NOT IN (SELECT id FROM products)`, function (er) {
-                if (er) console.error(`Orphan sweep (${table}) failed:`, er.message);
-                else if (this && this.changes) console.log(`Orphan sweep: removed ${this.changes} ${label} for deleted products.`);
-            });
-        });
-
-        // Schema is fully queued above. This trailing statement runs only after
-        // every CREATE TABLE/INDEX has executed (single-connection serial queue),
-        // so it's a reliable "schema ready" signal. The server waits on this via
-        // db.whenReady() before listening â€” otherwise a request arriving on a
-        // fresh database (no tables yet) crashes with "no such table: orders".
-        db.run('SELECT 1', () => { _markDbReady(); });
-    }
-});
-
-// â”€â”€ Readiness gate â”€â”€
-// Lets server.js delay app.listen() until the schema exists on a fresh DB.
-let _dbReady = false;
-const _dbReadyCbs = [];
-function _markDbReady() { _dbReady = true; while (_dbReadyCbs.length) _dbReadyCbs.shift()(); }
-db.whenReady = function (cb) { if (_dbReady) cb(); else _dbReadyCbs.push(cb); };
-
-module.exports = db;
+                                p.description || null, p.fulfillment_type || 'in_stock',ëı¶‰ËkºwµçMÌè€9½ÉÑ -…¹•Í¡¥”°É„œ°(€€€€€€€€€€€€€€€€€€€ÁÉ½‘ÕÑÍ}ÍÕÁÁ±¥•è€	…‰äÍÍ•¹Ñ¥…±Ì°Q½åÌœ°(€€€€€€€€€€€€€€€€€€€ÍÑ…ÑÕÌè€…Ñ¥Ù”œ°(€€€€€€€€€€€€€€€€€€€¹½Ñ•Ìè€	…‰ä…É”…¹•ÍÍ•¹Ñ¥…±ÌÁ…ÉÑ¹•È¸œ°(€€€€€€€€€€€€€€€€€€€ÍÕÁÁ±¥•É}±½¼è€œœ(€€€€€€€€€€€€€€€ô°(€€€€€€€€€€€€€€€ì(€€€€€€€€€€€€€€€€€€€ÍÕÁÁ±¥•É}¹…µ”è€-¥‘Í	…œ]½É±œ°(€€€€€€€€€€€€€€€€€€€½¹Ñ…Ñ}Á•ÉÍ½¸è€…¹¥•°Q•ÑÑ• œ°(€€€€€€€€€€€€€€€€€€€•µ…¥°è€‘…¹¥•±­¥‘Í‰…œ¹½´œ°(€€€€€€€€€€€€€€€€€€€Á¡½¹”è€œ¬ÈÌÌÌÀÈÈÈĞĞĞĞœ°(€€€€€€€€€€€€€€€€€€€‰ÕÍ¥¹•ÍÍ}…‘‘É•ÍÌè€-…Í½„°•¹ÑÉ…°I•¥½¸œ°(€€€€€€€€€€€€€€€€€€€ÁÉ½‘ÕÑÍ}ÍÕÁÁ±¥•è€•ÍÍ½É¥•Ì°Q½åÌœ°(€€€€€€€€€€€€€€€€€€€ÍÑ…ÑÕÌè€¥¹…Ñ¥Ù”œ°(€€€€€€€€€€€€€€€€€€€¹½Ñ•Ìè€M•…Í½¹…°‰…Ì…¹…•ÍÍ½É¥•ÌÍÕÁÁ±¥•È¸œ°(€€€€€€€€€€€€€€€€€€€ÍÕÁÁ±¥•É}±½¼è€œœ(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€tì((€€€€€€€€€€€‘ˆ¹•Ğ¡M1P=U9P ¨¤…Ì½Õ¹ĞI=4ÍÕÁÁ±¥•ÉÍ€°€¡•ÉÈ°É½Ü¤€ôøì(€€€€€€€€€€€€€€€¥˜€¡•ÉÈñğ€…É½ÜñğÉ½Ü¹½Õ¹Ğ€ø€À¤É•ÑÕÉ¸ì((€€€€€€€€€€€€€€€½¹ÍĞÍÑµĞ€ô‘ˆ¹ÁÉ•Á…É”¡%9MIP%9Q<ÍÕÁÁ±¥•ÉÌ(€€€€€€€€€€€€€€€€€€€€¡ÍÕÁÁ±¥•É}¹…µ”°½¹Ñ…Ñ}Á•ÉÍ½¸°•µ…¥°°Á¡½¹”°‰ÕÍ¥¹•ÍÍ}…‘‘É•ÍÌ°ÁÉ½‘ÕÑÍ}ÍÕÁÁ±¥•°ÍÑ…ÑÕÌ°¹½Ñ•Ì°ÍÕÁÁ±¥•É}±½¼¤(€€€€€€€€€€€€€€€€€€€Y1UL€ ü°€ü°€ü°€ü°€ü°€ü°€ü°€ü°€ü¥€¤ì((€€€€€€€€€€€€€€€ÍÕÁÁ±¥•ÉÍ…Ñ„¹™½É…  ¡Ì¤€ôøì(€€€€€€€€€€€€€€€€€€€ÍÑµĞ¹ÉÕ¸ (€€€€€€€€€€€€€€€€€€€€€€€Ì¹ÍÕÁÁ±¥•É}¹…µ”°(€€€€€€€€€€€€€€€€€€€€€€€Ì¹½¹Ñ…Ñ}Á•ÉÍ½¸°(€€€€€€€€€€€€€€€€€€€€€€€Ì¹•µ…¥°°(€€€€€€€€€€€€€€€€€€€€€€€Ì¹Á¡½¹”°(€€€€€€€€€€€€€€€€€€€€€€€Ì¹‰ÕÍ¥¹•ÍÍ}…‘‘É•ÍÌ°(€€€€€€€€€€€€€€€€€€€€€€€Ì¹ÁÉ½‘ÕÑÍ}ÍÕÁÁ±¥•°(€€€€€€€€€€€€€€€€€€€€€€€Ì¹ÍÑ…ÑÕÌ°(€€€€€€€€€€€€€€€€€€€€€€€Ì¹¹½Ñ•Ì°(€€€€€€€€€€€€€€€€€€€€€€€Ì¹ÍÕÁÁ±¥•É}±½¼(€€€€€€€€€€€€€€€€€€€€¤ì(€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€ÍÑµĞ¹™¥¹…±¥é” ¤ì(€€€€€€€€€€€€€€€½¹Í½±”¹±½œ ‰•™…Õ±ĞÍÕÁÁ±¥•ÉÌÙ•É¥™¥•¸ˆ¤ì(€€€€€€€€€€€ô¤ì(€€€€€€€ô¤ì((€€€€€€€€¼¼É•…Ñ”ÕÍÑ½µ•ÉÌÑ…‰±”™½È…¹…±åÑ¥ÌÉ•±…Ñ¥½¹Í¡¥ÁÌ(€€€€€€€‘ˆ¹ÉÕ¸¡IQQ	1%9=Pa%MQLÕÍÑ½µ•ÉÌ€ (€€€€€€€€€€€¥%9QHAI%5Id-dUQ=%9I59P°(€€€€€€€€€€€¹…µ”QaP9=P9U10°(€€€€€€€€€€€Á¡½¹”QaPU9%EU°(€€€€€€€€€€€•µ…¥°QaP°(€€€€€€€€€€€É•…Ñ•‘}…ĞQQ%5U1PUII9Q}Q%5MQ5@(€€€€€€€€¥€°€¡•ÉÈ¤€ôøì(€€€€€€€€€€€¥˜€¡•ÉÈ¤½¹Í½±”¹•ÉÉ½È ‰ÉÉ½ÈÉ•…Ñ¥¹œÕÍÑ½µ•ÉÌÑ…‰±”ˆ°•ÉÈ¤ì((€€€€€€€€€€€€¼¼5¥É…Ñ¥½¸èÑ¡”…‘µ¥¸ÌÕÍÑ½µ•È‰½½¬ÕÍ•Ñ¼±¥Ù”¥¸‰É½İÍ•È(€€€€€€€€€€€€¼¼±½…±MÑ½É…”€¡½¹”‰É½İÍ•È€ô½¹”½Áä¤¸Q¡•Í”½±Õµ¹Ìµ…­”Ñ¡”(€€€€€€€€€€€€¼¼Ñ¡”Í¥¹±”Í½ÕÉ”½˜ÑÉÕÑ Í¼½İ¹•È…¹ÍÑ…™˜Í•”Ñ¡”Í…µ”‘…Ñ„¸(€€€€€€€€€€€€¼¼±¥•¹Ñ}¥­••ÁÌÑ¡”…‘µ¥¸U$ÌÍÑ…‰±”€UMPµ¹¹¸œ¥‘Ì…É½ÍÌ‘•Ù¥•Ì¸(€€€€€€€€€€€‘ˆ¹…±° ‰AI5Ñ…‰±•}¥¹™¼¡ÕÍÑ½µ•ÉÌ¤ˆ°€¡”°½±Ì¤€ôøì(€€€€€€€€€€€€€€€¥˜€¡”ñğ€…½±Ì¤É•ÑÕÉ¸ì(€€€€€€€€€€€€€€€½¹ÍĞ¹…µ•Ì€ô½±Ì¹µ…À¡Œ€ôøŒ¹¹…µ”¤ì(€€€€€€€€€€€€€€€½¹ÍĞ…‘‘½°€ô€¡‘‘°°±…‰•°¤€ôø‘ˆ¹ÉÕ¸ ‰1QHQ	1ÕÍÑ½µ•ÉÌ=1U58€ˆ€¬‘‘°°€¡•È¤€ôøì(€€€€€€€€€€€€€€€€€€€¥˜€¡•È¤½¹Í½±”¹•ÉÉ½È ‰5¥É…Ñ¥½¸€¡ÕÍÑ½µ•ÉÌ¸ˆ€¬±…‰•°€¬€ˆ¤™…¥±•èˆ°•È¹µ•ÍÍ…”¤ì(€€€€€€€€€€€€€€€€€€€•±Í”½¹Í½±”¹±½œ ‰5¥É…Ñ¥½¸è…‘‘•ÕÍÑ½µ•ÉÌ¸ˆ€¬±…‰•°¤ì(€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€¥˜€¡¹…µ•Ì¹¥¹‘•á=˜ ±¥•¹Ñ}¥œ¤€ôôô€´Ä¤…‘‘½° ‰±¥•¹Ñ}¥QaPˆ°€‰±¥•¹Ñ}¥ˆ¤ì(€€€€€€€€€€€€€€€¥˜€¡¹…µ•Ì¹¥¹‘•á=˜ …‘‘É•ÍÌœ¤€ôôô€´Ä¤…‘‘½° ‰…‘‘É•ÍÌQaPˆ°€‰…‘‘É•ÍÌˆ¤ì(€€€€€€€€€€€€€€€¥˜€¡¹…µ•Ì¹¥¹‘•á=˜ ÍÑ…ÑÕÌœ¤€ôôô€´Ä¤…‘‘½° ‰ÍÑ…ÑÕÌQaPˆ°€‰ÍÑ…ÑÕÌˆ¤ì(€€€€€€€€€€€€€€€¥˜€¡¹…µ•Ì¹¥¹‘•á=˜ ¹½Ñ•Ìœ¤€ôôô€´Ä¤…‘‘½° ‰¹½Ñ•ÌQaPˆ°€‰¹½Ñ•Ìˆ¤ì(€€€€€€€€€€€€€€€¥˜€¡¹…µ•Ì¹¥¹‘•á=˜ ©½¥¹}‘…Ñ”œ¤€ôôô€´Ä¤…‘‘½° ‰©½¥¹}‘…Ñ”QaPˆ°€‰©½¥¹}‘…Ñ”ˆ¤ì(€€€€€€€€€€€€€€€‘ˆ¹ÉÕ¸ ‰IQU9%EU%9`%9=Pa%MQL¥‘á}ÕÍÑ½µ•ÉÍ}±¥•¹Ñ}¥=8ÕÍÑ½µ•ÉÌ¡±¥•¹Ñ}¥¤]!I±¥•¹Ñ}¥%L9=P9U10ˆ°€¡•È¤€ôøì(€€€€€€€€€€€€€€€€€€€¥˜€¡•È¤½¹Í½±”¹•ÉÉ½È ‰5¥É…Ñ¥½¸€¡¥‘á}ÕÍÑ½µ•ÉÍ}±¥•¹Ñ}¥¤™…¥±•èˆ°•È¹µ•ÍÍ…”¤ì(€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€ô¤ì(€€€€€€€ô¤ì((€€€€€€€€¼¼É•…Ñ”½É‘•ÉÌÑ…‰±”(€€€€€€€‘ˆ¹ÉÕ¸¡IQQ	1%9=Pa%MQL½É‘•ÉÌ€ (€€€€€€€€€€€¥%9QHAI%5Id-dUQ=%9I59P°(€€€€€€€€€€€½É‘•É}¹Õµ‰•ÈQaPU9%EU9=P9U10°(€€€€€€€€€€€ÕÍÑ½µ•É}¹…µ”QaP°(€€€€€€€€€€€ÕÍÑ½µ•É}Á¡½¹”QaP°(€€€€€€€€€€€½É‘•É}ÑåÁ”QaP°(€€€€€€€€€€€Ñ½Ñ…±}…µ½Õ¹ĞI0°(€€€€€€€€€€€ÍÑ…ÑÕÌQaP°(€€€€€€€€€€€‘•±¥Ù•Éå}…É•„QaP°(€€€€€€€€€€€¹½Ñ•ÌQaP°(€€€€€€€€€€€É•…Ñ•‘}…ĞQQ%5U1PUII9Q}Q%5MQ5@°(€€€€€€€€€€€ÕÁ‘…Ñ•‘}…ĞQQ%5U1PUII9Q}Q%5MQ5@(€€€€€€€€¥€°€¡•ÉÈ¤€ôøì(€€€€€€€€€€€¥˜€¡•ÉÈ¤½¹Í½±”¹•ÉÉ½È ‰ÉÉ½ÈÉ•…Ñ¥¹œ½É‘•ÉÌÑ…‰±”ˆ°•ÉÈ¤ì((€€€€€€€€€€€€¼¼5¥É…Ñ¥½¸è…‘‘•±¥Ù•Éå}…É•„€¼¹½Ñ•ÌÑ¼ÁÉ”µ•á¥ÍÑ¥¹œ	ÌÑ¡…Ğ±…¬Ñ¡•´¸(€€€€€€€€€€€‘ˆ¹…±° ‰AI5Ñ…‰±•}¥¹™¼¡½É‘•ÉÌ¤ˆ°€¡”°½±Ì¤€ôøì(€€€€€€€€€€€€€€€¥˜€¡”ñğ€…½±Ì¤É•ÑÕÉ¸ì(€€€€€€€€€€€€€€€½¹ÍĞ¹…µ•Ì€ô½±Ì¹µ…À¡Œ€ôøŒ¹¹…µ”¤ì(€€€€€€€€€€€€€€€¥˜€¡¹…µ•Ì¹¥¹‘•á=˜ ‘•±¥Ù•Éå}…É•„œ¤€ôôô€´Ä¤ì(€€€€€€€€€€€€€€€€€€€‘ˆ¹ÉÕ¸ ‰1QHQ	1½É‘•ÉÌ=1U58‘•±¥Ù•Éå}…É•„QaPˆ°€¡•È¤€ôøì(€€€€€€€€€€€€€€€€€€€€€€€¥˜€¡•È¤½¹Í½±”¹•ÉÉ½È ‰5¥É…Ñ¥½¸€¡‘•±¥Ù•Éå}…É•„¤™…¥±•èˆ°•È¹µ•ÍÍ…”¤ì(€€€€€€€€€€€€€€€€€€€€€€€•±Í”½¹Í½±”¹±½œ ‰5¥É…Ñ¥½¸è…‘‘•½É‘•ÉÌ¹‘•±¥Ù•Éå}…É•„ˆ¤ì(€€€€€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€¥˜€¡¹…µ•Ì¹¥¹‘•á=˜ ¹½Ñ•Ìœ¤€ôôô€´Ä¤ì(€€€€€€€€€€€€€€€€€€€‘ˆ¹ÉÕ¸ ‰1QHQ	1½É‘•ÉÌ=1U58¹½Ñ•ÌQaPˆ°€¡•È¤€ôøì(€€€€€€€€€€€€€€€€€€€€€€€¥˜€¡•È¤½¹Í½±”¹•ÉÉ½È ‰5¥É…Ñ¥½¸€¡¹½Ñ•Ì¤™…¥±•èˆ°•È¹µ•ÍÍ…”¤ì(€€€€€€€€€€€€€€€€€€€€€€€•±Í”½¹Í½±”¹±½œ ‰5¥É…Ñ¥½¸è…‘‘•½É‘•ÉÌ¹¹½Ñ•Ìˆ¤ì(€€€€€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€¼¼5¥É…Ñ¥½¸è¥‘•µÁ½Ñ•¹å}­•ä±•ÑÌ„¡•­½ÕĞÉ•ÑÉä€¡‘½Õ‰±”µÑ…À°(€€€€€€€€€€€€€€€€¼¼¹•Ñİ½É¬‘É½À€¬É•ÍÕ‰µ¥Ğ¤É•ÑÕÉ¸Ñ¡”…±É•…‘äµÉ•…Ñ•½É‘•È(€€€€€€€€€€€€€€€€¼¼¥¹ÍÑ•…½˜¡…É¥¹œ½‰½½­¥¹œÑİ¥”¸U¹¥ÅÕ”Á•È­•ä¸(€€€€€€€€€€€€€€€¥˜€¡¹…µ•Ì¹¥¹‘•á=˜ ¥‘•µÁ½Ñ•¹å}­•äœ¤€ôôô€´Ä¤ì(€€€€€€€€€€€€€€€€€€€‘ˆ¹ÉÕ¸ ‰1QHQ	1½É‘•ÉÌ=1U58¥‘•µÁ½Ñ•¹å}­•äQaPˆ°€¡•È¤€ôøì(€€€€€€€€€€€€€€€€€€€€€€€¥˜€¡•È¤ì½¹Í½±”¹•ÉÉ½È ‰5¥É…Ñ¥½¸€¡¥‘•µÁ½Ñ•¹å}­•ä¤™…¥±•èˆ°•È¹µ•ÍÍ…”¤ìÉ•ÑÕÉ¸ìô(€€€€€€€€€€€€€€€€€€€€€€€½¹Í½±”¹±½œ ‰5¥É…Ñ¥½¸è…‘‘•½É‘•ÉÌ¹¥‘•µÁ½Ñ•¹å}­•äˆ¤ì(€€€€€€€€€€€€€€€€€€€€€€€‘ˆ¹ÉÕ¸ ‰IQU9%EU%9`%9=Pa%MQL¥‘á}½É‘•ÉÍ}¥‘•´=8½É‘•ÉÌ¡¥‘•µÁ½Ñ•¹å}­•ä¤]!I¥‘•µÁ½Ñ•¹å}­•ä%L9=P9U10ˆ¤ì(€€€€€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€ô•±Í”ì(€€€€€€€€€€€€€€€€€€€‘ˆ¹ÉÕ¸ ‰IQU9%EU%9`%9=Pa%MQL¥‘á}½É‘•ÉÍ}¥‘•´=8½É‘•ÉÌ¡¥‘•µÁ½Ñ•¹å}­•ä¤]!I¥‘•µÁ½Ñ•¹å}­•ä%L9=P9U10ˆ¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô¤ì(€€€€€€€ô¤ì((€€€€€€€€¼¼É•…Ñ”½É‘•É}¥Ñ•µÌÑ…‰±”(€€€€€€€‘ˆ¹ÉÕ¸¡IQQ	1%9=Pa%MQL½É‘•É}¥Ñ•µÌ€ (€€€€€€€€€€€¥%9QHAI%5Id-dUQ=%9I59P°(€€€€€€€€€€€½É‘•É}¥%9QH°(€€€€€€€€€€€ÁÉ½‘ÕÑ}¥%9QH°(€€€€€€€€€€€ÁÉ½‘ÕÑ}¹…µ”QaP°(€€€€€€€€€€€ÅÕ…¹Ñ¥Ñä%9QH°(€€€€€€€€€€€ÁÉ¥•}…Ñ}Ñ¥µ”I0°(€€€€€€€€€€€=I%8-d€¡½É‘•É}¥¤II9L½É‘•ÉÌ€¡¥¤(€€€€€€€€¥€°€¡•ÉÈ¤€ôøì(€€€€€€€€€€€¥˜€¡•ÉÈ¤½¹Í½±”¹•ÉÉ½È ‰ÉÉ½ÈÉ•…Ñ¥¹œ½É‘•É}¥Ñ•µÌÑ…‰±”ˆ°•ÉÈ¤ì(€€€€€€€ô¤ì((€€€€€€€€¼¼É•…Ñ”Á…åµ•¹ÑÌÑ…‰±”™½È…¹…±åÑ¥Ì¥¹Í¥¡ÑÌ(€€€€€€€‘ˆ¹ÉÕ¸¡IQQ	1%9=Pa%MQLÁ…åµ•¹ÑÌ€ (€€€€€€€€€€€¥%9QHAI%5Id-dUQ=%9I59P°(€€€€€€€€€€€½É‘•É}¥%9QH9=P9U10°(€€€€€€€€€€€Á…åµ•¹Ñ}µ•Ñ¡½QaP9=P9U10U1P€5½‰¥±”5½¹•äœ°(€€€€€€€€€€€…µ½Õ¹ĞI09=P9U10U1P€À°(€€€€€€€€€€€ÍÑ…ÑÕÌQaP9=P9U10U1P€Á•¹‘¥¹œœ°(€€€€€€€€€€€É•…Ñ•‘}…ĞQQ%5U1PUII9Q}Q%5MQ5@°(€€€€€€€€€€€=I%8-d€¡½É‘•É}¥¤II9L½É‘•ÉÌ€¡¥¤(€€€€€€€€¥€°€¡•ÉÈ¤€ôøì(€€€€€€€€€€€¥˜€¡•ÉÈ¤½¹Í½±”¹•ÉÉ½È ‰ÉÉ½ÈÉ•…Ñ¥¹œÁ…åµ•¹ÑÌÑ…‰±”ˆ°•ÉÈ¤ì(€€€€€€€ô¤ì((€€€€€€€€¼¼É•…Ñ”ÁÉ½‘ÕÑ}¥µ…•ÌÑ…‰±”™½ÈÑ¡”ÁÉ•Ù¥•Ü…±±•Éä(€€€€€€€‘ˆ¹ÉÕ¸¡IQQ	1%9=Pa%MQLÁÉ½‘ÕÑ}¥µ…•Ì€ (€€€€€€€€€€€¥%9QHAI%5Id-dUQ=%9I59P°(€€€€€€€€€€€ÁÉ½‘ÕÑ}¥%9QH°(€€€€€€€€€€€¥µ…•}ÕÉ°QaP°(€€€€€€€€€€€=I%8-d€¡ÁÉ½‘ÕÑ}¥¤II9LÁÉ½‘ÕÑÌ€¡¥¤(€€€€€€€€¥€°€¡•ÉÈ¤€ôøì(€€€€€€€€€€€¥˜€¡•ÉÈ¤½¹Í½±”¹•ÉÉ½È ‰ÉÉ½ÈÉ•…Ñ¥¹œÁÉ½‘ÕÑ}¥µ…•ÌÑ…‰±”ˆ°•ÉÈ¤ì(€€€€€€€€€€€€(€€€€€€€€€€€€¼¼M••ÁÉ½‘ÕÑ}¥µ…•ÌÑ…‰±”¥˜•µÁÑä(€€€€€€€€€€€‘ˆ¹•Ğ¡M1P=U9P ¨¤…Ì½Õ¹ĞI=4ÁÉ½‘ÕÑ}¥µ…•Í€°€¡•ÉÈ°É½Ü¤€ôøì(€€€€€€€€€€€€€€€¥˜€ …•ÉÈ€˜˜É½Ü€˜˜É½Ü¹½Õ¹Ğ€ôôô€À¤ì(€€€€€€€€€€€€€€€€€€€½¹Í½±”¹±½œ ‰M••‘¥¹œÁÉ½‘ÕĞ¥µ…•Ì…±±•Éä¸¸¸ˆ¤ì(€€€€€€€€€€€€€€€€€€€‘ˆ¹…±° ‰M1P¥°¥µœ°…ĞI=4ÁÉ½‘ÕÑÌˆ°mt°€¡•ÉÈ°ÁÉ½‘ÕÑÌ¤€ôøì(€€€€€€€€€€€€€€€€€€€€€€€¥˜€¡•ÉÈñğ€…ÁÉ½‘ÕÑÌ¤É•ÑÕÉ¸ì(€€€€€€€€€€€€€€€€€€€€€€€½¹ÍĞÍÑµĞ€ô‘ˆ¹ÁÉ•Á…É” ‰%9MIP%9Q<ÁÉ½‘ÕÑ}¥µ…•Ì€¡ÁÉ½‘ÕÑ}¥°¥µ…•}ÕÉ°¤Y1UL€ ü°€ü¤ˆ¤ì(€€€€€€€€€€€€€€€€€€€€€€€ÁÉ½‘ÕÑÌ¹™½É… ¡À€ôøì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€¼¼5…¥¸¥µ…”(€€€€€€€€€€€€€€€€€€€€€€€€€€€ÍÑµĞ¹ÉÕ¸¡À¹¥°À¹¥µœ¤ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€¼¼±Ñ•É¹…Ñ”¥µ…•Ì€¡Í¥‰±¥¹Ì¥¸Ñ¡”Í…µ”…Ñ•½Éä¤(€€€€€€€€€€€€€€€€€€€€€€€€€€€½¹ÍĞÍ¥‰±¥¹Ì€ôÁÉ½‘ÕÑÌ¹™¥±Ñ•È¡Ì€ôøÌ¹…Ğ€ôôôÀ¹…Ğ€˜˜Ì¹¥€„ôôÀ¹¥¤¹Í±¥” À°€Ì¤ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€Í¥‰±¥¹Ì¹™½É… ¡Í¥ˆ€ôøì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ÍÑµĞ¹ÉÕ¸¡À¹¥°Í¥ˆ¹¥µœ¤ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€¼¼¥±°¥¸¥˜™•İ•ÈÑ¡…¸€Ğ¥µ…•Ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€™½È€¡±•Ğ¤€ôÍ¥‰±¥¹Ì¹±•¹Ñ ì¤€ğ€Ìì¤¬¬¤ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€ÍÑµĞ¹ÉÕ¸¡À¹¥°À¹¥µœ¤ì(€€€€€€€€€€€€€€€€€€€€€€€€€€€ô(€€€€€€€€€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€€€€€€€€€ÍÑµĞ¹™¥¹…±¥é” ¤ì(€€€€€€€€€€€€€€€€€€€€€€€½¹Í½±”¹±½œ ‰AÉ½‘ÕĞ¥µ…•Ì…±±•ÉäÍ••‘•ÍÕ•ÍÍ™Õ±±ä¸ˆ¤ì(€€€€€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€€€€€ô(€€€€€€€€€€€ô¤ì(€€€€€€€ô¤ì((€€€€€€€€¼¼€ôôôôôÕÍÑ½µ•È…½Õ¹ÑÌ€¡ÍÑ½É•™É½¹Ğ±½¥¸¤€ôôôôô(€€€€€€€‘ˆ¹ÉÕ¸¡IQQ	1%9=Pa%MQLÕÍÑ½µ•É}…½Õ¹ÑÌ€ (€€€€€€€€€€€¥%9QHAI%5Id-dUQ=%9I59P°(€€€€€€€€€€€•µ…¥°QaPU9%EU9=P9U10°(€€€€€€€€€€€Á¡½¹”QaP°(€€€€€€€€€€€¹…µ”QaP°(€€€€€€€€€€€Á…ÍÍİ½É‘}¡…Í QaP9=P9U10°(€€€€€€€€€€€É•…Ñ•‘}…ĞQQ%5U1PUII9Q}Q%5MQ5@°(€€€€€€€€€€€±…ÍÑ}±½¥¹}…ĞQQ%5(€€€€€€€€¥€°€¡•ÉÈ¤€ôøì¥˜€¡•ÉÈ¤½¹Í½±”¹•ÉÉ½È ‰ÉÉ½ÈÉ•…Ñ¥¹œÕÍÑ½µ•É}…½Õ¹ÑÌÑ…‰±”ˆ°•ÉÈ¤ìô¤ì((€€€€€€€€¼¼M…Ù•‘•±¥Ù•Éä…‘‘É•ÍÍ•ÌÁ•ÈÕÍÑ½µ•È(€€€€€€€‘ˆ¹ÉÕ¸¡IQQ	1%9=Pa%MQLÕÍÑ½µ•É}…‘‘É•ÍÍ•Ì€ (€€€€€€€€€€€¥%9QHAI%5Id-dUQ=%9I59P°(€€€€€€€€€€€ÕÍÑ½µ•É}¥%9QH9=P9U10°(€€€€€€€€€€€±…‰•°QaP°(€€€€€€€€€€€É•¥Á¥•¹Ñ}¹…µ”QaP°(€€€€€€€€€€€Á¡½¹”QaP°(€€€€€€€€€€€…‘‘É•ÍÍ}±¥¹”ÄQaP9=P9U10°(€€€€€€€€€€€…‘‘É•ÍÍ}±¥¹”ÈQaP°(€€€€€€€€€€€¥ÑäQaP°(€€€€€€€€€€€É•¥½¸QaP°(€€€€€€€€€€€½Õ¹ÑÉäQaPU1P€¡…¹„œ°(€€€€€€€€€€€¥Í}‘•™…Õ±Ğ%9QHU1P€À°(€€€€€€€€€€€É•…Ñ•‘}…ĞQQ%5U1PUII9Q}Q%5MQ5@°(€€€€€€€€€€€=I%8-d€¡ÕÍÑ½µ•É}¥¤II9LÕÍÑ½µ•É}…½Õ¹ÑÌ€¡¥¤(€€€€€€€€¥€°€¡•ÉÈ¤€ôøì¥˜€¡•ÉÈ¤½¹Í½±”¹•ÉÉ½È ‰ÉÉ½ÈÉ•…Ñ¥¹œÕÍÑ½µ•É}…‘‘É•ÍÍ•ÌÑ…‰±”ˆ°•ÉÈ¤ìô¤ì((€€€€€€€€¼¼AÉ½‘ÕĞÉ•Ù¥•İÌ(€€€€€€€‘ˆ¹ÉÕ¸¡IQQ	1%9=Pa%MQLÁÉ½‘ÕÑ}É•Ù¥•İÌ€ (€€€€€€€€€€€¥%9QHAI%5Id-dUQ=%9I59P°(€€€€€€€€€€€ÁÉ½‘ÕÑ}¥%9QH9=P9U10°(€€€€€€€€€€€ÕÍÑ½µ•É}¥%9QH°(€€€€€€€€€€€…ÕÑ¡½É}¹…µ”QaP9=P9U10°(€€€€€€€€€€€É…Ñ¥¹œ%9QH9=P9U10!,¡É…Ñ¥¹œ€øô€Ä9É…Ñ¥¹œ€ğô€Ô¤°(€€€€€€€€€€€Ñ¥Ñ±”QaP°(€€€€€€€€€€€‰½‘äQaP°(€€€€€€€€€€€Ù•É¥™¥•‘}ÁÕÉ¡…Í”%9QHU1P€À°(€€€€€€€€€€€ÍÑ…ÑÕÌQaPU1P€…ÁÁÉ½Ù•œ°(€€€€€€€€€€€É•…Ñ•‘}…ĞQQ%5U1PUII9Q}Q%5MQ5@°(€€€€€€€€€€€=I%8-d€¡ÁÉ½‘ÕÑ}¥¤II9LÁÉ½‘ÕÑÌ€¡¥¤°(€€€€€€€€€€€=I%8-d€¡ÕÍÑ½µ•É}¥¤II9LÕÍÑ½µ•É}…½Õ¹ÑÌ€¡¥¤(€€€€€€€€¥€°€¡•ÉÈ¤€ôøì¥˜€¡•ÉÈ¤½¹Í½±”¹•ÉÉ½È ‰ÉÉ½ÈÉ•…Ñ¥¹œÁÉ½‘ÕÑ}É•Ù¥•İÌÑ…‰±”ˆ°•ÉÈ¤ìô¤ì((€€€€€€€€¼¼]¥Í¡±¥ÍĞ€¡Á•ÈµÕÍÑ½µ•È™…Ù½ÕÉ¥Ñ•Ì¤(€€€€€€€‘ˆ¹ÉÕ¸¡IQQ	1%9=Pa%MQLİ¥Í¡±¥ÍÑ}¥Ñ•µÌ€ (€€€€€€€€€€€¥%9QHAI%5Id-dUQ=%9I59P°(€€€€€€€€€€€ÕÍÑ½µ•É}¥%9QH9=P9U10°(€€€€€€€€€€€ÁÉ½‘ÕÑ}¥%9QH9=P9U10°(€€€€€€€€€€€É•…Ñ•‘}…ĞQQ%5U1PUII9Q}Q%5MQ5@°(€€€€€€€€€€€U9%EU¡ÕÍÑ½µ•É}¥°ÁÉ½‘ÕÑ}¥¤°(€€€€€€€€€€€=I%8-d€¡ÕÍÑ½µ•É}¥¤II9LÕÍÑ½µ•É}…½Õ¹ÑÌ€¡¥¤°(€€€€€€€€€€€=I%8-d€¡ÁÉ½‘ÕÑ}¥¤II9LÁÉ½‘ÕÑÌ€¡¥¤(€€€€€€€€¥€°€¡•ÉÈ¤€ôøì¥˜€¡•ÉÈ¤½¹Í½±”¹•ÉÉ½È ‰ÉÉ½ÈÉ•…Ñ¥¹œİ¥Í¡±¥ÍÑ}¥Ñ•µÌÑ…‰±”ˆ°•ÉÈ¤ìô¤ì((€€€€€€€€¼¼1¥¹¬„Í•ÉÙ•ÈµÍ¥‘”ÕÍÑ½µ•È…½Õ¹ĞÑ¼•á¥ÍÑ¥¹œ½É‘•ÉÌ‰äÁ¡½¹”µ…Ñ ¸(€€€€€€€€¼¼]”‘½¸Ğ1QH½É‘•ÉÌÍ¡•µ„ƒŠP¥¹ÍÑ•…É•Í½±Ù”Ù¥„Á¡½¹”±½½­ÕÀ…ĞÅÕ•ÉäÑ¥µ”¸((€€€€€€€€¼¼%¹‘•á•Ì™½ÈÑ¡”±½½­ÕÁÌÑ¡…ĞÉÕ¸½¸•Ù•ÉäÁ…”½…‘µ¥¸±½…¸-••ÀÑ¡•Í”(€€€€€€€€¼¼™…ÍĞ…ÌÉ½İÌÉ½Ü¥¹Ñ¼Ñ¡”Ñ•¹Ì½¡Õ¹‘É•‘Ì½˜Ñ¡½ÕÍ…¹‘Ì¸(€€€€€€€‘ˆ¹ÉÕ¸¡IQ%9`%9=Pa%MQL¥‘á}½É‘•ÉÍ}É•…Ñ•‘}…Ğ€€=8½É‘•ÉÌ€¡É•…Ñ•‘}…ĞM¥€¤ì(€€€€€€€‘ˆ¹ÉÕ¸¡IQ%9`%9=Pa%MQL¥‘á}½É‘•ÉÍ}Á¡½¹”€€€€€€€=8½É‘•ÉÌ€¡ÕÍÑ½µ•É}Á¡½¹”¥€¤ì(€€€€€€€‘ˆ¹ÉÕ¸¡IQ%9`%9=Pa%MQL¥‘á}½É‘•ÉÍ}¹Õµ‰•È€€€€€€=8½É‘•ÉÌ€¡½É‘•É}¹Õµ‰•È¥€¤ì(€€€€€€€‘ˆ¹ÉÕ¸¡IQ%9`%9=Pa%MQL¥‘á}½É‘•É}¥Ñ•µÍ}½É‘•È€€=8½É‘•É}¥Ñ•µÌ€¡½É‘•É}¥¥€¤ì(€€€€€€€‘ˆ¹ÉÕ¸¡IQ%9`%9=Pa%MQL¥‘á}É•Ù¥•İÍ}ÁÉ½‘ÕĞ€€€€=8ÁÉ½‘ÕÑ}É•Ù¥•İÌ€¡ÁÉ½‘ÕÑ}¥¥€¤ì(€€€€€€€‘ˆ¹ÉÕ¸¡IQ%9`%9=Pa%MQL¥‘á}İ¥Í¡±¥ÍÑ}ÕÍÑ½µ•È€€=8İ¥Í¡±¥ÍÑ}¥Ñ•µÌ€¡ÕÍÑ½µ•É}¥¥€¤ì(€€€€€€€‘ˆ¹ÉÕ¸¡IQ%9`%9=Pa%MQL¥‘á}ÁÉ½‘ÕÑÍ}…Ğ€€€€€€€=8ÁÉ½‘ÕÑÌ€¡…Ğ¥€¤ì(€€€€€€€‘ˆ¹ÉÕ¸¡IQ%9`%9=Pa%MQL¥‘á}Á…åµ•¹ÑÍ}½É‘•È€€€€€=8Á…åµ•¹ÑÌ€¡½É‘•É}¥¥€¤ì((€€€€€€€€¼¼Mİ••ÀÉ½İÌÑ¡…ĞÉ•™•É•¹”ÁÉ½‘ÕÑÌİ¡¥ ¹¼±½¹•È•á¥ÍĞ€¡‘•±•Ñ•(€€€€€€€€¼¼‰•™½É”Ñ¡”‘•±•Ñ”É½ÕÑ”±•…¹•¥ÑÌ‘•Á•¹‘•¹ÑÌ°½ÈÉ•Á±…•¥¸„(€€€€€€€€¼¼…Ñ…±½Õ”Íİ…À¤¸Q¡•äÙ¥½±…Ñ”Ñ¡”,½¸É•…‘Ìİ¥Ñ ™½É•¥¹}­•åÌõ=8(€€€€€€€€¼¼…¹Í•ÉÙ”¹¼ÁÕÉÁ½Í”İ¥Ñ¡½ÕĞÑ¡•¥ÈÁÉ½‘ÕĞ¸9¼µ½Àİ¡•¸±•…¸¸(€€€€€€€mlÁÉ½‘ÕÑ}¥µ…•Ìœ°€…±±•ÉäÉ½İÌt°lÁÉ½‘ÕÑ}É•Ù¥•İÌœ°€É•Ù¥•İÌt°lİ¥Í¡±¥ÍÑ}¥Ñ•µÌœ°€İ¥Í¡±¥ÍĞÉ½İÌut¹™½É…  ¡mÑ…‰±”°±…‰•±t¤€ôøì(€€€€€€€€€€€‘ˆ¹ÉÕ¸¡1QI=4€‘íÑ…‰±•ô]!IÁÉ½‘ÕÑ}¥9=P%8€¡M1P¥I=4ÁÉ½‘ÕÑÌ¥€°™Õ¹Ñ¥½¸€¡•È¤ì(€€€€€€€€€€€€€€€¥˜€¡•È¤½¹Í½±”¹•ÉÉ½È¡=ÉÁ¡…¸Íİ••À€ ‘íÑ…‰±•ô¤™…¥±•é€°•È¹µ•ÍÍ…”¤ì(€€€€€€€€€€€€€€€•±Í”¥˜€¡Ñ¡¥Ì€˜˜Ñ¡¥Ì¹¡…¹•Ì¤½¹Í½±”¹±½œ¡=ÉÁ¡…¸Íİ••ÀèÉ•µ½Ù•€‘íÑ¡¥Ì¹¡…¹•Íô€‘í±…‰•±ô™½È‘•±•Ñ•ÁÉ½‘ÕÑÌ¹€¤ì(€€€€€€€€€€€ô¤ì(€€€€€€€ô¤ì((€€€€€€€€¼¼M¡•µ„¥Ì™Õ±±äÅÕ•Õ•…‰½Ù”¸Q¡¥ÌÑÉ…¥±¥¹œÍÑ…Ñ•µ•¹ĞÉÕ¹Ì½¹±ä…™Ñ•È(€€€€€€€€¼¼•Ù•ÉäIQQ	1½%9`¡…Ì•á•ÕÑ•€¡Í¥¹±”µ½¹¹•Ñ¥½¸Í•É¥…°ÅÕ•Õ”¤°(€€€€€€€€¼¼Í¼¥ĞÌ„É•±¥…‰±”€‰Í¡•µ„É•…‘äˆÍ¥¹…°¸Q¡”Í•ÉÙ•Èİ…¥ÑÌ½¸Ñ¡¥ÌÙ¥„(€€€€€€€€¼¼‘ˆ¹İ¡•¹I•…‘ä ¤‰•™½É”±¥ÍÑ•¹¥¹œƒŠP½Ñ¡•Éİ¥Í”„É•ÅÕ•ÍĞ…ÉÉ¥Ù¥¹œ½¸„(€€€€€€€€¼¼™É•Í ‘…Ñ…‰…Í”€¡¹¼Ñ…‰±•Ìå•Ğ¤É…Í¡•Ìİ¥Ñ €‰¹¼ÍÕ Ñ…‰±”è½É‘•ÉÌˆ¸(€€€€€€€‘ˆ¹ÉÕ¸ M1P€Äœ°€ ¤€ôøì(€€€€€€€€€€€‘ˆ¹ÉÕ¸ M1P€Äœ°€ ¤€ôøì(€€€€€€€€€€€€€€€‰…­™¥±±5¥ÍÍ¥¹AÉ½‘ÕÑM­ÕÌ ¡‰…­™¥±±ÉÉ½È¤€ôøì(€€€€€€€€€€€€€€€€€€€¥˜€¡‰…­™¥±±ÉÉ½È¤É•ÑÕÉ¸}µ…É­‰…¥±•¡‰…­™¥±±ÉÉ½È¤ì(€€€€€€€€€€€€€€€€€€€}µ…É­‰I•…‘ä ¤ì(€€€€€€€€€€€€€€€ô¤ì(€€€€€€€€€€€ô¤ì(€€€€€€€ô¤ì(€€€ô)ô¤ì((¼¼ƒŠRŠR I•…‘¥¹•ÍÌ…Ñ”ƒŠRŠR (¼¼1•ÑÌÍ•ÉÙ•È¹©Ì‘•±…ä…ÁÀ¹±¥ÍÑ•¸ ¤Õ¹Ñ¥°Ñ¡”Í¡•µ„•á¥ÍÑÌ½¸„™É•Í ¸)±•Ğ}‘‰I•…‘ä€ô™…±Í”ì)±•Ğ}‘‰I•…‘åÉÉ½È€ô¹Õ±°ì)½¹ÍĞ}‘‰I•…‘å‰Ì€ômtì)™Õ¹Ñ¥½¸}™±ÕÍ¡‰I•…‘å…±±‰…­Ì ¤ì(€€€İ¡¥±”€¡}‘‰I•…‘å‰Ì¹±•¹Ñ ¤}‘‰I•…‘å‰Ì¹Í¡¥™Ğ ¤¡}‘‰I•…‘åÉÉ½È¤ì)ô)™Õ¹Ñ¥½¸}µ…É­‰I•…‘ä ¤ì}‘‰I•…‘ä€ôÑÉÕ”ì}™±ÕÍ¡‰I•…‘å…±±‰…­Ì ¤ìô)™Õ¹Ñ¥½¸}µ…É­‰…¥±•¡•ÉÉ½È¤ì(€€€}‘‰I•…‘åÉÉ½È€ô•ÉÉ½Èñğ¹•ÜÉÉ½È …Ñ…‰…Í”¥¹¥Ñ¥…±¥é…Ñ¥½¸™…¥±•œ¤ì(€€€}™±ÕÍ¡‰I•…‘å…±±‰…­Ì ¤ì)ô)‘ˆ¹İ¡•¹I•…‘ä€ô™Õ¹Ñ¥½¸€¡…±±‰…¬¤ì(€€€¥˜€¡}‘‰I•…‘äñğ}‘‰I•…‘åÉÉ½È¤…±±‰…¬¡}‘‰I•…‘åÉÉ½È¤ì(€€€•±Í”}‘‰I•…‘å‰Ì¹ÁÕÍ ¡…±±‰…¬¤ì)ôì)‘ˆ¹ÍÑ½É…•A…Ñ €ô‘‰A…Ñ ì)‘ˆ¹‰…­™¥±±5¥ÍÍ¥¹AÉ½‘ÕÑM­ÕÌ€ô‰…­™¥±±5¥ÍÍ¥¹AÉ½‘ÕÑM­ÕÌì()µ½‘Õ±”¹•áÁ½ÉÑÌ€ô‘ˆì(

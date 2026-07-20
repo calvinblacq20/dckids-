@@ -9,7 +9,7 @@
    - Images + fonts: cache-first.
    - Bumping VERSION wipes old caches on activate.
 */
-const VERSION = 'dckids-v135';
+const VERSION = 'dckids-v136';
 const STATIC_CACHE = 'dckids-static-' + VERSION;
 const RUNTIME_CACHE = 'dckids-runtime-' + VERSION;
 
@@ -20,8 +20,21 @@ const APP_SHELL = [
   '/index.html',
   '/admin.html',
   '/styles.css',
+  '/tailwind.store.css',
+  '/tailwind-admin.css',
+  '/image-resolver.js',
   '/manifest.json',
-  '/icon.png'
+  '/icon.png',
+  '/images/placeholder.svg',
+  '/images/category-fallbacks/newborn.webp',
+  '/images/category-fallbacks/clothing.webp',
+  '/images/category-fallbacks/shoes.webp',
+  '/images/category-fallbacks/feeding.webp',
+  '/images/category-fallbacks/gear.webp',
+  '/images/category-fallbacks/bathcare.webp',
+  '/images/category-fallbacks/essentials.webp',
+  '/images/category-fallbacks/accessories.webp',
+  '/images/category-fallbacks/bedding.webp'
 ];
 
 self.addEventListener('install', (event) => {
@@ -53,6 +66,7 @@ self.addEventListener('fetch', (event) => {
   const isHtml = req.mode === 'navigate' || accept.includes('text/html') || url.pathname.endsWith('.html');
   const isApi = url.pathname.startsWith('/api/');
   const isCode = url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
+  const isImage = req.destination === 'image' || /\.(?:png|jpe?g|gif|svg|webp|avif)$/i.test(url.pathname);
 
   // Live store config must NEVER be served from cache — always go to network so
   // admin changes (banner, discount, WhatsApp) reach shoppers immediately.
@@ -87,12 +101,16 @@ self.addEventListener('fetch', (event) => {
     caches.match(req).then((cached) => {
       if (cached) return cached;
       return fetch(req).then((res) => {
-        if (res && res.status === 200 && res.type === 'basic') {
+        if (!res || !res.ok) {
+          if (isImage) return caches.match('/images/placeholder.svg');
+          return res;
+        }
+        if (res.type === 'basic') {
           const copy = res.clone();
           caches.open(RUNTIME_CACHE).then((c) => c.put(req, copy)).catch(() => {});
         }
         return res;
-      }).catch(() => caches.match('/index.html'));
+      }).catch(() => isImage ? caches.match('/images/placeholder.svg') : undefined);
     })
   );
 });

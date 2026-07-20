@@ -3,10 +3,15 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "test": "node test_smoke.js",
+    "test": "node test_operations.js && node test_smoke.js",
     "start": "node server.js",
+    "build": "npm run build:css",
+    "build:css": "npm run build:css:storefront && npm run build:css:admin",
+    "build:css:storefront": "tailwindcss -c ../tailwind.config.js -i ../tailwind.input.css -o ../tailwind.store.css --minify",
+    "build:css:admin": "tailwindcss -c ../tailwind.admin.config.js -i ../tailwind.input.css -o ../tailwind-admin.css --minify",
     "lint": "eslint ..",
-    "build:css": "tailwindcss -c ../tailwind.config.js -i ../tailwind.input.css -o ../tailwind.store.css --minify"
+    "backup": "node backup_db.js",
+    "test:ops": "node test_operations.js"
   },
   "keywords": [],
   "author": "",
