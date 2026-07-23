@@ -1246,9 +1246,10 @@ h1, h2, h3, h4, h5, h6 {
   transition: opacity var(--transition-base);
 }
 
+/* Brand pink top accent — all cards use the DC Kids primary color */
 .stat-card:nth-child(1)::before { background: var(--primary); }
-.stat-card:nth-child(2)::before { background: var(--warning); }
-.stat-card:nth-child(3)::before { background: var(--success); }
+.stat-card:nth-child(2)::before { background: var(--primary); }
+.stat-card:nth-child(3)::before { background: var(--primary); }
 .stat-card:nth-child(4)::before { background: var(--primary); }
 
 .stat-card:hover {
@@ -1271,12 +1272,13 @@ h1, h2, h3, h4, h5, h6 {
   flex-shrink: 0;
 }
 
-.stat-card .stat-icon.green  { background: var(--success-light); color: var(--success); }
-.stat-card .stat-icon.pink   { background: rgba(242,165,176,0.15); color: var(--secondary-dark); }
-.stat-card .stat-icon.blue   { background: var(--info-light); color: var(--info); }
-.stat-card .stat-icon.amber  { background: var(--warning-light); color: var(--warning); }
-.stat-card .stat-icon.purple { background: var(--purple-light); color: var(--purple); }
-.stat-card .stat-icon.red    { background: var(--danger-light); color: var(--danger); }
+/* Monochrome icon wells — light gray background, near-black icon */
+.stat-card .stat-icon.green  { background: #f3f4f6; color: #374151; }
+.stat-card .stat-icon.pink   { background: #f3f4f6; color: #374151; }
+.stat-card .stat-icon.blue   { background: #f3f4f6; color: #374151; }
+.stat-card .stat-icon.amber  { background: #f3f4f6; color: #374151; }
+.stat-card .stat-icon.purple { background: #f3f4f6; color: #374151; }
+.stat-card .stat-icon.red    { background: #f3f4f6; color: #374151; }
 
 .stat-card .stat-content {
   flex: 1;
@@ -4225,10 +4227,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Stat card subtle background tints matching reference */
-.stats-grid .stat-card:nth-child(1) { background: #fef7f4 !important; }
-.stats-grid .stat-card:nth-child(2) { background: #fefbf0 !important; }
-.stats-grid .stat-card:nth-child(3) { background: #f0faf4 !important; }
-.stats-grid .stat-card:nth-child(4) { background: #fef7f4 !important; }
+/* Monochrome stat cards — plain white, no pastel tints */
+.stats-grid .stat-card:nth-child(1) { background: #ffffff !important; }
+.stats-grid .stat-card:nth-child(2) { background: #ffffff !important; }
+.stats-grid .stat-card:nth-child(3) { background: #ffffff !important; }
+.stats-grid .stat-card:nth-child(4) { background: #ffffff !important; }
 
 /* Dark mode stat card tints */
 /* Recent products section card styling */
@@ -4354,17 +4357,25 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--card-bg);
 }
 
-.qa-btn-pink { border: 1px solid rgba(252, 76, 122, 0.2); background: rgba(252, 76, 122, 0.05); color: var(--primary); }
-.qa-btn-pink:hover { background: rgba(252, 76, 122, 0.1); transform: translateY(-1px); }
-
-.qa-btn-purple { border: 1px solid rgba(139, 92, 246, 0.2); background: rgba(139, 92, 246, 0.05); color: #8b5cf6; }
-.qa-btn-purple:hover { background: rgba(139, 92, 246, 0.1); transform: translateY(-1px); }
-
-.qa-btn-blue { border: 1px solid rgba(59, 130, 246, 0.2); background: rgba(59, 130, 246, 0.05); color: #3b82f6; }
-.qa-btn-blue:hover { background: rgba(59, 130, 246, 0.1); transform: translateY(-1px); }
-
-.qa-btn-green { border: 1px solid rgba(16, 185, 129, 0.2); background: rgba(16, 185, 129, 0.05); color: #10b981; }
-.qa-btn-green:hover { background: rgba(16, 185, 129, 0.1); transform: translateY(-1px); }
+/* Brand Styled Quick Action buttons — White backgrounds with soft brand borders/text */
+.qa-btn-pink,
+.qa-btn-purple,
+.qa-btn-blue,
+.qa-btn-green {
+  border: 1px solid rgba(252, 76, 122, 0.25);
+  background: #ffffff;
+  color: var(--primary);
+}
+.qa-btn-pink:hover,
+.qa-btn-purple:hover,
+.qa-btn-blue:hover,
+.qa-btn-green:hover {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(252, 76, 122, 0.15);
+}
 
 .flex-col { display: flex; flex-direction: column; }
 .flex-grow-scroll { flex: 1; overflow-y: auto; padding: 0 16px; }
@@ -9910,3 +9921,29 @@ body.dark-mode .mobile-bottom-nav,
 .health-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
 .health-card { padding: 12px; border: 1px solid var(--admin-border); border-radius: 12px; background: var(--admin-card); }
 @media (max-width: 640px) { .bulk-image-summary, .health-grid { grid-template-columns: 1fr; } .bulk-image-row { grid-template-columns: 44px minmax(0,1fr); } .bulk-image-row__status { grid-column: 2; text-align: left; } }
+
+/* ---- Shader Gradient Background ---- */
+#shader-bg-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: -1;
+  pointer-events: none;
+  display: none;
+  transition: opacity 0.5s ease, filter 0.5s ease;
+}
+body.is-authed #shader-bg-canvas {
+  display: block;
+}
+body.is-authed {
+  background-color: transparent !important;
+}
+body.is-authed .admin-main {
+  background: transparent !important;
+}
+body.dark-mode #shader-bg-canvas {
+  opacity: 0.25;
+  filter: saturate(0.8) brightness(0.35);
+}

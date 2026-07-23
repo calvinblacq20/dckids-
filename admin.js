@@ -839,6 +839,11 @@ function showDashboard(role) {
     document.getElementById('dashboard-container').style.display = 'block';
     document.body.classList.add('is-authed');
     _startIdleTracking();
+    try {
+        if (typeof initShaderBackground === 'function') initShaderBackground();
+    } catch (e) {
+        console.error('Shader init failed', e);
+    }
 
     var badge = document.getElementById('user-role-badge');
     if (badge) {
@@ -1358,16 +1363,37 @@ function toggleDarkMode() {
    ============================================================ */
 function loadDashboard() {
     document.body.classList.add('dash-active');
+
+    // Render charts & activity immediately with demo data (no API wait)
+    // so the dashboard never looks empty on first load.
+    function renderAll(products) {
+        updateDashboardWidgets(products || []);
+        if (typeof Chart !== 'undefined') {
+            renderRevenueChart();
+            renderInventoryChart(products || []);
+        } else {
+            // Chart.js CDN not yet loaded — wait for it
+            var chartScript = document.querySelector('script[src*="chart.js"]');
+            if (chartScript) {
+                chartScript.addEventListener('load', function() {
+                    renderRevenueChart();
+                    renderInventoryChart(products || []);
+                });
+            }
+        }
+        renderActivityTimeline();
+        renderDashboardRecentProducts(products || []);
+    }
+
+    // Render immediately with demo data
+    renderAll([]);
+
+    // Then silently refresh with real server data in the background
     fetchProducts().then(function(products) {
         globalProducts = products;
-        // Customers must arrive before the order sync recomputes their stats.
         loadCustomersFromServer(function() {
             fetchOrdersFromServer(function() {
-                updateDashboardWidgets(products);
-                renderRevenueChart();
-                renderInventoryChart(products);
-                renderActivityTimeline();
-                renderDashboardRecentProducts(products);
+                renderAll(products);
             });
         });
     }).catch(function(err) {
@@ -1395,15 +1421,77 @@ function fetchProducts() {
         });
 }
 
+/* ============================================================
+   COUNT-UP ANIMATION UTILITY
+   Animates a numeric value from 0 to target with ease-out.
+   prefix/suffix are preserved (e.g. "GHS ", "," separators).
+   ============================================================ */
+function countUp(el, target, duration, prefix, suffix) {
+    if (!el) return;
+    var start = 0;
+    var startTime = null;
+    prefix = prefix || '';
+    suffix = suffix || '';
+    duration = duration || 1200;
+
+    function easeOutQuart(t) {
+        return 1 - Math.pow(1 - t, 4);
+    }
+
+    function formatNumber(n) {
+        // Add comma thousands separator
+        return Math.floor(n).toLocaleString('en-US');
+    }
+
+    function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        var elapsed = timestamp - startTime;
+        var progress = Math.min(elapsed / duration, 1);
+        var current = easeOutQuart(progress) * target;
+        el.textContent = prefix + formatNumber(current) + suffix;
+        if (progress < 1) {
+            requestAnimationFrame(step);
+        } else {
+            el.textContent = prefix + formatNumber(target) + suffix;
+        }
+    }
+
+    requestAnimationFrame(step);
+}
+
+/* ============================================================
+   STAT CARD ENTRANCE ANIMATION
+   Staggered fade + slide-up when dashboard loads.
+   ============================================================ */
+function animateStatCards() {
+    var cards = document.querySelectorAll('.stats-grid .stat-card');
+    cards.forEach(function(card, i) {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(16px)';
+        card.style.transition = 'opacity 0.45s ease, transform 0.45s ease';
+        setTimeout(function() {
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, 80 + i * 90); // stagger each card by 90ms
+    });
+}
+
 function updateDashboardWidgets(products) {
     var totalEl = document.getElementById('val-total-products');
     var lowStockEl = document.getElementById('val-low-stock');
     var salesEl = document.getElementById('val-today-sales');
+    var arrivalsEl = document.getElementById('val-new-arrivals');
 
-    // Always show demo values for visual parity with mockup
-    if (totalEl) totalEl.textContent = '1,245';
-    if (lowStockEl) lowStockEl.textContent = '24';
-    if (salesEl) salesEl.textContent = 'GHS 12,450';
+    // Trigger card entrance animation first
+    animateStatCards();
+
+    // Stagger count-up slightly after cards fade in
+    setTimeout(function() {
+        countUp(totalEl,   1245, 1400, '',      '');
+        countUp(lowStockEl,  24, 1000, '',      '');
+        countUp(salesEl,  12450, 1600, 'GHS ', '');
+        countUp(arrivalsEl,  18,  900, '',      '');
+    }, 200);
 }
 
 function renderRevenueChart() {
@@ -1568,11 +1656,28 @@ function renderActivityTimeline() {
     if (!container) return;
 
     var activities = getActivities();
+
+    // Seed demo activities if localStorage is empty (fresh session)
+    if (!activities || activities.length === 0) {
+        var now = new Date();
+        activities = [
+            { type: 'order',    message: 'New order #ORD-008 placed by Nana Agyeman',   timestamp: new Date(now - 1000 * 60 * 5).toISOString() },
+            { type: 'product',  message: 'Product "Pretty Pink Dress" updated',          timestamp: new Date(now - 1000 * 60 * 22).toISOString() },
+            { type: 'order',    message: 'Order #ORD-007 delivered to Adwoa Poku',       timestamp: new Date(now - 1000 * 60 * 45).toISOString() },
+            { type: 'customer', message: 'New customer registered: Kofi Amoah',          timestamp: new Date(now - 1000 * 60 * 90).toISOString() },
+            { type: 'order',    message: 'Order #ORD-006 marked as pending',             timestamp: new Date(now - 1000 * 60 * 130).toISOString() },
+            { type: 'product',  message: '"Cool Boy Shirt" stock updated to 18 units',  timestamp: new Date(now - 1000 * 60 * 200).toISOString() },
+            { type: 'order',    message: 'Order #ORD-005 cancelled by Efua Darko',       timestamp: new Date(now - 1000 * 60 * 300).toISOString() },
+            { type: 'revenue',  message: 'Daily revenue target of GHS 10,000 reached',  timestamp: new Date(now - 1000 * 60 * 420).toISOString() }
+        ];
+        saveActivities(activities);
+    }
+
     var html = '';
     activities.slice(0, 8).forEach(function(a) {
-                html += '<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid ' + '#f5f5f5' + ';">';
-        html += '<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;background:' + '#F4F4F7' + ';color:' + '#555' + ';flex-shrink:0;">' + entityGlyph(a.type) + '</span>';
-        html += '<div style="flex:1;"><div style="font-size:13px;color:' + '#333' + ';">' + escapeHtml(a.message) + '</div>';
+        html += '<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid #f5f5f5;">';
+        html += '<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;background:#F4F4F7;color:#555;flex-shrink:0;">' + entityGlyph(a.type) + '</span>';
+        html += '<div style="flex:1;"><div style="font-size:13px;color:#333;">' + escapeHtml(a.message) + '</div>';
         html += '<div style="font-size:11px;color:#999;margin-top:2px;">' + timeAgo(new Date(a.timestamp)) + '</div></div></div>';
     });
     container.innerHTML = html || '<div style="color:#888;font-size:14px;padding:16px;">No recent activity</div>';
@@ -10370,3 +10475,208 @@ if (document.readyState === 'loading') {
     setTimeout(function () { if (window.populateSizePresetDropdowns) window.populateSizePresetDropdowns(); }, 500);
   });
 })();
+
+var shaderBgInitialized = false;
+function initShaderBackground() {
+    if (shaderBgInitialized) return;
+    var canvas = document.getElementById('shader-bg-canvas');
+    if (!canvas) return;
+    if (typeof THREE === 'undefined') {
+        console.error('Three.js is not loaded yet.');
+        return;
+    }
+
+    shaderBgInitialized = true;
+
+    // GLSL simplex noise implementation (McEwan & Ashima Arts)
+    var simplexNoiseGLSL = `
+        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+        vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+        float snoise(vec3 v) {
+            const vec2 C = vec2(1.0/6.0, 1.0/3.0) ;
+            const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+
+            vec3 i  = floor(v + dot(v, C.yyy) );
+            vec3 x0 =   v - i + dot(i, C.xxx) ;
+
+            vec3 g = step(x0.yzx, x0.xyz);
+            vec3 l = 1.0 - g;
+            vec3 i1 = min( g.xyz, l.zxy );
+            vec3 i2 = max( g.xyz, l.zxy );
+
+            vec3 x1 = x0 - i1 + C.xxx;
+            vec3 x2 = x0 - i2 + C.yyy;
+            vec3 x3 = x0 - D.yyy;
+
+            i = mod289(i);
+            vec4 p = permute( permute( permute(
+                        i.z + vec4(0.0, i1.z, i2.z, 1.0) )
+                    + i.y + vec4(0.0, i1.y, i2.y, 1.0) )
+                    + i.x + vec4(0.0, i1.x, i2.x, 1.0) );
+
+            float n_ = 0.142857142857;
+            vec3 ns = n_ * D.wyz - D.xzx;
+
+            vec4 j = p - 49.0 * floor(p * ns.z);
+
+            vec4 x_ = floor(j * ns.z);
+            vec4 y_ = floor(j - 7.0 * x_ );
+
+            vec4 x = x_ *ns.x + ns.yyyy;
+            vec4 y = y_ *ns.x + ns.yyyy;
+            vec4 h = 1.0 - abs(x) - abs(y);
+
+            vec4 b0 = vec4( x.xy, y.xy );
+            vec4 b1 = vec4( x.zw, y.zw );
+
+            vec4 s0 = floor(b0)*2.0 + 1.0;
+            vec4 s1 = floor(b1)*2.0 + 1.0;
+            vec4 sh = -step(h, vec4(0.0));
+
+            vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+            vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+
+            vec3 p0 = vec3(a0.xy,h.x);
+            vec3 p1 = vec3(a0.zw,h.y);
+            vec3 p2 = vec3(a1.xy,h.z);
+            vec3 p3 = vec3(a1.zw,h.w);
+
+            vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+            p0 *= norm.x;
+            p1 *= norm.y;
+            p2 *= norm.z;
+            p3 *= norm.w;
+
+            vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+            m = m * m;
+            return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),
+                                            dot(p2,x2), dot(p3,x3) ) );
+        }
+    `;
+
+    var vertexShader = `
+        uniform float uTime;
+        uniform float uSpeed;
+        uniform float uAmplitude;
+        uniform float uFrequency;
+        uniform float uDensity;
+        uniform float uStrength;
+
+        varying vec3 vPosition;
+        varying float vNoise;
+
+        ${simplexNoiseGLSL}
+
+        void main() {
+            vPosition = position;
+            
+            // Replicate waterPlane wave displacement
+            vec3 noiseCoord = position * uDensity * 0.15;
+            noiseCoord.z += uTime * uSpeed;
+            
+            float noiseValue = snoise(noiseCoord);
+            vNoise = noiseValue;
+            
+            // Displace plane vertices along the Z axis
+            vec3 displacedPosition = position;
+            displacedPosition.z += noiseValue * uAmplitude * uStrength;
+            
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(displacedPosition, 1.0);
+        }
+    `;
+
+    var fragmentShader = `
+        uniform float uBrightness;
+        uniform vec3 uColor1;
+        uniform vec3 uColor2;
+        uniform vec3 uColor3;
+
+        varying vec3 vPosition;
+        varying float vNoise;
+
+        void main() {
+            // Map noise value to gradient color mix
+            float n = (vNoise + 1.0) * 0.5;
+            
+            vec3 color = mix(uColor1, uColor2, n);
+            color = mix(color, uColor3, smoothstep(0.1, 0.9, n));
+            
+            color *= uBrightness;
+            
+            gl_FragColor = vec4(color, 1.0);
+        }
+    `;
+
+    var scene = new THREE.Scene();
+    var width = window.innerWidth;
+    var height = window.innerHeight;
+
+    var camera = new THREE.PerspectiveCamera(10, width / height, 0.1, 1000);
+    
+    // Set camera spherical coordinates:
+    // distance = 13.99, polar = 137 degrees, azimuth = -27 degrees
+    var distance = 13.99;
+    var polar = (137 * Math.PI) / 180;
+    var azimuth = (-27 * Math.PI) / 180;
+    
+    camera.position.setFromSphericalCoords(distance, polar, azimuth);
+    camera.lookAt(0, 0, 0);
+    camera.zoom = 5;
+    camera.updateProjectionMatrix();
+
+    var renderer = new THREE.WebGLRenderer({
+        canvas: canvas,
+        alpha: true,
+        antialias: true
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.9)); // pixelDensity={1.9}
+    renderer.setSize(width, height);
+
+    // Geometry: high segment plane to render smooth waves
+    var geometry = new THREE.PlaneGeometry(15, 15, 128, 128);
+
+    var uniforms = {
+        uTime: { value: 0 },
+        uSpeed: { value: 0.1 },
+        uAmplitude: { value: 0.6 },
+        uDensity: { value: 0.9 },
+        uStrength: { value: 4.2 },
+        uBrightness: { value: 1.4 },
+        uColor1: { value: new THREE.Color("#ffdbe5") },
+        uColor2: { value: new THREE.Color("#ffd9de") },
+        uColor3: { value: new THREE.Color("#ffabaf") }
+    };
+
+    var material = new THREE.ShaderMaterial({
+        vertexShader: vertexShader,
+        fragmentShader: fragmentShader,
+        uniforms: uniforms,
+        side: THREE.DoubleSide,
+        wireframe: false
+    });
+
+    var mesh = new THREE.Mesh(geometry, material);
+    mesh.rotation.x = -Math.PI / 2; // Flat horizontal plane
+    scene.add(mesh);
+
+    var clock = new THREE.Clock();
+
+    function animate() {
+        requestAnimationFrame(animate);
+        uniforms.uTime.value = clock.getElapsedTime();
+        renderer.render(scene, camera);
+    }
+
+    animate();
+
+    window.addEventListener('resize', function() {
+        var w = window.innerWidth;
+        var h = window.innerHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+    });
+}
