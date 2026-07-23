@@ -2196,6 +2196,11 @@ function openEditModal(id) {
             if (imgSrcEl) imgSrcEl.value = p.img || '';
             if (typeof setSizeRows === 'function') setSizeRows('modal-product', p.sizes);
             if (typeof populateSizePresetDropdowns === 'function') populateSizePresetDropdowns();
+            // Mode follows the data: a product that already has per-size rows opens
+            // in "Different price per size"; otherwise "One price for all sizes".
+            var _managed = [];
+            try { _managed = typeof p.sizes === 'string' ? JSON.parse(p.sizes) : (p.sizes || []); } catch (e) {}
+            if (typeof setPricingMode === 'function') setPricingMode('modal-product', (Array.isArray(_managed) && _managed.length) ? 'persize' : 'single');
         }
     } else {
         if (title) title.textContent = 'Add New Product';
@@ -2213,6 +2218,7 @@ function openEditModal(id) {
         if (imgSrcEl) imgSrcEl.value = 'images/placeholder.svg';
         if (typeof setSizeRows === 'function') setSizeRows('modal-product', []);
         if (typeof populateSizePresetDropdowns === 'function') populateSizePresetDropdowns();
+        if (typeof setPricingMode === 'function') setPricingMode('modal-product', 'single');
     }
 
     // Legacy products saved before SKUs existed have none — suggest one now
@@ -2346,6 +2352,7 @@ function saveProduct() {
     }
 
     var nameVal = document.getElementById('modal-product-name').value.trim();
+    var pmode = (document.getElementById('modal-product-pmode') || {}).value || 'single';
     var priceVal = parseFloat(document.getElementById('modal-product-price').value);
     var stockVal = parseInt(document.getElementById('modal-product-stock').value);
 
@@ -2354,7 +2361,7 @@ function saveProduct() {
         showToast('Product name is required', 'warning');
         return;
     }
-    if (isNaN(priceVal) || priceVal < 0) {
+    if (pmode !== 'persize' && (isNaN(priceVal) || priceVal < 0)) {
         showToast('Price must be 0 or greater', 'warning');
         return;
     }
@@ -2362,6 +2369,9 @@ function saveProduct() {
         showToast('Stock must be 0 or greater', 'warning');
         return;
     }
+    // Per-size vs single price → derives price, size text, and the sizes array.
+    var pricing = window.resolvePricing('modal-product', priceVal, document.getElementById('modal-product-size').value);
+    if (!pricing) return;
 
     var id = document.getElementById('modal-product-id').value;
     var isEditing = id !== '';
@@ -2372,15 +2382,15 @@ function saveProduct() {
     var payload = {
         name: nameVal,
         sku: (skuEl && skuEl.value.trim()) || null,
-        size: document.getElementById('modal-product-size').value,
+        size: pricing.size,
         cat: document.getElementById('modal-product-cat').value,
-        price: priceVal,
+        price: pricing.price,
         stock: stockVal,
         badge: document.getElementById('modal-product-badge').value || null,
         img: document.getElementById('modal-product-img-src').value,
         description: (descEl && descEl.value.trim()) || null,
         fulfillment_type: (fulfillmentEl && fulfillmentEl.value) || 'in_stock',
-        sizes: (typeof readSizeRows === 'function') ? readSizeRows('modal-product') : []
+        sizes: pricing.sizes
     };
 
     var method = isEditing ? 'PUT' : 'POST';
@@ -7603,6 +7613,7 @@ function openAddProductModal() {
     if (addFulfillmentEl) addFulfillmentEl.value = 'in_stock';
     if (typeof setSizeRows === 'function') setSizeRows('add-product', []);
     if (typeof populateSizePresetDropdowns === 'function') populateSizePresetDropdowns();
+    if (typeof setPricingMode === 'function') setPricingMode('add-product', 'single');
     document.getElementById('add-product-size').value = '';
     document.getElementById('add-product-badge').value = '';
     document.getElementById('add-product-desc').value = '';
@@ -7660,6 +7671,7 @@ function saveNewProduct() {
     }
 
     var nameVal = document.getElementById('add-product-name').value.trim();
+    var pmode = (document.getElementById('add-product-pmode') || {}).value || 'single';
     var priceVal = parseFloat(document.getElementById('add-product-price').value);
     var stockVal = parseInt(document.getElementById('add-product-stock').value);
 
@@ -7674,7 +7686,7 @@ function saveNewProduct() {
         showToast('Category is required', 'warning');
         return;
     }
-    if (isNaN(priceVal) || priceVal < 0) {
+    if (pmode !== 'persize' && (isNaN(priceVal) || priceVal < 0)) {
         showToast('Price must be 0 or greater', 'warning');
         return;
     }
@@ -7682,21 +7694,24 @@ function saveNewProduct() {
         showToast('Stock must be 0 or greater', 'warning');
         return;
     }
+    // Per-size vs single price → derives price, size text, and the sizes array.
+    var pricing = window.resolvePricing('add-product', priceVal, document.getElementById('add-product-size').value.trim() || 'Standard');
+    if (!pricing) return;
 
     var addDescEl = document.getElementById('add-product-desc');
     var addFulfillmentEl = document.getElementById('add-product-fulfillment');
     var payload = {
         name: nameVal,
         sku: skuVal,
-        size: document.getElementById('add-product-size').value.trim() || 'Standard',
+        size: pricing.size,
         cat: catVal,
-        price: priceVal,
+        price: pricing.price,
         stock: stockVal,
         badge: document.getElementById('add-product-badge').value.trim() || null,
         img: document.getElementById('add-product-img-src').value,
         description: (addDescEl && addDescEl.value.trim()) || null,
         fulfillment_type: (addFulfillmentEl && addFulfillmentEl.value) || 'in_stock',
-        sizes: (typeof readSizeRows === 'function') ? readSizeRows('add-product') : []
+        sizes: pricing.sizes
     };
 
     fetch(API_URL + '/products', {
@@ -10212,6 +10227,45 @@ if (document.readyState === 'loading') {
     var arr = sizes;
     if (typeof sizes === 'string') { try { arr = JSON.parse(sizes); } catch (e) { arr = null; } }
     if (Array.isArray(arr)) arr.forEach(function (s) { if (s && s.label) window.addSizeRow(prefix, s.label, s.price); });
+  };
+
+  // Pricing mode: 'single' (one Price for all sizes) or 'persize' (per-size rows).
+  // Shows the matching fields and hides the others so the two paths never compete.
+  window.setPricingMode = function (prefix, mode) {
+    mode = (mode === 'persize') ? 'persize' : 'single';
+    var hidden = document.getElementById(prefix + '-pmode');
+    if (hidden) hidden.value = mode;
+    var toggle = document.getElementById(prefix + '-pmode-toggle');
+    if (toggle) toggle.querySelectorAll('.pmode-btn').forEach(function (b) {
+      b.classList.toggle('pmode-btn--active', b.getAttribute('data-mode') === mode);
+    });
+    document.querySelectorAll('[data-pmode-for="' + prefix + '"]').forEach(function (el) {
+      el.style.display = (el.getAttribute('data-pmode') === mode) ? '' : 'none';
+    });
+    // Switching to per-size with an empty list? Seed one blank row to fill in.
+    if (mode === 'persize') {
+      var list = document.getElementById(prefix + '-sizes-list');
+      if (list && !list.querySelector('.size-row')) window.addSizeRow(prefix, '', '');
+    }
+  };
+
+  // Build the save payload's { sizes, price, size } from the active pricing mode.
+  // Returns null (after showing a toast) when per-size input is incomplete.
+  window.resolvePricing = function (prefix, singlePrice, singleSizeText) {
+    var mode = (document.getElementById(prefix + '-pmode') || {}).value || 'single';
+    if (mode !== 'persize') {
+      return { sizes: [], price: singlePrice, size: singleSizeText };
+    }
+    var rows = window.readSizeRows(prefix).filter(function (r) { return r.label; });
+    if (!rows.length) { showToast('Add at least one size, or switch to "One price for all sizes"', 'warning'); return null; }
+    var bad = rows.some(function (r) { return r.price == null || isNaN(r.price) || r.price < 0; });
+    if (bad) { showToast('Every size needs a price', 'warning'); return null; }
+    var labels = rows.map(function (r) { return r.label; });
+    return {
+      sizes: rows,
+      price: Math.min.apply(null, rows.map(function (r) { return r.price; })), // "from" price / fallback
+      size: labels.length > 1 ? (labels[0] + ' – ' + labels[labels.length - 1]) : labels[0]
+    };
   };
 
   window.populateSizePresetDropdowns = function () {

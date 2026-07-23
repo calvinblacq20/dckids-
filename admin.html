@@ -5105,7 +5105,22 @@
               </div>
             </div>
 
-            <div style="grid-column: span 1;">
+            <div style="grid-column: span 2;">
+              <style>
+                .pmode-toggle{display:inline-flex;background:#f1f5f9;border-radius:10px;padding:4px;gap:4px;max-width:100%;flex-wrap:wrap;}
+                .pmode-btn{border:none;background:transparent;color:#64748b;font-size:13px;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer;transition:background .15s,color .15s,box-shadow .15s;}
+                .pmode-btn--active{background:#fff;color:#e11d48;box-shadow:0 1px 3px rgba(0,0,0,.12);}
+                .pmode-btn:focus-visible{outline:2px solid #e11d48;outline-offset:2px;}
+              </style>
+              <label class="block text-sm font-medium text-gray-700 mb-1.5" style="display: block; margin-bottom: 6px;">Pricing</label>
+              <div id="modal-product-pmode-toggle" class="pmode-toggle" role="tablist" aria-label="Pricing mode">
+                <button type="button" class="pmode-btn pmode-btn--active" data-mode="single" role="tab" onclick="setPricingMode('modal-product','single')">One price for all sizes</button>
+                <button type="button" class="pmode-btn" data-mode="persize" role="tab" onclick="setPricingMode('modal-product','persize')">Different price per size</button>
+              </div>
+              <input type="hidden" id="modal-product-pmode" value="single">
+            </div>
+
+            <div style="grid-column: span 1;" data-pmode-for="modal-product" data-pmode="single">
               <label for="modal-product-price" class="block text-sm font-medium text-gray-700 mb-1.5" style="display: block; margin-bottom: 6px;">Price (GHS)</label>
               <input type="number" inputmode="decimal" min="0" step="0.01" id="modal-product-price" value="180.00" class="w-full border border-solid border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-gray-900 shadow-sm" style="box-sizing: border-box; width: 100%; border-radius: 8px; padding: 10px 12px; font-size: 13px;" />
             </div>
@@ -5142,8 +5157,8 @@
               </div>
             </div>
 
-            <div style="grid-column: span 1;">
-              <label for="modal-product-size" class="block text-sm font-medium text-gray-700 mb-1.5" style="display: block; margin-bottom: 6px;">Size Range</label>
+            <div style="grid-column: span 1;" data-pmode-for="modal-product" data-pmode="single">
+              <label for="modal-product-size" class="block text-sm font-medium text-gray-700 mb-1.5" style="display: block; margin-bottom: 6px;">Size Range <span style="font-weight:400;color:#9ca3af;">(label only, e.g. 0–12M)</span></label>
               <input type="text" id="modal-product-size" value="Standard" class="w-full border border-solid border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-gray-900 shadow-sm" style="box-sizing: border-box; width: 100%; border-radius: 8px; padding: 10px 12px; font-size: 13px;" />
             </div>
 
@@ -5157,8 +5172,8 @@
               <textarea id="modal-product-desc" rows="3" class="w-full border border-solid border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-gray-900 shadow-sm resize-none" style="box-sizing: border-box; width: 100%; border-radius: 8px; padding: 10px 12px; font-size: 13px; font-family: inherit;"></textarea>
             </div>
 
-            <div style="grid-column: span 2;">
-              <label class="block text-sm font-medium text-gray-700 mb-1.5" style="display:block;margin-bottom:6px;">Sizes &amp; Pricing <span style="font-weight:400;color:#9ca3af;">(optional — give each size its own price; overrides Size Range on the storefront)</span></label>
+            <div style="grid-column: span 2;" data-pmode-for="modal-product" data-pmode="persize">
+              <label class="block text-sm font-medium text-gray-700 mb-1.5" style="display:block;margin-bottom:6px;">Sizes &amp; Pricing <span style="font-weight:400;color:#9ca3af;">— give each size its own price; shoppers see the range on the storefront</span></label>
               <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
                 <select id="modal-product-size-preset" class="size-preset-select" style="flex:1;min-width:160px;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;font-size:13px;background:#fff;"></select>
                 <button type="button" class="btn btn-outline-small" onclick="applySizePreset('modal-product')">Apply preset</button>
@@ -5337,7 +5352,16 @@
                 </div>
               </div>
 
-              <div>
+              <div class="md:col-span-2">
+                <label class="block text-sm font-bold text-gray-900 mb-2">Pricing</label>
+                <div id="add-product-pmode-toggle" class="pmode-toggle" role="tablist" aria-label="Pricing mode">
+                  <button type="button" class="pmode-btn pmode-btn--active" data-mode="single" role="tab" onclick="setPricingMode('add-product','single')">One price for all sizes</button>
+                  <button type="button" class="pmode-btn" data-mode="persize" role="tab" onclick="setPricingMode('add-product','persize')">Different price per size</button>
+                </div>
+                <input type="hidden" id="add-product-pmode" value="single">
+              </div>
+
+              <div data-pmode-for="add-product" data-pmode="single">
                 <label class="block text-sm font-bold text-gray-900 mb-2">Price (GHS) <span class="text-rose-500">*</span></label>
                 <div class="relative">
                   <input type="number" id="add-product-price" placeholder="Enter price" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-gray-400 shadow-sm transition-shadow" inputmode="decimal" min="0" step="0.01" required />
@@ -5390,8 +5414,8 @@
                 </div>
               </div>
 
-              <div>
-                <label class="block text-sm font-bold text-gray-900 mb-2">Size Range</label>
+              <div data-pmode-for="add-product" data-pmode="single">
+                <label class="block text-sm font-bold text-gray-900 mb-2">Size Range <span style="font-weight:400;color:#9ca3af;">(label only)</span></label>
                 <input type="text" id="add-product-size" placeholder="e.g. 2Y - 8Y, Standard" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-gray-400 shadow-sm transition-shadow" />
               </div>
 
@@ -5408,8 +5432,8 @@
                 </div>
               </div>
 
-              <div class="md:col-span-2 mt-2">
-                <label class="block text-sm font-bold text-gray-900 mb-2">Sizes &amp; Pricing <span style="font-weight:400;color:#9ca3af;">(optional — give each size its own price; overrides Size Range on the storefront)</span></label>
+              <div class="md:col-span-2 mt-2" data-pmode-for="add-product" data-pmode="persize">
+                <label class="block text-sm font-bold text-gray-900 mb-2">Sizes &amp; Pricing <span style="font-weight:400;color:#9ca3af;">— give each size its own price; shoppers see the range on the storefront</span></label>
                 <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
                   <select id="add-product-size-preset" class="size-preset-select" style="flex:1;min-width:160px;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:13px;background:#fff;"></select>
                   <button type="button" class="btn btn-outline-small" onclick="applySizePreset('add-product')">Apply preset</button>
@@ -6284,7 +6308,7 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="image-resolver.js?v=1"></script>
-  <script src="admin.js?v=119"></script>
+  <script src="admin.js?v=120"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

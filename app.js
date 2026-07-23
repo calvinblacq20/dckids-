@@ -244,13 +244,29 @@ function renderCard(p, index) {
   const isPreorder = p.fulfillment_type === 'preorder';
   const cardClass = isPreorder ? 'product-card product-card--preorder' : 'product-card';
 
+  // Per-size price spread: when sizes carry different prices, the headline shows
+  // a RANGE (GH₵45 – 70) so shoppers see the spread at a glance; picking a size
+  // then snaps it to the exact price (updateCardPrice). Uses per-unit prices so
+  // the range reads the same in retail and wholesale.
+  const unitPrices = sizeOptions.map(s => Math.round(applyDisc(baseFor(s)) * 100) / 100);
+  const minUnit = Math.min(...unitPrices);
+  const maxUnit = Math.max(...unitPrices);
+  const priceVaries = hasVariants && hasPrice && (maxUnit - minUnit) > 0.005;
+
   // Initial display: for wholesale show total for MOQ; for retail show single-unit price
   const initialUnit = Math.round(applyDisc(baseFor(sizeOptions[0])) * 100) / 100;
   const initialQty  = isWholesale ? moq : 1;
   const initialTotal = Math.round(initialUnit * initialQty * 100) / 100;
-  const initialPrice = hasPrice
-    ? `GH₵ ${gh(initialTotal)}` + (isWholesale ? ` <span style="font-size:11px;color:#888;font-weight:400;">(${initialQty} pcs @ GH₵ ${gh(initialUnit)})</span>` : '')
-    : (isPreorder ? '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg> Price on request' : 'Ask for price');
+  let initialPrice;
+  if (!hasPrice) {
+    initialPrice = isPreorder ? '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg> Price on request' : 'Ask for price';
+  } else if (priceVaries) {
+    // Range headline (per-unit). Wholesale adds a "/ pc" hint since totals depend on qty.
+    initialPrice = `GH₵ ${gh(minUnit)} <span style="color:#94a3b8;font-weight:500;">–</span> ${gh(maxUnit)}` +
+      (isWholesale ? ` <span style="font-size:11px;color:#888;font-weight:400;">/ pc</span>` : '');
+  } else {
+    initialPrice = `GH₵ ${gh(initialTotal)}` + (isWholesale ? ` <span style="font-size:11px;color:#888;font-weight:400;">(${initialQty} pcs @ GH₵ ${gh(initialUnit)})</span>` : '');
+  }
 
   let sizeHTML = '';
   if (hasVariants) {
