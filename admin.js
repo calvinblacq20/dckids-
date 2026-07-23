@@ -10481,10 +10481,10 @@ function initShaderBackground() {
     if (shaderBgInitialized) return;
     var canvas = document.getElementById('shader-bg-canvas');
     if (!canvas) return;
-    if (typeof THREE === 'undefined') {
-        console.error('Three.js is not loaded yet.');
-        return;
-    }
+    // Self-contained WebGL (no Three.js / no CDN — keeps the admin CSP strict at
+    // script-src 'self'). Degrades silently to the CSS background if WebGL is off.
+    var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) return;
 
     shaderBgInitialized = true;
 
@@ -10557,126 +10557,72 @@ function initShaderBackground() {
         }
     `;
 
-    var vertexShader = `
-        uniform float uTime;
-        uniform float uSpeed;
-        uniform float uAmplitude;
-        uniform float uFrequency;
-        uniform float uDensity;
-        uniform float uStrength;
+    // Fullscreen triangle — the gradient is a screen-space fragment shader, so
+    // no 3D geometry, camera, matrix maths (or Three.js) are needed.
+    var vertexShader = 'attribute vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }';
 
-        varying vec3 vPosition;
-        varying float vNoise;
+    var fragmentShader =
+        'precision highp float;\n' +
+        'uniform float uTime;\n' +
+        'uniform vec2 uResolution;\n' +
+        'uniform float uBrightness;\n' +
+        'uniform vec3 uColor1;\n' +
+        'uniform vec3 uColor2;\n' +
+        'uniform vec3 uColor3;\n' +
+        simplexNoiseGLSL + '\n' +
+        'void main(){\n' +
+        '  vec2 uv = gl_FragCoord.xy / uResolution;\n' +
+        '  uv.x *= uResolution.x / uResolution.y;\n' +
+        '  float n = snoise(vec3(uv * 1.6, uTime * 0.08));\n' +
+        '  n = (n + 1.0) * 0.5;\n' +
+        '  vec3 color = mix(uColor1, uColor2, n);\n' +
+        '  color = mix(color, uColor3, smoothstep(0.1, 0.9, n));\n' +
+        '  gl_FragColor = vec4(color * uBrightness, 1.0);\n' +
+        '}';
 
-        ${simplexNoiseGLSL}
-
-        void main() {
-            vPosition = position;
-            
-            // Replicate waterPlane wave displacement
-            vec3 noiseCoord = position * uDensity * 0.15;
-            noiseCoord.z += uTime * uSpeed;
-            
-            float noiseValue = snoise(noiseCoord);
-            vNoise = noiseValue;
-            
-            // Displace plane vertices along the Z axis
-            vec3 displacedPosition = position;
-            displacedPosition.z += noiseValue * uAmplitude * uStrength;
-            
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(displacedPosition, 1.0);
-        }
-    `;
-
-    var fragmentShader = `
-        uniform float uBrightness;
-        uniform vec3 uColor1;
-        uniform vec3 uColor2;
-        uniform vec3 uColor3;
-
-        varying vec3 vPosition;
-        varying float vNoise;
-
-        void main() {
-            // Map noise value to gradient color mix
-            float n = (vNoise + 1.0) * 0.5;
-            
-            vec3 color = mix(uColor1, uColor2, n);
-            color = mix(color, uColor3, smoothstep(0.1, 0.9, n));
-            
-            color *= uBrightness;
-            
-            gl_FragColor = vec4(color, 1.0);
-        }
-    `;
-
-    var scene = new THREE.Scene();
-    var width = window.innerWidth;
-    var height = window.innerHeight;
-
-    var camera = new THREE.PerspectiveCamera(10, width / height, 0.1, 1000);
-    
-    // Set camera spherical coordinates:
-    // distance = 13.99, polar = 137 degrees, azimuth = -27 degrees
-    var distance = 13.99;
-    var polar = (137 * Math.PI) / 180;
-    var azimuth = (-27 * Math.PI) / 180;
-    
-    camera.position.setFromSphericalCoords(distance, polar, azimuth);
-    camera.lookAt(0, 0, 0);
-    camera.zoom = 5;
-    camera.updateProjectionMatrix();
-
-    var renderer = new THREE.WebGLRenderer({
-        canvas: canvas,
-        alpha: true,
-        antialias: true
-    });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.9)); // pixelDensity={1.9}
-    renderer.setSize(width, height);
-
-    // Geometry: high segment plane to render smooth waves
-    var geometry = new THREE.PlaneGeometry(15, 15, 128, 128);
-
-    var uniforms = {
-        uTime: { value: 0 },
-        uSpeed: { value: 0.1 },
-        uAmplitude: { value: 0.6 },
-        uDensity: { value: 0.9 },
-        uStrength: { value: 4.2 },
-        uBrightness: { value: 1.4 },
-        uColor1: { value: new THREE.Color("#ffdbe5") },
-        uColor2: { value: new THREE.Color("#ffd9de") },
-        uColor3: { value: new THREE.Color("#ffabaf") }
-    };
-
-    var material = new THREE.ShaderMaterial({
-        vertexShader: vertexShader,
-        fragmentShader: fragmentShader,
-        uniforms: uniforms,
-        side: THREE.DoubleSide,
-        wireframe: false
-    });
-
-    var mesh = new THREE.Mesh(geometry, material);
-    mesh.rotation.x = -Math.PI / 2; // Flat horizontal plane
-    scene.add(mesh);
-
-    var clock = new THREE.Clock();
-
-    function animate() {
-        requestAnimationFrame(animate);
-        uniforms.uTime.value = clock.getElapsedTime();
-        renderer.render(scene, camera);
+    function compileShader(type, src) {
+        var s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        return s;
     }
+    var program = gl.createProgram();
+    gl.attachShader(program, compileShader(gl.VERTEX_SHADER, vertexShader));
+    gl.attachShader(program, compileShader(gl.FRAGMENT_SHADER, fragmentShader));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) { shaderBgInitialized = false; return; }
+    gl.useProgram(program);
 
-    animate();
+    var quad = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    var aPos = gl.getAttribLocation(program, 'aPos');
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
 
-    window.addEventListener('resize', function() {
-        var w = window.innerWidth;
-        var h = window.innerHeight;
-        camera.aspect = w / h;
-        camera.updateProjectionMatrix();
-        renderer.setSize(w, h);
-    });
+    var uTime = gl.getUniformLocation(program, 'uTime');
+    var uResolution = gl.getUniformLocation(program, 'uResolution');
+    // Same three pinks as the original shader gradient.
+    gl.uniform3f(gl.getUniformLocation(program, 'uColor1'), 1.0, 0.859, 0.898); // #ffdbe5
+    gl.uniform3f(gl.getUniformLocation(program, 'uColor2'), 1.0, 0.851, 0.871); // #ffd9de
+    gl.uniform3f(gl.getUniformLocation(program, 'uColor3'), 1.0, 0.671, 0.686); // #ffabaf
+    gl.uniform1f(gl.getUniformLocation(program, 'uBrightness'), 1.0);
+
+    function resizeShaderCanvas() {
+        var dpr = Math.min(window.devicePixelRatio || 1, 1.9);
+        var w = Math.floor(window.innerWidth * dpr);
+        var h = Math.floor(window.innerHeight * dpr);
+        if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+        gl.viewport(0, 0, w, h);
+        gl.uniform2f(uResolution, w, h);
+    }
+    resizeShaderCanvas();
+    window.addEventListener('resize', resizeShaderCanvas);
+
+    var shaderStart = performance.now();
+    (function renderShader() {
+        requestAnimationFrame(renderShader);
+        gl.uniform1f(uTime, (performance.now() - shaderStart) / 1000);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+    })();
 }
