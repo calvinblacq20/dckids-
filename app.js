@@ -17,7 +17,12 @@ let searchQuery = '';
 const CATEGORY_FALLBACK_IMAGES = DCImageResolver.CATEGORY_IMAGES;
 function hasGenuineProductImage(img) { return DCImageResolver.isGenuineImage(img); }
 function resolveProductImage(product) { return DCImageResolver.resolve(product); }
-function categoryImageBadge() { return '<span class="category-image-badge">Category image</span>'; }
+// That photo corner is reserved for PRODUCT STATE (New / Hot / Pre-Order /
+// Sold Out — see badgeHTML in renderCard), per the shop owner's decision.
+// Products still fall back to a per-category stock photo, just without a
+// "Category image" label sitting over it. Returning empty keeps every caller
+// (cards, cart, the lazy-load onerror path) label-free in one place.
+function categoryImageBadge() { return ''; }
 function useCategoryFallback(img, category) {
   if (!img || img.dataset.categoryFallbackApplied === '1') return;
   img.dataset.categoryFallbackApplied = '1';
@@ -1520,7 +1525,7 @@ async function openReviewsModal(productId, productName) {
     imageEl.alt = productName || 'Product';
     imageEl.onerror = () => useCategoryFallback(imageEl, product && product.cat);
   }
-  if (imageBadgeEl) imageBadgeEl.style.display = productImage.isCategoryFallback ? 'inline-flex' : 'none';
+  if (imageBadgeEl) imageBadgeEl.style.display = 'none'; // product-state corner, not an image label
   const descEl = document.getElementById('rv-description');
   if (product && product.description) {
     descEl.textContent = product.description;
