@@ -6310,7 +6310,9 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="image-resolver.js?v=1"></script>
-  <script src="admin.js?v=122"></script>
+  <!-- Inert unless the page is opened with ?demo=1 — see admin-demo.js -->
+  <script src="admin-demo.js?v=2"></script>
+  <script src="admin.js?v=123"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
