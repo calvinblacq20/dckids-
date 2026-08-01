@@ -9934,16 +9934,7 @@ body.dark-mode .mobile-bottom-nav,
   display: none;
   transition: opacity 0.5s ease, filter 0.5s ease;
 }
-body.is-authed #shader-bg-canvas {
-  display: block;
-}
-body.is-authed {
-  background-color: transparent !important;
-}
-body.is-authed .admin-main {
-  background: transparent !important;
-}
-body.dark-mode #shader-bg-canvas {
-  opacity: 0.25;
-  filter: saturate(0.8) brightness(0.35);
-}
+/* Shader background disabled — the dashboard uses a plain background
+   (var(--bg), already set on body/.admin-main below) instead. The canvas
+   element and its init function are left in place, unused, rather than
+   torn out, in case a future design revisits this. */

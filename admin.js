@@ -839,11 +839,8 @@ function showDashboard(role) {
     document.getElementById('dashboard-container').style.display = 'block';
     document.body.classList.add('is-authed');
     _startIdleTracking();
-    try {
-        if (typeof initShaderBackground === 'function') initShaderBackground();
-    } catch (e) {
-        console.error('Shader init failed', e);
-    }
+    // Shader background disabled — dashboard uses a plain background (see
+    // admin.css). initShaderBackground() is left defined but unused.
 
     var badge = document.getElementById('user-role-badge');
     if (badge) {
