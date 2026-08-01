@@ -9909,6 +9909,14 @@ body.dark-mode .mobile-bottom-nav,
 .admin-image-wrap { position: relative; display: inline-flex; flex: 0 0 auto; }
 .admin-image-wrap > img { width: 100%; height: 100%; object-fit: cover; }
 .admin-image-badge { position: absolute; left: 3px; bottom: 3px; z-index: 2; padding: 2px 5px; border-radius: 999px; background: rgba(15,76,58,.92); color: #fff; font-size: 8px; font-weight: 700; white-space: nowrap; }
+/* .admin-image-wrap > img (100%/100%) and .table-product img (48px) have equal
+   specificity, so whichever rule is declared later in this file wins — that
+   made every product-table thumbnail render at its raw upload size (e.g.
+   1024x1024) with no fixed-size wrapper to be a percentage of. Scoping the
+   wrapper itself to the table thumbnail size outranks both on specificity,
+   restoring the intended 48px thumbnail regardless of rule order. */
+.table-product .admin-image-wrap { width: 48px; height: 48px; }
+.table-product .admin-image-wrap > img { width: 48px; height: 48px; object-fit: cover; border-radius: var(--radius-sm); }
 .bulk-image-drop { border: 2px dashed #f7a9bd; border-radius: 14px; padding: 24px; background: #fff8fa; text-align: center; }
 .bulk-image-summary { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin: 14px 0; }
 .bulk-image-summary > div { padding: 10px; border: 1px solid var(--admin-border); border-radius: 10px; background: var(--admin-card); }
