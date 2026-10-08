@@ -340,6 +340,11 @@ async function run() {
         earlyAudit.some(entry => entry.entity_type === 'supplier'));
 
     // ---- deterministic SKU backfill preserves manual assignments ----
+    // Checkout now treats units held in pending/processing orders as reserved,
+    // so the suite needs headroom on the product it orders from repeatedly.
+    // The seed ships id 1 with stock 4; the run places ~31 units against it.
+    // Stock assertions below are relative (before/after), so a higher floor is safe.
+    await dbRun(`UPDATE products SET stock = 200 WHERE id = 1`);
     await dbRun(`UPDATE products SET sku = 'MANUAL-KEEP' WHERE id = 1`);
     await dbRun(`UPDATE products SET sku = NULL WHERE id = 2`);
     await new Promise(resolve => db.backfillMissingProductSkus(resolve));

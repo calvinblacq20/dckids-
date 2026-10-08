@@ -1426,6 +1426,13 @@ function getPriceModifier(sizeLabel) {
 app.post('/api/orders', optionalCustomer, (req, res) => {
     const { customer_name, customer_phone, customer_email, order_type, items, payment_method, delivery_area, delivery_address, notes } = req.body;
     const address = delivery_address && typeof delivery_address === 'object' ? delivery_address : {};
+
+    // Idempotency: the storefront sends a random key per checkout attempt. A
+    // retry (double-tap, dropped connection + resubmit) carrying a key we have
+    // already fulfilled returns that order instead of creating a second one.
+    // With Paystack attached, this is also what prevents a duplicate charge.
+    const idemKey = typeof req.body.idempotency_key === 'string' && /^[\w-]{8,64}$/.test(req.body.idempotency_key)
+        ? req.body.idempotency_key : null;
     const authoritativeEmail = req.customer && req.customer.email
         ? String(req.customer.email).trim().toLowerCase()
         : String(customer_email || '').trim().toLowerCase();
@@ -1462,8 +1469,17 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
     }
     if (notes && String(notes).length > 1000) return res.status(400).json({ error: 'Notes are too long (max 1000 characters)' });
     
+    // Replay of an already-created order? Answer with the original.
+    const replayExisting = (next) => {
+        if (!idemKey) return next();
+        db.get(`SELECT order_number, total_amount FROM orders WHERE idempotency_key = ?`, [idemKey], (e, row) => {
+            if (!e && row) return res.json({ success: true, order_number: row.order_number, total_amount: row.total_amount, replayed: true });
+            next();
+        });
+    };
+
     // 1. Fetch store settings for wholesale math
-    db.get(`SELECT * FROM store_settings WHERE id = 1`, (err, settings) => {
+    replayExisting(() => db.get(`SELECT * FROM store_settings WHERE id = 1`, (err, settings) => {
         if (err) return serverError(res, err);
         
         const moq = settings ? settings.wholesale_moq : 10;
@@ -1512,16 +1528,42 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                         return reject(e);
                     }
 
-                    total_amount += unitPrice * finalQty;
+                    const acceptItem = () => {
+                        total_amount += unitPrice * finalQty;
+                        processedItems.push({
+                            product_id: product.id,
+                            product_name: `${product.name} (${item.size || 'Standard'})`,
+                            quantity: finalQty,
+                            price_at_time: unitPrice
+                        });
+                        resolve();
+                    };
 
-                    processedItems.push({
-                        product_id: product.id,
-                        product_name: `${product.name} (${item.size || 'Standard'})`,
-                        quantity: finalQty,
-                        price_at_time: unitPrice
-                    });
+                    // Stock only decrements when an order turns 'paid', so units
+                    // sitting in earlier pending/processing orders are already
+                    // promised. Count them as reserved and refuse to promise the
+                    // same pieces twice. Pre-orders are sourced on demand, so they skip this.
+                    if (product.fulfillment_type === 'preorder') return acceptItem();
 
-                    resolve();
+                    db.get(
+                        `SELECT COALESCE(SUM(oi.quantity), 0) AS reserved
+                         FROM order_items oi
+                         JOIN orders o ON o.id = oi.order_id
+                         WHERE oi.product_id = ? AND o.status IN ('pending', 'processing')`,
+                        [product.id],
+                        (rerr, rrow) => {
+                            if (rerr) return reject(rerr);
+                            const available = (product.stock || 0) - ((rrow && rrow.reserved) || 0);
+                            if (finalQty > available) {
+                                const e = new Error(available > 0
+                                    ? `Only ${available} of "${product.name}" ${available === 1 ? 'is' : 'are'} still available (the rest are in pending orders). Reduce the quantity or message us on WhatsApp.`
+                                    : `"${product.name}" is out of stock right now. Message us on WhatsApp to be notified when it is back.`);
+                                e.status = 400;
+                                return reject(e);
+                            }
+                            acceptItem();
+                        }
+                    );
                 });
             });
         });
@@ -1539,12 +1581,22 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                 db.run(
                     `INSERT INTO orders (order_number, customer_name, customer_phone, customer_email, order_type, total_amount, status,
                         delivery_area, delivery_address_line1, delivery_address_line2, delivery_city, delivery_region, delivery_landmark,
-                        notes, customer_account_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        notes, customer_account_id, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [tempNumber, customer_name, customer_phone, authoritativeEmail || null, order_type, total_amount, initialStatus,
                         delivery_area || address.city || null, address.line1 || null, address.line2 || null, address.city || null,
-                        address.region || null, address.landmark || null, notes || null, req.customer ? req.customer.cid : null],
+                        address.region || null, address.landmark || null, notes || null, req.customer ? req.customer.cid : null, idemKey],
                     function(err) {
-                        if (err) return serverError(res, err);
+                        if (err) {
+                            // Two identical retries raced: the first won the unique
+                            // idempotency slot — hand back its order.
+                            if (idemKey && /UNIQUE/.test(String(err.message)) && /idempotency|idx_orders_idem/.test(String(err.message))) {
+                                return db.get(`SELECT order_number, total_amount FROM orders WHERE idempotency_key = ?`, [idemKey], (e2, row) => {
+                                    if (!e2 && row) return res.json({ success: true, order_number: row.order_number, total_amount: row.total_amount, replayed: true });
+                                    serverError(res, err);
+                                });
+                            }
+                            return serverError(res, err);
+                        }
 
                         const order_id = this.lastID;
                         const order_number = 'ORD-' + String(10000 + order_id);
@@ -1599,7 +1651,7 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                 if (err.status) return res.status(err.status).json({ error: err.message });
                 serverError(res, err);
             });
-    });
+    }));
 });
 
 function paymentError(message, status) {

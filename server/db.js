@@ -766,6 +766,15 @@ const db = new sqlite3.Database(dbPath, (err) => {
                         else console.log("Migration: added orders.notes");
                     });
                 }
+                // Idempotency: one key per checkout attempt. The UNIQUE index is
+                // what makes two racing retries resolve to a single order.
+                if (names.indexOf('idempotency_key') === -1) {
+                    db.run("ALTER TABLE orders ADD COLUMN idempotency_key TEXT", (er) => {
+                        if (er) console.error("Migration (idempotency_key) failed:", er.message);
+                        else console.log("Migration: added orders.idempotency_key");
+                    });
+                }
+                db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL");
             });
         });
 
