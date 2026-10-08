@@ -4152,52 +4152,82 @@
         </section>
 
         <section id="tab-suppliers" class="tab-view" role="tabpanel" aria-label="Supplier Management">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Supplier Management</h1>
-            <p class="page-subtitle">Manage your product suppliers</p>
+          <div class="adm-head">
+            <div class="adm-head__titles">
+              <h1 class="adm-title">Suppliers</h1>
+              <span class="adm-status"><i class="adm-dot"></i><span id="suppliers-status-line">Loading suppliers&hellip;</span></span>
+            </div>
+            <div class="adm-head__actions">
+              <button type="button" class="adm-cta" id="add-supplier-btn" onclick="openSupplierModal()">
+                <span>Add supplier</span><i aria-hidden="true">&rarr;</i>
+              </button>
+            </div>
           </div>
-          <button id="add-supplier-btn" class="btn btn-primary" type="button" onclick="openSupplierModal()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Supplier
-          </button>
-        </div>
 
-        <!-- Search -->
-        <div class="filter-bar">
-          <div class="filter-group">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="search" id="supp-search" class="filter-input" placeholder="Search suppliers…" aria-label="Search suppliers">
+          <form class="patd-search" onsubmit="return false;">
+            <div class="patd-field">
+              <label for="supp-search">Which supplier?</label>
+              <input type="search" id="supp-search" placeholder="Company, contact or what they supply" aria-label="Search suppliers">
+            </div>
+            <div class="patd-field">
+              <label for="supp-status-filter">Status</label>
+              <select id="supp-status-filter" aria-label="Filter suppliers by status">
+                <option value="">Any status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            <button type="button" class="adm-cta patd-search__go" onclick="renderSuppliersTable()">
+              <span>Search</span><i aria-hidden="true">&rarr;</i>
+            </button>
+          </form>
+
+          <div class="patd">
+            <aside class="patd-filters" aria-label="Supplier filters">
+              <div class="patd-filters__head"><span class="patd-filters__title">Filters</span></div>
+              <div class="patd-group">
+                <span class="patd-group__label">Contact details</span>
+                <select id="supp-contact-filter" class="patd-select" aria-label="Filter by contact details held">
+                  <option value="">Any</option>
+                  <option value="email">Has an email</option>
+                  <option value="phone">Has a phone number</option>
+                  <option value="missing">Missing contact details</option>
+                </select>
+              </div>
+              <div class="patd-group">
+                <span class="patd-group__label">Counts</span>
+                <div class="patd-counts" id="suppliers-filter-counts"></div>
+              </div>
+            </aside>
+
+            <div class="patd-results">
+              <div class="patd-results__head">
+                <h2 class="patd-count" id="suppliers-result-count">&mdash;</h2>
+                <label class="patd-sort">
+                  <span class="sr-only">Sort suppliers</span>
+                  <select id="suppliers-sort" class="adm-period">
+                    <option value="name">Sort: Company A&ndash;Z</option>
+                    <option value="status">Sort: Active first</option>
+                  </select>
+                </label>
+              </div>
+              <div class="res-list" id="suppliers-tbody" role="list"></div>
+              <div id="supp-pagination" class="pagination" aria-label="Suppliers pagination"></div>
+            </div>
+
+            <aside class="patd-rail" aria-label="Supplier summary">
+              <section class="adm-card">
+                <div class="adm-card-head"><h2>Missing details</h2></div>
+                <div class="adm-card-body">
+                  <div class="rail-list" id="suppliers-rail-list"></div>
+                  <p class="empty-line" id="suppliers-rail-empty" hidden>Every supplier has contact details.</p>
+                </div>
+              </section>
+            </aside>
           </div>
-        </div>
+        </section>
 
-        <!-- Suppliers Table -->
-        <div class="table-responsive">
-          <table class="admin-table data-table sticky-header" aria-label="Suppliers table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Contact</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Products Supplied</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="suppliers-tbody">
-              <tr>
-                <td colspan="7" class="empty-state">No suppliers found</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div id="supp-pagination" class="pagination" aria-label="Suppliers pagination"></div>
-      </section>
-
-      <!-- ==================== TAB: ANALYTICS ==================== -->
-      <section id="tab-analytics" class="tab-view analytics-dashboard" role="tabpanel" aria-label="Sales Analytics">
+        <section id="tab-analytics" class="tab-view analytics-dashboard" role="tabpanel" aria-label="Sales Analytics">
         <div class="analytics-shell">
           <div class="analytics-header">
             <div>
@@ -6111,7 +6141,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="image-resolver.js?v=1"></script>
   <script src="admin-recovery-view.js?v=1"></script>
-  <script src="admin.js?v=125"></script>
+  <script src="admin.js?v=126"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

@@ -3446,39 +3446,105 @@ function fetchSuppliers(callback) {
     });
 }
 
-function renderSuppliersTable() {
-    var tbody = document.getElementById('suppliers-tbody');
-    if (!tbody) return;
+function sortSuppliersList(list) {
+    var sel = document.getElementById('suppliers-sort');
+    var mode = sel ? sel.value : 'name';
+    var out = list.slice();
+    out.sort(function (a, b) {
+        if (mode === 'status') {
+            var sa = a.status === 'active' ? 0 : 1, sb = b.status === 'active' ? 0 : 1;
+            if (sa !== sb) return sa - sb;
+        }
+        return String(a.company || '').localeCompare(String(b.company || ''));
+    });
+    return out;
+}
 
-    var suppliers = getFilteredSuppliers();
+function supplierMissingDetails(s) {
+    return !String(s.email || '').trim() || !String(s.phone || '').trim();
+}
+
+function renderSuppliersRail(all) {
+    var list = document.getElementById('suppliers-rail-list');
+    var empty = document.getElementById('suppliers-rail-empty');
+    if (!list) return;
+    var gaps = all.filter(supplierMissingDetails).slice(0, 5);
+    if (!gaps.length) { list.innerHTML = ''; if (empty) empty.hidden = false; return; }
+    if (empty) empty.hidden = true;
+    list.innerHTML = gaps.map(function (s) {
+        var what = !String(s.email || '').trim()
+            ? (!String(s.phone || '').trim() ? 'No email or phone' : 'No email')
+            : 'No phone';
+        return '<button type="button" class="rail-row" onclick="openSupplierModal(\'' + s.id + '\')">' +
+            '<span class="rail-row__name">' + escapeHtml(s.company || 'Unnamed') + '</span>' +
+            '<span class="rail-row__meta">' + what + '</span>' +
+            '<span class="rail-row__val">Add</span>' +
+            '</button>';
+    }).join('');
+}
+
+function renderSuppliersTable() {
+    var host = document.getElementById('suppliers-tbody');
+    if (!host) return;
+
+    var all = normalizeSupplierList(getSuppliers() || []);
+    var suppliers = sortSuppliersList(getFilteredSuppliers());
     var totalItems = suppliers.length;
     var start = (suppCurrentPage - 1) * SUPP_PER_PAGE;
     var paged = suppliers.slice(start, start + SUPP_PER_PAGE);
 
-    tbody.innerHTML = '';
-    if (paged.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;padding:40px;">No suppliers found</td></tr>';
+    var countEl = document.getElementById('suppliers-result-count');
+    if (countEl) countEl.textContent = totalItems + (totalItems === 1 ? ' supplier' : ' suppliers');
+
+    var active = all.filter(function (s) { return s.status === 'active'; }).length;
+    var gaps = all.filter(supplierMissingDetails).length;
+    var statusLine = document.getElementById('suppliers-status-line');
+    if (statusLine) statusLine.textContent = all.length + ' total \u00b7 ' + active + ' active \u00b7 ' + gaps + ' missing contact details';
+
+    var counts = document.getElementById('suppliers-filter-counts');
+    if (counts) {
+        counts.innerHTML =
+            '<div class="patd-count-row"><span>Active</span><b>' + active + '</b></div>' +
+            '<div class="patd-count-row"><span>Inactive</span><b>' + (all.length - active) + '</b></div>' +
+            '<div class="patd-count-row"><span>Missing details</span><b>' + gaps + '</b></div>';
+    }
+
+    renderSuppliersRail(all);
+
+    if (!paged.length) {
+        host.innerHTML = '<p class="empty-line">No suppliers match these filters.</p>';
     } else {
-        paged.forEach(function(s) {
-            s = normalizeSupplierRecord(s);
-            var tr = document.createElement('tr');
-            tr.setAttribute('data-supplier-id', s.id);
-            tr.classList.add('tappable-row');
-            tr.addEventListener('click', function(e) {
-                if (window.innerWidth > 1024) return;
-                if (e.target.closest('button, a, input, .table-actions')) return;
-                openSupplierDetail(s.id);
+        host.innerHTML = paged.map(function (raw) {
+            var s = normalizeSupplierRecord(raw);
+            var missing = supplierMissingDetails(s);
+            return '<article class="res-card" role="listitem" data-supplier-id="' + escapeHtml(String(s.id)) + '">' +
+                '<div class="res-card__main">' +
+                  '<span class="avatar-sq" aria-hidden="true">' + escapeHtml(customerInitials(s.company)) + '</span>' +
+                  '<div class="res-card__body">' +
+                    '<h3 class="res-card__title">' + escapeHtml(s.company || 'Unnamed supplier') + '</h3>' +
+                    '<p class="res-card__sub">' + escapeHtml(s.contact || 'No named contact') +
+                      (s.phone ? ' \u00b7 ' + escapeHtml(s.phone) : '') + '</p>' +
+                    '<div class="res-card__meta">' +
+                      '<span class="badge ' + (s.status === 'active' ? 'is-good' : '') + '">' + escapeHtml(s.status || 'active') + '</span>' +
+                      (missing ? '<span class="badge is-wait">Missing details</span>' : '') +
+                      (s.email ? '<span class="res-card__type">' + escapeHtml(s.email) + '</span>' : '') +
+                    '</div>' +
+                    (s.products ? '<p class="res-card__snip">Supplies: ' + escapeHtml(s.products) + '</p>' : '') +
+                  '</div>' +
+                '</div>' +
+                '<div class="res-card__foot">' +
+                  '<span class="res-card__date">' + (s.products ? escapeHtml(String(s.products).split(',').length) + ' product lines' : 'No product lines recorded') + '</span>' +
+                  '<button type="button" class="quick-action" onclick="event.stopPropagation(); openSupplierModal(\'' + s.id + '\')">' +
+                    (missing ? 'Add details' : 'Edit supplier') + ' \u2192</button>' +
+                '</div>' +
+              '</article>';
+        }).join('');
+
+        [].forEach.call(host.querySelectorAll('.res-card'), function (card) {
+            card.addEventListener('click', function (e) {
+                if (e.target.closest('button, a')) return;
+                openSupplierDetail(card.getAttribute('data-supplier-id'));
             });
-            tr.innerHTML = '<td class="table-card-header" data-label="Company" style="font-weight:600;">' + escapeHtml(s.company) + '</td>' +
-                '<td data-label="Contact">' + escapeHtml(s.contact) + '</td>' +
-                '<td data-label="Email" style="color:#888;">' + escapeHtml(s.email) + '</td>' +
-                '<td data-label="Phone">' + escapeHtml(s.phone) + '</td>' +
-                '<td data-label="Products">' + escapeHtml(s.products) + '</td>' +
-                '<td data-label="Status"><span class="supplier-status-pill ' + (s.status === 'active' ? 'is-active' : 'is-inactive') + '">' + escapeHtml(s.status) + '</span></td>' +
-                '<td data-label="Actions"><div class="table-actions">' +
-                    '<button class="action-icon edit-icon" title="Edit" onclick="openSupplierModal(\'' + s.id + '\')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>' +
-                '</div></td>';
-            tbody.appendChild(tr);
         });
     }
 
@@ -3487,6 +3553,14 @@ function renderSuppliersTable() {
         renderSuppliersTable();
     });
 }
+
+document.addEventListener('change', function (e) {
+    if (!e.target) return;
+    if (['suppliers-sort', 'supp-status-filter', 'supp-contact-filter'].indexOf(e.target.id) >= 0) {
+        suppCurrentPage = 1;
+        renderSuppliersTable();
+    }
+});
 
 /* ============================================================
    SUPPLIER DETAIL (mobile master→detail). Read-only sheet.
@@ -3530,7 +3604,20 @@ function getFilteredSuppliers() {
     var searchEl = document.getElementById('supp-search');
     var query = searchEl ? searchEl.value.toLowerCase() : '';
     return normalizeSupplierList(getSuppliers()).filter(function(s) {
-        return !query || s.company.toLowerCase().indexOf(query) >= 0 || s.contact.toLowerCase().indexOf(query) >= 0 || s.products.toLowerCase().indexOf(query) >= 0;
+        var matchesSearch = !query || s.company.toLowerCase().indexOf(query) >= 0 || s.contact.toLowerCase().indexOf(query) >= 0 || s.products.toLowerCase().indexOf(query) >= 0;
+
+        var stEl = document.getElementById('supp-status-filter');
+        var st = stEl ? stEl.value : '';
+        var matchesStatus = !st || String(s.status || 'active') === st;
+
+        var cEl = document.getElementById('supp-contact-filter');
+        var c = cEl ? cEl.value : '';
+        var hasEmail = !!String(s.email || '').trim();
+        var hasPhone = !!String(s.phone || '').trim();
+        var matchesContact = !c
+            || (c === 'email' ? hasEmail : c === 'phone' ? hasPhone : !(hasEmail && hasPhone));
+
+        return matchesSearch && matchesStatus && matchesContact;
     });
 }
 
