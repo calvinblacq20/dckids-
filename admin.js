@@ -590,6 +590,7 @@ function showDashboard(role) {
     document.getElementById('login-container').style.display = 'none';
     document.getElementById('dashboard-container').style.display = 'block';
     document.body.classList.add('is-authed');
+    _startIdleTracking();
 
     var badge = document.getElementById('user-role-badge');
     if (badge) {
@@ -622,11 +623,38 @@ function showDashboard(role) {
     if (typeof refreshAccessRequestsBadge === 'function') refreshAccessRequestsBadge();
 }
 
+// Idle session timeout.
+// Tokens live 12h and are re-checked on every request, but a dashboard left
+// open on the shop counter should not stay signed in. Any interaction resets
+// the clock, and the timer only runs while signed in.
+var _IDLE_MS = 30 * 60 * 1000;
+var _idleTimer = null;
+function _resetIdleTimer() {
+    if (!document.body.classList.contains('is-authed')) return;
+    if (_idleTimer) clearTimeout(_idleTimer);
+    _idleTimer = setTimeout(function () {
+        if (typeof showToast === 'function') showToast('Signed out after 30 minutes of inactivity.', 'warning');
+        logout();
+    }, _IDLE_MS);
+}
+var _idleTracked = false;
+function _startIdleTracking() {
+    if (!_idleTracked) {
+        ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'].forEach(function (ev) {
+            document.addEventListener(ev, _resetIdleTimer, { passive: true });
+        });
+        _idleTracked = true;
+    }
+    _resetIdleTimer();
+}
+function _stopIdleTimer() { if (_idleTimer) { clearTimeout(_idleTimer); _idleTimer = null; } }
+
 function logout() {
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminRole');
     currentRole = '';
     document.body.classList.remove('is-authed');
+    _stopIdleTimer();
     document.getElementById('dashboard-container').style.display = 'none';
     document.getElementById('login-container').style.display = 'flex';
 }
