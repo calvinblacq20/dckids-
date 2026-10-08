@@ -3163,36 +3163,105 @@ function loadCustomers() {
 }
 
 
-function renderCustomersTable() {
-    var tbody = document.getElementById('customers-tbody');
-    if (!tbody) return;
+function sortCustomersList(list) {
+    var sel = document.getElementById('customers-sort');
+    var mode = sel ? sel.value : 'spend';
+    var out = list.slice();
+    out.sort(function (a, b) {
+        if (mode === 'orders') return Number(b.orderCount || 0) - Number(a.orderCount || 0);
+        if (mode === 'name') return String(a.name || '').localeCompare(String(b.name || ''));
+        return Number(b.totalSpent || 0) - Number(a.totalSpent || 0);
+    });
+    return out;
+}
 
-    var customers = getFilteredCustomers();
+function renderCustomersRail(all) {
+    var list = document.getElementById('customers-rail-list');
+    var empty = document.getElementById('customers-rail-empty');
+    if (!list) return;
+    var top = all.filter(function (c) { return Number(c.totalSpent || 0) > 0; })
+        .sort(function (a, b) { return Number(b.totalSpent || 0) - Number(a.totalSpent || 0); })
+        .slice(0, 5);
+    if (!top.length) { list.innerHTML = ''; if (empty) empty.hidden = false; return; }
+    if (empty) empty.hidden = true;
+    list.innerHTML = top.map(function (c) {
+        return '<button type="button" class="rail-row" onclick="openCustomerDetail(\'' + c.id + '\')">' +
+            '<span class="rail-row__name">' + escapeHtml(c.name || 'Unnamed') + '</span>' +
+            '<span class="rail-row__meta">' + (c.orderCount || 0) + (Number(c.orderCount) === 1 ? ' order' : ' orders') + '</span>' +
+            '<span class="rail-row__val">GHS ' + formatNumber(c.totalSpent || 0) + '</span>' +
+            '</button>';
+    }).join('');
+}
+
+// Initials stand in for a photo, as the reference Avatar does.
+function customerInitials(name) {
+    var parts = String(name || '?').trim().split(/\s+/).slice(0, 2);
+    return parts.map(function (x) { return x.charAt(0).toUpperCase(); }).join('') || '?';
+}
+
+function renderCustomersTable() {
+    var host = document.getElementById('customers-tbody');
+    if (!host) return;
+
+    var all = getCustomers() || [];
+    var customers = sortCustomersList(getFilteredCustomers());
     var totalItems = customers.length;
     var start = (custCurrentPage - 1) * CUST_PER_PAGE;
     var paged = customers.slice(start, start + CUST_PER_PAGE);
 
-    tbody.innerHTML = '';
-    if (paged.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;padding:40px;">No customers found</td></tr>';
+    var countEl = document.getElementById('customers-result-count');
+    if (countEl) countEl.textContent = totalItems + (totalItems === 1 ? ' customer' : ' customers');
+
+    var withAccount = all.filter(function (c) { return c.registered; }).length;
+    var ordered = all.filter(function (c) { return Number(c.orderCount || 0) > 0; }).length;
+    var statusLine = document.getElementById('customers-status-line');
+    if (statusLine) statusLine.textContent = all.length + ' total \u00b7 ' + ordered + ' have ordered \u00b7 ' + withAccount + ' with an account';
+
+    var counts = document.getElementById('customers-filter-counts');
+    if (counts) {
+        counts.innerHTML =
+            '<div class="patd-count-row"><span>Has an account</span><b>' + withAccount + '</b></div>' +
+            '<div class="patd-count-row"><span>Has ordered</span><b>' + ordered + '</b></div>' +
+            '<div class="patd-count-row"><span>Never ordered</span><b>' + (all.length - ordered) + '</b></div>';
+    }
+
+    renderCustomersRail(all);
+
+    if (!paged.length) {
+        host.innerHTML = '<p class="empty-line">No customers match these filters.</p>';
     } else {
-        paged.forEach(function(c) {
-            var tr = document.createElement('tr');
-            tr.style.cursor = 'pointer';
-            tr.classList.add('tappable-row');
-            tr.setAttribute('data-customer-id', c.id);
-            tr.innerHTML = '<td class="table-card-header" data-label="Name" style="font-weight:600;">' + escapeHtml(c.name) + '</td>' +
-                '<td data-label="Phone">' + escapeHtml(c.phone) + '</td>' +
-                '<td data-label="Orders" style="text-align:center;">' + (c.orderCount || 0) + '</td>' +
-                '<td data-label="Total Spent" style="font-weight:600;">GHS ' + formatNumber(c.totalSpent || 0) + '</td>' +
-                '<td data-label="Status"><span class="status-pill ' + (c.status === 'active' ? 'active' : 'inactive') + '">' + escapeHtml(c.status) + '</span>' +
-                    (c.registered ? '<span class="customer-account-mark" title="Firebase customer account">Account</span>' : '') + '</td>' +
-                '<td data-label="Actions"><div class="table-actions">' +
-                    '<button class="action-icon view-icon" title="View details" onclick="event.stopPropagation(); openCustomerDetail(\'' + c.id + '\')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>' +
-                    '<button class="action-icon edit-icon" title="Edit" onclick="event.stopPropagation(); openCustomerModal(\'' + c.id + '\')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>' +
-                '</div></td>';
-            tr.addEventListener('click', function() { openCustomerDetail(c.id); });
-            tbody.appendChild(tr);
+        host.innerHTML = paged.map(function (c) {
+            var spent = Number(c.totalSpent || 0);
+            var orders = Number(c.orderCount || 0);
+            return '<article class="res-card" role="listitem" data-customer-id="' + escapeHtml(String(c.id)) + '">' +
+                '<div class="res-card__main">' +
+                  '<span class="avatar-sq" aria-hidden="true">' + escapeHtml(customerInitials(c.name)) + '</span>' +
+                  '<div class="res-card__body">' +
+                    '<h3 class="res-card__title">' + escapeHtml(c.name || 'Unnamed') + '</h3>' +
+                    '<p class="res-card__sub">' + escapeHtml(c.phone || 'No phone on file') + '</p>' +
+                    '<div class="res-card__meta">' +
+                      '<span class="badge ' + (c.status === 'active' ? 'is-good' : '') + '">' + escapeHtml(c.status || 'active') + '</span>' +
+                      (c.registered ? '<span class="pill-tag">Account</span>' : '') +
+                      '<span class="pill-tag">GHS ' + formatNumber(spent) + '</span>' +
+                      '<span class="res-card__type">' + orders + (orders === 1 ? ' order' : ' orders') + '</span>' +
+                    '</div>' +
+                  '</div>' +
+                  '<button type="button" class="res-card__more" title="Edit" onclick="event.stopPropagation(); openCustomerModal(\'' + c.id + '\')" aria-label="Edit customer">' +
+                    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+                  '</button>' +
+                '</div>' +
+                '<div class="res-card__foot">' +
+                  '<span class="res-card__date">' + (orders ? 'Last order GHS ' + formatNumber(spent / Math.max(orders, 1)) + ' average' : 'No orders yet') + '</span>' +
+                  '<button type="button" class="quick-action" onclick="event.stopPropagation(); openCustomerDetail(\'' + c.id + '\')">View customer \u2192</button>' +
+                '</div>' +
+              '</article>';
+        }).join('');
+
+        [].forEach.call(host.querySelectorAll('.res-card'), function (card) {
+            card.addEventListener('click', function (e) {
+                if (e.target.closest('button, a')) return;
+                openCustomerDetail(card.getAttribute('data-customer-id'));
+            });
         });
     }
 
@@ -3202,6 +3271,14 @@ function renderCustomersTable() {
     });
 }
 
+document.addEventListener('change', function (e) {
+    if (!e.target) return;
+    if (['customers-sort', 'cust-account-filter', 'cust-spend-filter'].indexOf(e.target.id) >= 0) {
+        custCurrentPage = 1;
+        renderCustomersTable();
+    }
+});
+
 function getFilteredCustomers() {
     var searchEl = document.getElementById('cust-search');
     var groupEl = document.getElementById('cust-group-filter');
@@ -3210,7 +3287,16 @@ function getFilteredCustomers() {
     return getCustomers().filter(function(c) {
         var matchesSearch = !query || c.name.toLowerCase().indexOf(query) >= 0 || (c.phone && c.phone.indexOf(query) >= 0);
         var matchesGroup = !group || (c.group || c.type || 'Retail') === group;
-        return matchesSearch && matchesGroup;
+
+        var accEl = document.getElementById('cust-account-filter');
+        var acc = accEl ? accEl.value : '';
+        var matchesAccount = !acc || (acc === 'registered' ? !!c.registered : !c.registered);
+
+        var spendEl = document.getElementById('cust-spend-filter');
+        var spend = spendEl ? spendEl.value : '';
+        var matchesSpend = !spend || (spend === 'has' ? Number(c.orderCount || 0) > 0 : Number(c.orderCount || 0) === 0);
+
+        return matchesSearch && matchesGroup && matchesAccount && matchesSpend;
     });
 }
 
