@@ -35,6 +35,14 @@ process.on('unhandledRejection', (reason) => {
 const IS_PROD = process.env.NODE_ENV === 'production';
 // Comma-separated allowed origins for production, e.g. "https://dckidsbrand.com,https://www.dckidsbrand.com"
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+// Stock leaves the shelf only when an order reaches 'paid'. Until then these
+// statuses still hold units for a customer, so an order in any of them counts
+// as reserved and must not be promised to anyone else. 'payment_failed' and
+// 'cancelled' release their hold; everything from 'paid' onward has already
+// decremented stock.
+const STOCK_HOLDING_STATUSES = ['pending', 'pending_deposit', 'awaiting_payment', 'payment_review', 'processing'];
+const STOCK_HOLDING_PLACEHOLDERS = STOCK_HOLDING_STATUSES.map(() => '?').join(', ');
+
 const DEFAULT_STORE_BANNER = 'China Pre-Orders are open! Message us on WhatsApp for the current closing date.';
 const LEGACY_STORE_BANNER = "China Pre-Order Window OPEN! Orders close May 18th — Don't miss out!";
 
@@ -1549,8 +1557,8 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                         `SELECT COALESCE(SUM(oi.quantity), 0) AS reserved
                          FROM order_items oi
                          JOIN orders o ON o.id = oi.order_id
-                         WHERE oi.product_id = ? AND o.status IN ('pending', 'processing')`,
-                        [product.id],
+                         WHERE oi.product_id = ? AND o.status IN (${STOCK_HOLDING_PLACEHOLDERS})`,
+                        [product.id, ...STOCK_HOLDING_STATUSES],
                         (rerr, rrow) => {
                             if (rerr) return reject(rerr);
                             const available = (product.stock || 0) - ((rrow && rrow.reserved) || 0);
@@ -1723,6 +1731,26 @@ async function pricePaystackCheckout(checkout) {
         unitPrice = Math.round(unitPrice * 100) / 100;
         const quantity = Number(item.quantity);
         if (checkout.isWholesale && quantity < minimumOrder) throw paymentError(`Wholesale orders need at least ${minimumOrder} pieces per item`);
+
+        // The card path priced an order without ever checking stock, so it could
+        // take payment for pieces already promised to earlier orders. Refusing
+        // here is cheaper than refunding later. Pre-orders are sourced on demand.
+        if (product.fulfillment_type !== 'preorder') {
+            const held = await dbGetAsync(
+                `SELECT COALESCE(SUM(oi.quantity), 0) AS reserved
+                   FROM order_items oi
+                   JOIN orders o ON o.id = oi.order_id
+                  WHERE oi.product_id = ? AND o.status IN (${STOCK_HOLDING_PLACEHOLDERS})`,
+                [product.id, ...STOCK_HOLDING_STATUSES]
+            );
+            const available = Number(product.stock || 0) - Number((held && held.reserved) || 0);
+            if (quantity > available) {
+                throw paymentError(available > 0
+                    ? `Only ${available} of "${product.name}" ${available === 1 ? 'is' : 'are'} still available. Reduce the quantity and try again.`
+                    : `"${product.name}" is out of stock right now.`);
+            }
+        }
+
         return {
             product_id: product.id,
             product_name: `${product.name} (${item.size || 'Standard'})`,
