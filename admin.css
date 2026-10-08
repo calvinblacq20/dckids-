@@ -10608,3 +10608,203 @@ table td, table th { border-color: var(--ink-06); }
   #tab-dashboard .dashboard-charts-grid { margin-top: 12px; gap: 12px; }
   #tab-dashboard .dashboard-charts-grid > .chart-card { padding: 16px !important; border-radius: 8px; }
 }
+
+
+/* ============================================================
+   REFERENCE SHELL — Franz Qlodin / Royal Hair / Aromatic Laundry
+   Those three share one admin system and change a single accent each:
+   lime #d9ff5c, gold #e0c5b6, aqua #7ad7f0. All are LIGHT tints carrying
+   ink text, on a cool grey ground with a white sidebar. DC Kids takes the
+   same system with a light pink drawn from its own #fc4c7a.
+   Appended last so it wins over the earlier dashboard layers.
+   ============================================================ */
+:root {
+  --ground:        #ebeff5;
+  --surface:       #ffffff;
+  --bg:            #ebeff5;
+  --card-bg:       #ffffff;
+  --sidebar-bg:    #ffffff;
+
+  --ink:           #242426;
+  --ink-75:        rgba(36, 36, 38, 0.75);
+  --ink-50:        rgba(36, 36, 38, 0.5);
+  --ink-25:        rgba(36, 36, 38, 0.25);
+  --ink-12:        rgba(36, 36, 38, 0.12);
+  --ink-06:        rgba(36, 36, 38, 0.06);
+  --text-primary:  #242426;
+  --text-secondary: rgba(36, 36, 38, 0.75);
+  --border:        rgba(36, 36, 38, 0.06);
+
+  /* The one accent. Light, so ink reads on it, exactly as lime/gold/aqua do. */
+  --accent:        #ffc4d7;
+  --accent-strong: #fc4c7a;
+  --sidebar-active: #ffc4d7;
+
+  --sidebar-width: 248px;
+  --glass:         rgba(255, 255, 255, 0.8);
+}
+
+body, .dashboard-container { background: var(--ground); }
+
+/* ---------- Sidebar: white surface on the ground, hairline edge ---------- */
+.admin-sidebar {
+  background: var(--surface);
+  border-right: 0;
+  box-shadow: 1px 0 0 var(--ink-06);
+  padding: 14px 12px;
+}
+.admin-sidebar .sidebar-brand { padding: 4px 4px 10px !important; justify-content: flex-start !important; }
+.admin-sidebar .sidebar-brand img { max-height: 40px !important; }
+
+.sidebar-nav-list { display: flex; flex-direction: column; gap: 2px; list-style: none; margin: 0; padding: 0; }
+
+/* Nav item: 40px pill, icon + label, ink-75 until active. */
+.admin-sidebar .sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--radius-full);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink-75);
+  background: transparent;
+  border: 0;
+  transition: color .2s, background-color .2s;
+}
+.admin-sidebar .sidebar-link svg { flex: none; width: 20px; height: 20px; stroke-width: 1.8; }
+.admin-sidebar .sidebar-link:hover { color: var(--ink); background: var(--ground); }
+
+/* Selected state is a fill, never a ring or a left bar. */
+.admin-sidebar .sidebar-link.active,
+.admin-sidebar .sidebar-link[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 500;
+  background: var(--accent);
+}
+.admin-sidebar .sidebar-link.active::before,
+.admin-sidebar .sidebar-link.active::after { display: none !important; }
+
+/* Counts sit right, and only when something needs action. */
+.admin-sidebar .sidebar-link .badge,
+.admin-sidebar .sidebar-link .chip-count,
+.admin-sidebar .sidebar-link .nav-count { margin-left: auto; }
+
+/* Group labels: the only uppercase in the system, set in mono. */
+.sidebar-nav-list > li.nav-group-label,
+.sidebar-group-label, .nav-section-title {
+  padding: 16px 12px 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-75);
+}
+
+.admin-sidebar .sidebar-footer,
+.admin-sidebar .sidebar-logout { margin-top: auto; padding-top: 12px; color: var(--ink-75); }
+
+/* ---------- Top bar: transparent until scrolled, then glass ---------- */
+.admin-header, .dashboard-header {
+  background: transparent;
+  border-bottom: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.admin-header.is-solid, .dashboard-header.is-solid {
+  background: var(--glass);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 0 var(--ink-06);
+}
+
+/* Search is a pill on the ground, not a bordered box. */
+.admin-header input[type="search"], .admin-header .search-input,
+.global-search input, .header-search input {
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--ground);
+  border: 0;
+  color: var(--ink);
+}
+
+/* ---------- Cards: flat white, hairline, tight radius ---------- */
+.card, .stat-card, .panel, .dashboard-card, .content-card,
+.table-card, .section-card, .chart-card {
+  background: var(--surface);
+  border: 1px solid var(--ink-06);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+
+/* The one dark card per screen: ink ground, accent action. */
+.dash-hero, .alert-card, .dashboard-recovery-alert {
+  background: var(--ink);
+  border: 0;
+  color: #fff;
+  border-radius: var(--radius-lg);
+}
+.dash-hero *, .alert-card * { color: inherit; }
+.dash-hero .btn, .alert-card .btn,
+.dash-hero button, .alert-card button {
+  background: var(--accent);
+  color: var(--ink);
+  border: 0;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+}
+
+/* ---------- Mobile tab bar: floating white pill, accent on active ---------- */
+.mobile-bottom-nav {
+  background: var(--surface);
+  border: 0;
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+}
+.mobile-bottom-nav__btn.is-active,
+.mobile-bottom-nav__btn.active { color: var(--ink); }
+.mobile-bottom-nav__btn.is-active svg,
+.mobile-bottom-nav__btn.active svg { color: var(--ink); }
+
+/* ---------- Icon rail between 810 and 1199, as the reference does ---------- */
+@media (min-width: 810px) and (max-width: 1199.98px) {
+  .dashboard-container { grid-template-columns: 76px minmax(0, 1fr); }
+  .admin-sidebar { width: 76px; align-items: center; padding-inline: 10px; }
+  .admin-sidebar .sidebar-link { width: 48px; height: 44px; padding: 0; justify-content: center; border-radius: var(--radius-md); }
+  .admin-sidebar .sidebar-link span,
+  .admin-sidebar .sidebar-brand span { display: none; }
+}
+
+/* The earlier layers set the hero with an ID selector (#tab-dashboard
+   .dash-hero), which outranks a class. Match that specificity so the one dark
+   card per screen reads as ink, the way the reference alert card does. */
+#tab-dashboard .dash-hero,
+#dashboard-container .dash-hero {
+  background: var(--ink);
+  background-image: none;
+  border: 0;
+  color: #fff;
+}
+#tab-dashboard .dash-hero .dash-hero__snap { background: rgba(255,255,255,0.08); }
+#tab-dashboard .dash-hero .dash-hero__snap-div { background: rgba(255,255,255,0.14); }
+#tab-dashboard .dash-hero__title,
+#tab-dashboard .dash-hero__lede,
+#tab-dashboard .dash-hero__eyebrow { color: #fff; }
+#tab-dashboard .dash-hero__lede,
+#tab-dashboard .dash-hero__eyebrow { color: var(--white-75); }
+
+/* KPI cards: flat, label-first, number large and tabular — the reference
+   KPI tab shape rather than an icon badge card. */
+#tab-dashboard .stat-card { padding: 16px 18px; }
+#tab-dashboard .stat-card .stat-label { font-size: 12px; color: var(--ink-75); }
+#tab-dashboard .stat-card .stat-value {
+  font-size: 30px; font-weight: 500; letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+}
+#tab-dashboard .stat-card .stat-icon,
+#tab-dashboard .stat-card [class*="icon"] {
+  background: var(--ground) !important;
+  color: var(--ink-75) !important;
+  box-shadow: none !important;
+}
+#tab-dashboard .stat-card::before { display: none !important; }
