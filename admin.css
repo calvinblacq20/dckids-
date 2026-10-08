@@ -11088,3 +11088,78 @@ body, .dashboard-container { background: var(--ground); }
   border-radius: var(--r-img); background: var(--ground);
   color: var(--ink-75); font-size: 13px; font-weight: 500; letter-spacing: .02em;
 }
+
+/* ============================================================
+   WHOLE-ADMIN PARITY
+   Everything below applies the reference system to the tabs that were not
+   rebuilt screen by screen, so all eleven read as one admin rather than two.
+   ============================================================ */
+
+/* Analytics keeps its own header markup because the period tabs and the date
+   picker are wired to it; it is styled to match adm-head instead. */
+.analytics-header { align-items: flex-end; gap: 16px; }
+.analytics-title { font-size: 32px; line-height: 1.1; font-weight: 500; letter-spacing: -.02em; color: var(--ink); margin: 0; }
+.analytics-subtitle { font-size: 13px; color: var(--ink-75); margin: 4px 0 0; }
+.analytics-tabs { display: inline-flex; gap: 4px; margin-top: 12px; background: var(--ground); padding: 3px; border-radius: var(--radius-full); }
+.analytics-tab { height: 32px; padding: 0 14px; border: 0; border-radius: var(--radius-full); background: none; color: var(--ink-75); font-size: 13px; font-family: inherit; cursor: pointer; }
+.analytics-tab.active { background: var(--surface); color: var(--ink); font-weight: 500; }
+.analytics-date-btn, .analytics-export-btn {
+  height: 40px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid var(--ink-12); border-radius: var(--radius-full);
+  background: var(--surface); color: var(--ink); font-size: 13px; font-family: inherit; cursor: pointer;
+}
+.analytics-date-btn:hover, .analytics-export-btn:hover { background: var(--ground); }
+
+/* An empty page-header left in the dashboard markup reserves space for nothing. */
+#tab-dashboard > .page-header:empty { display: none; }
+
+/* Every remaining surface takes the card and table treatment, so Reviews,
+   Manage Staff, Reports, Settings and Inventory stop looking like the old UI. */
+#tab-inventory .card, #tab-reviews .card, #tab-admins .card,
+#tab-reports .card, #tab-settings .card, #tab-analytics .card,
+#tab-inventory .chart-card, #tab-reports .chart-card, #tab-analytics .chart-card,
+#tab-settings .settings-card, #tab-admins .admin-card, #tab-reviews .review-card {
+  background: var(--surface);
+  border: 1px solid var(--ink-06);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+
+#tab-reviews table, #tab-admins table, #tab-reports table, #tab-analytics table { width: 100%; border-collapse: collapse; }
+#tab-reviews thead th, #tab-admins thead th, #tab-reports thead th, #tab-analytics thead th {
+  font-size: 12px; font-weight: 500; color: var(--ink-75);
+  text-transform: none; letter-spacing: 0;
+  border-bottom: 1px solid var(--ink-06); background: var(--surface);
+}
+#tab-reviews tbody td, #tab-admins tbody td, #tab-reports tbody td, #tab-analytics tbody td { border-bottom: 1px solid var(--ink-06); }
+#tab-reviews tbody tr:hover, #tab-admins tbody tr:hover, #tab-reports tbody tr:hover { background: var(--ground); }
+
+/* Buttons across the admin take the reference shapes. */
+.btn, .btn-primary, .btn-outline, .btn-secondary { border-radius: var(--radius-full); font-family: inherit; }
+.btn-primary { background: var(--ink); color: #fff; border: 0; }
+.btn-primary:hover { background: var(--charcoal); }
+.btn-outline, .btn-secondary { background: var(--surface); border: 1px solid var(--ink-12); color: var(--ink); }
+.btn-outline:hover, .btn-secondary:hover { background: var(--ground); }
+
+/* Inputs and selects everywhere: ground fill, no heavy borders. */
+.filter-input, .filter-select, .form-input, .form-select, .form-textarea,
+input[type="text"], input[type="email"], input[type="number"], input[type="search"], select, textarea {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--ink-12);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+}
+.filter-bar { background: var(--surface); border: 1px solid var(--ink-06); border-radius: var(--radius-lg); box-shadow: none; }
+
+/* Status pills inherit the badge vocabulary rather than their own colours. */
+.status-pill, .supplier-status-pill {
+  height: 22px; padding: 0 10px; border-radius: var(--radius-full);
+  font-size: 12px; font-weight: 500; background: var(--ground); color: var(--ink);
+}
+.status-pill.active, .supplier-status-pill.is-active, .status-pill.paid, .status-pill.delivered, .status-pill.completed { background: var(--accent); }
+.status-pill.pending, .status-pill.processing, .status-pill.awaiting_payment { background: var(--sand); }
+.status-pill.cancelled { background: var(--danger-light); color: var(--danger); }
+
+/* Modals follow the same shapes. */
+.modal-content, .modal-box, .modal-panel { border-radius: var(--radius-lg); border: 1px solid var(--ink-06); }

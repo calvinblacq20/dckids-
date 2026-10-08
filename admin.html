@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=124">
+  <link rel="stylesheet" href="admin.css?v=125">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -962,12 +962,14 @@
 
       <!-- ==================== TAB: INVENTORY ==================== -->
       <section id="tab-inventory" class="tab-view" role="tabpanel" aria-label="Inventory Management">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Inventory Management</h1>
-            <p class="page-subtitle">Track and manage stock levels</p>
+        <div class="adm-head">
+            <div class="adm-head__titles">
+              <h1 class="adm-title">Inventory</h1>
+              <span class="adm-status"><i class="adm-dot"></i><span id="inventory-status-line">&nbsp;</span></span>
+            </div>
+            <div class="adm-head__actions">
+            </div>
           </div>
-        </div>
 
         <!-- Filter Bar -->
         <div class="filter-bar">
@@ -4152,12 +4154,14 @@
         </section>
 
         <section id="tab-reviews" class="tab-view" role="tabpanel" aria-label="Customer Reviews" style="display: none;">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Customer Reviews</h1>
-            <p class="page-subtitle">View and moderate reviews left on your products</p>
+        <div class="adm-head">
+            <div class="adm-head__titles">
+              <h1 class="adm-title">Reviews</h1>
+              <span class="adm-status"><i class="adm-dot"></i><span id="reviews-status-line">&nbsp;</span></span>
+            </div>
+            <div class="adm-head__actions">
+            </div>
           </div>
-        </div>
 
         <!-- Review Stats -->
         <div class="stats-grid stats-grid-3">
@@ -4215,16 +4219,15 @@
 
       <!-- ==================== TAB: STAFF / ADMINS ==================== -->
       <section id="tab-admins" class="tab-view" role="tabpanel" aria-label="Staff Management" style="display: none;">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Staff Management</h1>
-            <p class="page-subtitle">Add, modify, or remove staff and administrator access credentials</p>
+        <div class="adm-head">
+            <div class="adm-head__titles">
+              <h1 class="adm-title">Manage staff</h1>
+              <span class="adm-status"><i class="adm-dot"></i><span id="admins-status-line">&nbsp;</span></span>
+            </div>
+            <div class="adm-head__actions">
+              <button type="button" class="adm-ghost" onclick="openAddStaffModal()">Add Staff Member</button>
+            </div>
           </div>
-          <button id="add-staff-btn" class="btn btn-primary" type="button" onclick="openAddStaffModal()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-            Add Staff Member
-          </button>
-        </div>
 
         <!-- Pending access requests (sign-ups awaiting the owner's decision) -->
         <div id="access-requests-panel" style="display:none; margin-bottom:24px; background:#fff6f8; border:1px solid #f6c6d1; border-radius:16px; padding:18px 20px;">
@@ -4574,49 +4577,16 @@
 
       <!-- ==================== TAB: REPORTS ==================== -->
       <section id="tab-reports" class="tab-view" role="tabpanel" aria-label="Reports">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Reports & Analytics</h1>
-            <p class="page-subtitle">Generate business insights and export reports.</p>
-          </div>
-          <div class="reports-header-actions" style="position: relative;">
-            <div class="reports-date-picker-btn" onclick="toggleReportsDatePickerDropdown(event)">
-              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-              <span id="reports-date-range-display">Current reporting period</span>
-              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        <div class="adm-head">
+            <div class="adm-head__titles">
+              <h1 class="adm-title">Reports</h1>
+              <span class="adm-status"><i class="adm-dot"></i><span id="reports-status-line">&nbsp;</span></span>
             </div>
-            <div id="reports-datepicker-dropdown" class="date-range-picker" role="dialog" aria-label="Select date range">
-              <div class="drp-body">
-                <aside class="drp-presets" id="rdrp-presets">
-                  <span class="drp-presets__title">Date range</span>
-                  <button type="button" class="drp-preset rdrp-preset" data-preset="this-week">This week</button>
-                  <button type="button" class="drp-preset rdrp-preset" data-preset="this-month">This month</button>
-                  <button type="button" class="drp-preset rdrp-preset" data-preset="this-quarter">This quarter</button>
-                  <button type="button" class="drp-preset rdrp-preset" data-preset="this-year">This year</button>
-                  <button type="button" class="drp-preset rdrp-preset" data-preset="last-week">Last week</button>
-                  <button type="button" class="drp-preset rdrp-preset" data-preset="last-month">Last month</button>
-                  <button type="button" class="drp-preset rdrp-preset" data-preset="last-quarter">Last quarter</button>
-                  <button type="button" class="drp-preset rdrp-preset" data-preset="last-year">Last year</button>
-                  <button type="button" class="drp-preset rdrp-preset" data-preset="last-30">Last 30 days</button>
-                  <button type="button" class="drp-preset rdrp-preset" data-preset="last-90">Last 90 days</button>
-                  <button type="button" class="drp-preset rdrp-preset" data-preset="last-365">Last 365 days</button>
-                  <button type="button" class="drp-preset rdrp-preset" data-preset="all-time">All time</button>
-                </aside>
-                <div class="drp-calendars">
-                  <div class="drp-cal" id="rdrp-cal-left"></div>
-                  <div class="drp-cal" id="rdrp-cal-right"></div>
-                </div>
-              </div>
-              <div class="drp-footer">
-                <span class="drp-range-display" id="rdrp-range-display">Select start &amp; end dates</span>
-                <div class="drp-footer-actions">
-                  <button type="button" class="drp-btn drp-btn--ghost" onclick="rdrpCancel()">Cancel</button>
-                  <button type="button" class="drp-btn drp-btn--primary" onclick="rdrpApply()">Select</button>
-                </div>
-              </div>
+            <div class="adm-head__actions">
+              <button type="button" class="adm-ghost" onclick="rdrpCancel()">Cancel</button>
+              <button type="button" class="adm-ghost" onclick="rdrpApply()">Select</button>
             </div>
           </div>
-        </div>
 
         <div class="reports-filter-tabs">
           <button class="reports-filter-tab" data-filter="today" onclick="switchReportsFilter(this, 'today')">Today</button>
@@ -4844,12 +4814,14 @@
 
       <!-- ==================== TAB: SETTINGS ==================== -->
       <section id="tab-settings" class="tab-view" role="tabpanel" aria-label="Settings">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Settings</h1>
-            <p class="page-subtitle">Manage your account and preferences</p>
+        <div class="adm-head">
+            <div class="adm-head__titles">
+              <h1 class="adm-title">Settings</h1>
+              <span class="adm-status"><i class="adm-dot"></i><span id="settings-status-line">&nbsp;</span></span>
+            </div>
+            <div class="adm-head__actions">
+            </div>
           </div>
-        </div>
 
         <div class="settings-sections">
           <div class="settings-account-card" id="settingsAccountCard">
