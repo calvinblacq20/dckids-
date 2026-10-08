@@ -1849,6 +1849,14 @@ function updateProductStats() {
 function renderProductsGrid() {
     updateProductStats();
     var tbody = document.getElementById('products-tbody');
+    // Status line under the Products title, mirroring the dashboard's.
+    var pStatus = document.getElementById('products-status-line');
+    if (pStatus) {
+        var allP = (typeof globalProducts !== 'undefined' && Array.isArray(globalProducts)) ? globalProducts : [];
+        var lowP = allP.filter(function (x) { var n = Number(x.stock || 0); return n > 0 && n <= 5; }).length;
+        var outP = allP.filter(function (x) { return Number(x.stock || 0) <= 0; }).length;
+        pStatus.textContent = allP.length + ' products · ' + lowP + ' low · ' + outP + ' out of stock';
+    }
     if (!tbody) {
         var grid = document.getElementById('products-grid');
         if (!grid) return;
@@ -2372,58 +2380,149 @@ function loadOrders() {
     });
 }
 
-function renderOrdersTable() {
-    var tbody = document.getElementById('orders-tbody');
-    if (!tbody) return;
+function orderBadgeTone(status) {
+    var st = String(status || '').toLowerCase();
+    if (['paid', 'processing', 'shipped', 'dispatched', 'delivered', 'completed'].indexOf(st) >= 0) return 'is-good';
+    if (['cancelled', 'payment_failed'].indexOf(st) >= 0) return 'is-danger';
+    return 'is-wait'; // pending, awaiting payment, review — needs attention, not an error
+}
 
-    var orders = getFilteredOrders();
+// The next thing this order needs, shown as the card's one quick action.
+function orderNextAction(o) {
+    var st = String(o.status || '').toLowerCase();
+    if (st === 'awaiting_payment' || st === 'payment_review') return { label: 'Record payment', fn: "openOrderModal('" + o.id + "')" };
+    if (st === 'pending' || st === 'pending_deposit') return { label: 'Confirm order', fn: "openOrderModal('" + o.id + "')" };
+    if (st === 'paid' || st === 'processing') return { label: 'Mark shipped', fn: "openOrderModal('" + o.id + "')" };
+    return { label: 'View order', fn: "openOrderItemPreviewModal('" + o.db_id + "')" };
+}
+
+function sortOrdersList(list) {
+    var sel = document.getElementById('orders-sort');
+    var mode = sel ? sel.value : 'newest';
+    var out = list.slice();
+    out.sort(function (a, b) {
+        if (mode === 'total') return Number(b.total || 0) - Number(a.total || 0);
+        if (mode === 'customer') return String(a.customer || '').localeCompare(String(b.customer || ''));
+        var da = new Date(a.date || a.created_at || 0).getTime();
+        var db = new Date(b.date || b.created_at || 0).getTime();
+        return mode === 'oldest' ? da - db : db - da;
+    });
+    return out;
+}
+
+function renderOrdersRail(all) {
+    var list = document.getElementById('orders-rail-list');
+    var empty = document.getElementById('orders-rail-empty');
+    if (!list) return;
+    var waiting = all.filter(function (o) {
+        return ['awaiting_payment', 'payment_review', 'pending', 'pending_deposit']
+            .indexOf(String(o.status || '').toLowerCase()) >= 0;
+    }).slice(0, 5);
+    if (!waiting.length) { list.innerHTML = ''; if (empty) empty.hidden = false; return; }
+    if (empty) empty.hidden = true;
+    list.innerHTML = waiting.map(function (o) {
+        return '<button type="button" class="rail-row" onclick="openOrderItemPreviewModal(\'' + o.db_id + '\')">' +
+            '<span class="rail-row__name">' + escapeHtml(o.customer || 'Guest') + '</span>' +
+            '<span class="rail-row__meta t-mono">' + escapeHtml(o.id) + '</span>' +
+            '<span class="rail-row__val">GHS ' + formatNumber(o.total || 0) + '</span>' +
+            '</button>';
+    }).join('');
+}
+
+function renderOrdersTable() {
+    var host = document.getElementById('orders-tbody');
+    if (!host) return;
+
+    var all = getOrders() || [];
+    var orders = sortOrdersList(getFilteredOrders());
     var totalItems = orders.length;
     var start = (orderCurrentPage - 1) * ORDER_PER_PAGE;
     var paged = orders.slice(start, start + ORDER_PER_PAGE);
 
-    tbody.innerHTML = '';
-    if (paged.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;padding:40px;">No orders found</td></tr>';
+    // Heading carries the count, as the reference results column does.
+    var countEl = document.getElementById('orders-result-count');
+    if (countEl) countEl.textContent = totalItems + (totalItems === 1 ? ' order' : ' orders');
+    var statusLine = document.getElementById('orders-status-line');
+    if (statusLine) statusLine.textContent = all.length + ' total \u00b7 showing ' + totalItems;
+
+    // Filter counts, so the owner can see where the work is without clicking.
+    var counts = document.getElementById('orders-filter-counts');
+    if (counts) {
+        var byStatus = {};
+        all.forEach(function (o) { var k = String(o.status || 'pending').toLowerCase(); byStatus[k] = (byStatus[k] || 0) + 1; });
+        counts.innerHTML = Object.keys(byStatus).sort().map(function (k) {
+            return '<div class="patd-count-row"><span>' + escapeHtml(k.replace(/_/g, ' ')) + '</span><b>' + byStatus[k] + '</b></div>';
+        }).join('');
+    }
+
+    renderOrdersRail(all);
+
+    // The dark action card carries the most urgent batch job on this page.
+    var alert = document.getElementById('orders-alert');
+    if (alert) {
+        var owing = all.filter(function (o) {
+            return ['awaiting_payment', 'payment_review'].indexOf(String(o.status || '').toLowerCase()) >= 0;
+        });
+        if (!owing.length) {
+            alert.hidden = true;
+        } else {
+            alert.hidden = false;
+            var owed = owing.reduce(function (sum, o) { return sum + Number(o.total || 0); }, 0);
+            var t = document.getElementById('orders-alert-title');
+            var b = document.getElementById('orders-alert-body');
+            if (t) t.textContent = owing.length + (owing.length === 1 ? ' order is waiting on payment' : ' orders are waiting on payment');
+            if (b) b.textContent = 'GHS ' + formatNumber(owed) + ' outstanding. Confirm each one so the customer hears back.';
+            var cta = document.getElementById('orders-alert-cta');
+            if (cta) cta.onclick = function () {
+                var sel = document.getElementById('order-status-filter');
+                if (sel) { sel.value = 'awaiting_payment'; orderCurrentPage = 1; renderOrdersTable(); }
+            };
+        }
+    }
+
+    if (!paged.length) {
+        host.innerHTML = '<p class="empty-line">No orders match these filters.</p>';
     } else {
-        paged.forEach(function(o) {
-            var itemNames = o.items ? o.items.map(function(it) { return it.name; }).join(', ') : '';
-            var dateStr = o.date ? new Date(o.date).toLocaleDateString() : '—';
-
-            var customerPhone = o.phone || '';
-            if (!customerPhone) {
-                var localCusts = getCustomers();
-                var foundCust = localCusts.find(function(c) { return c.name === o.customer; });
-                if (foundCust && foundCust.phone) {
-                    customerPhone = foundCust.phone;
-                }
+        host.innerHTML = paged.map(function (o) {
+            var itemNames = o.items ? o.items.map(function (it) { return it.name; }).join(', ') : '';
+            var dateStr = o.date ? new Date(o.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '\u2014';
+            var phone = o.phone || '';
+            if (!phone) {
+                var found = (getCustomers() || []).find(function (c) { return c.name === o.customer; });
+                if (found && found.phone) phone = found.phone;
             }
+            var st = String(o.status || 'pending');
+            var act = orderNextAction(o);
+            return '<article class="res-card" role="listitem" data-order-id="' + escapeHtml(o.id) + '">' +
+                '<div class="res-card__main">' +
+                  '<div class="res-card__body">' +
+                    '<h3 class="res-card__title">' + escapeHtml(o.customer || 'Guest customer') + '</h3>' +
+                    '<p class="res-card__sub"><span class="t-mono">' + escapeHtml(o.id) + '</span>' +
+                      (phone ? ' \u00b7 ' + escapeHtml(phone) : '') + '</p>' +
+                    '<div class="res-card__meta">' +
+                      '<span class="badge ' + orderBadgeTone(st) + '">' + escapeHtml(st.replace(/_/g, ' ')) + '</span>' +
+                      '<span class="pill-tag">GHS ' + formatNumber(o.total || 0) + '</span>' +
+                      (o.type ? '<span class="res-card__type">' + escapeHtml(o.type) + '</span>' : '') +
+                    '</div>' +
+                    (itemNames ? '<p class="res-card__snip">' + escapeHtml(itemNames) + '</p>' : '') +
+                  '</div>' +
+                  '<button type="button" class="res-card__more" title="Receipt" onclick="openOrderReceipt(\'' + o.id + '\')" aria-label="Open receipt">' +
+                    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+                  '</button>' +
+                '</div>' +
+                '<div class="res-card__foot">' +
+                  '<span class="res-card__date">' + dateStr + '</span>' +
+                  '<button type="button" class="quick-action" onclick="' + act.fn + '">' + act.label + ' \u2192</button>' +
+                '</div>' +
+              '</article>';
+        }).join('');
 
-            var tr = document.createElement('tr');
-            tr.innerHTML = '<td class="table-card-header" data-label="Order ID" style="font-weight:600;font-family:monospace;">' + escapeHtml(o.id) + '</td>' +
-                '<td data-label="Customer">' +
-                    '<div style="font-weight:600;color:var(--text-color);">' + escapeHtml(o.customer) + '</div>' +
-                    (customerPhone ? '<div style="font-size:12px;color:#888;margin-top:2px;">' + escapeHtml(customerPhone) + '</div>' : '') +
-                    (o.email ? '<div style="font-size:11px;color:#999;margin-top:2px;">' + escapeHtml(o.email) + '</div>' : '') +
-                '</td>' +
-                '<td data-label="Items" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(itemNames) + '</td>' +
-                '<td data-label="Total" style="font-weight:600;">GHS ' + formatNumber(o.total || 0) +
-                    (o.paymentMethod ? '<div style="font-size:11px;color:#5E9C7E;margin-top:3px;font-weight:700;">' + escapeHtml(o.paymentMethod) +
-                        (o.paymentChannel ? ' · ' + escapeHtml(o.paymentChannel) : '') + '</div>' : '') + '</td>' +
-                '<td data-label="Status"><span class="status-pill ' + (o.status || 'pending') + '">' + escapeHtml(o.status || 'pending') + '</span></td>' +
-                '<td data-label="Date" style="color:#888;">' + dateStr + '</td>' +
-                '<td data-label="Actions"><div class="table-actions">' +
-                    '<button class="action-icon view-icon" title="View" onclick="openOrderItemPreviewModal(\'' + o.db_id + '\')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>' +
-                    '<button class="action-icon" title="Receipt" onclick="openOrderReceipt(\'' + o.id + '\')" style="color:#5E9C7E;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></button>' +
-                    '<button class="action-icon edit-icon" title="Edit" onclick="openOrderModal(\'' + o.id + '\')"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></button>' +
-                '</div></td>';
-            tr.setAttribute('data-order-id', o.id);
-            tr.classList.add('tappable-row');
-            tr.addEventListener('click', function(e) {
-                if (window.innerWidth > 1024) return;
-                if (e.target.closest('button, a, input, .table-actions')) return;
-                openOrderDetail(o.id);
+        // The whole card opens the order; the quick action and icon stop that.
+        [].forEach.call(host.querySelectorAll('.res-card'), function (card) {
+            card.addEventListener('click', function (e) {
+                if (e.target.closest('button, a')) return;
+                openOrderDetail(card.getAttribute('data-order-id'));
             });
-            tbody.appendChild(tr);
         });
     }
 
@@ -2432,6 +2531,10 @@ function renderOrdersTable() {
         renderOrdersTable();
     });
 }
+
+document.addEventListener('change', function (e) {
+    if (e.target && e.target.id === 'orders-sort') { orderCurrentPage = 1; renderOrdersTable(); }
+});
 
 /* ============================================================
    ORDER DETAIL (mobile master→detail). Read-only sheet.

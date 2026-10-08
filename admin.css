@@ -10952,3 +10952,131 @@ body, .dashboard-container { background: var(--ground); }
   .adm-alert { flex-direction: column; align-items: flex-start; }
   .adm-alert__cta { width: 100%; }
 }
+
+/* ============================================================
+   PATTERN D — search, filters, results, right rail
+   Shared by Orders and Products. Columns: 260 / fluid / 300, as the
+   reference uses; the rail drops under the results below 1360.
+   ============================================================ */
+.patd-search {
+  display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1fr) auto;
+  gap: 0; align-items: stretch; margin: 0 0 16px;
+  background: var(--surface); border: 1px solid var(--ink-06);
+  border-radius: var(--radius-lg); padding: 10px;
+}
+.patd-field { display: flex; flex-direction: column; gap: 2px; padding: 4px 12px; min-width: 0; border-right: 1px solid var(--ink-06); }
+.patd-field:last-of-type { border-right: 0; }
+.patd-field label { font-size: 12px; color: var(--ink-75); }
+.patd-field input, .patd-field select {
+  border: 0; background: none; padding: 0; height: 26px;
+  font-size: 14px; color: var(--ink); font-family: inherit; width: 100%;
+  -webkit-appearance: none; appearance: none;
+}
+.patd-field input:focus, .patd-field select:focus { outline: none; }
+.patd-search__go { align-self: center; margin-left: 8px; }
+
+.patd { display: grid; grid-template-columns: 260px minmax(0,1fr) 300px; gap: 16px; align-items: start; }
+@media (max-width: 1359.98px) { .patd { grid-template-columns: 260px minmax(0,1fr); } .patd-rail { grid-column: 1 / -1; } }
+@media (max-width: 1023.98px) { .patd { grid-template-columns: 1fr; } }
+
+.patd-filters {
+  position: sticky; top: 16px;
+  background: var(--surface); border: 1px solid var(--ink-06);
+  border-radius: var(--radius-lg); padding: 16px;
+}
+.patd-filters__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.patd-filters__title { font-size: 16px; font-weight: 500; }
+.patd-group { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; }
+.patd-group__label { font-size: 12px; font-weight: 500; color: var(--ink-75); }
+.patd-select {
+  height: 38px; width: 100%; padding: 0 30px 0 12px;
+  border: 1px solid var(--ink-12); border-radius: var(--radius-md);
+  background: var(--surface) url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23242426' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;
+  font-size: 13px; color: var(--ink); font-family: inherit;
+  -webkit-appearance: none; appearance: none; cursor: pointer;
+}
+.patd-counts { display: flex; flex-direction: column; gap: 2px; }
+.patd-count-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-75); padding: 4px 0; text-transform: capitalize; }
+.patd-count-row b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+.patd-results { min-width: 0; }
+.patd-results__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.patd-count { font-size: 24px; font-weight: 500; letter-spacing: -.02em; margin: 0; }
+
+/* Result card: title, subtitle, meta row, snippet, footer with one quick action. */
+.res-list { display: flex; flex-direction: column; gap: 12px; }
+.res-card {
+  background: var(--surface); border: 1px solid var(--ink-06);
+  border-radius: var(--radius-lg); padding: 16px 20px; cursor: pointer;
+  transition: border-color .2s;
+}
+.res-card:hover { border-color: var(--ink-12); }
+.res-card__main { display: flex; align-items: flex-start; gap: 12px; }
+.res-card__body { min-width: 0; flex: 1; }
+.res-card__title { font-size: 15px; font-weight: 500; margin: 0 0 2px; color: var(--ink); }
+.res-card__sub { font-size: 13px; color: var(--ink-75); margin: 0 0 8px; }
+.res-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.res-card__type { font-size: 12px; color: var(--ink-75); text-transform: capitalize; }
+.res-card__snip { font-size: 13px; color: var(--ink-75); margin: 8px 0 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.res-card__more { flex: none; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 0; background: none; border-radius: var(--radius-md); color: var(--ink-75); cursor: pointer; }
+.res-card__more:hover { background: var(--ground); color: var(--ink); }
+.res-card__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--ink-06); }
+.res-card__date { font-size: 13px; color: var(--ink-75); }
+.quick-action { border: 0; background: none; padding: 0; font-size: 13px; font-weight: 500; color: var(--ink); cursor: pointer; font-family: inherit; }
+.quick-action:hover { text-decoration: underline; }
+
+/* Badges carry words as well as tone; sand means attention, red only danger. */
+.badge { display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: var(--radius-full); font-size: 12px; font-weight: 500; text-transform: capitalize; background: var(--ground); color: var(--ink); }
+.badge.is-good { background: var(--accent); }
+.badge.is-wait { background: var(--sand); }
+.badge.is-danger { background: var(--danger-light); color: var(--danger); }
+.pill-tag { display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: var(--radius-full); font-size: 12px; font-weight: 500; background: var(--ground); color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* Right rail list */
+.rail-list { display: flex; flex-direction: column; }
+.rail-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 2px 10px; width: 100%; text-align: left; padding: 10px 0; border: 0; border-bottom: 1px solid var(--ink-06); background: none; cursor: pointer; font-family: inherit; }
+.rail-row:last-child { border-bottom: 0; }
+.rail-row__name { font-size: 14px; color: var(--ink); }
+.rail-row__meta { grid-column: 1; font-size: 12px; color: var(--ink-75); }
+.rail-row__val { grid-row: 1 / span 2; align-self: center; font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 809.98px) {
+  .patd-search { grid-template-columns: 1fr; }
+  .patd-field { border-right: 0; border-bottom: 1px solid var(--ink-06); }
+  .patd-search__go { margin: 8px 0 0; width: 100%; justify-content: space-between; }
+  .patd-filters { position: static; }
+  .patd-count { font-size: 20px; }
+}
+
+/* Secondary actions beside the one primary Cta: outline, never competing. */
+.adm-ghost {
+  height: 40px; padding: 0 14px;
+  border: 1px solid var(--ink-12); border-radius: var(--radius-full);
+  background: var(--surface); color: var(--ink);
+  font-size: 13px; font-family: inherit; cursor: pointer;
+}
+.adm-ghost:hover { background: var(--ground); }
+.adm-head__actions { flex-wrap: wrap; }
+
+/* Section 8 table treatment, applied to the catalogue table. */
+#tab-products .table-responsive,
+#tab-inventory .table-responsive {
+  background: var(--surface); border: 1px solid var(--ink-06);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+#tab-products table thead th,
+#tab-inventory table thead th {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--surface);
+  font-size: 12px; font-weight: 500; color: var(--ink-75);
+  text-transform: none; letter-spacing: 0;
+  border-bottom: 1px solid var(--ink-06);
+}
+#tab-products table tbody td,
+#tab-inventory table tbody td { border-bottom: 1px solid var(--ink-06); }
+#tab-products table tbody tr:hover,
+#tab-inventory table tbody tr:hover { background: var(--ground); }
+#tab-products table tbody tr:last-child td { border-bottom: 0; }
+
+/* The hidden attribute must win over any display rule a class sets. */
+[hidden] { display: none !important; }
