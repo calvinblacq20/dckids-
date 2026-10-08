@@ -18,6 +18,7 @@ const {
 
 const app = express();
 app.set('trust proxy', 1); // accurate req.ip behind a reverse proxy (nginx/render/etc.)
+app.disable('x-powered-by'); // don't advertise the framework to scanners
 
 // Keep the store up through unexpected errors. A single bad request or a stray
 // async rejection must never take the whole server down — that's what made the
@@ -37,6 +38,48 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => 
 const DEFAULT_STORE_BANNER = 'China Pre-Orders are open! Message us on WhatsApp for the current closing date.';
 const LEGACY_STORE_BANNER = "China Pre-Order Window OPEN! Orders close May 18th — Don't miss out!";
 
+// ----- Content-Security-Policy -----
+// Two policies, because the two surfaces load different third parties: the
+// storefront needs Firebase (customer sign-in), the admin needs Chart.js.
+// Neither needs 'unsafe-eval' — Tailwind is pre-built, not compiled in-browser.
+//
+// 'unsafe-inline' stays for now: admin.html alone carries ~518 inline on*=
+// handlers, so nonces would mean refactoring every one. Even with it, the origin
+// allowlists still block injected EXTERNAL scripts, plugin embeds and framing —
+// the usual XSS escalation routes. Removing the inline handlers is the follow-up
+// that lets 'unsafe-inline' go.
+//
+// Set CSP_REPORT_ONLY=true to report violations without blocking (use this if a
+// policy problem ever surfaces in production — it keeps the site working while
+// you read the console).
+const CSP_COMMON =
+    "default-src 'self'; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; " +
+    "font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; " +
+    "media-src 'self'; " +
+    "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'";
+
+// Storefront: Firebase SDK is imported from gstatic; sign-in popups/redirects
+// run through the Firebase auth handler and Google; avatars come from
+// ui-avatars, and Google account photos from googleusercontent.
+const CSP_STORE =
+    "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://accounts.google.com; " +
+    "connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://www.gstatic.com; " +
+    "frame-src https://accounts.google.com https://*.firebaseapp.com; " +
+    "img-src 'self' data: blob: https://ui-avatars.com https://lh3.googleusercontent.com; " +
+    CSP_COMMON;
+
+// Admin: Chart.js from jsDelivr, no Firebase. Product photos may be remote.
+const CSP_ADMIN =
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
+    "connect-src 'self'; " +
+    "img-src 'self' data: blob: https:; " +
+    CSP_COMMON;
+
+const CSP_HEADER = String(process.env.CSP_REPORT_ONLY || '').toLowerCase() === 'true'
+    ? 'Content-Security-Policy-Report-Only'
+    : 'Content-Security-Policy';
+
 // ----- Security headers (helmet-equivalent, zero extra deps) -----
 app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');           // block MIME sniffing
@@ -44,6 +87,7 @@ app.use((req, res, next) => {
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('X-XSS-Protection', '0');                        // modern browsers: rely on CSP, disable legacy auditor
     res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+    res.setHeader(CSP_HEADER, req.path.startsWith('/admin') ? CSP_ADMIN : CSP_STORE);
     if (IS_PROD) {
         // Only send HSTS in prod (over HTTPS); never on localhost http.
         res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
@@ -99,9 +143,48 @@ app.use((req, res, next) => {
 // since fetch() still honors the underlying HTTP cache. Images/fonts cache normally.
 // Product uploads live on durable storage in production. If the requested
 // file is not an upload, fall through to checked-in /images assets below.
-app.use('/images', express.static(UPLOAD_DIR));
+// The root static mount below serves the ENTIRE project directory, not just the
+// storefront: the Express source, internal docs, deployment config — and, on any
+// host without a mounted volume, the SQLite database itself, since storage.js
+// falls back to server/inventory.db. An unguarded mount of this directory hands
+// that file to anyone who asks for it, unauthenticated. Refuse the private
+// paths before either static handler can resolve them.
+//
+// A denylist is the minimal change; the durable fix is to move the public files
+// into their own directory and mount only that, so a new private file is private
+// by default instead of exposed by being forgotten here.
+const PRIVATE_DIRS = ['server', 'docs', 'node_modules', 'scratch', 'backups'];
+const PRIVATE_FILES = ['package.json', 'package-lock.json', 'dockerfile',
+    'railway.json', 'eslint.config.js', 'claude.local.md.example'];
+const PRIVATE_EXT = /\.(db|db-wal|db-shm|sqlite|sqlite3|env|md|bat)$/;
+
+app.use((req, res, next) => {
+    let pathName;
+    try {
+        pathName = decodeURIComponent(req.path || '');
+    } catch (e) {
+        return res.status(400).end(); // malformed percent-encoding
+    }
+    const segments = pathName.toLowerCase().split('/').filter(Boolean);
+    if (segments.length === 0) return next();
+    const leaf = segments[segments.length - 1];
+
+    const blocked =
+        segments.some((seg) => seg.startsWith('.')) ||   // .env, .git/config
+        PRIVATE_DIRS.includes(segments[0]) ||
+        (segments.length === 1 && PRIVATE_FILES.includes(leaf)) ||
+        PRIVATE_EXT.test(leaf);
+
+    // 404 rather than 403: a refusal that confirms the path exists is still a
+    // disclosure. API routes are unaffected — none match the rules above.
+    if (blocked) return res.status(404).end();
+    next();
+});
+
+app.use('/images', express.static(UPLOAD_DIR, { dotfiles: 'deny' }));
 
 app.use(express.static(path.join(__dirname, '..'), {
+    dotfiles: 'deny',
     setHeaders: function (res, filePath) {
         if (filePath.endsWith('.html') || filePath.endsWith('service-worker.js') ||
             filePath.endsWith('.css') || filePath.endsWith('.js')) {
@@ -554,7 +637,9 @@ app.post('/api/auth/request-code', loginLimiter, (req, res) => {
                     // access take over any admin account.
                     if (!IS_PROD) console.log(`\n[SIGN-IN CODE] ${mail} -> ${code}  (valid 10 min)\n`);
                     sendEmail(mail, 'Your DC Kids admin sign-in code', otpEmailHtml(code));
-                    res.json({ success: true, message: 'A 6-digit code has been sent to your email.' });
+                    // Same wording as the unknown-email branch above: a different message
+                    // here would let an attacker enumerate valid admin addresses.
+                    res.json({ success: true, message: 'If that email has access, a code has been sent.' });
                 });
         });
     });
