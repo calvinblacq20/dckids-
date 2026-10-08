@@ -216,7 +216,9 @@ async function run() {
     const adminSource = fs.readFileSync(path.join(__dirname, '..', 'admin.js'), 'utf8');
     check('admin dashboard uses live metrics and exposes working overview controls',
         adminPageSource.includes('id="dashboard-refresh-btn"') &&
-        adminPageSource.includes('id="dashboard-revenue-period"') &&
+        // The period control moved into the page head when the dashboard was
+        // rebuilt on the reference patterns; the capability is unchanged.
+        adminPageSource.includes('id="dash-period"') &&
         adminSource.includes("fetch(API_URL + '/analytics/sales' + dashboardAnalyticsQuery(period)") &&
         !adminSource.includes("totalEl.textContent = '1,245'") &&
         !adminSource.includes('var inStock = 870'));

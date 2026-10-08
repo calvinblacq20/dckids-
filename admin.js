@@ -1151,6 +1151,7 @@ function loadDashboard() {
                     dashboardAnalyticsData = analytics;
                     updateDashboardWidgets(products);
                     renderDashboardPatterns(analytics, products);
+                    renderDashAlert();
                     renderRevenueChart(analytics);
                     renderInventoryChart(products);
                     renderActivityTimeline();
@@ -10599,3 +10600,34 @@ document.addEventListener('click', function (e) {
     dashMetric = tab.getAttribute('data-metric') || 'revenue';
     renderKpiTrend(dashMetric);
 });
+
+/* The period menu reuses the vocabulary the analytics query already speaks,
+   so no translation layer is needed. */
+document.addEventListener('change', function (e) {
+    if (!e.target || e.target.id !== 'dash-period') return;
+    dashboardRevenuePeriod = e.target.value || 'monthly';
+    var range = document.getElementById('dash-kpi-range');
+    if (range) range.textContent = e.target.options[e.target.selectedIndex].textContent;
+    loadDashboard();
+});
+
+/* The dark action card carries the most urgent batch job and hides itself when
+   there is nothing waiting — never a promo. */
+function renderDashAlert(orders) {
+    var card = document.getElementById('dash-alert');
+    if (!card) return;
+    var list = Array.isArray(orders) ? orders : (getOrders() || []);
+    var waiting = list.filter(function (o) {
+        return ['pending', 'pending_deposit', 'payment_review', 'awaiting_payment']
+            .indexOf(String(o && o.status || '').toLowerCase()) >= 0;
+    }).length;
+
+    if (!waiting) { card.hidden = true; return; }
+    card.hidden = false;
+    var t = document.getElementById('dash-alert-title');
+    var b = document.getElementById('dash-alert-body');
+    if (t) t.textContent = waiting + (waiting === 1 ? ' order needs your attention' : ' orders need your attention');
+    if (b) b.textContent = waiting === 1
+        ? 'It is waiting on payment or review. Move it forward so the customer hears back.'
+        : 'They are waiting on payment or review. Move them forward so customers hear back.';
+}

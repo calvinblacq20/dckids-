@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=119">
+  <link rel="stylesheet" href="admin.css?v=120">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -486,6 +486,7 @@
       <nav class="sidebar-nav" aria-label="Dashboard navigation">
         <ul class="sidebar-nav-list">
           <!-- 1. Dashboard -->
+          <li class="nav-group-label" aria-hidden="true">Shop</li>
           <li>
             <a href="#" class="sidebar-link active" data-tab="tab-dashboard" aria-current="page">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -514,6 +515,7 @@
             </a>
           </li>
           <!-- 5. Customers -->
+          <li class="nav-group-label" aria-hidden="true">People</li>
           <li>
             <a href="#" class="sidebar-link" data-tab="tab-customers">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -528,6 +530,7 @@
             </a>
           </li>
           <!-- 7. Sales Analytics -->
+          <li class="nav-group-label" aria-hidden="true">Money</li>
           <li>
             <a href="#" class="sidebar-link" data-tab="tab-analytics">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
@@ -542,6 +545,7 @@
             </a>
           </li>
           <!-- 9. Reviews -->
+          <li class="nav-group-label" aria-hidden="true">Manage</li>
           <li>
             <a href="#" class="sidebar-link" data-tab="tab-reviews">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -794,9 +798,32 @@
         <!-- Stat Widgets -->
         <!-- Page header: title + status line, as the reference top bar does. -->
         <div class="adm-head">
-          <h1 class="adm-title">Dashboard</h1>
-          <span class="adm-status"><i class="adm-dot"></i><span id="dash-status-line">Live store data</span></span>
+          <div class="adm-head__titles">
+            <h1 class="adm-title">Dashboard</h1>
+            <span class="adm-status"><i class="adm-dot"></i><span id="dash-status-line">Live store data</span></span>
+          </div>
+          <div class="adm-head__actions">
+            <label class="sr-only" for="dash-period">Period</label>
+            <select id="dash-period" class="adm-period">
+              <option value="weekly">Last 7 days</option>
+              <option value="monthly" selected>This month</option>
+              <option value="yearly">This year</option>
+            </select>
+            <button type="button" class="adm-cta" data-dashboard-target="tab-products">
+              <span>Add product</span><i aria-hidden="true">&rarr;</i>
+            </button>
+          </div>
         </div>
+
+        <!-- One dark action card: the most urgent thing on this page, hidden when
+             there is nothing waiting. -->
+        <section class="adm-card adm-dark adm-alert" id="dash-alert" hidden>
+          <div class="adm-alert__text">
+            <strong id="dash-alert-title">Orders waiting on you</strong>
+            <span id="dash-alert-body">Review them and move each one forward.</span>
+          </div>
+          <button type="button" class="adm-alert__cta" data-dashboard-target="tab-orders">Review orders</button>
+        </section>
 
         <!-- Pattern A — KPI tabs driving one trend chart.
              The active tab redraws the chart for that metric. Products has no
@@ -897,50 +924,8 @@
 
         <!-- Charts Row -->
         <!-- Charts Row -->
-        <div class="dashboard-charts-grid">
-          <!-- Revenue Overview Chart -->
-          <div class="chart-card">
-            <div class="chart-card-header">
-              <h3 class="chart-title">Revenue Overview</h3>
-              <div class="chart-actions">
-                <select id="dashboard-revenue-period" class="chart-filter" aria-label="Revenue chart period">
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly" selected>Monthly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-                <button id="dashboard-revenue-export" class="btn btn-outline-small" type="button">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export
-                </button>
-              </div>
-            </div>
-            <div class="chart-body">
-              <canvas id="revenueChart" aria-label="Revenue overview chart"></canvas>
-            </div>
-          </div>
-
-          <!-- Inventory Status Chart -->
-          <div class="chart-card">
-            <div class="chart-card-header">
-              <h3 class="chart-title">Inventory Status</h3>
-            </div>
-            <div class="chart-body">
-              <canvas id="inventoryChart" aria-label="Inventory status chart"></canvas>
-            </div>
-          </div>
-
-          <!-- Recent Activity -->
-          <div class="activity-section chart-card flex-col">
-            <div class="chart-card-header">
-              <h3 class="chart-title">Recent Activity</h3>
-            </div>
-            <div id="activity-timeline" class="activity-timeline flex-grow-scroll">
-              <!-- Dynamic activity content goes here -->
-            </div>
-            <div class="activity-footer">
-              <button id="dashboard-view-orders" type="button">View activity log</button>
-            </div>
-          </div>
-        </div>
+        <!-- Revenue Overview and Inventory Status removed: the KPI card now carries
+             the trend, and the dark card carries stock. -->
 
         <!-- Recent Products Table (hidden to match 2nd reference layout) -->
         <div class="recent-products-section" style="display: none;">
@@ -6242,7 +6227,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="image-resolver.js?v=1"></script>
   <script src="admin-recovery-view.js?v=1"></script>
-  <script src="admin.js?v=121"></script>
+  <script src="admin.js?v=122"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
