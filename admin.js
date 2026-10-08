@@ -1150,6 +1150,7 @@ function loadDashboard() {
                     if (loadId !== dashboardLoadSequence) return;
                     dashboardAnalyticsData = analytics;
                     updateDashboardWidgets(products);
+                    renderDashboardPatterns(analytics, products);
                     renderRevenueChart(analytics);
                     renderInventoryChart(products);
                     renderActivityTimeline();
@@ -1160,6 +1161,7 @@ function loadDashboard() {
                     if (loadId !== dashboardLoadSequence) return;
                     dashboardAnalyticsData = null;
                     updateDashboardWidgets(products);
+                    renderDashboardPatterns(null, products);
                     renderRevenueChart(null);
                     renderInventoryChart(products);
                     renderActivityTimeline();
@@ -1292,7 +1294,7 @@ function updateDashboardWidgets(products) {
 
 function renderRevenueChart(analytics) {
     var ctx = document.getElementById('revenueChart');
-    if (!ctx) return;
+    if (!ctx || typeof Chart === 'undefined') return;
 
     if (chartInstances.revenue) chartInstances.revenue.destroy();
 
@@ -1394,6 +1396,8 @@ function exportDashboardRevenue() {
 }
 
 function renderInventoryChart(products) {
+    // Chart.js is CDN-loaded; degrade quietly if it never arrived.
+    if (typeof Chart === 'undefined') return;
     var ctx = document.getElementById('inventoryChart');
     if (!ctx) return;
 
@@ -5552,6 +5556,8 @@ function exportReportExcel(type) {
 }
 
 function renderSalesTrendChart(days) {
+    // Chart.js is CDN-loaded; degrade quietly if it never arrived.
+    if (typeof Chart === 'undefined') return;
     var ctx = document.getElementById('reportsSalesTrendChart');
     if (!ctx) return;
 
@@ -5680,6 +5686,8 @@ function renderSalesTrendChart(days) {
 }
 
 function renderCategoriesChart(currentOrders) {
+    // Chart.js is CDN-loaded; degrade quietly if it never arrived.
+    if (typeof Chart === 'undefined') return;
     var ctx = document.getElementById('reportsCategoriesChart');
     if (!ctx) return;
 
@@ -10396,3 +10404,198 @@ if (document.readyState === 'loading') {
     setTimeout(function () { if (window.populateSizePresetDropdowns) window.populateSizePresetDropdowns(); }, 500);
   });
 })();
+
+
+/* ============================================================
+   DASHBOARD PATTERNS (admin-ui-guidelines.md, patterns A and B)
+   One card holds the KPI tabs and a single trend chart: selecting a tab
+   redraws the chart for that metric. Products has no daily history, so it
+   says so rather than drawing a flat zero line that looks like real data.
+   ============================================================ */
+var dashAnalytics = null;
+var dashMetric = 'revenue';
+
+var DASH_METRICS = {
+    revenue:  { label: 'Revenue',       axis: 'GHS ', money: true,  series: 'revenue', growth: 'totalRevenue',  goodUp: true },
+    orders:   { label: 'Orders',        axis: '',     money: false, series: 'orders',  growth: 'totalOrders',   goodUp: true },
+    avg:      { label: 'Average order', axis: 'GHS ', money: true,  series: null,      growth: 'avgOrderValue', goodUp: true },
+    products: { label: 'Products',      axis: '',     money: false, series: null,      growth: null,            goodUp: true }
+};
+
+function dashMoney(n) {
+    return 'GHS ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+// The arrow shows direction; the colour shows whether that direction is good.
+// A metric declares which way is good, so "out of stock, up" never reads green.
+function renderDelta(el, pct, goodUp) {
+    if (!el) return;
+    var v = Number(pct || 0);
+    if (!v) { el.textContent = 'No change'; el.className = 'delta is-neutral'; return; }
+    var up = v > 0;
+    el.textContent = (up ? '\u2191 ' : '\u2193 ') + Math.abs(v).toFixed(0) + '%';
+    el.className = 'delta ' + ((up === !!goodUp) ? 'is-good' : 'is-bad');
+}
+
+function renderKpiTrend(metric) {
+    var canvas = document.getElementById('kpiTrendChart');
+    var emptyEl = document.getElementById('dash-chart-empty');
+    if (!canvas) return;
+    var spec = DASH_METRICS[metric] || DASH_METRICS.revenue;
+    var trend = (dashAnalytics && Array.isArray(dashAnalytics.trend)) ? dashAnalytics.trend : [];
+
+    if (chartInstances.kpiTrend) { chartInstances.kpiTrend.destroy(); chartInstances.kpiTrend = null; }
+
+    // Chart.js comes from a CDN. If it did not load, say so in the card rather
+    // than throwing and leaving the dashboard half-rendered.
+    if (typeof Chart === 'undefined') {
+        canvas.style.display = 'none';
+        if (emptyEl) { emptyEl.hidden = false; emptyEl.textContent = 'Chart library unavailable — the figures above are current.'; }
+        return;
+    }
+
+    // No series for this metric: say so instead of drawing a fake flat line.
+    if (!spec.series || !trend.length) {
+        canvas.style.display = 'none';
+        if (emptyEl) {
+            emptyEl.hidden = false;
+            emptyEl.textContent = spec.series
+                ? ('No ' + spec.label.toLowerCase() + ' in this period.')
+                : (spec.label + ' has no daily history \u2014 see the stock card below.');
+        }
+        return;
+    }
+    canvas.style.display = '';
+    if (emptyEl) emptyEl.hidden = true;
+
+    var labels = trend.map(function (pt) { return pt.label; });
+    var data = trend.map(function (pt) { return Number(pt[spec.series] || 0); });
+
+    chartInstances.kpiTrend = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: spec.label,
+                data: data,
+                borderColor: '#242426',
+                backgroundColor: 'rgba(36,36,38,0.04)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.25,
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: '#242426'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#fff',
+                    titleColor: '#242426',
+                    bodyColor: 'rgba(36,36,38,0.75)',
+                    borderColor: 'rgba(36,36,38,0.12)',
+                    borderWidth: 1,
+                    displayColors: false,
+                    callbacks: {
+                        label: function (c) { return spec.money ? dashMoney(c.parsed.y) : (c.parsed.y + ' ' + spec.label.toLowerCase()); }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { display: false }, border: { display: false }, ticks: { color: 'rgba(36,36,38,0.75)', maxTicksLimit: 6 } },
+                y: {
+                    beginAtZero: true,
+                    border: { display: false },
+                    grid: { color: 'rgba(36,36,38,0.06)' },
+                    ticks: {
+                        color: 'rgba(36,36,38,0.75)', maxTicksLimit: 5,
+                        callback: function (v) { return spec.money ? ('GHS ' + (v >= 1000 ? (v / 1000) + 'k' : v)) : v; }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderTopProducts(list) {
+    var body = document.getElementById('dash-top-products-body');
+    var empty = document.getElementById('dash-top-empty');
+    if (!body) return;
+    var rows = Array.isArray(list) ? list.slice(0, 5) : [];
+    if (!rows.length) {
+        body.innerHTML = '';
+        if (empty) empty.hidden = false;
+        return;
+    }
+    if (empty) empty.hidden = true;
+    var max = Math.max.apply(null, rows.map(function (r) { return Number(r.revenue || r.total || 0); })) || 1;
+    body.innerHTML = rows.map(function (r, i) {
+        var value = Number(r.revenue || r.total || 0);
+        var share = Math.round((value / max) * 100);
+        return '<tr>' +
+            '<td class="rank">' + (i + 1) + '</td>' +
+            '<td class="rank-name">' + escapeHtml(r.name || r.product_name || 'Unnamed') + '</td>' +
+            '<td class="rank-num">' + (r.quantity != null ? r.quantity : '') + '</td>' +
+            '<td class="rank-share"><i style="width:' + share + '%"></i><span>' + dashMoney(value) + '</span></td>' +
+            '</tr>';
+    }).join('');
+}
+
+function renderDashboardPatterns(analytics, products) {
+    dashAnalytics = analytics || null;
+    var k = (analytics && analytics.kpis) || {};
+    var g = k.growth || {};
+    var safe = Array.isArray(products) ? products : [];
+
+    var set = function (id, text) { var el = document.getElementById(id); if (el) el.textContent = text; };
+
+    set('val-total-orders', String(k.totalOrders != null ? k.totalOrders : 0));
+    set('val-avg-order', dashMoney(k.avgOrderValue));
+    renderDelta(document.getElementById('delta-revenue'), g.totalRevenue, true);
+    renderDelta(document.getElementById('delta-orders'), g.totalOrders, true);
+    renderDelta(document.getElementById('delta-avg'), g.avgOrderValue, true);
+    var dp = document.getElementById('delta-products');
+    if (dp) { dp.textContent = 'Live catalogue'; dp.className = 'delta is-neutral'; }
+
+    var inStock = safe.filter(function (p) { return Number(p.stock || 0) > 0; }).length;
+    var out = safe.filter(function (p) { return Number(p.stock || 0) <= 0; }).length;
+    set('val-in-stock', String(inStock));
+    set('val-out-stock', String(out));
+    set('val-in-stock-caption', 'of ' + safe.length + ' products available');
+
+    // Stage strip: a column per state, bar length proportional to the count.
+    // Comparing lengths reads better than comparing colours.
+    var strip = document.getElementById('dash-stage-strip');
+    if (strip) {
+        var low = safe.filter(function (p) { var n = Number(p.stock || 0); return n > 0 && n <= 5; }).length;
+        var healthy = inStock - low;
+        var stages = [{ n: 'Healthy', v: healthy }, { n: 'Low', v: low }, { n: 'Out', v: out }];
+        var peak = Math.max.apply(null, stages.map(function (x) { return x.v; })) || 1;
+        strip.innerHTML = stages.map(function (x) {
+            return '<div class="stage-col"><span class="stage-n">' + x.v + '</span>' +
+                '<span class="stage-track"><i style="height:' + Math.round((x.v / peak) * 100) + '%"></i></span>' +
+                '<span class="stage-l">' + x.n + '</span></div>';
+        }).join('');
+    }
+
+    renderTopProducts(analytics && analytics.topProducts);
+    renderKpiTrend(dashMetric);
+}
+
+// Tab clicks redraw the chart for that metric.
+document.addEventListener('click', function (e) {
+    var tab = e.target && e.target.closest && e.target.closest('.kpi-tab');
+    if (!tab || !document.getElementById('dash-kpi-tabs')) return;
+    var tabs = document.querySelectorAll('#dash-kpi-tabs .kpi-tab');
+    for (var i = 0; i < tabs.length; i++) {
+        tabs[i].classList.toggle('is-active', tabs[i] === tab);
+        tabs[i].setAttribute('aria-selected', tabs[i] === tab ? 'true' : 'false');
+    }
+    dashMetric = tab.getAttribute('data-metric') || 'revenue';
+    renderKpiTrend(dashMetric);
+});

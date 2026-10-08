@@ -10808,3 +10808,86 @@ body, .dashboard-container { background: var(--ground); }
   box-shadow: none !important;
 }
 #tab-dashboard .stat-card::before { display: none !important; }
+
+/* ============================================================
+   DASHBOARD PATTERNS — A (KPI tabs + trend) and B (counter + ranked table)
+   Shapes taken from the reference admin.css so the two read the same.
+   ============================================================ */
+.adm-head { margin: 0 0 18px; }
+.adm-title { font-size: 32px; line-height: 1.1; font-weight: 500; letter-spacing: -0.02em; color: var(--ink); margin: 0; }
+.adm-status { display: inline-flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 13px; color: var(--ink-75); }
+.adm-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--open, #3daa5c); flex: none; }
+
+.adm-card { background: var(--surface); border: 1px solid var(--ink-06); border-radius: var(--radius-lg); min-width: 0; }
+.adm-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px 0; min-height: 44px; }
+.adm-card-head h2 { font-size: 16px; font-weight: 500; letter-spacing: -0.01em; margin: 0; }
+.adm-card-body { padding: 12px 20px 20px; }
+.adm-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--ink-06); }
+.adm-meta { font-size: 12px; color: var(--ink-75); }
+.link-arrow { background: none; border: 0; padding: 0; font-size: 13px; color: var(--ink); cursor: pointer; }
+.link-arrow:hover { text-decoration: underline; }
+
+/* KPI tabs: the active one takes a ground fill with the reference tab shape. */
+.kpi-card { container-type: inline-size; margin-bottom: 16px; }
+.kpi-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 8px 8px 0; }
+.kpi-tab {
+  position: relative; isolation: isolate; display: flex; flex-direction: column;
+  align-items: flex-start; gap: 4px; min-width: 0; padding: 14px 16px 16px;
+  border: 0; background: none; cursor: pointer; text-align: left;
+  border-radius: var(--radius-xl) var(--radius-xl) var(--radius-sm) var(--radius-sm);
+  transition: background-color .2s;
+}
+.kpi-tab:hover:not(.is-active) { background: rgba(235, 239, 245, .5); }
+.kpi-tab-hl { position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: transparent; }
+.kpi-tab.is-active .kpi-tab-hl { background: var(--ground); }
+.kpi-label { font-size: 12px; color: var(--ink-75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.kpi-value { font-size: 24px; line-height: 1.2; font-weight: 500; letter-spacing: -.03em; font-variant-numeric: tabular-nums; color: var(--ink-75); white-space: nowrap; }
+.kpi-tab.is-active .kpi-value { color: var(--ink); }
+@container (min-width: 720px) { .kpi-value { font-size: 26px; } }
+@container (min-width: 900px) { .kpi-value { font-size: 30px; } }
+@container (max-width: 719px) { .kpi-tabs { grid-template-columns: repeat(2, minmax(0,1fr)); } .kpi-tab { border-radius: var(--radius-md); } }
+
+/* Direction from the arrow, good-or-bad from the colour. */
+.delta { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink-75); }
+.delta.is-good { color: #2f7d4a; }
+.delta.is-bad  { color: #8a4b1f; }
+.delta.is-neutral { color: var(--ink-75); }
+
+.kpi-chart-wrap { height: 240px; position: relative; }
+.chart-empty, .empty-line { margin: 0; padding: 28px 0; text-align: center; font-size: 13px; color: var(--ink-75); }
+
+/* Pattern B — dark counter card and the stage strip. */
+.dash-split { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 1023.98px) { .dash-split { grid-template-columns: 1fr; } }
+.adm-dark { background: var(--ink); border: 0; color: #fff; }
+.adm-dark .adm-meta { color: var(--white-75); }
+.counter-num { font-size: 64px; line-height: 1; font-weight: 400; letter-spacing: -.04em; font-variant-numeric: tabular-nums; margin: 6px 0 2px; }
+.stage-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0 14px; }
+.stage-col { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.stage-n { font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.stage-track { width: 100%; height: 56px; display: flex; align-items: flex-end; background: rgba(255,255,255,.12); border-radius: var(--radius-xs); overflow: hidden; }
+.stage-track i { display: block; width: 100%; background: var(--accent); border-radius: var(--radius-xs); }
+.stage-l { font-size: 12px; color: var(--white-75); }
+.kv-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.kv { display: flex; justify-content: space-between; font-size: 13px; color: var(--white-75); }
+.kv b { color: #fff; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* Ranked table: rank, name, count, share with an inline bar on a ground track. */
+.rank-table { width: 100%; border-collapse: collapse; }
+.rank-table td { padding: 10px 0; border-bottom: 1px solid var(--ink-06); font-size: 14px; vertical-align: middle; }
+.rank-table tr:last-child td { border-bottom: 0; }
+.rank-table .rank { width: 32px; color: var(--ink-75); font-variant-numeric: tabular-nums; }
+.rank-table .rank-name { color: var(--ink); }
+.rank-table .rank-num { width: 56px; text-align: right; color: var(--ink-75); font-variant-numeric: tabular-nums; }
+.rank-table .rank-share { width: 160px; position: relative; text-align: right; padding-left: 16px; }
+.rank-table .rank-share i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); height: 6px; background: var(--slate, #58718a); border-radius: var(--radius-full); opacity: .5; }
+.rank-table .rank-share span { position: relative; font-variant-numeric: tabular-nums; color: var(--ink); }
+
+@media (max-width: 809.98px) {
+  .adm-title { font-size: 28px; }
+  .kpi-tabs { display: flex; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; padding: 8px; }
+  .kpi-tabs::-webkit-scrollbar { display: none; }
+  .kpi-tab { flex: 0 0 auto; min-width: 150px; scroll-snap-align: start; border-radius: var(--radius-md); }
+  .kpi-value { font-size: 24px; }
+  .counter-num { font-size: 52px; }
+}

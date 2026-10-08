@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=118">
+  <link rel="stylesheet" href="admin.css?v=119">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -792,62 +792,84 @@
         </section>
 
         <!-- Stat Widgets -->
-        <div class="stats-grid">
-          <!-- Total Products -->
-          <div id="dashboard-products-card" class="stat-card stat-card--interactive" role="button" tabindex="0" data-dashboard-target="tab-products" aria-label="View all products" style="background: var(--card-bg); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: 0 4px 12px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-              <span style="color: var(--text-secondary); font-size: 14px; font-weight: 500;">Total Products</span>
-              <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(252, 76, 122, 0.1); display: flex; align-items: center; justify-content: center; color: var(--primary);">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
-              </div>
-            </div>
-            <div id="val-total-products" style="font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">&mdash;</div>
-            <div class="stat-card__context">
-              Live storefront catalogue
-            </div>
-          </div>
+        <!-- Page header: title + status line, as the reference top bar does. -->
+        <div class="adm-head">
+          <h1 class="adm-title">Dashboard</h1>
+          <span class="adm-status"><i class="adm-dot"></i><span id="dash-status-line">Live store data</span></span>
+        </div>
 
-          <!-- Low Stock Alert -->
-          <div id="dashboard-low-stock-card" class="stat-card stat-card--interactive" role="button" tabindex="0" data-dashboard-target="tab-inventory" data-dashboard-filter="low-stock" aria-label="View low stock inventory" style="background: var(--card-bg); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: 0 4px 12px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-              <span style="color: var(--text-secondary); font-size: 14px; font-weight: 500;">Low Stock Alert</span>
-              <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(245, 184, 66, 0.1); display: flex; align-items: center; justify-content: center; color: var(--warning);">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-              </div>
-            </div>
-            <div id="val-low-stock" style="font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">&mdash;</div>
-            <div class="stat-card__context stat-card__context--warning" id="val-low-stock-context">
-              Products with 5 or fewer left
-            </div>
+        <!-- Pattern A — KPI tabs driving one trend chart.
+             The active tab redraws the chart for that metric. Products has no
+             daily history, so selecting it shows the stock card instead of a
+             fabricated flat line. -->
+        <section class="adm-card kpi-card" id="dash-kpi-card">
+          <div class="kpi-tabs" id="dash-kpi-tabs" role="tablist" aria-label="Dashboard metrics">
+            <button type="button" class="kpi-tab is-active" data-metric="revenue" role="tab" aria-selected="true">
+              <span class="kpi-tab-hl"></span>
+              <span class="kpi-label">Revenue</span>
+              <span class="kpi-value" id="val-today-sales">&mdash;</span>
+              <span class="delta" id="delta-revenue"></span>
+            </button>
+            <button type="button" class="kpi-tab" data-metric="orders" role="tab" aria-selected="false">
+              <span class="kpi-tab-hl"></span>
+              <span class="kpi-label">Orders</span>
+              <span class="kpi-value" id="val-total-orders">&mdash;</span>
+              <span class="delta" id="delta-orders"></span>
+            </button>
+            <button type="button" class="kpi-tab" data-metric="avg" role="tab" aria-selected="false">
+              <span class="kpi-tab-hl"></span>
+              <span class="kpi-label">Average order</span>
+              <span class="kpi-value" id="val-avg-order">&mdash;</span>
+              <span class="delta" id="delta-avg"></span>
+            </button>
+            <button type="button" class="kpi-tab" data-metric="products" role="tab" aria-selected="false">
+              <span class="kpi-tab-hl"></span>
+              <span class="kpi-label">Products</span>
+              <span class="kpi-value" id="val-total-products">&mdash;</span>
+              <span class="delta is-neutral" id="delta-products"></span>
+            </button>
           </div>
+          <div class="adm-card-body">
+            <div class="kpi-chart-wrap"><canvas id="kpiTrendChart" aria-label="Metric trend"></canvas></div>
+            <p class="chart-empty" id="dash-chart-empty" hidden></p>
+          </div>
+          <div class="adm-card-foot">
+            <span class="adm-meta" id="dash-kpi-range">Last 30 days</span>
+            <button type="button" class="link-arrow" data-dashboard-target="tab-analytics">View report &rarr;</button>
+          </div>
+        </section>
 
-          <!-- Today's Sales -->
-          <div id="dashboard-sales-card" class="stat-card stat-card--interactive" role="button" tabindex="0" data-dashboard-target="tab-analytics" aria-label="View sales analytics" style="background: var(--card-bg); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: 0 4px 12px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-              <span style="color: var(--text-secondary); font-size: 14px; font-weight: 500;">Today's Sales</span>
-              <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(91, 192, 139, 0.1); display: flex; align-items: center; justify-content: center; color: var(--success);">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        <div class="dash-split">
+          <!-- Pattern B — the one dark card per screen: what is on the shelf now. -->
+          <section class="adm-card adm-dark" id="dash-stock-card">
+            <div class="adm-card-body">
+              <span class="adm-meta">In stock now</span>
+              <div class="counter-num" id="val-in-stock">&mdash;</div>
+              <span class="adm-meta" id="val-in-stock-caption">products available</span>
+              <div class="stage-strip" id="dash-stage-strip"></div>
+              <div class="kv-list">
+                <div class="kv"><span>Low stock</span><b id="val-low-stock">&mdash;</b></div>
+                <div class="kv"><span>Out of stock</span><b id="val-out-stock">&mdash;</b></div>
+                <div class="kv"><span>Orders to review</span><b id="val-new-arrivals">&mdash;</b></div>
               </div>
+              <span class="adm-meta" id="val-low-stock-context"></span>
+              <span class="adm-meta" id="val-today-sales-context" hidden></span>
+              <span class="adm-meta" id="val-review-orders-context" hidden></span>
             </div>
-            <div id="val-today-sales" style="font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">&mdash;</div>
-            <div class="stat-card__context stat-card__context--success" id="val-today-sales-context">
-              Verified paid orders today
-            </div>
-          </div>
+          </section>
 
-          <!-- Orders requiring action -->
-          <div id="dashboard-review-orders-card" class="stat-card stat-card--interactive" role="button" tabindex="0" data-dashboard-target="tab-orders" data-dashboard-filter="attention" aria-label="View orders requiring attention" style="background: var(--card-bg); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: 0 4px 12px rgba(0,0,0,0.03); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-              <span style="color: var(--text-secondary); font-size: 14px; font-weight: 500;">Orders to Review</span>
-              <div style="width: 40px; height: 40px; border-radius: 12px; background: rgba(252, 76, 122, 0.1); display: flex; align-items: center; justify-content: center; color: var(--primary);">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>
-              </div>
+          <!-- Ranked table: rank, name, count, share with an inline bar. -->
+          <section class="adm-card" id="dash-top-products">
+            <div class="adm-card-head"><h2>Top products</h2><span class="adm-meta" id="dash-top-range">Last 30 days</span></div>
+            <div class="adm-card-body">
+              <table class="rank-table"><tbody id="dash-top-products-body"></tbody></table>
+              <p class="empty-line" id="dash-top-empty" hidden>No sales in this period.</p>
             </div>
-            <div id="val-new-arrivals" style="font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">&mdash;</div>
-            <div class="stat-card__context" id="val-review-orders-context">
-              Pending or awaiting payment
+            <div class="adm-card-foot">
+              <span class="adm-meta">By revenue</span>
+              <button type="button" class="link-arrow" data-dashboard-target="tab-products">See all &rarr;</button>
             </div>
-          </div>
+          </section>
         </div>
 
         <!-- Quick Actions -->
@@ -6220,7 +6242,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="image-resolver.js?v=1"></script>
   <script src="admin-recovery-view.js?v=1"></script>
-  <script src="admin.js?v=119"></script>
+  <script src="admin.js?v=121"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
