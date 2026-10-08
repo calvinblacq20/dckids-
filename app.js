@@ -1050,6 +1050,16 @@ function showReceiptStep(orderNumber, totalAmount, customerName, customerPhone, 
 }
 
 // ── Checkout / Pre-Order API Integration ──
+// One idempotency key per checkout attempt, kept across retries and cleared
+// only on success. If the order was created but the response never arrived —
+// a dropped connection, a double-tap — the retry carries the same key and the
+// server returns the original order instead of creating a second one.
+let checkoutIdemKey = null;
+function newIdemKey() {
+    return (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : 'idem-' + Date.now() + '-' + Math.random().toString(36).slice(2, 12);
+}
 if (checkoutBtn) {
   checkoutBtn.addEventListener('click', async () => {
     if (cart.length === 0) { showToast('Your cart is empty!', 'warning'); return; }
@@ -1077,7 +1087,10 @@ if (checkoutBtn) {
     // Snapshot cart for the WhatsApp message before it gets cleared
     const orderedItems = cart.map(c => ({ name: c.name, size: c.size, qty: c.qty, price: c.price }));
 
+    if (!checkoutIdemKey) checkoutIdemKey = newIdemKey();
+
     const orderPayload = {
+        idempotency_key: checkoutIdemKey,
         customer_name,
         customer_phone,
         customer_email: details.customer_email || '',
@@ -1117,6 +1130,8 @@ if (checkoutBtn) {
         const data = await res.json();
         
         if (data.success) {
+            // Confirmed: the next checkout is a new attempt, not a retry.
+            checkoutIdemKey = null;
             // Build an itemised WhatsApp message
             let message = `Hello DC Kids! I'd like to confirm my order.\n\n`;
             message += `*Order Ref:* ${data.order_number}\n`;
