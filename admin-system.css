@@ -2882,3 +2882,55 @@ a.adm-row:hover, button.adm-row:hover { background: var(--ground); }
 /* Calm and off: stacking cards become a plain flow instead of sticky-pinned. */
 [data-motion="calm"] .stack-card,
 [data-motion="off"] .stack-card { position: relative; top: 0; }
+
+/* -------------------------------------------------------------------------
+   Two adjustments for static markup. The reference renders in React, which
+   mounts the nav highlight only on the active item and drives the shell with
+   no inline styles; neither holds for hand-written HTML.
+   ------------------------------------------------------------------------- */
+
+/* The highlight exists on every item here, so show it only when selected.
+   This markup marks the active item with .active; the reference uses
+   .is-active, so both are honoured. */
+.adm-nav-item .adm-nav-hl { display: none; }
+.adm-nav-item.is-active .adm-nav-hl,
+.adm-nav-item.active .adm-nav-hl { display: block; }
+.adm-nav-item.active { color: var(--ink); font-weight: 500; background: transparent; }
+
+/* The legacy .dashboard-container rule sits at the same specificity as .adm,
+   so spell out the shell on the element that carries both classes. */
+.dashboard-container.adm { display: block; }
+@media (min-width: 810px) {
+  .dashboard-container.adm { display: grid; grid-template-columns: 76px minmax(0, 1fr); }
+}
+@media (min-width: 1200px) {
+  .dashboard-container.adm { grid-template-columns: 248px minmax(0, 1fr); }
+}
+/* The mobile overlay is a positioned layer, not a grid track. */
+.dashboard-container.adm > #sidebar-overlay { position: fixed; }
+
+/* Pin the two shell children to their tracks. Auto-placement was producing
+   stray implicit columns here, which left the main column short of the
+   viewport; naming the columns removes the guesswork. */
+@media (min-width: 810px) {
+  .dashboard-container.adm > #admin-sidebar { grid-column: 1; grid-row: 1; }
+  .dashboard-container.adm > #admin-main { grid-column: 2; grid-row: 1; min-width: 0; }
+}
+
+/* The legacy shell positioned a fixed sidebar and pushed the content over with
+   margin-left, and named grid areas for a template this shell no longer uses.
+   Both fight the two-column grid, so clear them where .adm governs. */
+.dashboard-container.adm > #admin-main,
+.dashboard-container.adm .admin-header {
+  margin-left: 0;
+  grid-area: auto;
+}
+@media (min-width: 810px) {
+  .dashboard-container.adm > #admin-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    transform: none;
+    inset-inline-start: auto;
+  }
+}

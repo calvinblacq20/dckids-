@@ -588,7 +588,10 @@ function showDashboard(role) {
     _sessionExpiredHandled = false;
     currentRole = role || localStorage.getItem('adminRole') || '';
     document.getElementById('login-container').style.display = 'none';
-    document.getElementById('dashboard-container').style.display = 'block';
+    // Clear the inline display rather than forcing 'block'. The shell is a
+    // grid at >=810px and a single column below, and an inline style would
+    // outrank both.
+    document.getElementById('dashboard-container').style.display = '';
     document.body.classList.add('is-authed');
     _startIdleTracking();
 
