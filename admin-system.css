@@ -2934,3 +2934,62 @@ a.adm-row:hover, button.adm-row:hover { background: var(--ground); }
     inset-inline-start: auto;
   }
 }
+
+/* -------------------------------------------------------------------------
+   Breakpoints. The reference runs three: a floating tab bar below 810, a 76px
+   icon rail from 810, and the full 248px sidebar from 1200. The legacy shell
+   instead treated everything up to 1024 as mobile and slid the sidebar
+   off-canvas, with !important throughout — which left 810-1024 in a bad middle
+   state: container still block, so the full-height sidebar consumed a block of
+   vertical space and pushed the page down by its own height.
+
+   These counter that layer with the same weight. They are scoped to .adm so
+   only the rebuilt shell is affected, and they go when admin.css retires.
+   ------------------------------------------------------------------------- */
+@media (min-width: 810px) {
+  body.is-authed .dashboard-container.adm {
+    display: grid !important;
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
+  }
+  body.is-authed .dashboard-container.adm > #admin-sidebar {
+    transform: none !important;
+    position: sticky !important;
+    inset-inline-start: auto !important;
+    width: auto !important;
+  }
+  body.is-authed .dashboard-container.adm > #admin-main {
+    height: auto !important;
+    overflow: visible !important;
+    margin-left: 0 !important;
+  }
+  /* The floating tab bar belongs to the phone layout only. */
+  /* The tab bar is a direct child of body, not of the shell, so it is
+     targeted from there. */
+  body.is-authed .mobile-bottom-nav,
+  body.is-authed #sidebar-overlay,
+  body.is-authed .sidebar-toggle,
+  body.is-authed #sidebar-toggle { display: none !important; }
+  body.is-authed { height: auto !important; overflow: auto !important; }
+}
+
+/* Below 810 the phone layout stands: no sidebar, floating tab bar. */
+@media (max-width: 809.98px) {
+  .dashboard-container.adm { display: block; }
+}
+
+/* Below 810 there is no sidebar column: the reference hides it behind the
+   floating tab bar. Its .adm-side rule is unconditioned sticky at 100dvh,
+   which in a block shell consumes a full screen of flow and pushes the page
+   down by its own height. Take it out of flow on phones; the legacy drawer
+   still slides it in. */
+@media (max-width: 809.98px) {
+  .dashboard-container.adm > #admin-sidebar {
+    position: fixed;
+    top: 0;
+    inset-inline-start: 0;
+    height: 100dvh;
+    z-index: var(--z-tabbar, 20);
+  }
+}
