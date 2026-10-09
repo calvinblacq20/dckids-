@@ -1,59 +1,341 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
-const config = require('./config');
+const { DB_PATH: dbPath, ensureStorageReady } = require('./storage');
 
-const dbPath = config.dbPath;
+// Server startup owns durable-directory creation. Importing storage.js only
+// resolves paths so read-only utilities do not create unrelated directories.
+ensureStorageReady();
+
 const SKU_PREFIXES = { clothing: 'CLO', shoes: 'SHO', accessories: 'ACC', newborn: 'NEW', bedding: 'BED', essentials: 'ESS', feeding: 'FEE', gear: 'GEA', bathcare: 'BAT' };
-
-function skuPrefixForCategory(category) {
-    const normalized = String(category || '').trim().toLowerCase();
-    return SKU_PREFIXES[normalized] || (normalized.replace(/[^a-z]/g, '').slice(0, 3).toUpperCase() || 'GEN');
+const CATEGORY_IMAGES = { clothing: 'images/category-fallbacks/clothing.webp', shoes: 'images/category-fallbacks/shoes.webp', accessories: 'images/category-fallbacks/accessories.webp', newborn: 'images/category-fallbacks/newborn.webp', bedding: 'images/category-fallbacks/bedding.webp', essentials: 'images/category-fallbacks/essentials.webp', feeding: 'images/category-fallbacks/feeding.webp', gear: 'images/category-fallbacks/gear.webp', bathcare: 'images/category-fallbacks/bathcare.webp' };
+const DEFAULT_STORE_BANNER = 'China Pre-Orders are open! Message us on WhatsApp for the current closing date.';
+const LEGACY_STORE_BANNER = "China Pre-Order Window OPEN! Orders close May 18th — Don't miss out!";
+function skuPrefixForCategory(cat) {
+    return SKU_PREFIXES[String(cat || '').toLowerCase()] || (String(cat || 'GEN').replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() || 'GEN');
 }
-
-function ensureSkuIndex(done) {
-    db.get("SELECT sku FROM products WHERE sku IS NOT NULL AND trim(sku) <> '' GROUP BY sku HAVING COUNT(*) > 1 LIMIT 1", [], (readError, duplicate) => {
-        if (readError) return done(readError);
-        if (duplicate) {
-            console.warn('SKU uniqueness index deferred: duplicate manual SKUs are reported by image health.');
-            return done(null);
-        }
-        db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_products_sku ON products(sku) WHERE sku IS NOT NULL AND trim(sku) <> ''", (error) => done(error || null));
-    });
-}
-
 function backfillMissingProductSkus(done) {
-    db.all('SELECT id, sku, cat FROM products ORDER BY id', [], (err, rows) => {
-        if (err) return done(err);
+    db.all(`SELECT id, sku, cat FROM products ORDER BY id`, [], (err, rows) => {
+        if (err) { console.error('SKU backfill read failed:', err.message); return done(); }
         const used = new Set((rows || []).map((row) => String(row.sku || '').trim()).filter(Boolean));
-        const nextByPrefix = new Map();
+        const nextByPrefix = {};
         const updates = [];
-        for (const row of rows || []) {
-            if (String(row.sku || '').trim()) continue;
+        (rows || []).forEach((row) => {
+            if (String(row.sku || '').trim()) return;
             const prefix = skuPrefixForCategory(row.cat);
-            let sequence = nextByPrefix.get(prefix) || 1;
-            let sku = `${prefix}-${String(sequence).padStart(4, '0')}`;
-            while (used.has(sku)) {
-                sequence += 1;
-                sku = `${prefix}-${String(sequence).padStart(4, '0')}`;
-            }
-            nextByPrefix.set(prefix, sequence + 1);
+            let number = nextByPrefix[prefix] || 1;
+            let sku = prefix + '-' + String(number).padStart(4, '0');
+            while (used.has(sku)) { number++; sku = prefix + '-' + String(number).padStart(4, '0'); }
+            nextByPrefix[prefix] = number + 1;
             used.add(sku);
             updates.push({ id: row.id, sku });
-        }
-        if (!updates.length) return ensureSkuIndex(done);
-        const statement = db.prepare("UPDATE products SET sku = ? WHERE id = ? AND (sku IS NULL OR trim(sku) = '')");
-        updates.forEach((item) => statement.run(item.sku, item.id));
-        statement.finalize((finalizeError) => {
-            if (finalizeError) return done(finalizeError);
-            console.log(`SKU backfill: assigned ${updates.length} missing SKU(s).`);
-            ensureSkuIndex(done);
+        });
+        if (!updates.length) return done();
+        const stmt = db.prepare(`UPDATE products SET sku = ? WHERE id = ? AND (sku IS NULL OR trim(sku) = '')`);
+        updates.forEach((item) => stmt.run(item.sku, item.id));
+        stmt.finalize((finalizeErr) => {
+            if (finalizeErr) console.error('SKU backfill failed:', finalizeErr.message);
+            else console.log(`SKU backfill: assigned ${updates.length} missing SKU(s).`);
+            done();
         });
     });
 }
+
+function backfillCategoryArtwork(done) {
+    const normalizedImageSql = `lower(replace(img, '\\', '/'))`;
+    const missingImageSql = `(img IS NULL OR trim(img) = '' OR ${normalizedImageSql} IN ('images/placeholder.svg', 'images/placeholder.png', 'images/product_1.jpg') OR ${normalizedImageSql} GLOB 'images/product_[5-7][0-9].jpg' OR ${normalizedImageSql} GLOB 'images/product_8[0-3].jpg')`;
+    const entries = Object.entries(CATEGORY_IMAGES);
+    let pending = entries.length;
+    let updated = 0;
+    entries.forEach(([category, image]) => {
+        db.run(`UPDATE products SET img = ? WHERE lower(cat) = ? AND ${missingImageSql}`, [image, category], function (err) {
+            if (err) console.error(`Category artwork backfill (${category}) failed:`, err.message);
+            else updated += this.changes || 0;
+            pending--;
+            if (!pending) {
+                if (updated) console.log(`Category artwork backfill: assigned ${updated} product image(s).`);
+                done();
+            }
+        });
+    });
+}
+
+// Firebase customer-auth migration. Older databases stored a mandatory local
+// password hash and linked orders to accounts indirectly by phone. Firebase is
+// now the identity authority, so password_hash becomes nullable, firebase_uid
+// is unique, and new orders carry an explicit account foreign key. Run this as
+// the final schema barrier so a partially migrated database is never served.
+function migrateCustomerAuthSchema(done) {
+    const finishOrders = () => {
+        db.all('PRAGMA table_info(orders)', [], (ordersErr, orderColumns) => {
+            if (ordersErr) {
+                console.error('Customer auth migration (orders read) failed:', ordersErr.message);
+                return done();
+            }
+            const hasCustomerAccountId = (orderColumns || []).some((column) => column.name === 'customer_account_id');
+            const finish = () => {
+                db.run('CREATE INDEX IF NOT EXISTS idx_orders_customer_account ON orders (customer_account_id)', (indexErr) => {
+                    if (indexErr) console.error('Customer auth migration (orders index) failed:', indexErr.message);
+                    done();
+                });
+            };
+            if (hasCustomerAccountId) return finish();
+            db.run('ALTER TABLE orders ADD COLUMN customer_account_id INTEGER REFERENCES customer_accounts(id)', (alterErr) => {
+                if (alterErr) console.error('Customer auth migration (orders.customer_account_id) failed:', alterErr.message);
+                else console.log('Migration: added orders.customer_account_id');
+                finish();
+            });
+        });
+    };
+
+    db.all('PRAGMA table_info(customer_accounts)', [], (err, columns) => {
+        if (err) {
+            console.error('Customer auth migration (account read) failed:', err.message);
+            return finishOrders();
+        }
+        const names = (columns || []).map((column) => column.name);
+        const passwordColumn = (columns || []).find((column) => column.name === 'password_hash');
+        const passwordMustBePresent = !!(passwordColumn && passwordColumn.notnull);
+        const hasFirebaseUid = names.includes('firebase_uid');
+
+        const ensureFirebaseIndex = () => {
+            db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_accounts_firebase_uid ON customer_accounts (firebase_uid)', (indexErr) => {
+                if (indexErr) console.error('Customer auth migration (firebase uid index) failed:', indexErr.message);
+                finishOrders();
+            });
+        };
+
+        if (!passwordMustBePresent) {
+            if (hasFirebaseUid) return ensureFirebaseIndex();
+            return db.run('ALTER TABLE customer_accounts ADD COLUMN firebase_uid TEXT', (alterErr) => {
+                if (alterErr) console.error('Customer auth migration (customer_accounts.firebase_uid) failed:', alterErr.message);
+                else console.log('Migration: added customer_accounts.firebase_uid');
+                ensureFirebaseIndex();
+            });
+        }
+
+        const firebaseSelect = hasFirebaseUid ? 'firebase_uid' : 'NULL';
+        db.exec(`
+            PRAGMA foreign_keys = OFF;
+            BEGIN IMMEDIATE;
+            DROP TABLE IF EXISTS customer_accounts_firebase_migration;
+            CREATE TABLE customer_accounts_firebase_migration (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                phone TEXT,
+                name TEXT,
+                password_hash TEXT,
+                firebase_uid TEXT UNIQUE,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                last_login_at DATETIME
+            );
+            INSERT INTO customer_accounts_firebase_migration
+                (id, email, phone, name, password_hash, firebase_uid, created_at, last_login_at)
+            SELECT id, email, phone, name, password_hash, ${firebaseSelect}, created_at, last_login_at
+              FROM customer_accounts;
+            DROP TABLE customer_accounts;
+            ALTER TABLE customer_accounts_firebase_migration RENAME TO customer_accounts;
+            COMMIT;
+            PRAGMA foreign_keys = ON;
+        `, (migrationErr) => {
+            if (migrationErr) console.error('Customer auth migration (nullable password) failed:', migrationErr.message);
+            else console.log('Migration: customer accounts now use nullable legacy passwords and Firebase UIDs');
+            ensureFirebaseIndex();
+        });
+    });
+}
+
+// Paystack/direct-checkout migration. Keep this additive so existing WhatsApp
+// orders and analytics rows remain intact on long-lived production databases.
+function migrateCommerceSchema(done) {
+    const ensureColumns = (table, definitions, callback) => {
+        db.all(`PRAGMA table_info(${table})`, [], (err, columns) => {
+            if (err) {
+                console.error(`Commerce migration (${table} read) failed:`, err.message);
+                return callback();
+            }
+            const existing = new Set((columns || []).map((column) => column.name));
+            const pending = definitions.filter(([name]) => !existing.has(name));
+            const addNext = () => {
+                const next = pending.shift();
+                if (!next) return callback();
+                db.run(`ALTER TABLE ${table} ADD COLUMN ${next[1]}`, (alterErr) => {
+                    if (alterErr) console.error(`Commerce migration (${table}.${next[0]}) failed:`, alterErr.message);
+                    else console.log(`Migration: added ${table}.${next[0]}`);
+                    addNext();
+                });
+            };
+            addNext();
+        });
+    };
+
+    ensureColumns('orders', [
+        ['customer_email', 'customer_email TEXT'],
+        ['delivery_address_line1', 'delivery_address_line1 TEXT'],
+        ['delivery_address_line2', 'delivery_address_line2 TEXT'],
+        ['delivery_city', 'delivery_city TEXT'],
+        ['delivery_region', 'delivery_region TEXT'],
+        ['delivery_landmark', 'delivery_landmark TEXT']
+    ], () => ensureColumns('payments', [
+        ['provider', 'provider TEXT'],
+        ['provider_reference', 'provider_reference TEXT'],
+        ['provider_transaction_id', 'provider_transaction_id TEXT'],
+        ['currency', "currency TEXT DEFAULT 'GHS'"],
+        ['channel', 'channel TEXT'],
+        ['gateway_response', 'gateway_response TEXT'],
+        ['paid_at', 'paid_at DATETIME'],
+        ['updated_at', 'updated_at DATETIME DEFAULT CURRENT_TIMESTAMP'],
+        ['owner_notified_at', 'owner_notified_at DATETIME']
+    ], () => {
+        db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_provider_reference ON payments (provider_reference)', (referenceErr) => {
+            if (referenceErr) console.error('Commerce migration (payment reference index) failed:', referenceErr.message);
+            db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_provider_transaction ON payments (provider_transaction_id)', (transactionErr) => {
+                if (transactionErr) console.error('Commerce migration (payment transaction index) failed:', transactionErr.message);
+                done();
+            });
+        });
+    }));
+}
+
+// Shared admin operations migration. Customer records, suppliers, and the
+// activity log must live in the database so every signed-in admin sees the
+// same truth regardless of browser or device.
+function migrateAdminOperationsSchema(done) {
+    const customerColumns = [
+        ['address', 'address TEXT'],
+        ['city', 'city TEXT'],
+        ['country', "country TEXT DEFAULT 'Ghana'"],
+        ['customer_group', "customer_group TEXT DEFAULT 'Retail'"],
+        ['notes', 'notes TEXT'],
+        ['status', "status TEXT DEFAULT 'active'"],
+        ['customer_account_id', 'customer_account_id INTEGER'],
+        ['updated_at', 'updated_at DATETIME DEFAULT CURRENT_TIMESTAMP']
+    ];
+
+    db.all('PRAGMA table_info(customers)', [], (columnsErr, columns) => {
+        if (columnsErr) {
+            console.error('Admin operations migration (customers read) failed:', columnsErr.message);
+            return done();
+        }
+        const existing = new Set((columns || []).map((column) => column.name));
+        const pending = customerColumns.filter(([name]) => !existing.has(name));
+        const addNext = () => {
+            const next = pending.shift();
+            if (!next) return createAdminTables();
+            db.run(`ALTER TABLE customers ADD COLUMN ${next[1]}`, (alterErr) => {
+                if (alterErr) console.error(`Admin operations migration (customers.${next[0]}) failed:`, alterErr.message);
+                else console.log(`Migration: added customers.${next[0]}`);
+                addNext();
+            });
+        };
+        addNext();
+    });
+
+    function createAdminTables() {
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS admin_audit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                actor_user_id INTEGER,
+                actor_username TEXT NOT NULL,
+                action TEXT NOT NULL,
+                entity_type TEXT NOT NULL,
+                entity_id TEXT,
+                summary TEXT NOT NULL,
+                details_json TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit_log (created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_admin_audit_entity ON admin_audit_log (entity_type, entity_id);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_account ON customers (customer_account_id) WHERE customer_account_id IS NOT NULL;
+        `, (schemaErr) => {
+            if (schemaErr) console.error('Admin operations migration (audit schema) failed:', schemaErr.message);
+            retireLegacySuppliers();
+        });
+    }
+
+    function retireLegacySuppliers() {
+        // Remove only the exact preview suppliers previously bundled with the
+        // prototype. Any row the owner edited is intentionally preserved.
+        db.run(`DELETE FROM suppliers WHERE
+            (supplier_name = 'Little Stars Textiles' AND contact_person = 'Grace Adjei' AND phone = '+233302221111') OR
+            (supplier_name = 'TinyFeet Footwear' AND contact_person = 'Michael Osei' AND phone = '+233302222222') OR
+            (supplier_name = 'BabyComfort Ltd' AND contact_person = 'Sarah Mensah' AND phone = '+233302223333') OR
+            (supplier_name = 'KidsBag World' AND contact_person = 'Daniel Tetteh' AND phone = '+233302224444')`, function (deleteErr) {
+            if (deleteErr) console.error('Admin operations migration (legacy suppliers) failed:', deleteErr.message);
+            else if (this.changes) console.log(`Migration: retired ${this.changes} preview supplier record(s)`);
+            backfillAccountCustomers();
+        });
+    }
+
+    function backfillAccountCustomers() {
+        db.all('SELECT id, email, phone, name, created_at FROM customer_accounts ORDER BY id', [], (accountsErr, accounts) => {
+            if (accountsErr) {
+                console.error('Admin operations migration (account customers) failed:', accountsErr.message);
+                return backfillOrderCustomers();
+            }
+            const rows = accounts || [];
+            let index = 0;
+            const insertNext = () => {
+                const account = rows[index++];
+                if (!account) return backfillOrderCustomers();
+                const name = String(account.name || '').trim() || String(account.email || '').split('@')[0] || 'Customer';
+                const phone = String(account.phone || '').trim();
+                const sql = phone
+                    ? `INSERT INTO customers (name, phone, email, status, customer_account_id, created_at, updated_at)
+                       VALUES (?, ?, ?, 'active', ?, COALESCE(?, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP)
+                       ON CONFLICT(phone) DO UPDATE SET
+                         name = excluded.name, email = excluded.email, customer_account_id = excluded.customer_account_id,
+                         status = 'active', updated_at = CURRENT_TIMESTAMP`
+                    : `INSERT INTO customers (name, phone, email, status, customer_account_id, created_at, updated_at)
+                       SELECT ?, NULL, ?, 'active', ?, COALESCE(?, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP
+                       WHERE NOT EXISTS (SELECT 1 FROM customers WHERE customer_account_id = ?)`;
+                const params = phone
+                    ? [name, phone, account.email || null, account.id, account.created_at || null]
+                    : [name, account.email || null, account.id, account.created_at || null, account.id];
+                db.run(sql, params, (insertErr) => {
+                    if (insertErr) console.error('Admin operations migration (account customer row) failed:', insertErr.message);
+                    insertNext();
+                });
+            };
+            insertNext();
+        });
+    }
+
+    function backfillOrderCustomers() {
+        db.all(`SELECT customer_name, customer_phone, customer_email, customer_account_id,
+                       MIN(created_at) AS first_order_at
+                  FROM orders
+                 WHERE trim(COALESCE(customer_phone, '')) <> ''
+                 GROUP BY customer_phone
+                 ORDER BY MIN(id)`, [], (ordersErr, orders) => {
+            if (ordersErr) {
+                console.error('Admin operations migration (order customers) failed:', ordersErr.message);
+                return done();
+            }
+            const rows = orders || [];
+            let index = 0;
+            const insertNext = () => {
+                const order = rows[index++];
+                if (!order) return done();
+                db.run(
+                    `INSERT OR IGNORE INTO customers
+                        (name, phone, email, status, customer_account_id, created_at, updated_at)
+                     VALUES (?, ?, ?, 'active', ?, COALESCE(?, CURRENT_TIMESTAMP), CURRENT_TIMESTAMP)`,
+                    [order.customer_name || 'Customer', order.customer_phone, order.customer_email || null,
+                        order.customer_account_id || null, order.first_order_at || null],
+                    (insertErr) => {
+                        if (insertErr) console.error('Admin operations migration (order customer row) failed:', insertErr.message);
+                        insertNext();
+                    }
+                );
+            };
+            insertNext();
+        });
+    }
+}
+
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
         console.error('Error opening database', err.message);
-        _markDbFailed(err);
     } else {
         console.log('Connected to the SQLite database.');
 
@@ -390,13 +672,26 @@ const db = new sqlite3.Database(dbPath, (err) => {
             if (err) console.error("Error creating store_settings table", err);
             
             // Seed the initial defaults (safely ignores if row 1 already exists)
-            db.run(`INSERT OR IGNORE INTO store_settings 
+            db.run(`INSERT OR IGNORE INTO store_settings
                 (id, whatsapp_number, wholesale_enabled, wholesale_moq, wholesale_discount, banner_enabled, banner_text) 
                 VALUES 
-                (1, '233549193805', 1, 10, 20, 1, "China Pre-Order Window OPEN! Orders close May 18th — Don't miss out!")`, 
+                (1, '233549193805', 1, 10, 20, 1, ?)`,
+                [DEFAULT_STORE_BANNER],
                 (err) => {
                     if (err) console.error("Error seeding store_settings", err);
-                    else console.log("Default store settings verified.");
+                    else {
+                        console.log("Default store settings verified.");
+                        // Retire only the obsolete seeded message. Announcements
+                        // changed by the shop owner are intentionally untouched.
+                        db.run(
+                            `UPDATE store_settings SET banner_text = ? WHERE id = 1 AND banner_text = ?`,
+                            [DEFAULT_STORE_BANNER, LEGACY_STORE_BANNER],
+                            function (updateErr) {
+                                if (updateErr) console.error('Error refreshing legacy store banner', updateErr);
+                                else if (this.changes) console.log('Legacy store banner refreshed.');
+                            }
+                        );
+                    }
                 }
             );
         });
@@ -416,77 +711,8 @@ const db = new sqlite3.Database(dbPath, (err) => {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`, (err) => {
             if (err) console.error("Error creating suppliers table", err);
-
-            const suppliersData = [
-                {
-                    supplier_name: 'Little Stars Textiles',
-                    contact_person: 'Grace Adjei',
-                    email: 'grace@littlestars.com',
-                    phone: '+233302221111',
-                    business_address: 'Accra Central, Ghana',
-                    products_supplied: 'Clothing, Baby Essentials',
-                    status: 'active',
-                    notes: 'Core clothing and romper supplier.',
-                    supplier_logo: ''
-                },
-                {
-                    supplier_name: 'TinyFeet Footwear',
-                    contact_person: 'Michael Osei',
-                    email: 'michael@tinyfeet.com',
-                    phone: '+233302222222',
-                    business_address: 'Spintex Road, Accra',
-                    products_supplied: 'Shoes, Accessories',
-                    status: 'active',
-                    notes: 'Kids shoes and sandal supplier.',
-                    supplier_logo: ''
-                },
-                {
-                    supplier_name: 'BabyComfort Ltd',
-                    contact_person: 'Sarah Mensah',
-                    email: 'sarah@babycomfort.com',
-                    phone: '+233302223333',
-                    business_address: 'North Kaneshie, Accra',
-                    products_supplied: 'Baby Essentials, Toys',
-                    status: 'active',
-                    notes: 'Baby care and essentials partner.',
-                    supplier_logo: ''
-                },
-                {
-                    supplier_name: 'KidsBag World',
-                    contact_person: 'Daniel Tetteh',
-                    email: 'daniel@kidsbag.com',
-                    phone: '+233302224444',
-                    business_address: 'Kasoa, Central Region',
-                    products_supplied: 'Accessories, Toys',
-                    status: 'inactive',
-                    notes: 'Seasonal bags and accessories supplier.',
-                    supplier_logo: ''
-                }
-            ];
-
-            db.get(`SELECT COUNT(*) as count FROM suppliers`, (err, row) => {
-                if (err || !row || row.count > 0) return;
-
-                const stmt = db.prepare(`INSERT INTO suppliers
-                    (supplier_name, contact_person, email, phone, business_address, products_supplied, status, notes, supplier_logo)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
-
-                suppliersData.forEach((s) => {
-                    stmt.run(
-                        s.supplier_name,
-                        s.contact_person,
-                        s.email,
-                        s.phone,
-                        s.business_address,
-                        s.products_supplied,
-                        s.status,
-                        s.notes,
-                        s.supplier_logo
-                    );
-                });
-                stmt.finalize();
-                console.log("Default suppliers verified.");
-            });
+            // Intentionally starts empty. Suppliers are operational business
+            // records and must be added by an authorized manager.
         });
 
         // Create customers table for analytics relationships
@@ -498,27 +724,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`, (err) => {
             if (err) console.error("Error creating customers table", err);
-
-            // Migration: the admin's customer book used to live in browser
-            // localStorage (one browser = one copy). These columns make the DB
-            // the single source of truth so owner and staff see the same data.
-            // client_id keeps the admin UI's stable 'CUST-nnn' ids across devices.
-            db.all("PRAGMA table_info(customers)", (e, cols) => {
-                if (e || !cols) return;
-                const names = cols.map(c => c.name);
-                const addCol = (ddl, label) => db.run("ALTER TABLE customers ADD COLUMN " + ddl, (er) => {
-                    if (er) console.error("Migration (customers." + label + ") failed:", er.message);
-                    else console.log("Migration: added customers." + label);
-                });
-                if (names.indexOf('client_id') === -1) addCol("client_id TEXT", "client_id");
-                if (names.indexOf('address') === -1) addCol("address TEXT", "address");
-                if (names.indexOf('status') === -1) addCol("status TEXT", "status");
-                if (names.indexOf('notes') === -1) addCol("notes TEXT", "notes");
-                if (names.indexOf('join_date') === -1) addCol("join_date TEXT", "join_date");
-                db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_client_id ON customers(client_id) WHERE client_id IS NOT NULL", (er) => {
-                    if (er) console.error("Migration (idx_customers_client_id) failed:", er.message);
-                });
-            });
         });
 
         // Create orders table
@@ -532,8 +737,16 @@ const db = new sqlite3.Database(dbPath, (err) => {
             status TEXT,
             delivery_area TEXT,
             notes TEXT,
+            customer_email TEXT,
+            delivery_address_line1 TEXT,
+            delivery_address_line2 TEXT,
+            delivery_city TEXT,
+            delivery_region TEXT,
+            delivery_landmark TEXT,
+            customer_account_id INTEGER,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_account_id) REFERENCES customer_accounts (id)
         )`, (err) => {
             if (err) console.error("Error creating orders table", err);
 
@@ -552,18 +765,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
                         if (er) console.error("Migration (notes) failed:", er.message);
                         else console.log("Migration: added orders.notes");
                     });
-                }
-                // Migration: idempotency_key lets a checkout retry (double-tap,
-                // network drop + resubmit) return the already-created order
-                // instead of charging/booking twice. Unique per key.
-                if (names.indexOf('idempotency_key') === -1) {
-                    db.run("ALTER TABLE orders ADD COLUMN idempotency_key TEXT", (er) => {
-                        if (er) { console.error("Migration (idempotency_key) failed:", er.message); return; }
-                        console.log("Migration: added orders.idempotency_key");
-                        db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL");
-                    });
-                } else {
-                    db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL");
                 }
             });
         });
@@ -588,6 +789,15 @@ const db = new sqlite3.Database(dbPath, (err) => {
             payment_method TEXT NOT NULL DEFAULT 'Mobile Money',
             amount REAL NOT NULL DEFAULT 0,
             status TEXT NOT NULL DEFAULT 'pending',
+            provider TEXT,
+            provider_reference TEXT,
+            provider_transaction_id TEXT,
+            currency TEXT DEFAULT 'GHS',
+            channel TEXT,
+            gateway_response TEXT,
+            paid_at DATETIME,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            owner_notified_at DATETIME,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (order_id) REFERENCES orders (id)
         )`, (err) => {
@@ -636,7 +846,8 @@ const db = new sqlite3.Database(dbPath, (err) => {
             email TEXT UNIQUE NOT NULL,
             phone TEXT,
             name TEXT,
-            password_hash TEXT NOT NULL,
+            password_hash TEXT,
+            firebase_uid TEXT UNIQUE,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             last_login_at DATETIME
         )`, (err) => { if (err) console.error("Error creating customer_accounts table", err); });
@@ -685,8 +896,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
             FOREIGN KEY (product_id) REFERENCES products (id)
         )`, (err) => { if (err) console.error("Error creating wishlist_items table", err); });
 
-        // Link a server-side customer account to existing orders by phone match.
-        // We don't ALTER orders schema — instead resolve via phone lookup at query time.
+        // Legacy orders are linked once during verified-email Firebase migration.
 
         // Indexes for the lookups that run on every page/admin load. Keep these
         // fast as rows grow into the tens/hundreds of thousands.
@@ -715,13 +925,14 @@ const db = new sqlite3.Database(dbPath, (err) => {
         // so it's a reliable "schema ready" signal. The server waits on this via
         // db.whenReady() before listening — otherwise a request arriving on a
         // fresh database (no tables yet) crashes with "no such table: orders".
+        // A second queue barrier lets dynamically queued seed statements finish,
+        // then assigns only blank SKUs before the server begins listening.
         db.run('SELECT 1', () => {
-            db.run('SELECT 1', () => {
-                backfillMissingProductSkus((backfillError) => {
-                    if (backfillError) return _markDbFailed(backfillError);
-                    _markDbReady();
-                });
-            });
+            db.run('SELECT 1', () => migrateCustomerAuthSchema(() => {
+                migrateCommerceSchema(() => migrateAdminOperationsSchema(() => {
+                    backfillMissingProductSkus(() => backfillCategoryArtwork(_markDbReady));
+                }));
+            }));
         });
     }
 });
@@ -729,21 +940,10 @@ const db = new sqlite3.Database(dbPath, (err) => {
 // ── Readiness gate ──
 // Lets server.js delay app.listen() until the schema exists on a fresh DB.
 let _dbReady = false;
-let _dbReadyError = null;
 const _dbReadyCbs = [];
-function _flushDbReadyCallbacks() {
-    while (_dbReadyCbs.length) _dbReadyCbs.shift()(_dbReadyError);
-}
-function _markDbReady() { _dbReady = true; _flushDbReadyCallbacks(); }
-function _markDbFailed(error) {
-    _dbReadyError = error || new Error('Database initialization failed');
-    _flushDbReadyCallbacks();
-}
-db.whenReady = function (callback) {
-    if (_dbReady || _dbReadyError) callback(_dbReadyError);
-    else _dbReadyCbs.push(callback);
-};
-db.storagePath = dbPath;
+function _markDbReady() { _dbReady = true; while (_dbReadyCbs.length) _dbReadyCbs.shift()(); }
+db.whenReady = function (cb) { if (_dbReady) cb(); else _dbReadyCbs.push(cb); };
 db.backfillMissingProductSkus = backfillMissingProductSkus;
+db.backfillCategoryArtwork = backfillCategoryArtwork;
 
 module.exports = db;

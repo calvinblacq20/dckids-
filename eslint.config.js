@@ -16,6 +16,7 @@ module.exports = [
             'server/backups/**',
             'images/**',
             'docs/**',
+            '.claude/**',
             '_backup_pre_import*/**',
             '_frontend_backup_*/**',
             'dc kids (1)/**',
@@ -58,6 +59,13 @@ module.exports = [
             'no-useless-assignment': 'warn',
             'no-prototype-builtins': 'warn',
             'no-useless-escape': 'warn'
+        }
+    },
+    {
+        files: ['account.js', 'firebase-auth.js'],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: 'module'
         }
     }
 ];

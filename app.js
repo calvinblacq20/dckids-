@@ -13,23 +13,32 @@
 let products = [];
 let searchQuery = '';
 
-// Category artwork remains a labelled fallback, never an exact product claim.
+// Genuine product photography stays distinct from temporary category artwork.
+// Products without genuine photography use shared category artwork. The
+// resolver keeps it visibly labelled instead of presenting it as an exact photo.
 const CATEGORY_FALLBACK_IMAGES = DCImageResolver.CATEGORY_IMAGES;
-function hasGenuineProductImage(img) { return DCImageResolver.isGenuineImage(img); }
-function resolveProductImage(product) { return DCImageResolver.resolve(product); }
-// That photo corner is reserved for PRODUCT STATE (New / Hot / Pre-Order /
-// Sold Out — see badgeHTML in renderCard), per the shop owner's decision.
-// Products still fall back to a per-category stock photo, just without a
-// "Category image" label sitting over it. Returning empty keeps every caller
-// (cards, cart, the lazy-load onerror path) label-free in one place.
-function categoryImageBadge() { return ''; }
+
+function hasGenuineProductImage(img) {
+  return DCImageResolver.isGenuineImage(img);
+}
+
+function resolveProductImage(product) {
+  return DCImageResolver.resolve(product);
+}
+
+function categoryImageBadge() {
+  return '<span class="category-image-badge">Category image</span>';
+}
+
 function useCategoryFallback(img, category) {
   if (!img || img.dataset.categoryFallbackApplied === '1') return;
   img.dataset.categoryFallbackApplied = '1';
   const categoryImage = CATEGORY_FALLBACK_IMAGES[String(category || '').toLowerCase()];
   img.src = categoryImage || 'images/placeholder.svg';
   const wrap = img.parentElement;
-  if (wrap && !wrap.querySelector('.category-image-badge') && categoryImage) wrap.insertAdjacentHTML('beforeend', categoryImageBadge());
+  if (wrap && !wrap.querySelector('.category-image-badge') && categoryImage) {
+    wrap.insertAdjacentHTML('beforeend', categoryImageBadge());
+  }
 }
 
 // Promotional/brand images used elsewhere (not product cards):
@@ -195,23 +204,12 @@ function renderCard(p, index) {
   if (p.stock === 0) {
     badgeHTML = '<span class="product-card__badge product-card__badge--hot" style="background-color: #ef4444;"><svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg> Sold Out</span>';
     isSoldOut = true;
-  } else if (p.badge || p.fulfillment_type === 'preorder') {
-    // The photo corner is the product-STATE corner: New / Hot / Pre-Order /
-    // Sold Out (above), or any custom label the admin typed, shown verbatim.
-    // Pre-orders show their state even when no badge was set. Known states map
-    // to their styled modifier ('china' historically meant pre-order); custom
-    // labels get the --custom pill so they never render unstyled.
-    const svgNew = '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3l1.9 5.8 1.9-5.8a2 2 0 0 1 1.3-1.3l5.8-1.9-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z"></path></svg>';
-    const svgHot = '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>';
-    const svgGlobe = '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>';
-    const b = String(p.badge || 'china').trim();
-    const isPreorderState = b === 'china' || b === 'preorder';
-    const mod = b === 'new' ? 'new' : b === 'hot' ? 'hot' : isPreorderState ? 'preorder' : 'custom';
-    const label = b === 'new' ? (svgNew + ' New')
-      : b === 'hot' ? (svgHot + ' Hot')
-      : isPreorderState ? (svgGlobe + ' Pre-Order')
-      : (svgNew + ' ' + escapeStr(b.charAt(0).toUpperCase() + b.slice(1)));
-    badgeHTML = '<span class="product-card__badge product-card__badge--' + mod + '">' + label + '</span>';
+  } else if (p.badge) {
+    badgeHTML = '<span class="product-card__badge product-card__badge--' + p.badge + '">' +
+        (p.badge === 'new' ? '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3l1.9 5.8 1.9-5.8a2 2 0 0 1 1.3-1.3l5.8-1.9-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z"></path></svg> New' : 
+         p.badge === 'hot' ? '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg> Hot' : 
+         '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg> Pre-Order') +
+      '</span>';
   }
 
   // Genuine low-stock urgency only — never faked. Retail only (wholesale sells in bulk),
@@ -222,7 +220,6 @@ function renderCard(p, index) {
   if (!isSoldOut && p.fulfillment_type !== 'preorder' && typeof p.stock === 'number' && p.stock > 0 && p.stock <= 5) {
     lowStockHTML = '<div class="product-card__lowstock" style="position:absolute;left:8px;bottom:8px;z-index:2;display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.95);color:#B91C1C;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;box-shadow:0 1px 4px rgba(0,0,0,0.12);"><span style="width:6px;height:6px;border-radius:50%;background:#EF4444;display:inline-block;"></span>Only ' + p.stock + ' left</div>';
   }
-
 
   const isWholesale = (storeMode === 'wholesale');
   const moq = siteConfig.wholesale_moq || 10;
@@ -249,29 +246,13 @@ function renderCard(p, index) {
   const isPreorder = p.fulfillment_type === 'preorder';
   const cardClass = isPreorder ? 'product-card product-card--preorder' : 'product-card';
 
-  // Per-size price spread: when sizes carry different prices, the headline shows
-  // a RANGE (GH₵45 – 70) so shoppers see the spread at a glance; picking a size
-  // then snaps it to the exact price (updateCardPrice). Uses per-unit prices so
-  // the range reads the same in retail and wholesale.
-  const unitPrices = sizeOptions.map(s => Math.round(applyDisc(baseFor(s)) * 100) / 100);
-  const minUnit = Math.min(...unitPrices);
-  const maxUnit = Math.max(...unitPrices);
-  const priceVaries = hasVariants && hasPrice && (maxUnit - minUnit) > 0.005;
-
   // Initial display: for wholesale show total for MOQ; for retail show single-unit price
   const initialUnit = Math.round(applyDisc(baseFor(sizeOptions[0])) * 100) / 100;
   const initialQty  = isWholesale ? moq : 1;
   const initialTotal = Math.round(initialUnit * initialQty * 100) / 100;
-  let initialPrice;
-  if (!hasPrice) {
-    initialPrice = isPreorder ? '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg> Price on request' : 'Ask for price';
-  } else if (priceVaries) {
-    // Range headline (per-unit). Wholesale adds a "/ pc" hint since totals depend on qty.
-    initialPrice = `GH₵ ${gh(minUnit)} <span style="color:#94a3b8;font-weight:500;">–</span> ${gh(maxUnit)}` +
-      (isWholesale ? ` <span style="font-size:11px;color:#888;font-weight:400;">/ pc</span>` : '');
-  } else {
-    initialPrice = `GH₵ ${gh(initialTotal)}` + (isWholesale ? ` <span style="font-size:11px;color:#888;font-weight:400;">(${initialQty} pcs @ GH₵ ${gh(initialUnit)})</span>` : '');
-  }
+  const initialPrice = hasPrice
+    ? `GH₵ ${gh(initialTotal)}` + (isWholesale ? ` <span style="font-size:11px;color:#888;font-weight:400;">(${initialQty} pcs @ GH₵ ${gh(initialUnit)})</span>` : '')
+    : (isPreorder ? '<svg width="14" height="14" style="vertical-align: middle; margin-right: 4px; margin-top: -2px;" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg> Price on request' : 'Ask for price');
 
   let sizeHTML = '';
   if (hasVariants) {
@@ -354,7 +335,9 @@ function renderCard(p, index) {
   return `
     <article class="${cardClass}" data-category="${escapeStr(p.cat || '')}" data-product-id="${p.id}" style="animation-delay: ${index * 0.04}s">
       <div class="product-card__img-wrap">
-        <img class="product-card__img" src="${imgHtml}" alt="${nameHtml}" loading="lazy" onerror="useCategoryFallback(this, '${escapeStr(p.cat || '')}')">
+        <a class="product-card__detail-link" href="/product.html?id=${p.id}" aria-label="View details for ${nameHtml}">
+          <img class="product-card__img" src="${imgHtml}" alt="${nameHtml}" loading="lazy" onerror="useCategoryFallback(this, '${escapeStr(p.cat || '')}')">
+        </a>
         ${image.isCategoryFallback ? categoryImageBadge() : ''}
         ${badgeHTML}
         ${lowStockHTML}
@@ -363,7 +346,7 @@ function renderCard(p, index) {
         </button>
       </div>
       <div class="product-card__body">
-        <button type="button" class="product-card__name" onclick="openReviewsModal(${p.id}, '${escName}')" aria-label="View details for ${nameHtml}">${nameHtml}</button>
+        <a class="product-card__name" href="/product.html?id=${p.id}" aria-label="View details for ${nameHtml}">${nameHtml}</a>
         <button type="button" class="product-card__rating" data-rating-id="${p.id}" onclick="openReviewsModal(${p.id}, '${escName}')" aria-label="View or write a review for ${nameHtml}" style="display:none;">
           <span class="rating-stars" data-stars-for="${p.id}"></span>
           <span class="rating-count" data-count-for="${p.id}"></span>
@@ -646,23 +629,44 @@ if (closeBanner && urgencyBanner) {
 
 // ── Promo Carousel ──
 (function initCarousel() {
+  const carousel = document.getElementById('promoCarousel');
   const track = document.getElementById('promoTrack');
   const dotsContainer = document.getElementById('promoDots');
-  if (!track || !dotsContainer) return;
+  if (!carousel || !track || !dotsContainer) return;
   const slides = track.querySelectorAll('.promo-carousel__slide');
+  const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const mobileQuery = window.matchMedia('(max-width: 767px)');
   let current = 0;
+  let autoAdvanceId = null;
   const total = slides.length;
   for (let i = 0; i < total; i++) {
     const dot = document.createElement('button');
+    dot.type = 'button';
     dot.className = 'promo-carousel__dot' + (i === 0 ? ' active' : '');
-    dot.setAttribute('aria-label', `Slide ${i + 1}`);
+    dot.setAttribute('aria-label', `Show slide ${i + 1} of ${total}`);
     dot.addEventListener('click', () => goTo(i));
     dotsContainer.appendChild(dot);
   }
   function goTo(index) {
     current = ((index % total) + total) % total;
     track.style.transform = `translateX(-${current * 100}%)`;
-    dotsContainer.querySelectorAll('.promo-carousel__dot').forEach((d, i) => d.classList.toggle('active', i === current));
+    dotsContainer.querySelectorAll('.promo-carousel__dot').forEach((dot, i) => {
+      const isCurrent = i === current;
+      dot.classList.toggle('active', isCurrent);
+      if (isCurrent) dot.setAttribute('aria-current', 'true');
+      else dot.removeAttribute('aria-current');
+    });
+    slides.forEach((slide, i) => slide.setAttribute('aria-hidden', String(i !== current)));
+  }
+  function stopAutoAdvance() {
+    if (!autoAdvanceId) return;
+    clearInterval(autoAdvanceId);
+    autoAdvanceId = null;
+  }
+  function startAutoAdvance() {
+    stopAutoAdvance();
+    if (reducedMotionQuery.matches || mobileQuery.matches || document.hidden) return;
+    autoAdvanceId = setInterval(() => goTo(current + 1), 6000);
   }
   // Expose carousel control globally for the arrow buttons
   window.__carouselGoTo = function(direction) {
@@ -670,18 +674,66 @@ if (closeBanner && urgencyBanner) {
     else if (direction === 'next') goTo(current + 1);
     else if (typeof direction === 'number') goTo(direction);
   };
-  setInterval(() => goTo((current + 1) % total), 4000);
+  goTo(0);
+  startAutoAdvance();
+  carousel.addEventListener('mouseenter', stopAutoAdvance);
+  carousel.addEventListener('mouseleave', startAutoAdvance);
+  carousel.addEventListener('focusin', stopAutoAdvance);
+  carousel.addEventListener('focusout', (event) => {
+    if (!carousel.contains(event.relatedTarget)) startAutoAdvance();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopAutoAdvance();
+    else startAutoAdvance();
+  });
+  reducedMotionQuery.addEventListener('change', startAutoAdvance);
+  mobileQuery.addEventListener('change', startAutoAdvance);
   let startX = 0;
-  track.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+  track.addEventListener('touchstart', e => {
+    stopAutoAdvance();
+    startX = e.touches[0].clientX;
+  }, { passive: true });
   track.addEventListener('touchend', e => {
     const diff = startX - e.changedTouches[0].clientX;
     if (Math.abs(diff) > 50) goTo(diff > 0 ? Math.min(current + 1, total - 1) : Math.max(current - 1, 0));
+    startAutoAdvance();
   }, { passive: true });
 })();
 
 // ── Cart State & LocalStorage ──
 let cart = JSON.parse(localStorage.getItem('dcKidsCart')) || [];
 function saveCart() { localStorage.setItem('dcKidsCart', JSON.stringify(cart)); }
+const PAYSTACK_PENDING_KEY = 'dcKidsPendingPaystackCheckout';
+let paystackEnabled = false;
+
+function subtractPurchasedCart(snapshot) {
+  (snapshot || []).forEach((purchased) => {
+    const match = cart.find((item) => Number(item.id) === Number(purchased.id) && String(item.size || '') === String(purchased.size || '') && Number(item.ws || 0) === Number(purchased.ws || 0));
+    if (!match) return;
+    match.qty = Math.max(0, Number(match.qty || 0) - Number(purchased.qty || 0));
+  });
+  cart = cart.filter((item) => Number(item.qty || 0) > 0);
+  saveCart();
+  renderCartDrawer();
+}
+
+async function reconcilePendingPaystackCheckout() {
+  let pending;
+  try { pending = JSON.parse(localStorage.getItem(PAYSTACK_PENDING_KEY) || 'null'); } catch (error) { return; }
+  if (!pending || !pending.reference) return;
+  try {
+    const response = await fetch('/api/payments/paystack/status/' + encodeURIComponent(pending.reference), { cache: 'no-store' });
+    if (!response.ok) return;
+    const status = await response.json();
+    if (status.payment_status === 'paid' || status.order_status === 'paid') {
+      subtractPurchasedCart(pending.items || []);
+      localStorage.removeItem(PAYSTACK_PENDING_KEY);
+      showToast('Payment confirmed. Your purchased items were removed from the cart.', 'success');
+    } else if (['failed', 'review'].includes(status.payment_status) || ['payment_failed', 'payment_review'].includes(status.order_status)) {
+      localStorage.removeItem(PAYSTACK_PENDING_KEY);
+    }
+  } catch (error) { /* Keep the pending snapshot for the next online visit. */ }
+}
 
 // ── Cart DOM Refs ──
 const cartBtn      = document.getElementById('cartBtn');
@@ -743,13 +795,13 @@ function renderCartDrawer() {
   let html = '', subtotal = 0;
   cart.forEach((item, index) => {
     const itemTotal = item.price * item.qty;
-    const product = products.find(p => Number(p.id) === Number(item.id));
-    const itemCategory = item.cat || (product && product.cat) || '';
-    const cartImage = resolveProductImage({ img: item.img, cat: itemCategory });
     subtotal += itemTotal;
+    const catalogueProduct = products.find(p => Number(p.id) === Number(item.id));
+    const itemCategory = item.cat || (catalogueProduct && catalogueProduct.cat) || '';
+    const cartImage = resolveProductImage({ img: item.img, cat: itemCategory });
     html += `
       <div class="cart-item">
-        <span class="cart-item__img-wrap"><img src="${escapeStr(cartImage.src)}" alt="${escapeStr(item.name || '')}" class="cart-item__img" onerror="useCategoryFallback(this, '${escapeStr(itemCategory)}')">${cartImage.isCategoryFallback ? categoryImageBadge() : ''}</span>
+        <div class="cart-item__img-wrap"><img src="${escapeStr(cartImage.src)}" alt="${escapeStr(item.name || '')}" class="cart-item__img" onerror="useCategoryFallback(this, '${escapeStr(itemCategory)}')">${cartImage.isCategoryFallback ? categoryImageBadge() : ''}</div>
         <div class="cart-item__details">
           <div class="cart-item__title">${escapeStr(item.name || '')}</div>
           <div class="cart-item__size">${escapeStr(item.size || '')}${item.ws ? ' · Wholesale (' + item.qty + ' pcs)' : ''}</div>
@@ -777,52 +829,155 @@ function showCheckoutModal() {
     const step2   = document.getElementById('checkoutStep2');
     const nameEl  = document.getElementById('checkoutName');
     const phoneEl = document.getElementById('checkoutPhone');
-    const areaEl  = document.getElementById('checkoutArea');
+    const emailEl = document.getElementById('checkoutEmail');
+    const line1El = document.getElementById('checkoutAddressLine1');
+    const line2El = document.getElementById('checkoutAddressLine2');
+    const cityEl = document.getElementById('checkoutCity');
+    const regionEl = document.getElementById('checkoutRegion');
+    const landmarkEl = document.getElementById('checkoutLandmark');
+    const savedAddressEl = document.getElementById('checkoutSavedAddress');
+    const savedAddressWrap = document.getElementById('checkoutSavedAddressWrap');
     const notesEl = document.getElementById('checkoutNotes');
     const cancelBtn   = document.getElementById('checkoutModalCancel');
     const okBtn       = document.getElementById('checkoutModalOk');
-    const continueBtn = document.getElementById('checkoutModalContinue');
+    const whatsappBtn = document.getElementById('checkoutWhatsAppBtn');
+    const paystackBtn = document.getElementById('checkoutPaystackBtn');
+    const backBtn = document.getElementById('checkoutBackBtn');
+    const paystackUnavailable = document.getElementById('checkoutPaystackUnavailable');
+    const validationError = document.getElementById('checkoutValidationError');
     let data = null;
+
+    paystackBtn.disabled = !paystackEnabled;
+    paystackBtn.setAttribute('aria-disabled', String(!paystackEnabled));
+    if (paystackUnavailable) paystackUnavailable.style.display = paystackEnabled ? 'none' : 'block';
 
     step1.style.display = 'block';
     step2.style.display = 'none';
-    nameEl.value = ''; phoneEl.value = '';
-    if (areaEl) areaEl.value = '';
+    const signedInCustomer = firebaseCustomerState.customer || {};
+    nameEl.value = signedInCustomer.name || '';
+    phoneEl.value = signedInCustomer.phone || '';
+    emailEl.value = signedInCustomer.email || (firebaseCustomerState.user && firebaseCustomerState.user.email) || '';
+    emailEl.readOnly = isSignedIn();
+    const fillAddress = (address) => {
+      const value = address || {};
+      line1El.value = value.address_line1 || '';
+      line2El.value = value.address_line2 || '';
+      cityEl.value = value.city || '';
+      regionEl.value = value.region || '';
+      landmarkEl.value = '';
+      if (value.phone && !phoneEl.value) phoneEl.value = value.phone;
+      if (value.recipient_name && !nameEl.value) nameEl.value = value.recipient_name;
+    };
+    fillAddress(firebaseDefaultAddress);
+    if (savedAddressEl && savedAddressWrap) {
+      savedAddressEl.innerHTML = '<option value="">Enter a different address</option>' + firebaseAddresses.map((address) =>
+        `<option value="${Number(address.id)}">${escapeStr(address.label || 'Saved address')} — ${escapeStr([address.address_line1, address.city].filter(Boolean).join(', '))}</option>`
+      ).join('');
+      savedAddressWrap.style.display = firebaseAddresses.length ? 'block' : 'none';
+      if (firebaseDefaultAddress) savedAddressEl.value = String(firebaseDefaultAddress.id);
+      savedAddressEl.onchange = () => fillAddress(firebaseAddresses.find((address) => String(address.id) === savedAddressEl.value));
+    }
     if (notesEl) notesEl.value = '';
-    nameEl.style.borderColor = '#e0e4e8';
-    phoneEl.style.borderColor = '#e0e4e8';
+    const checkoutInputs = [nameEl, phoneEl, emailEl, line1El, cityEl, regionEl];
+    checkoutInputs.forEach((input) => { input.style.borderColor = '#e0e4e8'; });
+    if (validationError) {
+      validationError.textContent = '';
+      validationError.style.display = 'none';
+    }
     closeCart();
     modal.style.display = 'flex';
     modal.style.pointerEvents = 'auto';
-    setTimeout(() => { nameEl.focus(); nameEl.click(); }, 150);
+    setTimeout(() => {
+      const firstEmpty = !nameEl.value ? nameEl : (!phoneEl.value ? phoneEl : nameEl);
+      firstEmpty.focus();
+    }, 150);
 
     function closeModal() {
       modal.style.display = 'none';
       cancelBtn.removeEventListener('click', onCancel);
       okBtn.removeEventListener('click', onOk);
-      continueBtn.removeEventListener('click', onContinue);
+      whatsappBtn.removeEventListener('click', onWhatsApp);
+      paystackBtn.removeEventListener('click', onPaystack);
+      backBtn.removeEventListener('click', onBack);
+      modal.removeEventListener('click', onBackdrop);
     }
     function onCancel() { closeModal(); reject(); }
+    function showValidationError(message, input) {
+      step2.style.display = 'none';
+      step1.style.display = 'block';
+      if (validationError) {
+        validationError.textContent = message;
+        validationError.style.display = 'block';
+      }
+      if (input) {
+        input.style.borderColor = '#dc2626';
+        setTimeout(() => {
+          input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          input.focus({ preventScroll: true });
+        }, 50);
+      }
+    }
+    function clearValidationError() {
+      if (validationError) {
+        validationError.textContent = '';
+        validationError.style.display = 'none';
+      }
+      checkoutInputs.forEach((input) => { input.style.borderColor = '#e0e4e8'; });
+    }
     function onOk() {
+      clearValidationError();
       const name  = nameEl.value.trim();
       const phone = phoneEl.value.trim();
-      if (!name)  { nameEl.style.borderColor  = '#dc2626'; nameEl.focus();  return; }
-      if (!phone) { phoneEl.style.borderColor = '#dc2626'; phoneEl.focus(); return; }
+      if (!name)  { showValidationError('Please enter your full name.', nameEl); return; }
+      if (!phone) { showValidationError('Please enter your phone or WhatsApp number.', phoneEl); return; }
       data = {
         customer_name: name,
         customer_phone: phone,
-        delivery_area: areaEl ? areaEl.value.trim() : '',
+        customer_email: emailEl.value.trim(),
+        delivery_area: cityEl.value.trim(),
+        delivery_address: {
+          line1: line1El.value.trim(), line2: line2El.value.trim(), city: cityEl.value.trim(),
+          region: regionEl.value.trim(), landmark: landmarkEl.value.trim()
+        },
         notes: notesEl ? notesEl.value.trim() : ''
       };
       step1.style.display = 'none';
       step2.style.display = 'block';
     }
-    function onContinue() { closeModal(); resolve(data); }
+    function onWhatsApp() { closeModal(); resolve(Object.assign({}, data, { checkout_method: 'whatsapp' })); }
+    function onPaystack() {
+      const email = emailEl.value.trim();
+      const required = [emailEl, line1El, cityEl, regionEl];
+      clearValidationError();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showValidationError('Enter a valid email address to pay with Paystack.', emailEl);
+        return;
+      }
+      const firstMissing = required.slice(1).find((input) => !input.value.trim());
+      if (firstMissing) {
+        const fieldNames = new Map([[line1El, 'delivery address'], [cityEl, 'city or area'], [regionEl, 'region']]);
+        showValidationError(`Please enter your ${fieldNames.get(firstMissing)} to pay with Paystack.`, firstMissing);
+        return;
+      }
+      closeModal();
+      resolve(Object.assign({}, data, { customer_email: email, checkout_method: 'paystack' }));
+    }
+    function onBack() {
+      clearValidationError();
+      step2.style.display = 'none';
+      step1.style.display = 'block';
+      setTimeout(() => emailEl.focus(), 50);
+    }
+    function onBackdrop(event) {
+      if (event.target === modal) onCancel();
+    }
 
     cancelBtn.addEventListener('click', onCancel);
     okBtn.addEventListener('click', onOk);
-    continueBtn.addEventListener('click', onContinue);
-    modal.addEventListener('click', e => { if (e.target === modal) onCancel(); }, { once: true });
+    whatsappBtn.addEventListener('click', onWhatsApp);
+    paystackBtn.addEventListener('click', onPaystack);
+    backBtn.addEventListener('click', onBack);
+    modal.addEventListener('click', onBackdrop);
   });
 }
 
@@ -895,16 +1050,6 @@ function showReceiptStep(orderNumber, totalAmount, customerName, customerPhone, 
 }
 
 // ── Checkout / Pre-Order API Integration ──
-// One idempotency key per checkout attempt, kept across retries and cleared
-// only on success: if the order was created but the response got lost (network
-// drop, double-tap), the retry returns the SAME order instead of a duplicate.
-let checkoutIdemKey = null;
-function newIdemKey() {
-  return (window.crypto && crypto.randomUUID)
-    ? crypto.randomUUID()
-    : 'idem-' + Date.now() + '-' + Math.random().toString(36).slice(2, 12);
-}
-
 if (checkoutBtn) {
   checkoutBtn.addEventListener('click', async () => {
     if (cart.length === 0) { showToast('Your cart is empty!', 'warning'); return; }
@@ -932,21 +1077,41 @@ if (checkoutBtn) {
     // Snapshot cart for the WhatsApp message before it gets cleared
     const orderedItems = cart.map(c => ({ name: c.name, size: c.size, qty: c.qty, price: c.price }));
 
-    if (!checkoutIdemKey) checkoutIdemKey = newIdemKey();
     const orderPayload = {
         customer_name,
         customer_phone,
+        customer_email: details.customer_email || '',
         order_type: order_type,
         delivery_area: delivery_area,
+        delivery_address: details.delivery_address || {},
         notes: order_notes,
-        idempotency_key: checkoutIdemKey,
         items: cart.map(c => ({ id: c.id, size: c.size, quantity: c.qty }))
     };
 
     try {
+        if (details.checkout_method === 'paystack') {
+            const paystackResponse = await fetch('/api/checkout/paystack', {
+                method: 'POST',
+                headers: await customerAuthHeaders(true),
+                body: JSON.stringify(orderPayload)
+            });
+            const paystackData = await paystackResponse.json();
+            if (!paystackResponse.ok || !paystackData.authorization_url) {
+                showToast(paystackData.error || 'Could not start Paystack checkout', 'error');
+                return;
+            }
+            localStorage.setItem(PAYSTACK_PENDING_KEY, JSON.stringify({
+                reference: paystackData.reference,
+                order_number: paystackData.order_number,
+                created_at: new Date().toISOString(),
+                items: cart.map((item) => ({ id: item.id, size: item.size, qty: item.qty, ws: item.ws || 0 }))
+            }));
+            window.location.assign(paystackData.authorization_url);
+            return;
+        }
         const res = await fetch('/api/orders', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: await customerAuthHeaders(true),
             body: JSON.stringify(orderPayload)
         });
         const data = await res.json();
@@ -972,14 +1137,12 @@ if (checkoutBtn) {
             const whatsappNum = siteConfig.whatsapp_number || '233549193805';
             const whatsappURL = `https://wa.me/${whatsappNum}?text=${encodeURIComponent(message)}`;
 
-            // Order confirmed — next checkout is a new attempt with a new key.
-            checkoutIdemKey = null;
-
             // Show receipt (Step 3)
             showReceiptStep(data.order_number, data.total_amount, customer_name, customer_phone, cart, whatsappURL);
 
             // Clear cart
             cart = [];
+            saveCart();
             renderCartDrawer();
             closeCart();
         } else {
@@ -993,6 +1156,7 @@ if (checkoutBtn) {
           <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.82 9.82 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.81 11.81 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.88 11.88 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.82 11.82 0 0 0-3.48-8.413z"/></svg>
           Checkout via WhatsApp
         `;
+        checkoutBtn.innerHTML = '<i class="fas fa-lock text-sm"></i> Choose checkout method';
     }
   });
 }
@@ -1010,6 +1174,13 @@ async function initApp() {
     } catch (e) {
         console.warn("Could not load settings:", e);
     }
+    try {
+      const paystackConfigResponse = await fetch('/api/payments/paystack/config', { cache: 'no-store' });
+      if (paystackConfigResponse.ok) {
+        const paystackConfig = await paystackConfigResponse.json();
+        paystackEnabled = paystackConfig.enabled === true;
+      }
+    } catch (error) { paystackEnabled = false; }
 
     const res = await fetch('/api/products');
     const contentType = res.headers.get('content-type') || '';
@@ -1136,7 +1307,11 @@ async function initApp() {
 
   renderProducts();
   renderCartDrawer();
-  console.log(`DC Kids Brand loaded — ${products.length} products`);
+  await reconcilePendingPaystackCheckout();
+  if (new URLSearchParams(window.location.search).get('openCart') === '1' && cart.length) {
+    openCart();
+    window.history.replaceState({}, '', window.location.pathname + window.location.hash);
+  }
 }
 
 initApp();
@@ -1224,10 +1399,18 @@ function filterByCategory(catId) {
 // Local cache of wishlist product IDs (set). Mirrored to server when signed in.
 let wishlistSet = new Set();
 const WISHLIST_LS_KEY = 'dcKidsGuestWishlist';
-const CUSTOMER_TOKEN_KEY = 'dcKidsCustomerToken';
+let firebaseCustomerState = { user: null, customer: null };
+let firebaseDefaultAddress = null;
+let firebaseAddresses = [];
 
-function getCustomerToken() { return localStorage.getItem(CUSTOMER_TOKEN_KEY); }
-function isSignedIn() { return !!getCustomerToken(); }
+function isSignedIn() { return !!(firebaseCustomerState.user && firebaseCustomerState.user.emailVerified && firebaseCustomerState.customer); }
+async function customerAuthHeaders(includeJson) {
+  if (!isSignedIn() || !window.DCKidsAuth) return includeJson ? { 'Content-Type': 'application/json' } : {};
+  const token = await window.DCKidsAuth.getIdToken();
+  const headers = { 'Authorization': 'Bearer ' + token };
+  if (includeJson) headers['Content-Type'] = 'application/json';
+  return headers;
+}
 
 function loadGuestWishlist() {
   try { return new Set(JSON.parse(localStorage.getItem(WISHLIST_LS_KEY)) || []); }
@@ -1240,7 +1423,16 @@ function saveGuestWishlist() {
 async function syncWishlistState() {
   if (isSignedIn()) {
     try {
-      const res = await fetch('/api/wishlist', { headers: { 'Authorization': 'Bearer ' + getCustomerToken() } });
+      const guestIds = Array.from(loadGuestWishlist());
+      if (guestIds.length) {
+        const mergeRes = await fetch('/api/wishlist/merge', {
+          method: 'POST',
+          headers: await customerAuthHeaders(true),
+          body: JSON.stringify({ productIds: guestIds })
+        });
+        if (mergeRes.ok) localStorage.removeItem(WISHLIST_LS_KEY);
+      }
+      const res = await fetch('/api/wishlist', { headers: await customerAuthHeaders(false) });
       if (res.ok) {
         const rows = await res.json();
         wishlistSet = new Set(rows.map(r => Number(r.product_id)));
@@ -1273,7 +1465,7 @@ async function toggleWishlist(event, productId) {
 
   if (isSignedIn()) {
     try {
-      const headers = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + getCustomerToken() };
+      const headers = await customerAuthHeaders(true);
       if (wasActive) {
         await fetch('/api/wishlist/' + id, { method: 'DELETE', headers });
       } else {
@@ -1327,7 +1519,7 @@ function renderWishlist() {
     const image = resolveProductImage(p);
     return `
     <div class="cart-item">
-      <span class="cart-item__img-wrap"><img src="${escapeStr(image.src)}" alt="${escapeStr(p.name || '')}" class="cart-item__img" onerror="useCategoryFallback(this, '${escapeStr(p.cat || '')}')">${image.isCategoryFallback ? categoryImageBadge() : ''}</span>
+      <div class="cart-item__img-wrap"><img src="${escapeStr(image.src)}" alt="${escapeStr(p.name || '')}" class="cart-item__img" onerror="useCategoryFallback(this, '${escapeStr(p.cat || '')}')">${image.isCategoryFallback ? categoryImageBadge() : ''}</div>
       <div class="cart-item__details">
         <div class="cart-item__title">${escapeStr(p.name || '')}</div>
         <div class="cart-item__price">${p.price ? 'GH₵ ' + gh(p.price) : 'Ask for price'}</div>
@@ -1493,8 +1685,7 @@ function ensureReviewsModal() {
       title: document.getElementById('rv-title').value.trim(),
       body: document.getElementById('rv-body').value.trim()
     };
-    const headers = { 'Content-Type': 'application/json' };
-    if (isSignedIn()) headers['Authorization'] = 'Bearer ' + getCustomerToken();
+    const headers = await customerAuthHeaders(true);
     try {
       const res = await fetch('/api/products/' + pid + '/reviews', { method: 'POST', headers, body: JSON.stringify(body) });
       const data = await res.json();
@@ -1525,7 +1716,7 @@ async function openReviewsModal(productId, productName) {
     imageEl.alt = productName || 'Product';
     imageEl.onerror = () => useCategoryFallback(imageEl, product && product.cat);
   }
-  if (imageBadgeEl) imageBadgeEl.style.display = 'none'; // product-state corner, not an image label
+  if (imageBadgeEl) imageBadgeEl.style.display = productImage.isCategoryFallback ? 'inline-flex' : 'none';
   const descEl = document.getElementById('rv-description');
   if (product && product.description) {
     descEl.textContent = product.description;
@@ -1590,8 +1781,33 @@ function showToast(msg, kind) {
 }
 function escapeStr(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]); }
 
-// Boot wishlist sync once on page load (after grid first renders)
-window.addEventListener('load', () => { setTimeout(syncWishlistState, 200); });
+async function applyFirebaseCustomerState(nextState) {
+  firebaseCustomerState = nextState || { user: null, customer: null };
+  const label = document.getElementById('navAccountLabel');
+  const headerLink = document.getElementById('accountHeaderLink');
+  if (label) label.textContent = firebaseCustomerState.customer
+    ? (String(firebaseCustomerState.customer.name || 'My Account').split(/\s+/)[0] + "'s Account")
+    : 'My Account';
+  if (headerLink) headerLink.title = firebaseCustomerState.customer ? 'Open my account' : 'Sign in or create an account';
+  firebaseDefaultAddress = null;
+  firebaseAddresses = [];
+  if (isSignedIn()) {
+    try {
+      const response = await fetch('/api/customer/addresses', { headers: await customerAuthHeaders(false) });
+      if (response.ok) {
+        firebaseAddresses = await response.json();
+        firebaseDefaultAddress = firebaseAddresses.find((address) => address.is_default) || firebaseAddresses[0] || null;
+      }
+    } catch (error) { /* Checkout remains usable without account prefill. */ }
+  }
+  await syncWishlistState();
+}
+
+window.addEventListener('dckids-auth-change', (event) => { applyFirebaseCustomerState(event.detail); });
+window.addEventListener('load', () => {
+  setTimeout(syncWishlistState, 200);
+  if (window.DCKidsAuth) window.DCKidsAuth.onChange(applyFirebaseCustomerState);
+});
 
 /* ── Input guards: block wrong character class in fields ──
    number fields: block e/E/+/- (and "." on integer fields);
