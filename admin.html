@@ -21,7 +21,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=14">
+  <link rel="stylesheet" href="admin-bridge.css?v=20">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -52,7 +52,7 @@
   </style>
   <!-- Locally compiled Tailwind utilities; preflight stays disabled for admin.css. -->
   <link rel="stylesheet" href="tailwind-admin.css?v=1">
-  <link rel="stylesheet" href="admin-system.css?v=8">
+  <link rel="stylesheet" href="admin-system.css?v=9">
   <style>
     /* ── Force light mode on the login page regardless of OS/browser dark preference.
        Dark mode is an admin-dashboard-only preference; the login screen is always light. ── */
@@ -535,7 +535,7 @@
           <div class="adm-group">Money</div>
           
             <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-analytics"><span class="adm-nav-hl" aria-hidden="true"></span>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"></svg>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
               <span class="adm-nav-label">Sales Analytics</span>
             </a>
           

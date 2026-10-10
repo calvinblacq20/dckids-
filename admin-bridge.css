@@ -1123,11 +1123,12 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
     box-shadow: var(--sh-deep);
   }
   #sidebar-overlay {
-    position: fixed; inset: 0; z-index: var(--z-overlay, 60);
+    position: fixed; inset: 0; z-index: calc(var(--z-tabbar, 20) + 1);
     background: rgba(36, 36, 38, .45);
     opacity: 0; pointer-events: none; transition: opacity .25s;
   }
-  #sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+  /* admin.js marks this one .active, not .open. */
+  #sidebar-overlay.active { opacity: 1; pointer-events: auto; }
   /* The rail treatment belongs to tablets; phones show full labels in the drawer. */
   .dashboard-container.adm > #admin-sidebar .adm-nav-label,
   .dashboard-container.adm > #admin-sidebar .adm-brand-text { display: flex; }
@@ -2004,3 +2005,70 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 .bulk-image-drop:hover, .bulk-image-drop.is-dragover { border-color: var(--ink-25); color: var(--ink); }
 .bulk-image-list { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow: auto; margin-top: 12px; }
 .audit-log-empty { padding: 28px 16px; text-align: center; color: var(--ink-50); font-size: 13px; }
+
+/* =============================================================
+   31. Narrow-screen corrections
+   The top bar and the live bar were both laid out wider than a phone.
+   ============================================================= */
+@media (max-width: 809.98px) {
+  /* The bar is nowrap by design, so every child has to be able to shrink or
+     the row runs past the viewport. The account name and role go; the avatar
+     alone identifies the signed-in user, as it does in the reference. */
+  .admin-header.adm-bar > * { min-width: 0; }
+  .admin-header .global-search-wrapper { min-width: 0; }
+  /* These carry inline display declarations from the markup, so the override
+     has to win on specificity. */
+  .user-info,
+  .user-profile > svg,
+  .global-search-wrapper { display: none !important; }
+  .user-profile { gap: 0; }
+
+  .dashboard-livebar { flex-wrap: wrap; gap: 8px 12px; }
+  .dashboard-livebar__status { flex: 1 1 100%; white-space: nowrap; }
+  .dashboard-livebar__actions { flex: 1 1 100%; }
+  .dashboard-livebar__actions > * { flex: 1; justify-content: center; }
+}
+
+/* =============================================================
+   32. Containing block for the chart empty state
+   The reference absolutely positions .chart-empty over its chart. Here the
+   chart sits straight in .adm-card-body, which is not positioned, so the
+   notice escaped to the page origin and landed on the live bar.
+   ============================================================= */
+.adm-card-body:has(> .chart-empty) { position: relative; }
+
+/* =============================================================
+   33. Mobile bottom nav — the reference's floating tab bar
+   The bar lost its fixed positioning with admin.css and fell to the end of
+   the document. Rebuild it on .tabbar / .tab from the reference: a floating
+   blurred pill above the safe-area inset, five columns.
+   ============================================================= */
+.mobile-bottom-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-tabbar);
+  padding: 0 var(--gutter) calc(8px + var(--safe-bottom));
+  pointer-events: none;
+}
+.mobile-bottom-nav__inner {
+  pointer-events: auto;
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  max-width: 520px; margin-inline: auto; gap: 4px; padding: 6px;
+  border-radius: var(--r-pill); background: var(--glass);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  box-shadow: var(--sh-float);
+}
+.mobile-bottom-nav__btn {
+  position: relative; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px;
+  height: 52px; padding: 0; border: 0; border-radius: var(--r-pill);
+  background: none; color: var(--ink-75); font: inherit; font-size: 11px; cursor: pointer;
+}
+.mobile-bottom-nav__btn.active { background: var(--lime); color: var(--ink); }
+.mobile-bottom-nav__btn svg { width: 20px; height: 20px; stroke-width: 1.8; }
+
+/* Clear the bar so the last card is never trapped underneath it. */
+@media (max-width: 809.98px) {
+  .admin-main.adm-main { padding-bottom: calc(84px + var(--safe-bottom)); }
+}
+@media (min-width: 810px) {
+  .mobile-bottom-nav { display: none; }
+}

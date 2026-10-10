@@ -2990,7 +2990,9 @@ a.adm-row:hover, button.adm-row:hover { background: var(--ground); }
     top: 0;
     inset-inline-start: 0;
     height: 100dvh;
-    z-index: var(--z-tabbar, 20);
+    /* Stack on phones: tab bar 20, scrim 21, drawer 22. The scrim has to
+       cover the tab bar, and the drawer has to sit clear of the scrim. */
+    z-index: calc(var(--z-tabbar, 20) + 2);
   }
 }
 
