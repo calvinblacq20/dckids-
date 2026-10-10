@@ -5573,7 +5573,7 @@
 
   <!-- ==================== Order Receipt Modal ==================== -->
   <div id="modal-order-receipt" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-receipt-title" style="display:none;">
-    <div class="modal-content" style="max-width:440px;">
+    <div class="modal-content" style="max-width:760px;">
       <div class="modal-header">
         <h2 id="modal-receipt-title" class="modal-title">Order Receipt</h2>
         <button class="modal-close-btn" type="button" aria-label="Close modal" onclick="closeModal('modal-order-receipt')">
@@ -5582,31 +5582,48 @@
       </div>
       <div class="modal-body" style="padding:0;">
         <div id="adminReceiptCard" class="receipt">
-          <div class="receipt__head">
+          <header class="receipt__id">
+            <img src="icon.png" alt="" class="receipt__logo" onerror="this.style.display='none'">
             <div>
               <div class="receipt__brand">DC Kids Brand</div>
               <div class="t-cap muted">Merging Style with Comfort</div>
+              <div class="t-cap muted" id="adminReceiptShop"></div>
             </div>
-            <div class="receipt__ref">
-              <div id="adminReceiptOrderNum" class="t-mono"></div>
-              <div id="adminReceiptDate" class="t-cap muted"></div>
+          </header>
+
+          <div class="receipt__headline">
+            <div>
+              <div class="receipt__kicker">Official receipt</div>
+              <div class="receipt__amount" id="adminReceiptTotal"></div>
+              <div class="receipt__paidnote" id="adminReceiptPaidNote"></div>
+            </div>
+            <div class="receipt__stamp" id="adminReceiptStamp">
+              <b id="adminReceiptStatus"></b>
+              <span id="adminReceiptDate"></span>
             </div>
           </div>
 
-          <div class="receipt__grid">
-            <div><span class="t-cap muted">Customer</span><b id="adminReceiptCustomer"></b></div>
-            <div><span class="t-cap muted">Phone</span><b id="adminReceiptPhone"></b></div>
-            <div><span class="t-cap muted">Status</span><span id="adminReceiptStatus"></span></div>
-            <div><span class="t-cap muted">Order type</span><b id="adminReceiptType"></b></div>
-          </div>
+          <dl class="receipt__facts">
+            <div><dt>Receipt no.</dt><dd class="t-mono" id="adminReceiptOrderNum"></dd></div>
+            <div><dt>Date and time</dt><dd id="adminReceiptDateTime"></dd></div>
+            <div><dt>Order type</dt><dd id="adminReceiptType"></dd></div>
+            <div><dt>Payment method</dt><dd id="adminReceiptMethod"></dd></div>
+            <div><dt>Phone</dt><dd id="adminReceiptPhone"></dd></div>
+            <div><dt>Received by</dt><dd>DC Kids Brand</dd></div>
+          </dl>
 
-          <div class="receipt__items" id="adminReceiptItems"></div>
+          <section class="receipt__from">
+            <div class="receipt__kicker">Received from</div>
+            <div class="receipt__name" id="adminReceiptCustomer"></div>
+            <div class="t-cap muted" id="adminReceiptContact"></div>
+          </section>
 
-          <div class="receipt__total">
-            <span>Total</span>
-            <b id="adminReceiptTotal" class="tabular"></b>
-          </div>
+          <table class="receipt__table">
+            <thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Amount</th></tr></thead>
+            <tbody id="adminReceiptItems"></tbody>
+          </table>
 
+          <div class="receipt__sum" id="adminReceiptSum"></div>
           <p class="receipt__note t-cap muted">Thank you for shopping with DC Kids Brand.</p>
         </div>
         <div class="modal-footer" style="gap:8px; display: flex; justify-content: flex-end; padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border);">

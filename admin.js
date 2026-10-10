@@ -2727,58 +2727,62 @@ function getFilteredOrders() {
 }
 
 function openOrderReceipt(orderId) {
-    var order = getOrders().find(function(o) { return o.id === orderId; });
+    var order = getOrders().find(function (o) { return o.id === orderId; });
     if (!order) return;
 
-    // Populate receipt
-    document.getElementById('adminReceiptOrderNum').textContent = order.id;
-    document.getElementById('adminReceiptDate').textContent = order.date ? new Date(order.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-    document.getElementById('adminReceiptCustomer').textContent = order.customer || '—';
+    var set = function (id, text) { var el = document.getElementById(id); if (el) el.textContent = text; };
+    var when = order.date ? new Date(order.date) : null;
+    var money = function (n) { return 'GH₵ ' + Number(n || 0).toFixed(2); };
+    var status = String(order.status || 'pending').replace(/_/g, ' ');
+    var settled = ['paid', 'completed', 'delivered', 'dispatched', 'shipped'].indexOf(String(order.status || '').toLowerCase()) >= 0;
 
-    var phone = order.phone || '';
-    if (!phone) {
-        var localCusts = getCustomers();
-        var foundCust = localCusts.find(function(c) { return c.name === order.customer; });
-        if (foundCust && foundCust.phone) phone = foundCust.phone;
-    }
-    document.getElementById('adminReceiptPhone').textContent = phone || '—';
+    set('adminReceiptShop', 'WhatsApp ' + (window.storeSettings && storeSettings.whatsapp_number ? storeSettings.whatsapp_number : '—'));
+    set('adminReceiptTotal', money(order.total));
+    set('adminReceiptPaidNote', settled ? 'Payment in full · received with thanks' : 'Awaiting payment');
+    set('adminReceiptStatus', status);
+    set('adminReceiptDate', when ? when.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+    set('adminReceiptOrderNum', order.order_number || order.id);
+    set('adminReceiptDateTime', when ? when.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
+    set('adminReceiptType', order.order_type || order.type || 'retail');
+    set('adminReceiptMethod', (order.payments && order.payments[0] && order.payments[0].payment_method) || order.payment_method || 'WhatsApp');
+    set('adminReceiptPhone', order.phone || order.customer_phone || '—');
+    set('adminReceiptCustomer', order.customer || '—');
+    set('adminReceiptContact', [order.phone || order.customer_phone, order.email || order.customer_email, order.delivery_area]
+        .filter(Boolean).join(' · ') || '—');
 
-    // Status badge
-    var statusEl = document.getElementById('adminReceiptStatus');
-    var statusColors = { pending: '#3B82F6', shipped: '#8B5CF6', delivered: '#10B981', cancelled: '#EF4444' };
-    var statusBgs = { pending: '#DBEAFE', shipped: '#EDE9FE', delivered: '#D1FAE5', cancelled: '#FEE2E2' };
-    var st = (order.status || 'pending').toLowerCase();
-    statusEl.innerHTML = '<span style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;text-transform:capitalize;background:' + (statusBgs[st] || '#f5f5f5') + ';color:' + (statusColors[st] || '#666') + ';">' + (order.status || 'pending') + '</span>';
+    var stamp = document.getElementById('adminReceiptStamp');
+    if (stamp) stamp.classList.toggle('is-settled', settled);
 
-    // Order type
-    document.getElementById('adminReceiptType').textContent = order.order_type || order.type || 'retail';
-
-    // Items
     var itemsEl = document.getElementById('adminReceiptItems');
     itemsEl.innerHTML = '';
-    if (order.items && order.items.length > 0) {
-        order.items.forEach(function(it) {
-            var row = document.createElement('div');
-            row.className = 'receipt-row';
-            var itemPrice = it.price || 0;
-            var itemQty = it.qty || it.quantity || 1;
-            var lineTotal = itemPrice * itemQty;
-            // The size is shown on its own line, so strip it from the name.
-            var displayName = (it.name || 'Item').replace(/\s*\([^)]+\)\s*$/, '');
-            row.innerHTML = '<span class="grow stack">' +
-                '<span class="receipt-row__name">' + escapeHtml(displayName) + '</span>' +
-                '<span class="t-cap muted">Size: ' + escapeHtml(it.size || '—') + ' × ' + itemQty + '</span>' +
-                '</span>' +
-                '<b class="tabular">GHS ' + formatNumber(lineTotal) + '</b>';
-            itemsEl.appendChild(row)
-        });
-    }
+    (order.items || []).forEach(function (it) {
+        var qty = it.qty || it.quantity || 1;
+        var name = (it.name || 'Item').replace(/\s*\([^)]+\)\s*$/, '');
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td><span class="receipt__desc">' + escapeHtml(name) + '</span>' +
+            '<span class="t-cap muted">Size: ' + escapeHtml(it.size || 'Standard') + '</span></td>' +
+            '<td class="num tabular">' + qty + '</td>' +
+            '<td class="num tabular">' + money((it.price || 0) * qty) + '</td>';
+        itemsEl.appendChild(tr);
+    });
 
-    // Total
-    document.getElementById('adminReceiptTotal').textContent = 'GHS ' + formatNumber(order.total || 0);
+    // Only worth showing the arithmetic when a discount moved the figure.
+    var sum = document.getElementById('adminReceiptSum');
+    var pct = Number(order.discount_percent || 0);
+    if (sum) {
+        if (pct > 0) {
+            var gross = Number(order.total || 0) / (1 - pct / 100);
+            sum.innerHTML = '<div><span>Subtotal</span><b class="tabular">' + money(gross) + '</b></div>' +
+                '<div><span>Discount (' + pct + '%)</span><b class="tabular">-' + money(gross - Number(order.total || 0)) + '</b></div>' +
+                '<div class="receipt__sum-total"><span>Order total</span><b class="tabular">' + money(order.total) + '</b></div>';
+        } else {
+            sum.innerHTML = '<div class="receipt__sum-total"><span>Order total</span><b class="tabular">' + money(order.total) + '</b></div>';
+        }
+    }
 
     openModal('modal-order-receipt');
 }
+
 
 function printAdminReceipt() {
     window.print();

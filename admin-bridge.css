@@ -2714,31 +2714,164 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 
 /* =============================================================
    43. Receipt
-   Was built from inline styles in the old green palette. Same information,
-   on the reference's surface, type and rules — including when printed.
+   A document, as the reference's is: the shop at the top, the amount set
+   large with a stamp beside it, the facts in a grid, who it was received
+   from, then the lines and the total. Was a dialog full of inline styles
+   in the old green palette.
    ============================================================= */
-.receipt { padding: 22px; display: flex; flex-direction: column; gap: 16px; background: var(--surface); color: var(--ink); }
-.receipt__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 14px; border-bottom: 1px dashed var(--ink-12); }
+.receipt { padding: 26px; display: flex; flex-direction: column; gap: 22px; background: var(--surface); color: var(--ink); }
+.receipt__id { display: flex; align-items: flex-start; gap: 12px; }
+.receipt__logo { width: 40px; height: 40px; flex: none; object-fit: contain; }
 .receipt__brand { font-size: 16px; font-weight: 500; letter-spacing: -.01em; }
-.receipt__ref { text-align: right; }
-.receipt__ref .t-mono { font-family: var(--mono); font-size: 13px; color: var(--label-lime); }
+.receipt__kicker { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-50); }
 
-.receipt__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; padding-bottom: 14px; border-bottom: 1px dashed var(--ink-12); }
-.receipt__grid > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.receipt__grid b { font-size: 13px; font-weight: 500; text-transform: capitalize; }
+.receipt__headline { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.receipt__amount { font-size: 40px; line-height: 1.05; font-weight: 500; letter-spacing: -.03em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.receipt__paidnote { font-size: 13px; color: var(--ink-75); margin-top: 4px; }
 
-.receipt__items { display: flex; flex-direction: column; }
-.receipt-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 0.8px solid var(--ink-06); font-size: 13px; }
-.receipt-row:last-child { border-bottom: 0; }
-.receipt-row__name { font-weight: 500; }
+/* The reference prints a round stamp beside the amount. */
+.receipt__stamp {
+  flex: none; width: 104px; height: 104px; display: grid; place-content: center; gap: 2px;
+  border: 1.5px solid var(--ink-25); border-radius: 50%;
+  transform: rotate(-8deg); text-align: center; color: var(--ink-50);
+}
+.receipt__stamp b { font-size: 14px; letter-spacing: .1em; text-transform: uppercase; font-weight: 500; }
+.receipt__stamp span { font-size: 10px; }
+.receipt__stamp.is-settled { border-color: var(--open); color: var(--open); }
 
-.receipt__total { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: var(--r-16); background: var(--ink); color: #fff; font-size: 15px; }
-.receipt__total b { font-size: 20px; font-weight: 500; }
+.receipt__facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin: 0; padding-top: 18px; border-top: 1px solid var(--ink-12); }
+.receipt__facts dt { font-size: 11px; color: var(--ink-50); }
+.receipt__facts dd { margin: 2px 0 0; font-size: 14px; font-weight: 500; text-transform: capitalize; }
+.receipt__facts .t-mono { font-family: var(--mono); text-transform: none; }
+
+.receipt__from { padding-top: 18px; border-top: 1px solid var(--ink-12); }
+.receipt__name { font-size: 18px; font-weight: 500; margin-top: 4px; }
+
+.receipt__table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.receipt__table th { font-size: 11px; font-weight: 400; color: var(--ink-50); text-align: left; padding-bottom: 8px; border-bottom: 1px solid var(--ink-12); }
+.receipt__table th.num, .receipt__table td.num { text-align: right; }
+.receipt__table td { padding: 10px 0; border-bottom: 0.8px solid var(--ink-06); vertical-align: top; }
+.receipt__desc { display: block; font-weight: 500; }
+
+.receipt__sum { display: flex; flex-direction: column; gap: 8px; }
+.receipt__sum > div { display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 14px; color: var(--ink-75); }
+.receipt__sum-total { padding-top: 10px; border-top: 1px solid var(--ink-12); color: var(--ink) !important; font-size: 16px !important; }
+.receipt__sum-total b { font-size: 20px; font-weight: 500; }
 .receipt__note { text-align: center; }
+
+@media (max-width: 639.98px) {
+  .receipt { padding: 18px; gap: 18px; }
+  .receipt__headline { flex-direction: column; }
+  .receipt__stamp { align-self: flex-end; width: 88px; height: 88px; }
+  .receipt__amount { font-size: 32px; }
+  .receipt__facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
 @media print {
   body * { visibility: hidden; }
   #adminReceiptCard, #adminReceiptCard * { visibility: visible; }
   #adminReceiptCard { position: absolute; inset: 0 auto auto 0; width: 100%; padding: 0; }
-  .receipt__total { background: none; color: var(--ink); border: 1px solid var(--ink); }
 }
+
+/* =============================================================
+   44. Bare glyphs and text-only labels
+   The reference carries no coloured chip behind an icon and no fill behind
+   a label: .pill-tag, .badge and .chip-count are plain coloured text, and
+   its icons are the glyph alone. Tinted squares and filled pills were a
+   habit from the old admin that survived the rebuild, so strip them and
+   move the colour onto the mark itself.
+
+   Deliberate exceptions, which stay filled: the tab bar's centre action,
+   avatars and initials squares, the dark total bands, and the notification
+   count, where the fill is the point rather than decoration.
+   ============================================================= */
+.detail-row__ic,
+.detail-action__ic,
+.reports-icon-wrapper,
+.reports-kpi-icon-wrapper,
+.insight-icon-circle,
+.analytics-kpi-icon,
+.analytics-insight__icon,
+.analytics-panel__icon,
+.analytics-empty__icon,
+.aum-item-icon,
+.aum-stat-icon,
+.settings-row__ic,
+.settings-recovery-card__icon,
+.supplier-modal__icon,
+.supplier-logo-upload__icon,
+.confirm-icon,
+.mbn-sheet__icon,
+.dashboard-recovery-alert__icon,
+.signup-hero__ficon {
+  background: none;
+  box-shadow: none;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  border-radius: 0;
+}
+/* The glyph keeps the tone the chip used to carry. */
+.detail-ic--violet, .ic-violet, .reports-bg-indigo, .bg-purple-light, .reports-bg-purple-light,
+.reports-bg-purple, .bg-purple { color: var(--label-lilac); background: none; }
+.detail-ic--blue, .reports-bg-rose-light { color: var(--label-sky); background: none; }
+.detail-ic--green, .ic-green, .reports-bg-emerald, .bg-emerald,
+.reports-bg-emerald-light, .bg-emerald-light { color: var(--open); background: none; }
+.detail-ic--amber, .detail-ic--sand, .reports-bg-gold, .bg-gold,
+.reports-bg-gold-light, .bg-gold-light { color: var(--warning-ink); background: none; }
+.detail-ic--pink, .ic-pink, .bg-pink, .bg-rose-light { color: var(--label-lime); background: none; }
+.detail-ic--red { color: var(--danger); background: none; }
+
+.analytics-kpi-card--pink     .analytics-kpi-icon { color: var(--label-lime); }
+.analytics-kpi-card--gold     .analytics-kpi-icon { color: var(--warning-ink); }
+.analytics-kpi-card--sage     .analytics-kpi-icon { color: var(--open); }
+.analytics-kpi-card--lavender .analytics-kpi-icon { color: var(--label-lilac); }
+.analytics-insight__icon--sage     { color: var(--open); }
+.analytics-insight__icon--lavender { color: var(--label-lilac); }
+.analytics-insight__icon--gold     { color: var(--warning-ink); }
+.confirm-icon { color: var(--danger); }
+.settings-recovery-card__icon { color: var(--warning-ink); }
+.supplier-modal__icon { color: var(--label-lime); }
+
+/* Insight cards were tinted to match their icon; the card is a card. */
+.analytics-insight--featured { background: var(--surface); border-color: var(--ink-06); }
+
+/* ---- Labels: the tone goes on the text, not behind it ---- */
+.status-pill,
+.detail-chip,
+.detail-hero__badge,
+.aum-pill,
+.preview-status-badge,
+.prod-filter-badge,
+.reports-filter-tab.active,
+.badge,
+.pill-tag {
+  background: none;
+  border: 0;
+  box-shadow: none;
+  padding: 0;
+  height: auto;
+  min-height: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-75);
+}
+.status-pill.active, .status-pill.paid, .status-pill.completed,
+.status-pill.delivered, .status-pill.dispatched, .badge.is-good,
+.detail-chip--status { color: var(--open); }
+.status-pill.pending, .status-pill.awaiting, .status-pill.payment,
+.status-pill.processing, .status-pill.shipped, .badge.is-wait { color: var(--warning-ink); }
+.status-pill.cancelled, .detail-chip--status.low-stock, .status-text-low-stock { color: var(--danger); }
+.status-pill.preorder { color: var(--label-lilac); }
+.status-pill.in-stock { color: var(--open); }
+.status-pill.low-stock { color: var(--warning-ink); }
+.status-pill.out-of-stock { color: var(--danger); }
+.detail-chip--muted { color: var(--ink-50); }
+.detail-hero__badge { color: var(--label-lime); }
+
+/* A row of bare labels needs its own spacing back. */
+.detail-chips { gap: 10px; }
+.res-card__meta { gap: 10px; }
+
+/* The filter tab still needs to read as selected without a fill. */
+.reports-filter-tab.active { font-weight: 500; color: var(--ink); border-bottom: 1.5px solid var(--ink); border-radius: 0; padding: 0 0 3px; }
