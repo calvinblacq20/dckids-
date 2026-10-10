@@ -2482,7 +2482,10 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 #modal-add-order .grid.lg\:grid-cols-12 { width: min(100%, 1240px); margin-inline: auto; }
 
 /* ---- Section cards ---- */
-#modal-add-order .bg-white {
+/* Only the section panels, not every element carrying the utility class —
+   the selects have .bg-white too, and this was re-boxing them. */
+#modal-add-order .lg\:col-span-8 > .bg-white,
+#modal-add-order .lg\:col-span-4 > .bg-white {
   background: var(--surface);
   border: 0.8px solid var(--ink-06);
   border-radius: var(--r-24);
@@ -2604,3 +2607,46 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 /* Safety net behind the sparkline's aspect ratio, in case a future chart is
    added to one of these cards without one. */
 .analytics-kpi-card > canvas { display: block; width: 100%; max-height: 56px; }
+
+/* ---- New-order page: back link, stepper, rail CTA ---- */
+#modal-add-order .adm-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 0 0 6px; padding: 0;
+  border: 0; background: none; cursor: pointer;
+  font: inherit; font-size: 13px; color: var(--ink-50);
+}
+#modal-add-order .adm-back:hover { color: var(--ink); }
+
+.qty-stepper {
+  display: inline-flex; align-items: center; gap: 2px;
+  border: 0.8px solid var(--ink-12); border-radius: var(--r-pill);
+  background: var(--surface); padding: 2px;
+}
+.qty-stepper__btn {
+  display: grid; place-items: center; width: 30px; height: 30px;
+  border: 0; border-radius: var(--r-pill); background: none;
+  color: var(--ink-75); font: inherit; font-size: 16px; line-height: 1; cursor: pointer;
+}
+.qty-stepper__btn:hover { background: var(--ground); color: var(--ink); }
+#modal-add-order .qty-stepper .order-item-qty-input {
+  width: 44px; min-height: 0; padding: 0; border: 0;
+  background: transparent; text-align: center;
+  font-size: 14px; font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+}
+#modal-add-order .qty-stepper .order-item-qty-input::-webkit-outer-spin-button,
+#modal-add-order .qty-stepper .order-item-qty-input::-webkit-inner-spin-button {
+  -webkit-appearance: none; margin: 0;
+}
+
+/* The CTA fills the rail card it now sits in. */
+#modal-add-order .adm-cta-block {
+  width: 100%; margin-top: 16px;
+  justify-content: center;
+  padding: 14px 18px;
+  border-radius: var(--r-pill);
+  background: var(--ink); color: #fff;
+  font-size: 15px; font-weight: 500;
+  box-shadow: none;
+}
+#modal-add-order .adm-cta-block:hover { background: var(--charcoal); }

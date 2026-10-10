@@ -8231,6 +8231,28 @@ async function saveNewCustomer() {
    SECTION 18: CREATE NEW ORDER MODAL VIEW
    ============================================================ */
 
+/* The reference's new-order page carries its one primary action inside the
+   summary rail, not in a footer bar. Move the button rather than duplicate
+   it, so its handler and id travel with it. */
+function placeCreateOrderCta() {
+    var btn = document.getElementById('submit-order-btn');
+    var summary = document.getElementById('new-order-total');
+    if (!btn || !summary) return;
+    // Append to the summary panel itself — the panel that is a direct child
+    // of the rail column, not whichever ancestor happens to carry .bg-white.
+    var rail = document.querySelector('#modal-add-order [class~="lg:col-span-4"]');
+    var card = null;
+    if (rail) {
+        var node = summary;
+        while (node && node.parentElement !== rail) node = node.parentElement;
+        card = node;
+    }
+    if (!card) card = summary.parentElement.parentElement;
+    if (card.contains(btn)) return;
+    btn.classList.add('adm-cta-block');
+    card.appendChild(btn);
+}
+
 function openCreateOrderModal() {
     var modal = document.getElementById('modal-add-order');
     if (!modal) return;
@@ -8246,7 +8268,8 @@ function openCreateOrderModal() {
             opt.textContent = c.name;
             select.appendChild(opt);
         });
-    }
+        placeCreateOrderCta();
+}
 
     document.getElementById('new-order-cust-info-phone').textContent = 'Phone: -';
     document.getElementById('new-order-cust-info-email').textContent = 'Email: -';
@@ -8354,7 +8377,11 @@ function addNewOrderItemRow() {
         '</td>' +
         '<td class="py-3 px-4 font-medium text-gray-500" data-label="Price"><span class="order-item-price-display">GH₵ 0.00</span></td>' +
         '<td class="py-3 px-4" data-label="Qty">' +
-        '  <input type="number" min="1" value="1" class="order-item-qty-input w-20 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500" oninput="updateNewOrderTotals()">' +
+        '  <span class="qty-stepper">' +
+        '    <button type="button" class="qty-stepper__btn" onclick="stepOrderQty(this, -1)" aria-label="One fewer">−</button>' +
+        '    <input type="number" min="1" value="1" class="order-item-qty-input" oninput="updateNewOrderTotals()" aria-label="Quantity">' +
+        '    <button type="button" class="qty-stepper__btn" onclick="stepOrderQty(this, 1)" aria-label="One more">+</button>' +
+        '  </span>' +
         '</td>' +
         '<td class="py-3 px-4 font-bold text-gray-800 text-right" data-label="Total"><span class="order-item-total-display">GH₵ 0.00</span></td>' +
         '<td class="py-3 pl-4 text-right" data-label="Actions">' +
@@ -8431,6 +8458,16 @@ function getPriceModifier(sizeLabel) {
     if (/^(3Y|4Y|5Y|28|29|30|31|32)$/i.test(s)) return 10;
     if (/^(6Y|7Y|8Y|33|34|35|36)$/i.test(s)) return 15;
     return 0;
+}
+
+/* The reference puts a minus and a plus either side of the quantity rather
+   than leaving a bare number field. */
+function stepOrderQty(btn, delta) {
+    var input = btn.parentElement.querySelector('.order-item-qty-input');
+    if (!input) return;
+    var next = Math.max(1, (parseInt(input.value, 10) || 1) + delta);
+    input.value = next;
+    updateNewOrderTotals();
 }
 
 function updateNewOrderTotals() {

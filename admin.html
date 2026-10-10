@@ -19,7 +19,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=47">
+  <link rel="stylesheet" href="admin-bridge.css?v=49">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -6260,7 +6260,7 @@
   <script src="vendor/chart.umd.js?v=4.5.1"></script>
   <script src="image-resolver.js?v=1"></script>
   <script src="admin-recovery-view.js?v=1"></script>
-  <script src="admin.js?v=135"></script>
+  <script src="admin.js?v=138"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
@@ -6288,11 +6288,7 @@
       <div class="px-8 py-6 border-b border-gray-100 flex items-start justify-between relative bg-white">
         <div>
           <h2 class="text-xl font-bold text-gray-900 mb-1" id="modal-add-order-title" style="margin:0;">Create New Order</h2>
-          <div class="flex items-center text-xs text-gray-500 gap-2 mt-1">
-            <span>Orders</span>
-            <span>&gt;</span>
-            <span class="text-gray-700 font-medium">Create New Order</span>
-          </div>
+          <button type="button" class="adm-back" onclick="closeCreateOrderModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>Orders</button>
         </div>
         <button class="text-gray-400 hover:text-gray-600 transition-colors absolute top-6 right-6 border-none bg-transparent cursor-pointer p-1" type="button" onclick="closeCreateOrderModal()" aria-label="Close modal">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
