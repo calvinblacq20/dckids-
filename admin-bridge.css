@@ -2665,3 +2665,49 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
   box-shadow: var(--sh-soft);
 }
 #modal-add-order [hidden] { display: none !important; }
+
+/* =============================================================
+   42. Detail sheet: top bar and order items
+   The top bar was glass over a white sheet, which buys nothing and let the
+   order number and date smear through it as they scrolled under. And
+   .od-item had no rules at all, so each item's photo rendered at its
+   natural 320px and the row stacked into a column.
+   ============================================================= */
+.detail-topbar {
+  background: var(--surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: 0 1px 0 var(--ink-06);
+}
+
+.od-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 0.8px solid var(--ink-06);
+}
+.od-item:last-child { border-bottom: 0; }
+.od-item > img {
+  width: 44px; height: 44px; flex: none;
+  object-fit: cover; border-radius: var(--r-img); background: var(--ground);
+}
+.od-item__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.od-item__name {
+  font-size: 14px; font-weight: 500; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.od-item__qty { font-size: 12px; color: var(--ink-50); }
+.od-item__price { flex: none; font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* The reference's detail hero is a full-bleed photo that slides up behind a
+   transparent top bar, with its title in white over a scrim — hence the
+   -60px top margin and the negative inline margins it carries. None of our
+   sheets use a hero like that: the order, customer and supplier ones are
+   text, and the product one is a 44px thumbnail beside a title. The offsets
+   therefore hid the heading under the bar and pushed it past the sheet's
+   left edge, so they come off. */
+.detail-sheet .detail-hero {
+  margin-top: 0;
+  margin-inline: 0;
+}
+/* .detail-body is pulled up 24px for the same reason — to lap its rounded
+   corners over the bottom of that photo. */
+.detail-sheet .detail-body { margin-top: 0; }
