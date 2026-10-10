@@ -2632,6 +2632,13 @@ function openOrderDetail(orderId) {
     set('od-customer', o.customer || '—');
     set('od-phone', phone || '—');
     set('od-total', 'GHS ' + (Number(o.total || 0)).toFixed(2));
+    // A discounted order otherwise just looks mispriced.
+    var discRow = document.getElementById('od-discount-row');
+    var discPct = Number(o.discount_percent || 0);
+    if (discRow) {
+        discRow.hidden = !(discPct > 0);
+        set('od-discount', discPct > 0 ? discPct + '% off' : '');
+    }
     set('od-status', statusCap);
     set('od-notes', [
         o.delivery_address ? 'Delivery: ' + o.delivery_address : '',
@@ -8268,7 +8275,8 @@ function openCreateOrderModal() {
             opt.textContent = c.name;
             select.appendChild(opt);
         });
-        placeCreateOrderCta();
+        newOrderIdemKey = freshOrderIdemKey();
+    placeCreateOrderCta();
 }
 
     document.getElementById('new-order-cust-info-phone').textContent = 'Phone: -';
@@ -8526,15 +8534,16 @@ function updateNewOrderTotals() {
     var discountPct = discountPctInput ? parseFloat(discountPctInput.value) || 0 : 0;
     var discountAmount = subtotal * (discountPct / 100);
     
-    var tax = 0;
-    var finalTotal = subtotal - discountAmount + tax;
+    var finalTotal = subtotal - discountAmount;
     
     var subtotalEl = document.getElementById('new-order-subtotal');
-    var taxEl = document.getElementById('new-order-tax');
     var totalEl = document.getElementById('new-order-total');
+    var discLine = document.getElementById('new-order-discount-line');
+    var discAmountEl = document.getElementById('new-order-discount-amount');
+    if (discLine) discLine.hidden = !(discountAmount > 0);
+    if (discAmountEl) discAmountEl.textContent = '-GH₵ ' + discountAmount.toFixed(2);
     
     if (subtotalEl) subtotalEl.textContent = 'GH₵ ' + subtotal.toFixed(2);
-    if (taxEl) taxEl.textContent = 'GH₵ ' + tax.toFixed(2);
     if (totalEl) totalEl.textContent = 'GH₵ ' + finalTotal.toFixed(2);
 }
 
@@ -8639,7 +8648,19 @@ function readNewOrderCustomer() {
     return found;
 }
 
-function submitCreateOrder() {
+/* A retry after a dropped connection must not place the order twice. The
+   storefront already sends one of these; the admin had nothing, so only the
+   disabled button stood between a slow network and a duplicate. */
+var newOrderIdemKey = null;
+
+function freshOrderIdemKey() {
+    var rand = (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID().replace(/-/g, '')
+        : String(Date.now()) + Math.random().toString(36).slice(2, 10);
+    return ('adm' + rand).slice(0, 64);
+}
+
+async function submitCreateOrder() {
     var customer = readNewOrderCustomer();
     if (!customer) return;
     
@@ -8707,16 +8728,47 @@ function submitCreateOrder() {
     var discountEl = document.getElementById('new-order-discount');
     var discountPercent = discountEl ? (parseFloat(discountEl.value) || 0) : 0;
 
+    var val = function (id) {
+        var el = document.getElementById(id);
+        return el ? el.value.trim() : '';
+    };
+    var line1 = val('new-order-addr-line1');
+    var city = val('new-order-addr-city') || (customer.area || '');
+    var landmark = val('new-order-addr-landmark');
+    var notes = val('new-order-notes');
+
+    if (!newOrderIdemKey) newOrderIdemKey = freshOrderIdemKey();
+
     var payload = {
         customer_name: customer.name,
         customer_phone: customer.phone,
         order_type: orderType,
         payment_method: paymentMethod,
-        items: items
+        items: items,
+        idempotency_key: newOrderIdemKey
     };
     if (discountPercent > 0) payload.discount_percent = discountPercent;
     if (customer.email) payload.customer_email = customer.email;
-    if (customer.area) payload.delivery_area = customer.area;
+    if (city) payload.delivery_area = city;
+    if (notes) payload.notes = notes;
+    if (line1 || city || landmark) {
+        payload.delivery_address = { line1: line1 || null, city: city || null, landmark: landmark || null };
+    }
+
+    // A customer typed at the counter should end up on file, not just on this
+    // one order. Manager-only, and a phone already on file is not an error —
+    // either way the order still goes through.
+    if (newOrderCustomerMode === 'new') {
+        try {
+            await fetch(API_URL + '/admin/customers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') },
+                body: JSON.stringify({ name: customer.name, phone: customer.phone, email: customer.email || '', city: city })
+            });
+        } catch (err) {
+            console.warn('Could not save the new customer:', err.message);
+        }
+    }
 
     var token = localStorage.getItem('adminToken');
     
@@ -8740,6 +8792,9 @@ function submitCreateOrder() {
     })
     .then(function(data) {
         showToast('Order created successfully: ' + data.order_number, 'success');
+        // Spent: the next order needs its own key or it would be deduped
+        // against this one.
+        newOrderIdemKey = null;
         closeCreateOrderModal();
         
         fetchOrdersFromServer(function() {

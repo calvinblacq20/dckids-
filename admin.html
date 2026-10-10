@@ -6078,6 +6078,7 @@
           <span class="detail-total__label">Total</span>
           <span id="od-total" class="detail-total__value">GHS 0.00</span>
         </div>
+            <div class="detail-card" id="od-discount-row" hidden><div class="detail-row"><span class="detail-row__label">Discount</span><span id="od-discount" class="detail-row__value"></span></div></div>
 
         <div class="detail-card">
           <div class="detail-row"><span class="detail-row__label">Status</span><span id="od-status" class="detail-row__value">Pending</span></div>
@@ -6374,7 +6375,21 @@
               </button>
             </div>
 
-          </div>
+          
+            <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+              <h3 class="text-base font-bold text-gray-900 mb-4" style="margin-top:0;">Delivery</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2"><label class="block text-xs font-bold text-gray-500 uppercase mb-2">Address</label>
+                  <input type="text" id="new-order-addr-line1" placeholder="House number and street" autocomplete="off"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-2">Town or area</label>
+                  <input type="text" id="new-order-addr-city" placeholder="Kasoa" autocomplete="off"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-2">Landmark</label>
+                  <input type="text" id="new-order-addr-landmark" placeholder="Near the filling station" autocomplete="off"></div>
+                <div class="md:col-span-2"><label class="block text-xs font-bold text-gray-500 uppercase mb-2">Order notes</label>
+                  <input type="text" id="new-order-notes" placeholder="Anything the rider should know" autocomplete="off"></div>
+              </div>
+            </div>
+</div>
 
           <!-- Right Column: Details & Summary (4 cols) -->
           <div class="lg:col-span-4 flex flex-col gap-6">
@@ -6441,12 +6456,9 @@
                     <span class="font-semibold text-gray-500">%</span>
                   </div>
                 </div>
-                <div class="flex justify-between text-sm text-gray-600">
-                  <span>VAT / Tax</span>
-                  <span class="font-bold text-gray-800" id="new-order-tax">GH₵ 0.00</span>
                 </div>
-              </div>
               
+              <div class="flex justify-between text-sm" id="new-order-discount-line" hidden><span class="text-gray-600">Discount applied</span><span class="font-bold" id="new-order-discount-amount">GH₵ 0.00</span></div>
               <div class="flex justify-between items-center pt-1">
                 <span class="text-sm font-bold text-gray-900">Total Amount</span>
                 <span class="text-xl font-black text-rose-600" id="new-order-total">GH₵ 0.00</span>
