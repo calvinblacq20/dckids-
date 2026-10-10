@@ -7,6 +7,10 @@
   },
   "scripts": {
     "postinstall": "npm --prefix server ci --omit=dev",
-    "start": "npm --prefix server start"
+    "start": "npm --prefix server start",
+    "vendor:chart": "node -e \"require('fs').copyFileSync('node_modules/chart.js/dist/chart.umd.js','vendor/chart.umd.js')\""
+  },
+  "devDependencies": {
+    "chart.js": "^4.5.1"
   }
 }

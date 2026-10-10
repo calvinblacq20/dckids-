@@ -17,7 +17,7 @@
 /* ---------- Page scaffolding ---------- */
 .tab-view { display: none; }
 .tab-view.active { display: flex; flex-direction: column; gap: 16px; }
-.admin-main { padding: 20px var(--gutter, 28px) 40px; min-width: 0; }
+.admin-main { --pad-t: 20px; --pad-x: var(--gutter, 28px); padding: var(--pad-t) var(--pad-x) 40px; min-width: 0; }
 .admin-main > .tab-view { width: min(100%, 1560px); margin-inline: auto; }
 .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .page-title { font-size: 32px; line-height: 1.1; font-weight: 500; letter-spacing: -.02em; color: var(--ink); margin: 0; }
@@ -206,7 +206,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 
 /* ---------- Phones ---------- */
 @media (max-width: 809.98px) {
-  .admin-main { padding: 16px var(--gutter, 16px) 96px; }
+  .admin-main { --pad-t: 16px; --pad-x: var(--gutter, 16px); padding: var(--pad-t) var(--pad-x) 96px; }
   .page-title { font-size: 28px; }
   .modal-overlay { padding: 0; place-items: end stretch; }
   .modal-content, .rc-modal { width: 100%; max-height: 92dvh; border-radius: var(--r-24) var(--r-24) 0 0; }
@@ -2182,4 +2182,111 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
   border-radius: 50%; background: var(--warning-ink);
   box-shadow: 0 0 0 1.5px var(--surface);
   text-indent: 110%;
+}
+
+/* =============================================================
+   36. Sticky top bar background
+   The bar sticks but had no background of its own, so once the page had
+   enough content to scroll, cards travelled visibly underneath it and the
+   logo, bell and avatar sat on top of the text. The reference gives it the
+   glass treatment; match that.
+   ============================================================= */
+/* An inline <style> pins `.admin-header { margin-left: 0 !important }`, so the
+   bar cannot be widened past the scroller's padding by margins. Paint the band
+   with a pseudo-element instead: same result, no specificity fight. */
+.admin-header.adm-bar { position: sticky; isolation: isolate; }
+.admin-header.adm-bar::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: calc(var(--pad-t, 0px) * -1) calc(var(--pad-x, 0px) * -1) 0;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 var(--ink-06);
+}
+
+/* Today's takings, carried under the period revenue so the two are not
+   mistaken for one another. */
+.kpi-sub { display: block; margin-top: 2px; font-size: 11px; color: var(--ink-50); }
+.kpi-sub b { font-weight: 500; color: var(--ink-75); font-variant-numeric: tabular-nums; }
+.kpi-tab:not(.is-active) .kpi-sub { display: none; }
+
+/* The bar sticks at the top of the scroller, but the scroller is padded, so
+   cards slid through the gap above and beside it in full view. Span the
+   padding and put it back as the bar's own, so the glass covers the lot. */
+
+/* =============================================================
+   37. Tables become cards on phones
+   Nine columns do not fit a phone, and side-scrolling a table to reach the
+   status and the actions is the wrong answer — the reference uses a card per
+   record at this width. Every cell already carries a data-label, so the
+   transform is pure CSS and applies to any table following that convention.
+   ============================================================= */
+@media (max-width: 809.98px) {
+  .table-responsive { overflow-x: visible; }
+
+  .admin-table, .data-table { display: block; border: 0; background: none; }
+  .admin-table thead, .data-table thead {
+    position: absolute; width: 1px; height: 1px;
+    overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .admin-table tbody, .data-table tbody { display: flex; flex-direction: column; gap: 10px; }
+
+  .admin-table tbody tr, .data-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 0.8px solid var(--ink-06);
+    border-radius: var(--r-20);
+  }
+  .admin-table tbody tr:hover, .data-table tbody tr:hover { background: var(--surface); }
+
+  .admin-table tbody td, .data-table tbody td {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    /* The desktop density rule pins these to a 52px row, which stacked into a
+       450px card. A card row is only as tall as its line. */
+    height: auto; min-height: 0;
+    padding: 5px 0; border: 0; font-size: 14px;
+  }
+  .admin-table tbody td::before, .data-table tbody td::before {
+    content: attr(data-label);
+    flex: none; font-size: 12px; color: var(--ink-50);
+  }
+  .admin-table tbody td[data-label=""]::before { content: none; }
+
+  /* The product is the card's heading, with the row's checkbox beside it. */
+  .admin-table tbody td.table-card-header, .data-table tbody td.table-card-header {
+    height: auto;
+    grid-column: 1; grid-row: 1;
+    padding: 0 0 10px; margin-bottom: 6px;
+    border-bottom: 0.8px solid var(--ink-06);
+  }
+  .admin-table tbody td.table-card-header::before,
+  .data-table tbody td.table-card-header::before { content: none; }
+  .admin-table tbody td.table-checkbox-cell, .data-table tbody td.table-checkbox-cell {
+    height: auto;
+    grid-column: 2; grid-row: 1;
+    width: auto; padding: 0 0 10px 12px; justify-content: flex-end;
+    border-bottom: 0.8px solid var(--ink-06); margin-bottom: 6px;
+  }
+  .admin-table tbody td.table-checkbox-cell::before,
+  .data-table tbody td.table-checkbox-cell::before { content: none; }
+
+  /* Actions close the card. */
+  .admin-table tbody td[data-label="Actions"], .data-table tbody td[data-label="Actions"] {
+    justify-content: flex-end;
+    padding: 10px 0 0; margin-top: 6px;
+    border-top: 0.8px solid var(--ink-06);
+  }
+  .admin-table tbody td[data-label="Actions"]::before,
+  .data-table tbody td[data-label="Actions"]::before { content: none; }
+  .admin-table tbody td .table-actions, .data-table tbody td .table-actions {
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* An empty cell would otherwise read as a stray label. */
+  .admin-table tbody td:empty, .data-table tbody td:empty { display: none; }
 }

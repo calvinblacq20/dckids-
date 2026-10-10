@@ -21,7 +21,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=26">
+  <link rel="stylesheet" href="admin-bridge.css?v=32">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -836,8 +836,9 @@
             <button type="button" class="kpi-tab is-active" data-metric="revenue" role="tab" aria-selected="true">
               <span class="kpi-tab-hl"></span>
               <span class="kpi-label">Revenue</span>
-              <span class="kpi-value" id="val-today-sales">&mdash;</span>
+              <span class="kpi-value" id="val-period-revenue">&mdash;</span>
               <span class="delta" id="delta-revenue"></span>
+              <span class="kpi-sub"><b id="val-today-sales">&mdash;</b> today</span>
             </button>
             <button type="button" class="kpi-tab" data-metric="orders" role="tab" aria-selected="false">
               <span class="kpi-tab-hl"></span>
@@ -6273,10 +6274,10 @@
   </div>
 
   <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="vendor/chart.umd.js?v=4.5.1"></script>
   <script src="image-resolver.js?v=1"></script>
   <script src="admin-recovery-view.js?v=1"></script>
-  <script src="admin.js?v=128"></script>
+  <script src="admin.js?v=129"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

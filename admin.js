@@ -10836,6 +10836,7 @@ function renderDashboardPatterns(analytics, products) {
 
     var set = function (id, text) { var el = document.getElementById(id); if (el) el.textContent = text; };
 
+    set('val-period-revenue', dashMoney(k.totalRevenue));
     set('val-total-orders', String(k.totalOrders != null ? k.totalOrders : 0));
     set('val-avg-order', dashMoney(k.avgOrderValue));
     renderDelta(document.getElementById('delta-revenue'), g.totalRevenue, true);

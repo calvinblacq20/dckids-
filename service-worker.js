@@ -9,7 +9,7 @@
    - Images + fonts: cache-first.
    - Bumping VERSION wipes old caches on activate.
 */
-const VERSION = 'dckids-v184';
+const VERSION = 'dckids-v191';
 const STATIC_CACHE = 'dckids-static-' + VERSION;
 const RUNTIME_CACHE = 'dckids-runtime-' + VERSION;
 
@@ -29,6 +29,7 @@ const APP_SHELL = [
   '/tailwind-admin.css',
   '/admin-bridge.css',
   '/admin-system.css',
+  '/vendor/chart.umd.js',
   '/image-resolver.js',
   '/admin-recovery-view.js',
   '/account.js',

@@ -77,9 +77,11 @@ const CSP_STORE =
     "img-src 'self' data: blob: https://ui-avatars.com https://lh3.googleusercontent.com; " +
     CSP_COMMON;
 
-// Admin: Chart.js from jsDelivr, no Firebase. Product photos may be remote.
+// Admin: Chart.js is served from this origin, no Firebase. A CDN in the
+// critical path meant one blocked request emptied every chart on the page,
+// so the library is vendored and script-src stays on 'self'.
 const CSP_ADMIN =
-    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
+    "script-src 'self' 'unsafe-inline'; " +
     "connect-src 'self'; " +
     "img-src 'self' data: blob: https:; " +
     CSP_COMMON;
