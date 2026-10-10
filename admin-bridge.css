@@ -2379,3 +2379,13 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 
 /* A section with its own mobile list must not also have its table carded —
    .desktop-only hides the table, so the card rules simply never apply. */
+
+/* ---- Reviews: the reference renders these as a card feed, not a table ---- */
+.review-card { padding: 18px 20px; display: flex; flex-direction: column; gap: 0; }
+.review-card__head { gap: 10px; }
+.review-card__author { font-weight: 500; }
+.review-stars { color: var(--label-lime); letter-spacing: 1.5px; font-size: 13px; }
+.review-card__body { margin: 10px 0 0; font-size: 15px; line-height: 1.55; color: var(--ink); }
+.review-card .adm-actions { margin-top: 14px; display: flex; justify-content: flex-end; gap: 8px; }
+.adm-ghost.is-danger { color: var(--danger); }
+.adm-ghost.is-danger:hover { background: var(--danger-wash); }

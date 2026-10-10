@@ -6139,8 +6139,8 @@ function loadReviews() {
     })
     .catch(function(err) {
         console.warn('Could not load reviews:', err.message);
-        var tbody = document.getElementById('reviews-tbody');
-        if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Could not load reviews.</td></tr>';
+        var list = document.getElementById('reviews-list');
+        if (list) list.innerHTML = '<div class="adm-card adm-empty"><p class="t-cap muted">Could not load reviews.</p></div>';
     });
 }
 
@@ -6169,35 +6169,41 @@ function getFilteredReviews() {
 }
 
 function renderReviewsTable() {
-    var tbody = document.getElementById('reviews-tbody');
-    if (!tbody) return;
+    var list = document.getElementById('reviews-list');
+    if (!list) return;
 
     var reviews = getFilteredReviews();
     var totalItems = reviews.length;
     var start = (reviewCurrentPage - 1) * REVIEW_PER_PAGE;
     var paged = reviews.slice(start, start + REVIEW_PER_PAGE);
 
-    tbody.innerHTML = '';
     if (paged.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No reviews found</td></tr>';
+        list.innerHTML = '<div class="adm-card adm-empty"><p class="t-cap muted">No reviews found.</p></div>';
     } else {
-        paged.forEach(function(r) {
-            var tr = document.createElement('tr');
-            var stars = '★★★★★☆☆☆☆☆'.slice(5 - r.rating, 10 - r.rating);
+        // One card per review, as the reference renders them at every width:
+        // stars and author, a caption line, the review itself, then actions.
+        list.innerHTML = paged.map(function (r) {
+            var rating = Math.max(0, Math.min(5, Number(r.rating) || 0));
+            var stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
             var date = r.created_at ? new Date(r.created_at).toLocaleDateString() : '—';
-            var excerpt = (r.title ? r.title + ' — ' : '') + (r.body || '');
-            tr.innerHTML = '<td class="table-card-header" data-label="Product" style="font-weight:600;">' + escapeHtml(r.product_name || 'Unknown product') + '</td>' +
-                '<td data-label="Customer">' + escapeHtml(r.author_name) + '</td>' +
-                '<td data-label="Rating" style="color:#fc4c7a;letter-spacing:1.5px;">' + stars + '</td>' +
-                '<td data-label="Review" style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(excerpt) + '">' + escapeHtml(excerpt) + '</td>' +
-                '<td data-label="Date">' + date + '</td>' +
-                '<td data-label="Actions"><div class="table-actions">' +
-                    '<button class="action-icon delete" title="Delete review" onclick="confirmDeleteReview(' + r.id + ')">' +
-                        '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>' +
-                    '</button>' +
-                '</div></td>';
-            tbody.appendChild(tr);
-        });
+            var body = (r.title ? r.title + ' — ' : '') + (r.body || '');
+            return '<article class="adm-card review-card">' +
+                '<div class="between">' +
+                    '<div class="stack gap-4">' +
+                        '<span class="inline review-card__head">' +
+                            '<span class="review-stars" aria-label="' + rating + ' out of 5">' + stars + '</span>' +
+                            '<span class="review-card__author">' + escapeHtml(r.author_name || 'Anonymous') + '</span>' +
+                        '</span>' +
+                        '<span class="t-cap muted">' + escapeHtml(date) + ' · ' +
+                            escapeHtml(r.product_name || 'Unknown product') + '</span>' +
+                    '</div>' +
+                '</div>' +
+                (body ? '<p class="review-card__body">' + escapeHtml(body) + '</p>' : '') +
+                '<div class="adm-actions">' +
+                    '<button type="button" class="adm-ghost is-danger" onclick="confirmDeleteReview(' + r.id + ')">Delete</button>' +
+                '</div>' +
+            '</article>';
+        }).join('');
     }
 
     renderPagination('review-pagination', totalItems, reviewCurrentPage, REVIEW_PER_PAGE, function(page) {
@@ -6205,6 +6211,7 @@ function renderReviewsTable() {
         renderReviewsTable();
     });
 }
+
 
 function confirmDeleteReview(id) {
     showConfirm('Delete Review', 'Are you sure you want to delete this review? This action cannot be undone.', function() {

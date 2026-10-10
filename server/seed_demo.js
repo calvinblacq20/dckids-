@@ -25,6 +25,16 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const DEMO_ORDER_PREFIX = 'DEMO-';
 const DEMO_PHONE_PREFIX = '+23320700';
 const DEMO_SUPPLIER_SUFFIX = ' (demo)';
+const DEMO_REVIEW_TITLES = [
+    ['Lovely quality', 'Soft on my baby and it washed well. Would buy again.'],
+    ['Exactly as pictured', 'Fit my two year old perfectly and the colour is true to the photo.'],
+    ['Good value', 'Decent for the price. Stitching held up after a few washes.'],
+    ['Delivery was quick', 'Ordered on Monday and had it by Wednesday in Tema.'],
+    ['Runs small', 'Lovely piece but size up if your child is tall.'],
+    ['My daughter loves it', 'She has asked to wear it three days running.'],
+    ['Would recommend', 'Second time ordering from DC Kids and still happy.'],
+    ['Not quite right', 'The colour was a little duller than it looked online.']
+];
 const DAYS_OF_HISTORY = 120;
 
 if (String(process.env.NODE_ENV || '').toLowerCase() === 'production') {
@@ -110,6 +120,7 @@ async function clearDemo() {
         await run(`DELETE FROM order_items WHERE order_id IN (${marks})`, ids);
         await run(`DELETE FROM orders WHERE id IN (${marks})`, ids);
     }
+    await run("DELETE FROM product_reviews WHERE author_name LIKE '% (demo)'");
     await run('DELETE FROM customers WHERE phone LIKE ?', [DEMO_PHONE_PREFIX + '%']);
     await run('DELETE FROM suppliers WHERE supplier_name LIKE ?', ['%' + DEMO_SUPPLIER_SUFFIX]);
     return ids.length;
@@ -230,8 +241,24 @@ async function main() {
         }
         await run('COMMIT');
 
+        // Reviews, so the Reviews screen has cards rather than an empty state.
+        let reviews = 0;
+        for (let i = 0; i < 34; i++) {
+            const product = pick(products);
+            const customer = pick(customers);
+            const [title, body] = pick(DEMO_REVIEW_TITLES);
+            const rating = rand() < 0.68 ? 5 : (rand() < 0.6 ? 4 : between(2, 3));
+            await run(
+                `INSERT INTO product_reviews
+                   (product_id, author_name, rating, title, body, verified_purchase, status, created_at)
+                 VALUES (?, ?, ?, ?, ?, 1, 'approved', ?)`,
+                [product.id, customer.name + ' (demo)', rating, title, body,
+                    isoDaysAgo(between(1, 90), between(9, 21))]);
+            reviews++;
+        }
+
         const lowStock = await get('SELECT COUNT(*) AS n FROM products WHERE stock > 0 AND stock <= 5');
-        console.log(`seeded ${SUPPLIERS.length} suppliers, ${customers.length} customers, ${made} orders`);
+        console.log(`seeded ${SUPPLIERS.length} suppliers, ${customers.length} customers, ${made} orders, ${reviews} reviews`);
         console.log(`  over ${DAYS_OF_HISTORY} days, GHS ${revenue.toFixed(2)} recognised`);
         console.log(`  ${lowStock.n} products now read as low stock`);
     } catch (err) {

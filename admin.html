@@ -19,7 +19,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=38">
+  <link rel="stylesheet" href="admin-bridge.css?v=39">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -4197,26 +4197,7 @@
         </div>
 
         <!-- Reviews Table -->
-        <div class="table-responsive adm-table-wrap desktop-only">
-          <table id="reviews-table" class="admin-table data-table adm-table sticky-header" aria-label="Customer reviews table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Customer</th>
-                <th>Rating</th>
-                <th>Review</th>
-                <th>Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="reviews-tbody">
-              <tr>
-                <td colspan="6" class="empty-state">No reviews found</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-          <div class="adm-rows mobile-only" id="reviews-rows"></div>
+        <div class="res-list" id="reviews-list" aria-label="Customer reviews"></div>
 
         <div id="review-pagination" class="pagination" aria-label="Reviews pagination"></div>
       </section>
@@ -6278,7 +6259,7 @@
   <script src="vendor/chart.umd.js?v=4.5.1"></script>
   <script src="image-resolver.js?v=1"></script>
   <script src="admin-recovery-view.js?v=1"></script>
-  <script src="admin.js?v=131"></script>
+  <script src="admin.js?v=132"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
