@@ -3576,39 +3576,35 @@ function renderSuppliersTable() {
 
     renderSuppliersRail(all);
 
+    // The reference lists results as compact rows, not cards: initials, name
+    // over a meta line, a figure, a chevron.
+    host.className = 'adm-rows';
     if (!paged.length) {
-        host.innerHTML = '<p class="empty-line">No suppliers match these filters.</p>';
+        host.innerHTML = '<p class="adm-empty t-cap muted">No suppliers match these filters.</p>';
     } else {
         host.innerHTML = paged.map(function (raw) {
             var s = normalizeSupplierRecord(raw);
             var missing = supplierMissingDetails(s);
-            return '<article class="res-card" role="listitem" data-supplier-id="' + escapeHtml(String(s.id)) + '">' +
-                '<div class="res-card__main">' +
-                  '<span class="avatar-sq" aria-hidden="true">' + escapeHtml(customerInitials(s.company)) + '</span>' +
-                  '<div class="res-card__body">' +
-                    '<h3 class="res-card__title">' + escapeHtml(s.company || 'Unnamed supplier') + '</h3>' +
-                    '<p class="res-card__sub">' + escapeHtml(s.contact || 'No named contact') +
-                      (s.phone ? ' \u00b7 ' + escapeHtml(s.phone) : '') + '</p>' +
-                    '<div class="res-card__meta">' +
-                      '<span class="badge ' + (s.status === 'active' ? 'is-good' : '') + '">' + escapeHtml(s.status || 'active') + '</span>' +
-                      (missing ? '<span class="badge is-wait">Missing details</span>' : '') +
-                      (s.email ? '<span class="res-card__type">' + escapeHtml(s.email) + '</span>' : '') +
-                    '</div>' +
-                    (s.products ? '<p class="res-card__snip">Supplies: ' + escapeHtml(s.products) + '</p>' : '') +
-                  '</div>' +
-                '</div>' +
-                '<div class="res-card__foot">' +
-                  '<span class="res-card__date">' + (s.products ? escapeHtml(String(s.products).split(',').length) + ' product lines' : 'No product lines recorded') + '</span>' +
-                  '<button type="button" class="quick-action" onclick="event.stopPropagation(); openSupplierModal(\'' + s.id + '\')">' +
-                    (missing ? 'Add details' : 'Edit supplier') + ' \u2192</button>' +
-                '</div>' +
-              '</article>';
+            var lines = s.products ? String(s.products).split(',').length : 0;
+            return '<button type="button" class="adm-row" data-supplier-id="' + escapeHtml(String(s.id)) + '">' +
+                '<span class="avatar-sq" aria-hidden="true">' + escapeHtml(customerInitials(s.company)) + '</span>' +
+                '<span class="grow stack">' +
+                    '<span class="adm-row__title">' + escapeHtml(s.company || 'Unnamed supplier') +
+                        (missing ? ' <span class="pill-tag">Missing details</span>' : '') + '</span>' +
+                    '<span class="t-cap muted">' +
+                        escapeHtml(s.contact || 'No named contact') +
+                        (s.phone ? ' · ' + escapeHtml(s.phone) : '') +
+                        (s.email ? ' · ' + escapeHtml(s.email) : '') +
+                    '</span>' +
+                '</span>' +
+                '<span class="tabular">' + (lines ? lines + (lines === 1 ? ' line' : ' lines') : '—') + '</span>' +
+                ADM_ROW_CHEVRON +
+            '</button>';
         }).join('');
 
-        [].forEach.call(host.querySelectorAll('.res-card'), function (card) {
-            card.addEventListener('click', function (e) {
-                if (e.target.closest('button, a')) return;
-                openSupplierDetail(card.getAttribute('data-supplier-id'));
+        [].forEach.call(host.querySelectorAll('.adm-row'), function (row) {
+            row.addEventListener('click', function () {
+                openSupplierDetail(row.getAttribute('data-supplier-id'));
             });
         });
     }
@@ -4300,7 +4296,12 @@ function renderSparkline(id, values, color, fill) {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            // A sparkline sits in a card with no fixed height. Letting the
+            // chart pick its own height makes the canvas grow the card, which
+            // grows the canvas: these were measuring 2,234,658px tall. Hold a
+            // ratio instead so the height follows the width.
+            maintainAspectRatio: true,
+            aspectRatio: 5,
             plugins: { legend: { display: false }, tooltip: { enabled: false } },
             scales: {
                 x: { display: false },
