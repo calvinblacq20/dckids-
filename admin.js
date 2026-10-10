@@ -8587,13 +8587,58 @@ function saveOrderDraft() {
     closeCreateOrderModal();
 }
 
-function submitCreateOrder() {
-    var custId = document.getElementById('new-order-customer').value;
-    var customer = getCustomers().find(function(c) { return c.id === custId; });
-    if (!customer) {
-        showToast('Please select a customer', 'warning');
-        return;
+/* The reference's new-order page offers an existing client or a new one from
+   the same card, through a segmented control. Keep both panels in the DOM so
+   whatever has been typed survives a switch. */
+var newOrderCustomerMode = 'existing';
+
+function setNewOrderCustomerMode(mode) {
+    newOrderCustomerMode = mode === 'new' ? 'new' : 'existing';
+    var seg = document.getElementById('new-order-cust-mode');
+    if (seg) {
+        var buttons = seg.querySelectorAll('button');
+        for (var i = 0; i < buttons.length; i++) {
+            var isOn = (i === 1) === (newOrderCustomerMode === 'new');
+            buttons[i].classList.toggle('is-active', isOn);
+            buttons[i].setAttribute('aria-checked', isOn ? 'true' : 'false');
+        }
     }
+    var existing = document.getElementById('new-order-cust-existing');
+    var fresh = document.getElementById('new-order-cust-new');
+    if (existing) existing.hidden = newOrderCustomerMode === 'new';
+    if (fresh) fresh.hidden = newOrderCustomerMode !== 'new';
+}
+
+/* Returns the customer the order is for, or null with a message shown. */
+function readNewOrderCustomer() {
+    if (newOrderCustomerMode === 'new') {
+        var name = (document.getElementById('new-order-new-name') || {}).value || '';
+        var phone = (document.getElementById('new-order-new-phone') || {}).value || '';
+        name = name.trim();
+        phone = phone.trim();
+        if (!name || !phone) {
+            showToast('A new customer needs a name and a phone number', 'warning');
+            return null;
+        }
+        return {
+            name: name,
+            phone: phone,
+            email: ((document.getElementById('new-order-new-email') || {}).value || '').trim(),
+            area: ((document.getElementById('new-order-new-area') || {}).value || '').trim()
+        };
+    }
+    var custId = document.getElementById('new-order-customer').value;
+    var found = getCustomers().find(function (c) { return c.id === custId; });
+    if (!found) {
+        showToast('Please select a customer', 'warning');
+        return null;
+    }
+    return found;
+}
+
+function submitCreateOrder() {
+    var customer = readNewOrderCustomer();
+    if (!customer) return;
     
     var orderType = document.getElementById('new-order-type').value;
     
@@ -8650,6 +8695,8 @@ function submitCreateOrder() {
         order_type: orderType,
         items: items
     };
+    if (customer.email) payload.customer_email = customer.email;
+    if (customer.area) payload.delivery_area = customer.area;
 
     var token = localStorage.getItem('adminToken');
     

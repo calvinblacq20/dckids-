@@ -2650,3 +2650,18 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
   box-shadow: none;
 }
 #modal-add-order .adm-cta-block:hover { background: var(--charcoal); }
+
+/* The Existing / New customer switch, on the reference's segmented control. */
+#modal-add-order .neworder-seg {
+  width: min(260px, 100%);
+  margin: 0 0 16px auto;
+}
+#modal-add-order .neworder-seg button {
+  border: 0; background: none; color: var(--ink-75);
+  font: inherit; font-size: 13px; cursor: pointer;
+}
+#modal-add-order .neworder-seg button.is-active {
+  background: var(--surface); color: var(--ink); font-weight: 500;
+  box-shadow: var(--sh-soft);
+}
+#modal-add-order [hidden] { display: none !important; }
