@@ -2212,28 +2212,29 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 .kpi-sub b { font-weight: 500; color: var(--ink-75); font-variant-numeric: tabular-nums; }
 .kpi-tab:not(.is-active) .kpi-sub { display: none; }
 
-/* The bar sticks at the top of the scroller, but the scroller is padded, so
-   cards slid through the gap above and beside it in full view. Span the
-   padding and put it back as the bar's own, so the glass covers the lot. */
-
 /* =============================================================
    37. Tables become cards on phones
    Nine columns do not fit a phone, and side-scrolling a table to reach the
    status and the actions is the wrong answer — the reference uses a card per
    record at this width. Every cell already carries a data-label, so the
-   transform is pure CSS and applies to any table following that convention.
+   transform is pure CSS, and any table labelling its cells the same way opts
+   in — which is how the create-order items table is covered too.
    ============================================================= */
 @media (max-width: 809.98px) {
-  .table-responsive { overflow-x: visible; }
+  .table-responsive, .order-items-table-wrap { overflow-x: visible; }
 
-  .admin-table, .data-table { display: block; border: 0; background: none; }
-  .admin-table thead, .data-table thead {
+  .admin-table, .data-table, table:has(td[data-label]) {
+    display: block; border: 0; background: none;
+  }
+  .admin-table thead, .data-table thead, table:has(td[data-label]) thead {
     position: absolute; width: 1px; height: 1px;
     overflow: hidden; clip-path: inset(50%); white-space: nowrap;
   }
-  .admin-table tbody, .data-table tbody { display: flex; flex-direction: column; gap: 10px; }
+  .admin-table tbody, .data-table tbody, table:has(td[data-label]) tbody {
+    display: flex; flex-direction: column; gap: 10px;
+  }
 
-  .admin-table tbody tr, .data-table tbody tr {
+  .admin-table tbody tr, .data-table tbody tr, table:has(td[data-label]) tbody tr {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     padding: 12px 14px;
@@ -2241,9 +2242,10 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
     border: 0.8px solid var(--ink-06);
     border-radius: var(--r-20);
   }
-  .admin-table tbody tr:hover, .data-table tbody tr:hover { background: var(--surface); }
+  .admin-table tbody tr:hover, .data-table tbody tr:hover,
+  table:has(td[data-label]) tbody tr:hover { background: var(--surface); }
 
-  .admin-table tbody td, .data-table tbody td {
+  .admin-table tbody td, .data-table tbody td, table:has(td[data-label]) tbody td {
     grid-column: 1 / -1;
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     /* The desktop density rule pins these to a 52px row, which stacked into a
@@ -2251,42 +2253,110 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
     height: auto; min-height: 0;
     padding: 5px 0; border: 0; font-size: 14px;
   }
-  .admin-table tbody td::before, .data-table tbody td::before {
+  .admin-table tbody td::before, .data-table tbody td::before,
+  table:has(td[data-label]) tbody td::before {
     content: attr(data-label);
     flex: none; font-size: 12px; color: var(--ink-50);
   }
-  .admin-table tbody td[data-label=""]::before { content: none; }
+  /* A form cell needs the room; its label is enough on its own line. */
+  .admin-table tbody td:has(select, input, textarea),
+  .data-table tbody td:has(select, input, textarea),
+  table:has(td[data-label]) tbody td:has(select, input, textarea) {
+    display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px;
+  }
+  .admin-table tbody td:has(select, input, textarea)::before,
+  .data-table tbody td:has(select, input, textarea)::before,
+  table:has(td[data-label]) tbody td:has(select, input, textarea)::before {
+    justify-self: start;
+  }
 
-  /* The product is the card's heading, with the row's checkbox beside it. */
-  .admin-table tbody td.table-card-header, .data-table tbody td.table-card-header {
+  /* The first cell is the card's heading, with the row's checkbox beside it. */
+  .admin-table tbody td.table-card-header, .data-table tbody td.table-card-header,
+  table:has(td[data-label]) tbody td.table-card-header {
     height: auto;
     grid-column: 1; grid-row: 1;
     padding: 0 0 10px; margin-bottom: 6px;
     border-bottom: 0.8px solid var(--ink-06);
   }
   .admin-table tbody td.table-card-header::before,
-  .data-table tbody td.table-card-header::before { content: none; }
-  .admin-table tbody td.table-checkbox-cell, .data-table tbody td.table-checkbox-cell {
+  .data-table tbody td.table-card-header::before,
+  table:has(td[data-label]) tbody td.table-card-header::before { content: none; }
+
+  .admin-table tbody td.table-checkbox-cell, .data-table tbody td.table-checkbox-cell,
+  table:has(td[data-label]) tbody td.table-checkbox-cell {
     height: auto;
     grid-column: 2; grid-row: 1;
     width: auto; padding: 0 0 10px 12px; justify-content: flex-end;
     border-bottom: 0.8px solid var(--ink-06); margin-bottom: 6px;
   }
   .admin-table tbody td.table-checkbox-cell::before,
-  .data-table tbody td.table-checkbox-cell::before { content: none; }
+  .data-table tbody td.table-checkbox-cell::before,
+  table:has(td[data-label]) tbody td.table-checkbox-cell::before { content: none; }
 
   /* Actions close the card. */
-  .admin-table tbody td[data-label="Actions"], .data-table tbody td[data-label="Actions"] {
+  .admin-table tbody td[data-label="Actions"], .data-table tbody td[data-label="Actions"],
+  table:has(td[data-label]) tbody td[data-label="Actions"] {
     justify-content: flex-end;
     padding: 10px 0 0; margin-top: 6px;
     border-top: 0.8px solid var(--ink-06);
   }
   .admin-table tbody td[data-label="Actions"]::before,
-  .data-table tbody td[data-label="Actions"]::before { content: none; }
+  .data-table tbody td[data-label="Actions"]::before,
+  table:has(td[data-label]) tbody td[data-label="Actions"]::before { content: none; }
   .admin-table tbody td .table-actions, .data-table tbody td .table-actions {
     display: flex; align-items: center; gap: 6px;
   }
 
   /* An empty cell would otherwise read as a stray label. */
-  .admin-table tbody td:empty, .data-table tbody td:empty { display: none; }
+  .admin-table tbody td:empty, .data-table tbody td:empty,
+  table:has(td[data-label]) tbody td:empty { display: none; }
+}
+
+/* The centre action, as the reference bar carries it: a dark disc with the
+   accent glyph, lifted on the float shadow and sitting proud of the pill. */
+.mobile-bottom-nav__btn--plus { display: grid; place-items: center; }
+.mobile-bottom-nav__btn--plus .mobile-bottom-nav__icon-wrap {
+  display: grid; place-items: center; width: 48px; height: 48px;
+  border-radius: 50%; background: var(--ink); color: var(--lime);
+  box-shadow: var(--sh-float);
+}
+.mobile-bottom-nav__btn--plus:hover { background: none; }
+.mobile-bottom-nav__btn--plus:hover .mobile-bottom-nav__icon-wrap { background: var(--charcoal); }
+.mobile-bottom-nav__btn--plus svg { width: 24px; height: 24px; }
+
+/* =============================================================
+   38. Dialog footers built from utility classes
+   Five dialogs close with `flex justify-end border-t` and 32px of side
+   padding. On a phone three buttons plus that padding run past the viewport
+   — Cancel sat at x=-15 and every label wrapped to three lines. Bring them
+   onto the reference's buttons and let them share the row.
+   ============================================================= */
+.fixed.inset-0 .flex.justify-end.border-t > button {
+  border-radius: var(--r-pill);
+  font-weight: 500;
+  box-shadow: none;
+}
+/* One dark primary, the rest ghosts — as everywhere else in the admin. */
+.fixed.inset-0 .flex.justify-end.border-t > button:last-child {
+  background: var(--ink); color: #fff; border: 0;
+}
+.fixed.inset-0 .flex.justify-end.border-t > button:last-child:hover { background: var(--charcoal); }
+.fixed.inset-0 .flex.justify-end.border-t > button:not(:last-child) {
+  background: var(--surface); color: var(--ink);
+  border: 0.8px solid var(--ink-12);
+}
+.fixed.inset-0 .flex.justify-end.border-t > button:not(:last-child):hover { background: var(--ground); }
+
+@media (max-width: 809.98px) {
+  .fixed.inset-0 .flex.justify-end.border-t {
+    padding-left: 16px; padding-right: 16px;
+    gap: 8px; flex-wrap: wrap;
+  }
+  .fixed.inset-0 .flex.justify-end.border-t > button {
+    flex: 1 1 auto; min-width: 0;
+    justify-content: center; text-align: center;
+    white-space: nowrap;
+    padding-left: 12px; padding-right: 12px;
+    font-size: 13px;
+  }
 }

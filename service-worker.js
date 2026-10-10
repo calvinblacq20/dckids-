@@ -9,7 +9,7 @@
    - Images + fonts: cache-first.
    - Bumping VERSION wipes old caches on activate.
 */
-const VERSION = 'dckids-v191';
+const VERSION = 'dckids-v197';
 const STATIC_CACHE = 'dckids-static-' + VERSION;
 const RUNTIME_CACHE = 'dckids-runtime-' + VERSION;
 
@@ -30,6 +30,10 @@ const APP_SHELL = [
   '/admin-bridge.css',
   '/admin-system.css',
   '/vendor/chart.umd.js',
+  '/vendor/fontawesome/css/all.min.css',
+  '/vendor/fontawesome/webfonts/fa-solid-900.woff2',
+  '/vendor/fontawesome/webfonts/fa-regular-400.woff2',
+  '/vendor/fontawesome/webfonts/fa-brands-400.woff2',
   '/image-resolver.js',
   '/admin-recovery-view.js',
   '/account.js',

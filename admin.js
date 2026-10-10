@@ -9703,20 +9703,23 @@ function downloadProductCsvTemplate() {
     suppliers: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
     analytics: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
     reports: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>',
+    plus: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
     settings: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>'
   };
 
-  // 5 primary tabs — Inventory promoted into the bar.
+  // Two tabs, the centre action, two tabs — the shape the reference bar uses.
+  // Customers moves into the "More" sheet to make room for it.
   var TABS = [
     { tab: 'tab-dashboard', label: 'Home',      icon: ICON.dashboard },
     { tab: 'tab-orders',    label: 'Orders',    badge: true, icon: ICON.orders },
+    { tab: null, label: 'New order', action: 'create', plus: true, icon: ICON.plus },
     { tab: 'tab-inventory', label: 'Inventory', icon: ICON.inventory },
-    { tab: 'tab-customers', label: 'Customers', icon: ICON.customers },
     { tab: null, label: 'More', action: 'more', icon: ICON.more }
   ];
 
   // Overflow sections live in the light "More" sheet.
   var MORE = [
+    { tab: 'tab-customers', label: 'Customers',       icon: ICON.customers },
     { tab: 'tab-products',  label: 'Products',        icon: ICON.products },
     { tab: 'tab-suppliers', label: 'Suppliers',       icon: ICON.suppliers },
     { tab: 'tab-analytics', label: 'Sales Analytics', icon: ICON.analytics },
@@ -9724,7 +9727,7 @@ function downloadProductCsvTemplate() {
     { tab: 'tab-settings',  label: 'Settings',        icon: ICON.settings }
   ];
 
-  var PRIMARY = ['tab-dashboard', 'tab-orders', 'tab-inventory', 'tab-customers'];
+  var PRIMARY = ['tab-dashboard', 'tab-orders', 'tab-inventory'];
 
   function go(tabId) {
     var fn = window._origSwitchTab || window.switchTab;
@@ -9745,9 +9748,10 @@ function downloadProductCsvTemplate() {
     TABS.forEach(function (item) {
       var btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'mobile-bottom-nav__btn';
+      btn.className = 'mobile-bottom-nav__btn' + (item.plus ? ' mobile-bottom-nav__btn--plus' : '');
       if (item.tab)    btn.setAttribute('data-tab', item.tab);
       if (item.action) btn.setAttribute('data-action', item.action);
+      if (item.plus)   btn.setAttribute('aria-label', item.label);
 
       var iconWrap = document.createElement('span');
       iconWrap.className = 'mobile-bottom-nav__icon-wrap';
@@ -9766,10 +9770,17 @@ function downloadProductCsvTemplate() {
       lbl.textContent = item.label;
 
       btn.appendChild(iconWrap);
-      btn.appendChild(lbl);
+      // The centre action is a glyph in a disc; a caption under it would
+      // push the bar taller than the tabs either side.
+      if (!item.plus) btn.appendChild(lbl);
 
       btn.addEventListener('click', function () {
-        if (item.action === 'more') { toggleSheet(); return; }
+        if (item.action === 'more')   { toggleSheet(); return; }
+        if (item.action === 'create') {
+            closeSheet();
+            if (typeof openCreateOrderModal === 'function') openCreateOrderModal();
+            return;
+        }
         if (item.tab) { closeSheet(); go(item.tab); }
       });
 
