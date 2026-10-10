@@ -77,9 +77,8 @@ const CSP_STORE =
     "img-src 'self' data: blob: https://ui-avatars.com https://lh3.googleusercontent.com; " +
     CSP_COMMON;
 
-// Admin: Chart.js is served from this origin, no Firebase. A CDN in the
-// critical path meant one blocked request emptied every chart on the page,
-// so the library is vendored and script-src stays on 'self'.
+// Admin: no Firebase, and the charts are drawn as SVG by admin-charts.js, so
+// nothing is fetched from a third party and script-src stays on 'self'.
 const CSP_ADMIN =
     "script-src 'self' 'unsafe-inline'; " +
     "connect-src 'self'; " +

@@ -46,7 +46,6 @@ function localInitialsAvatar(name, bg, fg) {
 }
 if (typeof window !== 'undefined') window.localInitialsAvatar = localInitialsAvatar;
 let currentRole = '';
-let chartInstances = {};
 let analyticsState = { period: 'week', data: null };
 let analyticsRefreshTimer = null;
 let dashboardRevenuePeriod = 'monthly';
@@ -1300,9 +1299,8 @@ function updateDashboardWidgets(products) {
 
 function renderRevenueChart(analytics) {
     var ctx = document.getElementById('revenueChart');
-    if (!ctx || typeof Chart === 'undefined') return;
+    if (!ctx) return;
 
-    if (chartInstances.revenue) chartInstances.revenue.destroy();
 
     var trend = analytics && Array.isArray(analytics.trend) ? analytics.trend : [];
     var labels = trend.map(function(point) { return point.label; });
@@ -1311,64 +1309,9 @@ function renderRevenueChart(analytics) {
     var growth = analytics && analytics.kpis && analytics.kpis.growth ? Number(analytics.kpis.growth.totalRevenue || 0) : 0;
     var maxValue = data.length ? Math.max.apply(null, data) : 0;
 
-    chartInstances.revenue = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Revenue (GHS)',
-                data: data,
-                borderColor: '#fc4c7a',
-                backgroundColor: 'rgba(252,76,122,0.08)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: '#fff',
-                pointBorderColor: '#fc4c7a',
-                pointBorderWidth: 2,
-                pointRadius: 5,
-                pointHoverRadius: 8
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#2d2d3a',
-                    titleColor: '#fff',
-                    bodyColor: '#fff',
-                    padding: 12,
-                    borderRadius: 8,
-                    callbacks: {
-                        label: function(context) {
-                            return 'GHS ' + context.parsed.y.toLocaleString();
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    suggestedMax: maxValue > 0 ? maxValue * 1.15 : 10,
-                    ticks: {
-                        callback: function(value) {
-                            if (value >= 1000) return (value / 1000) + 'K';
-                            return value;
-                        },
-                        color: '#8e8ea0',
-                        font: { size: 11 }
-                    },
-                    grid: { color: 'rgba(0,0,0,0.05)', borderDash: [5, 5] }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#8e8ea0', font: { size: 11 } }
-                }
-            }
-        }
-    });
+    admLine('revenueChart', { labels: labels, series: [{ values: data }],
+        format: function (v) { return 'GHS ' + formatNumber(Math.round(v)); }, axisFormat: function (v) { return 'GHS ' + formatNumber(Math.round(v)); },
+        ariaLabel: 'Revenue trend', emptyText: 'No sales in this period.' });
 
     // Keep this summary in sync with the exact range displayed by the chart.
     var chartCard = ctx.closest('.chart-card');
@@ -1403,11 +1346,10 @@ function exportDashboardRevenue() {
 
 function renderInventoryChart(products) {
     // Chart.js is CDN-loaded; degrade quietly if it never arrived.
-    if (typeof Chart === 'undefined') return;
+    
     var ctx = document.getElementById('inventoryChart');
     if (!ctx) return;
 
-    if (chartInstances.inventory) chartInstances.inventory.destroy();
 
     var safeProducts = Array.isArray(products) ? products : [];
     var inStock = safeProducts.filter(function(product) { return Number(product.stock || 0) > 5; }).length;
@@ -1415,68 +1357,11 @@ function renderInventoryChart(products) {
     var outOfStock = safeProducts.filter(function(product) { return Number(product.stock || 0) <= 0; }).length;
     var totalProducts = safeProducts.length;
 
-    chartInstances.inventory = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['In Stock', 'Low Stock', 'Out of Stock'],
-            datasets: [{
-                data: [inStock, lowStock, outOfStock],
-                backgroundColor: ['#5bc08b', '#f5b842', '#ff5e7a'],
-                borderWidth: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            layout: { padding: { bottom: 8 } },
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        padding: 18,
-                        usePointStyle: true,
-                        pointStyle: 'rectRounded',
-                        boxWidth: 10,
-                        boxHeight: 10,
-                        font: { size: 12 },
-                        generateLabels: function(chart) {
-                            var data = chart.data;
-                            var labels = data.labels;
-                            var dataset = data.datasets[0];
-                            return labels.map(function(label, i) {
-                                return {
-                                    text: label + '\n' + dataset.data[i] + ' Products',
-                                    fillStyle: dataset.backgroundColor[i],
-                                    strokeStyle: dataset.backgroundColor[i],
-                                    lineWidth: 0,
-                                    index: i
-                                };
-                            });
-                        }
-                    }
-                }
-            },
-            cutout: '70%'
-        },
-        plugins: [{
-            id: 'centerText',
-            afterDraw: function(chart) {
-                var ctx2 = chart.ctx;
-                var width = chart.chartArea.left + (chart.chartArea.right - chart.chartArea.left) / 2;
-                var height = chart.chartArea.top + (chart.chartArea.bottom - chart.chartArea.top) / 2;
-                ctx2.save();
-                ctx2.textAlign = 'center';
-                ctx2.textBaseline = 'middle';
-                ctx2.font = '600 12px Inter, sans-serif';
-                ctx2.fillStyle = '#8e8ea0';
-                ctx2.fillText('Total', width, height - 12);
-                ctx2.font = '700 22px Inter, sans-serif';
-                ctx2.fillStyle = '#2d2d3a';
-                ctx2.fillText(formatNumber(totalProducts), width, height + 10);
-                ctx2.restore();
-            }
-        }]
-    });
+    admSegments('inventoryChart', { items: [
+        { label: 'In stock', value: inStock },
+        { label: 'Low stock', value: lowStock },
+        { label: 'Out of stock', value: outOfStock }
+    ], emptyText: 'No products in the catalogue yet.' });
 }
 
 function renderActivityTimeline() {
@@ -4139,74 +4024,19 @@ function setText(id, value) {
 
 function renderAnalyticsRevenueChart(trend) {
     var ctx = document.getElementById('analyticsRevenueChart');
-    if (!ctx || typeof Chart === 'undefined') return;
-    if (chartInstances.analyticsRevenue) chartInstances.analyticsRevenue.destroy();
+    if (!ctx) return;
 
     var labels = trend.length ? trend.map(function(point) { return point.label; }) : ['No sales'];
     var values = trend.length ? trend.map(function(point) { return point.revenue || 0; }) : [0];
 
-    chartInstances.analyticsRevenue = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Revenue',
-                data: values,
-                borderColor: '#cd5c74',
-                backgroundColor: 'rgba(242, 209, 209, 0.45)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.38,
-                pointRadius: 0,
-                pointHoverRadius: 5,
-                pointHoverBackgroundColor: '#cd5c74',
-                pointHoverBorderColor: '#ffffff',
-                pointHoverBorderWidth: 3
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#ffffff',
-                    titleColor: '#333333',
-                    bodyColor: '#333333',
-                    borderColor: '#eaeaea',
-                    borderWidth: 1,
-                    padding: 12,
-                    displayColors: true,
-                    callbacks: {
-                        label: function(context) {
-                            return 'Revenue: ' + formatAnalyticsMoney(context.parsed.y);
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: '#f0f0f0' },
-                    ticks: {
-                        color: '#777777',
-                        callback: function(value) { return formatNumber(value); }
-                    }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#777777', maxTicksLimit: 8 }
-                }
-            }
-        }
-    });
+    admLine('analyticsRevenueChart', { labels: labels, series: [{ values: values }],
+        format: function (v) { return 'GHS ' + formatNumber(Math.round(v)); }, axisFormat: function (v) { return 'GHS ' + formatNumber(Math.round(v)); },
+        ariaLabel: 'Revenue over the period', emptyText: 'No sales in this period.' });
 }
 
 function renderAnalyticsProductChart(products) {
     var ctx = document.getElementById('analyticsProductChart');
-    if (!ctx || typeof Chart === 'undefined') return;
-    if (chartInstances.analyticsProduct) chartInstances.analyticsProduct.destroy();
+    if (!ctx) return;
 
     var list = products && products.length ? products : [{ name: 'No product sales yet', revenue: 0, quantity: 0 }];
     var sortEl = document.getElementById('analytics-product-sort');
@@ -4214,51 +4044,9 @@ function renderAnalyticsProductChart(products) {
     var labels = list.map(function(item) { return item.name; });
     var values = list.map(function(item) { return metric === 'quantity' ? (item.quantity || 0) : (item.revenue || 0); });
 
-    chartInstances.analyticsProduct = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: values,
-                backgroundColor: ['#f36a8a', '#cde4d6', '#f8e7b8', '#e7ddf8', '#d8c7f2'],
-                borderRadius: 8,
-                barThickness: 26
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            indexAxis: 'y',
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#ffffff',
-                    titleColor: '#333333',
-                    bodyColor: '#333333',
-                    borderColor: '#eaeaea',
-                    borderWidth: 1,
-                    callbacks: {
-                        label: function(context) {
-                            return metric === 'quantity'
-                                ? 'Quantity: ' + context.parsed.x
-                                : 'Revenue: ' + formatAnalyticsMoney(context.parsed.x);
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    grid: { color: '#f0f0f0' },
-                    ticks: { color: '#777777' }
-                },
-                y: {
-                    grid: { display: false },
-                    ticks: { color: '#555555', font: { size: 11 } }
-                }
-            }
-        }
-    });
+    admBars('analyticsProductChart', { labels: labels, values: values,
+        format: metric === 'quantity' ? function (v) { return formatNumber(v); } : function (v) { return 'GHS ' + formatNumber(Math.round(v)); },
+        ariaLabel: 'Top products', emptyText: 'No product sales yet.' });
 }
 
 function renderAnalyticsSparklines(data) {
@@ -4276,39 +4064,10 @@ function renderAnalyticsSparklines(data) {
 
 function renderSparkline(id, values, color, fill) {
     var ctx = document.getElementById(id);
-    if (!ctx || typeof Chart === 'undefined') return;
-    if (chartInstances[id]) chartInstances[id].destroy();
+    if (!ctx) return;
     var data = values && values.length ? values : [0, 0, 0, 0, 0, 0, 0];
 
-    chartInstances[id] = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: data.map(function(_, index) { return index + 1; }),
-            datasets: [{
-                data: data,
-                borderColor: color,
-                backgroundColor: fill,
-                borderWidth: 1.5,
-                fill: true,
-                tension: 0.42,
-                pointRadius: 0
-            }]
-        },
-        options: {
-            responsive: true,
-            // A sparkline sits in a card with no fixed height. Letting the
-            // chart pick its own height makes the canvas grow the card, which
-            // grows the canvas: these were measuring 2,234,658px tall. Hold a
-            // ratio instead so the height follows the width.
-            maintainAspectRatio: true,
-            aspectRatio: 5,
-            plugins: { legend: { display: false }, tooltip: { enabled: false } },
-            scales: {
-                x: { display: false },
-                y: { display: false, beginAtZero: true }
-            }
-        }
-    });
+    admSpark(id, data, color, fill);
 }
 
 function buildLocalAnalytics(period) {
@@ -5900,13 +5659,10 @@ function exportReportExcel(type) {
 
 function renderSalesTrendChart(days) {
     // Chart.js is CDN-loaded; degrade quietly if it never arrived.
-    if (typeof Chart === 'undefined') return;
+    
     var ctx = document.getElementById('reportsSalesTrendChart');
     if (!ctx) return;
 
-    if (chartInstances.reportsSalesTrend) {
-        chartInstances.reportsSalesTrend.destroy();
-    }
 
     var orders = getOrders().filter(isRevenueEligibleOrder);
     var labels = [];
@@ -5968,75 +5724,17 @@ function renderSalesTrendChart(days) {
     var stepSize = Math.ceil(maxVal / 5) || 200;
     var yMax = Math.ceil(maxVal / stepSize) * stepSize;
 
-    chartInstances.reportsSalesTrend = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Sales (GHS)',
-                data: data,
-                borderColor: '#cd5c74',
-                backgroundColor: 'rgba(242, 209, 209, 0.15)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: '#fff',
-                pointBorderColor: '#cd5c74',
-                pointBorderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#2d2d3a',
-                    titleColor: '#fff',
-                    bodyColor: '#fff',
-                    padding: 10,
-                    borderRadius: 8,
-                    callbacks: {
-                        label: function(context) {
-                            return 'GHS ' + context.parsed.y.toLocaleString();
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: yMax,
-                    ticks: {
-                        callback: function(value) {
-                            if (value >= 1000) return (value / 1000) + 'K';
-                            return value;
-                        },
-                        color: '#8e8ea0',
-                        font: { size: 10 }
-                    },
-                    grid: { color: 'rgba(0,0,0,0.03)', borderDash: [5, 5] }
-                },
-                x: {
-                    grid: { display: false },
-                    ticks: { color: '#8e8ea0', font: { size: 10 } }
-                }
-            }
-        }
-    });
+    admLine('reportsSalesTrendChart', { labels: labels, series: [{ values: data }],
+        format: function (v) { return 'GHS ' + formatNumber(Math.round(v)); }, axisFormat: function (v) { return 'GHS ' + formatNumber(Math.round(v)); },
+        ariaLabel: 'Sales trend', emptyText: 'No sales in this period.' });
 }
 
 function renderCategoriesChart(currentOrders) {
     // Chart.js is CDN-loaded; degrade quietly if it never arrived.
-    if (typeof Chart === 'undefined') return;
+    
     var ctx = document.getElementById('reportsCategoriesChart');
     if (!ctx) return;
 
-    if (chartInstances.reportsCategories) {
-        chartInstances.reportsCategories.destroy();
-    }
 
     var catTotals = {};
     currentOrders.forEach(function(order) {
@@ -6064,48 +5762,10 @@ function renderCategoriesChart(currentOrders) {
         backgroundColors = backgroundColors.concat(backgroundColors);
     }
 
-    chartInstances.reportsCategories = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: data,
-                backgroundColor: backgroundColors.slice(0, labels.length),
-                borderWidth: 2,
-                borderColor: '#ffffff'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        boxWidth: 12,
-                        padding: 16,
-                        color: '#333333',
-                        font: { size: 11, family: 'Inter, system-ui' }
-                    }
-                },
-                tooltip: {
-                    backgroundColor: '#2d2d3a',
-                    titleColor: '#fff',
-                    bodyColor: '#fff',
-                    padding: 10,
-                    borderRadius: 8,
-                    callbacks: {
-                        label: function(context) {
-                            var val = context.parsed;
-                            if (context.label === 'No Data') return 'No Sales';
-                            return context.label + ': GHS ' + val.toLocaleString();
-                        }
-                    }
-                }
-            },
-            cutout: '70%'
-        }
-    });
+    admSegments('reportsCategoriesChart', {
+        items: labels.map(function (name, i) { return { label: name, value: Number(data[i] || 0) }; }),
+        palette: backgroundColors, format: function (v) { return 'GHS ' + formatNumber(Math.round(v)); },
+        emptyText: 'No category sales yet.' });
 }
 
 function generateReport(type) {
@@ -10907,15 +10567,6 @@ function renderKpiTrend(metric) {
     var spec = DASH_METRICS[metric] || DASH_METRICS.revenue;
     var trend = (dashAnalytics && Array.isArray(dashAnalytics.trend)) ? dashAnalytics.trend : [];
 
-    if (chartInstances.kpiTrend) { chartInstances.kpiTrend.destroy(); chartInstances.kpiTrend = null; }
-
-    // Chart.js comes from a CDN. If it did not load, say so in the card rather
-    // than throwing and leaving the dashboard half-rendered.
-    if (typeof Chart === 'undefined') {
-        canvas.style.display = 'none';
-        if (emptyEl) { emptyEl.hidden = false; emptyEl.textContent = 'Chart library unavailable — the figures above are current.'; }
-        return;
-    }
 
     // No series for this metric: say so instead of drawing a fake flat line.
     if (!spec.series || !trend.length) {
@@ -10934,55 +10585,10 @@ function renderKpiTrend(metric) {
     var labels = trend.map(function (pt) { return pt.label; });
     var data = trend.map(function (pt) { return Number(pt[spec.series] || 0); });
 
-    chartInstances.kpiTrend = new Chart(canvas, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: spec.label,
-                data: data,
-                borderColor: '#242426',
-                backgroundColor: 'rgba(36,36,38,0.04)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.25,
-                pointRadius: 0,
-                pointHoverRadius: 5,
-                pointHoverBackgroundColor: '#242426'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#fff',
-                    titleColor: '#242426',
-                    bodyColor: 'rgba(36,36,38,0.75)',
-                    borderColor: 'rgba(36,36,38,0.12)',
-                    borderWidth: 1,
-                    displayColors: false,
-                    callbacks: {
-                        label: function (c) { return spec.money ? dashMoney(c.parsed.y) : (c.parsed.y + ' ' + spec.label.toLowerCase()); }
-                    }
-                }
-            },
-            scales: {
-                x: { grid: { display: false }, border: { display: false }, ticks: { color: 'rgba(36,36,38,0.75)', maxTicksLimit: 6 } },
-                y: {
-                    beginAtZero: true,
-                    border: { display: false },
-                    grid: { color: 'rgba(36,36,38,0.06)' },
-                    ticks: {
-                        color: 'rgba(36,36,38,0.75)', maxTicksLimit: 5,
-                        callback: function (v) { return spec.money ? ('GHS ' + (v >= 1000 ? (v / 1000) + 'k' : v)) : v; }
-                    }
-                }
-            }
-        }
-    });
+    admLine('kpiTrendChart', { labels: labels, series: [{ values: data }],
+        format: spec.money ? function (v) { return 'GHS ' + formatNumber(Math.round(v)); } : function (v) { return formatNumber(v); },
+        axisFormat: spec.money ? function (v) { return 'GHS ' + formatNumber(Math.round(v)); } : function (v) { return formatNumber(v); },
+        ariaLabel: spec.label || 'Trend', emptyText: 'No data for this period.' });
 }
 
 function renderTopProducts(list) {
