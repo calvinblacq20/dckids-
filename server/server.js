@@ -165,7 +165,7 @@ app.use((req, res, next) => {
 // by default instead of exposed by being forgotten here.
 const PRIVATE_DIRS = ['server', 'docs', 'node_modules', 'scratch', 'backups'];
 const PRIVATE_FILES = ['package.json', 'package-lock.json', 'dockerfile',
-    'railway.json', 'eslint.config.js', 'claude.local.md.example'];
+    'railway.json', 'eslint.config.js'];
 const PRIVATE_EXT = /\.(db|db-wal|db-shm|sqlite|sqlite3|env|md|bat)$/;
 
 app.use((req, res, next) => {
