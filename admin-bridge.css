@@ -1815,7 +1815,9 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
    26. Create-order items and shared form helpers
    ============================================================= */
 .order-items-list { display: flex; flex-direction: column; gap: 8px; }
-.order-item-row { display: flex; align-items: center; gap: 8px; }
+/* This class also sits on the create-order <tr>; making a table row a flex
+   container collapses every cell, so only style the div form of it. */
+div.order-item-row { display: flex; align-items: center; gap: 8px; }
 .order-product-select { flex: 1; min-width: 0; }
 .order-qty-input { width: 84px; flex: none; text-align: center; }
 .add-order-item-btn {
@@ -2389,3 +2391,192 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 .review-card .adm-actions { margin-top: 14px; display: flex; justify-content: flex-end; gap: 8px; }
 .adm-ghost.is-danger { color: var(--danger); }
 .adm-ghost.is-danger:hover { background: var(--danger-wash); }
+
+/* ---- Create-order line item: numbers stay on their label's line ----
+   A quantity spread across the full card width reads like a paragraph, and
+   dropping the "Actions" label left its delete button alone on a bare row.
+   One line item was running to 395px. */
+@media (max-width: 809.98px) {
+  .fixed.inset-0 table:has(td[data-label]) tbody td[data-label="Qty"] {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .fixed.inset-0 table:has(td[data-label]) tbody td[data-label="Qty"] input {
+    width: 88px; flex: none; text-align: center;
+  }
+  .fixed.inset-0 table:has(td[data-label]) tbody td[data-label="Actions"] {
+    padding-top: 8px; margin-top: 4px;
+  }
+}
+
+/* =============================================================
+   40. Create order — the reference's new-order page
+   The reference does not put this behind a dialog. It is a full page on the
+   ground: a back link, a large title, a column of cards, and a sticky
+   summary rail carrying the total. Ours had the right bones already — an
+   8/4 split with an Order Summary — but wore it as a floating card with
+   boxed fields. Dress it as the page it is.
+   ============================================================= */
+#modal-add-order {
+  padding: 0;
+  background: var(--ground);
+  align-items: stretch;
+  justify-content: stretch;
+  overflow-y: auto;
+}
+#modal-add-order > div:first-child {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  min-height: 100%;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--ground);
+  overflow: visible;
+}
+
+/* ---- Page head: back link, title, no rule ---- */
+#modal-add-order > div:first-child > div:first-child {
+  background: transparent;
+  border-bottom: 0;
+  padding: 22px var(--gutter, 28px) 0;
+}
+#modal-add-order #modal-add-order-title {
+  font-size: 32px;
+  line-height: 1.1;
+  font-weight: 500;
+  letter-spacing: -.02em;
+  color: var(--ink);
+}
+/* The breadcrumb reads as the reference's "← Orders" link. */
+#modal-add-order > div:first-child > div:first-child .flex.items-center {
+  order: -1;
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--ink-50);
+}
+#modal-add-order > div:first-child > div:first-child > div { display: flex; flex-direction: column; }
+
+/* ---- Body on the ground, content measured ---- */
+#modal-add-order .overflow-y-auto {
+  background: transparent;
+  padding: 18px var(--gutter, 28px) 28px;
+  overflow: visible;
+}
+#modal-add-order .grid.lg\:grid-cols-12 { width: min(100%, 1240px); margin-inline: auto; }
+
+/* ---- Section cards ---- */
+#modal-add-order .bg-white {
+  background: var(--surface);
+  border: 0.8px solid var(--ink-06);
+  border-radius: var(--r-24);
+  box-shadow: none;
+}
+
+/* ---- Fields: a rule under the value, label above it ---- */
+#modal-add-order label.block {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-75);
+}
+#modal-add-order input[type="text"],
+#modal-add-order input[type="tel"],
+#modal-add-order input[type="email"],
+#modal-add-order input[type="number"],
+#modal-add-order input[type="date"],
+#modal-add-order select,
+#modal-add-order textarea {
+  border: 0;
+  border-bottom: 1px solid var(--ink-12);
+  border-radius: 0;
+  padding: 10px 0;
+  min-height: 44px;
+  background: transparent;
+  font-size: 16px;
+  box-shadow: none;
+}
+#modal-add-order input:focus,
+#modal-add-order select:focus,
+#modal-add-order textarea:focus {
+  border-bottom-color: var(--ink);
+  box-shadow: none;
+  outline: none;
+}
+/* The quantity box keeps its frame — it sits beside a stepper, not on a line. */
+#modal-add-order .order-item-qty-input,
+#modal-add-order .order-qty-input {
+  border: 0.8px solid var(--ink-12);
+  border-radius: var(--r-10);
+  padding: 8px 10px;
+  min-height: 40px;
+}
+
+/* ---- "Add another product" as the reference's full-width ghost ---- */
+#modal-add-order .add-order-item-btn,
+#modal-add-order [onclick*="addOrderItem"] {
+  width: 100%;
+  justify-content: center;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--ground);
+  color: var(--ink);
+  font-size: 14px;
+}
+#modal-add-order .add-order-item-btn:hover,
+#modal-add-order [onclick*="addOrderItem"]:hover { background: var(--ink-06); }
+
+/* ---- The summary rail sticks, as the reference's ticket does ---- */
+@media (min-width: 1024px) {
+  #modal-add-order .lg\:col-span-4 {
+    position: sticky;
+    top: 18px;
+    align-self: start;
+  }
+}
+
+/* ---- Footer sits on the ground, actions right ---- */
+#modal-add-order .flex.justify-end.border-t {
+  position: sticky;
+  bottom: 0;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  border-top: 0.8px solid var(--ink-06);
+  padding: 14px var(--gutter, 28px);
+}
+
+@media (max-width: 809.98px) {
+  #modal-add-order > div:first-child > div:first-child { padding: 16px 16px 0; }
+  #modal-add-order #modal-add-order-title { font-size: 26px; }
+  #modal-add-order .overflow-y-auto { padding: 14px 16px 24px; }
+  #modal-add-order .flex.justify-end.border-t { padding: 12px 16px calc(12px + var(--safe-bottom)); }
+}
+
+/* The selects on this page are replaced by the app's own dropdown, so the
+   underline has to be put on its trigger rather than the native control. */
+#modal-add-order .admin-dropdown { display: flex; width: 100%; }
+#modal-add-order .admin-dropdown__trigger {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--ink-12);
+  border-radius: 0;
+  background: transparent;
+  padding: 10px 0;
+  min-height: 44px;
+  font-size: 16px;
+}
+#modal-add-order .admin-dropdown__trigger:hover { background: transparent; border-bottom-color: var(--ink-25); }
+#modal-add-order .admin-dropdown__trigger[aria-expanded="true"] { border-bottom-color: var(--ink); }
+#modal-add-order .admin-dropdown__panel { left: 0; right: 0; }
+
+/* The order total is the figure the page is for; the reference prints it in
+   ink at display size rather than in an alert colour. */
+#modal-add-order #new-order-total {
+  color: var(--ink);
+  font-weight: 500;
+  font-size: 24px;
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+}
