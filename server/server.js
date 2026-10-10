@@ -63,7 +63,6 @@ const LEGACY_STORE_BANNER = "China Pre-Order Window OPEN! Orders close May 18th 
 // you read the console).
 const CSP_COMMON =
     "default-src 'self'; " +
-    "style-src 'self' 'unsafe-inline'; " +
     "font-src 'self' data:; " +
     "media-src 'self'; " +
     "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'";
@@ -76,14 +75,22 @@ const CSP_STORE =
     "connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://www.gstatic.com; " +
     "frame-src https://accounts.google.com https://*.firebaseapp.com; " +
     "img-src 'self' data: blob: https://ui-avatars.com https://lh3.googleusercontent.com; " +
+    "style-src 'self' 'unsafe-inline'; " +
     CSP_COMMON;
 
-// Admin: Chart.js is served from this origin, no Firebase. A CDN in the
-// critical path meant one blocked request emptied every chart on the page,
-// so the library is vendored and script-src stays on 'self'.
+// Admin: Chart.js is served from this origin — a CDN in the critical path
+// meant one blocked request emptied every chart on the page, so the library is
+// vendored. The one third party left is Google Identity Services, behind the
+// "Continue with Google" button, which only loads once GOOGLE_CLIENT_ID is set.
+// Its four origins are the ones Google documents; the parent gsi/ path is used
+// rather than individual endpoints so the policy survives GIS changing them.
+// Because the button is hidden without a client id, a policy that omitted these
+// would look fine locally and fail only in production.
 const CSP_ADMIN =
-    "script-src 'self' 'unsafe-inline'; " +
-    "connect-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/client; " +
+    "connect-src 'self' https://accounts.google.com/gsi/; " +
+    "frame-src https://accounts.google.com/gsi/; " +
+    "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style; " +
     "img-src 'self' data: blob: https:; " +
     CSP_COMMON;
 

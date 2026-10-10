@@ -774,6 +774,38 @@ async function run() {
     });
     check('malformed JSON returns 400', r.status === 400, `status ${r.status}`);
 
+    // --- Content-Security-Policy ---
+    // The admin's "Continue with Google" button only renders once
+    // GOOGLE_CLIENT_ID is set, so a policy missing the Google Identity origins
+    // looks healthy on a dev box and fails only in production. These assert the
+    // allowlist directly rather than the button.
+    const adminCsp = (await fetch(`${BASE}/admin.html`)).headers.get('content-security-policy') || '';
+    check('admin CSP allows the Google Identity script',
+        adminCsp.includes('https://accounts.google.com/gsi/client'), adminCsp);
+    check('admin CSP allows the Google Identity frame',
+        /frame-src[^;]*https:\/\/accounts\.google\.com\/gsi\//.test(adminCsp), adminCsp);
+    check('admin CSP allows the Google Identity endpoints',
+        /connect-src[^;]*https:\/\/accounts\.google\.com\/gsi\//.test(adminCsp), adminCsp);
+    check('admin CSP allows the Google Identity stylesheet',
+        adminCsp.includes('https://accounts.google.com/gsi/style'), adminCsp);
+
+    // A directive repeated inside one policy is ignored after the first
+    // occurrence, so a duplicate silently drops whichever copy came second.
+    check('admin CSP declares each directive once',
+        ['script-src', 'style-src', 'connect-src', 'frame-src', 'img-src', 'default-src']
+            .every(d => (adminCsp.match(new RegExp('(^|; )' + d + ' ', 'g')) || []).length === 1), adminCsp);
+
+    const storeCsp = (await fetch(`${BASE}/index.html`)).headers.get('content-security-policy') || '';
+    check('storefront CSP allows the Firebase SDK origin',
+        storeCsp.includes('https://www.gstatic.com'), storeCsp);
+    check('storefront CSP keeps its own style-src',
+        /style-src[^;]*'unsafe-inline'/.test(storeCsp), storeCsp);
+
+    // Both surfaces must still refuse arbitrary third-party script.
+    check('no CSP allows a wildcard script source',
+        !/script-src[^;]*\*/.test(adminCsp) && !/script-src[^;]*\*/.test(storeCsp),
+        `admin: ${adminCsp} | store: ${storeCsp}`);
+
     console.log(`\n${passed} passed, ${failed} failed`);
     cleanupDb();
     process.exit(failed ? 1 : 0);
