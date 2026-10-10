@@ -4247,8 +4247,8 @@
         </div>
 
         <!-- Staff Table -->
-        <div class="table-responsive">
-          <table class="admin-table data-table sticky-header" id="staff-table" aria-label="Staff users list">
+        <div class="table-responsive adm-table-wrap desktop-only">
+          <table class="admin-table data-table adm-table sticky-header" id="staff-table" aria-label="Staff users list">
             <thead>
               <tr>
                 <th scope="col" style="width: 80px;">ID</th>
@@ -4262,6 +4262,7 @@
             </tbody>
           </table>
         </div>
+          <div class="adm-rows mobile-only" id="staff-rows"></div>
       </section>
 
       <!-- ==================== TAB: SUPPLIERS ==================== -->
@@ -6259,7 +6260,7 @@
   <script src="vendor/chart.umd.js?v=4.5.1"></script>
   <script src="image-resolver.js?v=1"></script>
   <script src="admin-recovery-view.js?v=1"></script>
-  <script src="admin.js?v=132"></script>
+  <script src="admin.js?v=133"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

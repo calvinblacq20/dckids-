@@ -8962,6 +8962,20 @@ function loadAdmins() {
             });
         }
 
+        fillAdmRows('staff-rows', data, function (u) {
+            return {
+                id: u.id,
+                img: localInitialsAvatar(u.full_name || u.username),
+                title: u.full_name || u.username,
+                pill: u.role === 'manager' ? 'Manager' : 'Staff',
+                meta: u.email || u.username,
+                value: ''
+            };
+        }, function (id) {
+            var u = data.filter(function (x) { return String(x.id) === String(id); })[0];
+            if (u) openEditStaffModal(u.id, u.email || u.username, u.role, u.full_name || '');
+        });
+
         document.getElementById('staff-total-count').textContent = total;
         document.getElementById('staff-manager-count').textContent = managers;
         document.getElementById('staff-member-count').textContent = staff;
@@ -8969,6 +8983,10 @@ function loadAdmins() {
     .catch(function(err) {
         if (tbody) {
             tbody.innerHTML = '<tr><td colspan="4" class="empty-state" style="color:var(--danger)">Error: ' + escapeHtml(err.message) + '</td></tr>';
+        }
+        var rows = document.getElementById('staff-rows');
+        if (rows) {
+            rows.innerHTML = '<p class="adm-empty t-cap muted">Could not load staff accounts.</p>';
         }
     });
 }
