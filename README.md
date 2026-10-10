@@ -17,19 +17,21 @@ One Express process serves **both** the static front end and the JSON API, so th
 single thing to deploy and no CORS issues in normal use.
 
 ```
-web prototype 1/
+DCKids/
 ├── index.html          Storefront (catalogue, cart, checkout, tracking)
 ├── app.js              Storefront logic
 ├── styles.css          Storefront styles
 ├── track.html          Order tracking page
 ├── admin.html          Admin panel (single-page)
 ├── admin.js            Admin logic
-├── admin.css           Admin styles
+├── admin-system.css    Admin design system (tokens + components)
+├── admin-bridge.css    Admin legacy-class bridge onto the design system
 ├── manifest.json       Storefront PWA manifest
 ├── admin.manifest.json Admin PWA manifest
 ├── service-worker.js   PWA service worker (offline shell + caching)
 ├── gradient.js         Decorative background
 ├── images/             Product & promo images (optimized, ≤1000px)
+├── vendor/             Self-hosted fonts, Font Awesome and Chart.js
 └── server/
     ├── server.js       Express API + static file server
     ├── db.js           SQLite schema, migrations, seed data
@@ -156,4 +158,4 @@ Products without genuine photography reuse clearly labelled category artwork fro
 The product catalogue CSV export/import includes both `sku` and `img`. Use **Image health** to find missing images, missing or duplicate SKUs, invalid image paths, and unused uploaded files.
 ## Tailwind CSS build
 
-Tailwind is compiled locally rather than loaded from the development CDN. From `server/`, run `npm run build:css` after changing utility classes in `index.html`, `app.js`, `admin.html`, or `admin.js`. The command regenerates `tailwind-storefront.css` and `tailwind-admin.css`; the admin bundle intentionally disables Tailwind preflight so it does not reset `admin.css`.
+Tailwind is compiled locally rather than loaded from the development CDN. From `server/`, run `npm run build:css` after changing utility classes in `index.html`, `app.js`, `admin.html`, or `admin.js`. The command regenerates `tailwind-storefront.css` and `tailwind-admin.css`; the admin bundle intentionally disables Tailwind preflight so it does not reset `admin-system.css`.
