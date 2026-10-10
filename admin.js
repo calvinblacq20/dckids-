@@ -704,6 +704,7 @@ function switchTab(targetId) {
     var navItems = document.querySelectorAll('.sidebar-link');
     for (var j = 0; j < navItems.length; j++) {
         navItems[j].classList.remove('active');
+        navItems[j].removeAttribute('aria-current');
     }
 
     // Show target tab
@@ -717,6 +718,7 @@ function switchTab(targetId) {
     var matchingNav = document.querySelector('.sidebar-link[data-tab="' + targetId + '"]');
     if (matchingNav) {
         matchingNav.classList.add('active');
+        matchingNav.setAttribute('aria-current', 'page');
     }
 
     // Toggle dashboard-only body state (mobile hero replaces the top header)
