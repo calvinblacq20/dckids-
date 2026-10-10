@@ -921,3 +921,188 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
 
 /* The page head is a layout block, not a surface — it should have no fill. */
 .adm-head, .adm-head__titles { background: none; border: 0; }
+
+/* ---------- Dropdown (the reference's listbox) ----------
+   Visibility is driven by aria-expanded on the trigger, which is how the JS
+   already reports state — no extra class needed. */
+.admin-dropdown { position: relative; display: inline-flex; }
+.admin-dropdown--fullwidth { display: flex; width: 100%; }
+.admin-dropdown__trigger {
+  display: inline-flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; height: 40px; padding: 0 12px;
+  border: 1px solid var(--ink-12); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink);
+  font-family: inherit; font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+.admin-dropdown__trigger:hover { background: var(--ground); }
+.admin-dropdown--sm .admin-dropdown__trigger { height: 32px; font-size: 12px; }
+.admin-dropdown--disabled .admin-dropdown__trigger { opacity: .5; cursor: not-allowed; }
+.admin-dropdown__label--placeholder { color: var(--ink-50); }
+
+.admin-dropdown__panel {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: var(--z-dropdown, 100);
+  display: none; min-width: 100%; max-height: 320px; overflow-y: auto;
+  padding: 6px;
+  background: var(--surface); border: 1px solid var(--ink-06);
+  border-radius: var(--r-16); box-shadow: var(--sh-float);
+}
+.admin-dropdown:has(.admin-dropdown__trigger[aria-expanded="true"]) .admin-dropdown__panel { display: block; }
+.admin-dropdown__option {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  min-height: 36px; padding: 8px 10px;
+  border: 0; width: 100%; background: none; text-align: left;
+  border-radius: var(--r-12); color: var(--ink);
+  font-family: inherit; font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+.admin-dropdown__option:hover { background: var(--ground); }
+.admin-dropdown__option--selected { background: var(--lime); font-weight: 500; }
+
+/* ---------- Date-range picker ---------- */
+.mdrp, .drp { position: relative; display: inline-flex; }
+.mdrp-trigger, .drp-trigger, .analytics-date-btn {
+  display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px;
+  border: 1px solid var(--ink-12); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink); font-family: inherit; font-size: 13px; cursor: pointer;
+}
+.mdrp-menu, .drp-menu, .analytics-date-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: var(--z-dropdown, 100);
+  display: none; min-width: 240px; padding: 8px;
+  background: var(--surface); border: 1px solid var(--ink-06);
+  border-radius: var(--r-16); box-shadow: var(--sh-float);
+}
+.mdrp-menu.open, .drp-menu.open, .analytics-date-menu.open,
+.mdrp:has([aria-expanded="true"]) .mdrp-menu { display: block; }
+.mdrp-presets, .drp-presets { display: flex; flex-direction: column; gap: 2px; }
+.mdrp-preset, .drp-preset {
+  display: block; width: 100%; min-height: 36px; padding: 8px 10px;
+  border: 0; border-radius: var(--r-12); background: none; text-align: left;
+  color: var(--ink); font-family: inherit; font-size: 13px; cursor: pointer;
+}
+.mdrp-preset:hover, .drp-preset:hover { background: var(--ground); }
+.mdrp-preset.is-active, .drp-preset.is-active { background: var(--lime); font-weight: 500; }
+
+/* ---------- Hero search ---------- */
+.dash-hero__search { position: relative; display: flex; align-items: center; margin-top: 16px; }
+.dash-hero__search-icon {
+  position: absolute; left: 6px; display: grid; place-items: center;
+  width: 32px; height: 32px; border: 0; border-radius: var(--r-pill);
+  background: transparent; color: var(--ink-75); cursor: pointer;
+}
+.dash-hero__search input, .dash-hero__search-input {
+  width: 100%; height: 44px; padding: 0 44px;
+  border: 0; border-radius: var(--r-pill);
+  background: rgba(255,255,255,.12); color: #fff; font-size: 14px; font-family: inherit;
+}
+.dash-hero__search input::placeholder { color: rgba(255,255,255,.6); }
+.dash-hero__search input:focus { outline: 2px solid rgba(255,255,255,.5); outline-offset: 0; }
+.dash-hero__search-filter {
+  position: absolute; right: 6px; display: grid; place-items: center;
+  width: 32px; height: 32px; border: 0; border-radius: var(--r-pill);
+  background: transparent; color: var(--ink-75); cursor: pointer;
+}
+
+/* ---------- Top-bar search ---------- */
+.header-search, .global-search { position: relative; flex: 1 1 320px; max-width: 420px; }
+.header-search input, .global-search input, .admin-header input[type="search"] {
+  width: 100%; height: 40px; padding: 0 40px 0 38px;
+  border: 0; border-radius: var(--r-pill);
+  background: var(--ground); color: var(--ink); font-size: 14px;
+}
+.header-search svg, .global-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-50); pointer-events: none; }
+.adm-kbd, .search-kbd {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  padding: 2px 6px; border-radius: var(--r-8);
+  background: var(--surface); color: var(--ink-75); font-size: 11px; font-family: var(--mono);
+}
+
+/* ---------- Detail sheets (customer, order, product, supplier) ----------
+   These open as a full sheet rather than a dialog, so they get the sheet
+   treatment: a sticky top bar, a hero block, then stacked cards. */
+.detail-overlay .modal-content { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+.detail-topbar {
+  position: sticky; top: 0; z-index: 2;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 16px;
+  background: var(--glass); backdrop-filter: blur(8px);
+  box-shadow: 0 1px 0 var(--ink-06);
+}
+.detail-back {
+  display: grid; place-items: center; width: 36px; height: 36px;
+  border: 0; border-radius: var(--r-pill); background: transparent;
+  color: var(--ink); cursor: pointer;
+}
+.detail-back:hover { background: var(--ground); }
+.detail-edit-btn, .detail-whatsapp-btn {
+  display: inline-flex; align-items: center; gap: 6px; height: 36px; padding-inline: 14px;
+  border: 1px solid var(--ink-12); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink);
+  font-family: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.detail-edit-btn:hover, .detail-whatsapp-btn:hover { background: var(--ground); }
+
+/* The body is the scroll area; it must not exceed the sheet. */
+.detail-body {
+  flex: 1; min-width: 0; width: 100%;
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 16px; overflow-y: auto; overflow-x: hidden;
+  background: var(--ground);
+}
+.detail-hero { display: flex; flex-direction: column; gap: 6px; padding: 4px 4px 8px; }
+.detail-hero__badge {
+  align-self: flex-start; display: inline-flex; align-items: center;
+  height: 22px; padding-inline: 10px; border-radius: var(--r-pill);
+  background: var(--lime); color: var(--ink); font-size: 12px; font-weight: 500;
+}
+.detail-hero__info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.detail-hero__title { font-size: 24px; font-weight: 500; letter-spacing: -.02em; color: var(--ink); margin: 0; }
+.detail-hero__sub { font-size: 13px; color: var(--ink-75); margin: 0; }
+
+/* Stat tiles read as one row of figures, not stacked text. */
+.detail-stats, .detail-card:has(> .detail-stat) { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.detail-stat {
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+  padding: 12px 14px; border-radius: var(--r-12); background: var(--ground);
+}
+.detail-stat__num { display: block; font-size: 22px; font-weight: 500; letter-spacing: -.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.detail-stat__lbl { display: block; font-size: 12px; color: var(--ink-75); }
+
+/* Order history and other lists inside a sheet */
+.detail-order-row, .detail-list-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  min-height: 52px; padding: 10px 0; border-bottom: 1px solid var(--ink-06);
+}
+.detail-order-row:last-child, .detail-list-row:last-child { border-bottom: 0; }
+.detail-notes textarea { min-height: 88px; }
+
+/* Nothing inside a sheet may exceed it. */
+.modal-content, .modal-content * { max-width: 100%; }
+.modal-content { overflow-x: hidden; }
+
+/* Some overlays are set to flex elsewhere, which left-aligns the sheet because
+   no justification comes with it. Centre either way. */
+.modal-overlay, .rc-overlay, .detail-overlay {
+  justify-content: center;
+  align-items: center;
+}
+@media (max-width: 809.98px) {
+  .modal-overlay, .rc-overlay, .detail-overlay { align-items: flex-end; }
+}
+
+/* WhatsApp keeps its own green: it is a platform affordance, not a brand
+   accent, and recolouring it would make the action harder to recognise. */
+.detail-whatsapp-btn { color: #1d7d4d; border-color: rgba(29,125,77,.3); }
+.detail-whatsapp-btn:hover { background: rgba(29,125,77,.08); }
+
+/* The native select inside .admin-dropdown is the value the form submits and
+   the JS reads; the trigger beside it is the visible control. Hide the select
+   without removing it — display:none would drop it from some form paths and
+   from the accessibility tree. */
+.admin-dropdown > select,
+.admin-dropdown select {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0; border: 0;
+  clip: rect(0 0 0 0); clip-path: inset(50%);
+  overflow: hidden; white-space: nowrap;
+  min-height: 0;
+}
