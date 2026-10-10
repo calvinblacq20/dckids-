@@ -1,0 +1,923 @@
+/* =============================================================
+   DC Kids admin — legacy class bridge
+
+   admin.css is gone. This maps the class names the markup still uses onto
+   the reference vocabulary in admin-system.css, so one visual language
+   reaches every screen, modal and control rather than stopping at the shell.
+
+   Nothing here invents a look: each rule restates a reference component
+   (.card, .row, .field, .btn, .sheet, .badge, .overlay) under the name this
+   markup happens to use. As markup moves onto the reference names, rules here
+   are deleted rather than rewritten.
+
+   Utilities (flex, w-full, mb-2, gap-3 …) are not bridged — tailwind-admin.css
+   still supplies them.
+   ============================================================= */
+
+/* ---------- Page scaffolding ---------- */
+.tab-view { display: none; }
+.tab-view.active { display: flex; flex-direction: column; gap: 16px; }
+.admin-main { padding: 20px var(--gutter, 28px) 40px; min-width: 0; }
+.admin-main > .tab-view { width: min(100%, 1560px); margin-inline: auto; }
+.page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.page-title { font-size: 32px; line-height: 1.1; font-weight: 500; letter-spacing: -.02em; color: var(--ink); margin: 0; }
+.page-subtitle { font-size: 13px; color: var(--ink-75); margin: 4px 0 0; }
+
+/* ---------- Top bar ---------- */
+.admin-header {
+  position: sticky; top: 0; z-index: var(--z-sticky);
+  display: flex; align-items: center; gap: 8px;
+  min-height: 60px; padding: 10px var(--gutter, 28px);
+  background: transparent;
+}
+.admin-header.is-solid { background: var(--glass); backdrop-filter: blur(8px); box-shadow: 0 1px 0 var(--ink-06); }
+
+/* ---------- Cards and surfaces ---------- */
+.card, .stat-card, .panel, .dashboard-card, .content-card, .chart-card,
+.table-card, .section-card, .health-card, .settings-card, .detail-card, .review-card {
+  background: var(--surface);
+  border: 1px solid var(--ink-06);
+  border-radius: var(--r-16);
+  box-shadow: none;
+}
+.card-pad, .chart-body, .detail-card { padding: 16px 20px; }
+.detail-card__title, .chart-title, .section-title, .quick-actions-title {
+  font-size: 16px; font-weight: 500; letter-spacing: -.01em; color: var(--ink); margin: 0 0 12px;
+}
+
+/* ---------- Buttons: one primary, the rest quiet ---------- */
+.btn, .btn-primary, .btn-outline, .btn-secondary, .btn-danger,
+.btn-outline-small, .quick-action-btn, .dashboard-livebar__button, .analytics-export-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 40px; padding-inline: 16px;
+  border: 0; border-radius: var(--r-pill);
+  font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1;
+  cursor: pointer; white-space: nowrap;
+  transition: background-color .2s, color .2s;
+}
+.btn-primary { background: var(--ink); color: #fff; }
+.btn-primary:hover { background: var(--charcoal); }
+.btn, .btn-outline, .btn-secondary, .quick-action-btn,
+.dashboard-livebar__button, .analytics-export-btn { background: var(--ink-06); color: var(--ink); }
+.btn:hover, .btn-outline:hover, .btn-secondary:hover,
+.quick-action-btn:hover, .dashboard-livebar__button:hover { background: var(--ink-12); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-outline-small, .btn-sm { height: 32px; padding-inline: 12px; font-size: 13px; }
+.btn:disabled, .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Icon-only controls */
+.action-icon, .icon-btn, .modal-close, .header-icon-btn, .rc-close {
+  flex: none; display: grid; place-items: center;
+  width: 32px; height: 32px;
+  border: 0; border-radius: var(--r-pill);
+  background: transparent; color: var(--ink-75);
+  cursor: pointer; transition: background-color .2s, color .2s;
+}
+.action-icon:hover, .icon-btn:hover, .modal-close:hover, .header-icon-btn:hover {
+  background: var(--ground); color: var(--ink);
+}
+.action-icon.delete:hover, .action-icon.delete-icon:hover { background: var(--danger-wash); color: var(--danger); }
+.table-actions { display: flex; align-items: center; gap: 4px; justify-content: flex-end; }
+
+/* ---------- Forms ---------- */
+.form-group, .field, .supplier-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.form-label, .field label, .supplier-field__label, .detail-row__label {
+  font-size: 12px; font-weight: 500; color: var(--ink-75);
+}
+.form-input, .form-select, .form-textarea, .filter-input, .filter-select,
+input[type="text"], input[type="email"], input[type="tel"], input[type="number"],
+input[type="search"], input[type="date"], input[type="password"], select, textarea {
+  width: 100%; min-height: 40px; padding: 10px 12px;
+  border: 1px solid var(--ink-12); border-radius: var(--r-12);
+  background: var(--surface); color: var(--ink);
+  font-family: inherit; font-size: 14px;
+}
+textarea { min-height: 88px; resize: vertical; }
+.form-input:focus, .form-select:focus, .form-textarea:focus,
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outline-offset: 1px; border-color: transparent; }
+.form-input::placeholder, textarea::placeholder, input::placeholder { color: var(--ink-50); }
+.form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.filter-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 12px; background: var(--surface);
+  border: 1px solid var(--ink-06); border-radius: var(--r-16);
+}
+.filter-group { position: relative; display: flex; align-items: center; gap: 8px; flex: 1 1 220px; min-width: 0; }
+.filter-group svg { position: absolute; left: 12px; color: var(--ink-50); pointer-events: none; }
+.filter-group .filter-input { padding-left: 36px; }
+.filter-select { flex: 0 1 auto; width: auto; min-width: 150px; cursor: pointer; }
+
+/* ---------- Tables (guidelines section 8) ---------- */
+.table-responsive { background: var(--surface); border: 1px solid var(--ink-06); border-radius: var(--r-16); overflow: auto; }
+.admin-table, .data-table, table { width: 100%; border-collapse: collapse; }
+.admin-table thead th, .data-table thead th, table thead th {
+  position: sticky; top: 0; z-index: 1;
+  padding: 12px 16px; text-align: left;
+  background: var(--surface);
+  font-size: 12px; font-weight: 500; color: var(--ink-75);
+  text-transform: none; letter-spacing: 0;
+  border-bottom: 1px solid var(--ink-06); white-space: nowrap;
+}
+.admin-table tbody td, .data-table tbody td, table tbody td {
+  padding: 10px 16px; height: 44px;
+  border-bottom: 1px solid var(--ink-06);
+  font-size: 14px; color: var(--ink); vertical-align: middle;
+}
+.admin-table tbody tr:last-child td, .data-table tbody tr:last-child td { border-bottom: 0; }
+.admin-table tbody tr:hover, .data-table tbody tr:hover { background: var(--ground); }
+.tappable-row { cursor: pointer; }
+.table-product { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.table-product img { width: 40px; height: 40px; border-radius: var(--r-img); object-fit: cover; flex: none; }
+.table-product-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.table-product-info strong { font-weight: 500; }
+.table-product-info span { font-size: 12px; color: var(--ink-75); }
+.empty-state { padding: 48px 24px; text-align: center; color: var(--ink-75); font-size: 14px; }
+
+/* ---------- Status: words plus tone, red only for danger ---------- */
+.status-pill, .supplier-status-pill, .customer-account-mark, .pill-tag {
+  display: inline-flex; align-items: center; height: 22px; padding-inline: 10px;
+  border-radius: var(--r-pill); background: var(--ground); color: var(--ink);
+  font-size: 12px; font-weight: 500; text-transform: capitalize; white-space: nowrap;
+}
+.status-pill.active, .status-pill.paid, .status-pill.delivered, .status-pill.completed,
+.status-pill.shipped, .status-pill.dispatched, .supplier-status-pill.is-active,
+.in-stock { background: var(--lime); }
+.status-pill.pending, .status-pill.processing, .status-pill.awaiting_payment,
+.status-pill.pending_deposit, .status-pill.payment_review, .low-stock { background: var(--sand); }
+.status-pill.cancelled, .status-pill.payment_failed, .out-of-stock { background: var(--danger-wash); color: var(--danger); }
+.in-stock, .low-stock, .out-of-stock {
+  display: inline-flex; align-items: center; height: 22px; padding-inline: 10px;
+  border-radius: var(--r-pill); font-size: 12px; font-weight: 500; color: var(--ink);
+}
+
+/* ---------- Modals, as the reference sheet ---------- */
+.modal-overlay, .rc-overlay, .loading-overlay {
+  position: fixed; inset: 0; z-index: var(--z-overlay);
+  display: grid; place-items: center; padding: 24px;
+  background: rgba(36, 36, 38, .45);
+  overflow: auto;
+}
+.modal-content, .modal-box, .modal-panel, .rc-modal {
+  position: relative; width: min(100%, 560px); max-height: 90dvh; overflow-y: auto;
+  background: var(--surface); border: 0; border-radius: var(--r-24);
+  box-shadow: var(--sh-deep); padding: 0;
+}
+.detail-overlay .modal-content { width: min(100%, 680px); }
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 20px 24px 0; border: 0;
+}
+.modal-title { font-size: 20px; font-weight: 500; letter-spacing: -.01em; color: var(--ink); margin: 0; }
+.modal-body { padding: 16px 24px 4px; }
+.modal-footer {
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+  padding: 16px 24px 20px; border: 0;
+}
+.modal-close { position: absolute; top: 16px; right: 16px; }
+
+/* ---------- Detail rows ---------- */
+.detail-row {
+  display: flex; align-items: center; gap: 12px;
+  min-height: 52px; padding: 8px 0;
+  border-bottom: 1px solid var(--ink-06);
+}
+.detail-row:last-child { border-bottom: 0; }
+.detail-row__ic { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-12); background: var(--ground); color: var(--ink-75); }
+.detail-row__label { flex: 1; color: var(--ink-75); font-size: 14px; }
+.detail-row__value { font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ---------- Pagination, toasts, misc ---------- */
+.pagination { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 16px 0; }
+.pagination button {
+  min-width: 36px; height: 36px; padding-inline: 10px;
+  border: 0; border-radius: var(--r-pill); background: transparent;
+  color: var(--ink-75); font-family: inherit; font-size: 14px; cursor: pointer;
+}
+.pagination button:hover { background: var(--ground); color: var(--ink); }
+.pagination button.active, .pagination button[aria-current="page"] { background: var(--lime); color: var(--ink); font-weight: 500; }
+.toast-container { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: var(--z-toast); display: flex; flex-direction: column; gap: 8px; }
+.toast { padding: 12px 16px; border-radius: var(--r-12); background: var(--ink); color: #fff; font-size: 14px; box-shadow: var(--sh-float); }
+.divider, hr { height: 1px; border: 0; background: var(--ink-06); margin-block: 12px; }
+.badge-count, .chip-count, .nav-count {
+  display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding-inline: 6px;
+  border-radius: var(--r-pill); background: var(--ground); color: var(--ink);
+  font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Phones ---------- */
+@media (max-width: 809.98px) {
+  .admin-main { padding: 16px var(--gutter, 16px) 96px; }
+  .page-title { font-size: 28px; }
+  .modal-overlay { padding: 0; place-items: end stretch; }
+  .modal-content, .rc-modal { width: 100%; max-height: 92dvh; border-radius: var(--r-24) var(--r-24) 0 0; }
+  .admin-table tbody td, .data-table tbody td { height: 52px; }
+  .filter-group { flex-basis: 100%; }
+}
+
+/* ---------- Header popovers ----------
+   admin.css hid these until opened. Without it they rendered inline and blew
+   the top bar open. The JS toggles .open, or .admin-user-menu--open for the
+   account menu, so both are honoured. */
+.admin-user-menu,
+.notifications-panel, .notification-panel, .notification-dropdown,
+.header-dropdown, .dropdown-menu, .search-results, .admin-search-results,
+.analytics-date-menu, .drp-menu {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: var(--z-dropdown, 100);
+  display: none;
+  min-width: 260px; max-width: min(92vw, 360px);
+  padding: 8px;
+  background: var(--surface);
+  border: 1px solid var(--ink-06); border-radius: var(--r-16);
+  box-shadow: var(--sh-float);
+}
+.admin-user-menu.admin-user-menu--open,
+.notifications-panel.open, .notification-panel.open, .notification-dropdown.open,
+.header-dropdown.open, .dropdown-menu.open, .search-results.open,
+.admin-search-results.open, .analytics-date-menu.open, .drp-menu.open { display: block; }
+
+.notification-wrapper, .user-profile-wrapper, .analytics-date-picker,
+.header-search, .global-search { position: relative; }
+
+.admin-user-menu__header { display: flex; align-items: center; gap: 10px; padding: 8px; }
+.admin-user-menu__stats { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; padding: 8px; }
+.admin-user-menu__item, .dropdown-item, .notification-item {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 40px; padding: 8px 10px;
+  border-radius: var(--r-12); color: var(--ink); font-size: 14px; cursor: pointer;
+}
+.admin-user-menu__item:hover, .dropdown-item:hover, .notification-item:hover { background: var(--ground); }
+
+/* ---------- Header layout ---------- */
+.header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.header-left, .header-title-group { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.user-profile { display: inline-flex; align-items: center; gap: 8px; padding: 4px; border: 0; background: none; cursor: pointer; border-radius: var(--r-pill); }
+.user-profile:hover { background: var(--ground); }
+.user-avatar, .avatar {
+  flex: none; display: grid; place-items: center;
+  width: 36px; height: 36px; border-radius: var(--r-pill);
+  background: var(--lime); color: var(--ink); font-size: 13px; font-weight: 500;
+}
+
+/* Images never size themselves. The brand mark is the only one with a set
+   height; everything else is capped to its box. */
+.admin-header img, .admin-user-menu img, .notification-item img { max-height: 36px; width: auto; }
+.sidebar-brand img, .adm-brand img { height: 32px; width: auto; object-fit: contain; }
+img { max-width: 100%; }
+
+/* ---------- Mobile menu toggle ---------- */
+.sidebar-toggle, .menu-toggle, .hamburger {
+  display: none; flex: none; place-items: center;
+  width: 40px; height: 40px; border: 0; border-radius: var(--r-pill);
+  background: transparent; color: var(--ink); cursor: pointer;
+}
+@media (max-width: 809.98px) { .sidebar-toggle, .menu-toggle, .hamburger { display: grid; } }
+
+
+/* =============================================================
+   PATTERNS — carried over from the retired admin.css.
+   These are the reference patterns built earlier (page head, KPI tabs and
+   trend, the dark counter, pattern D search/filters/results/rail, the ranked
+   table). They were appended to admin.css and would have been lost with it.
+   ============================================================= */
+/* ============================================================
+   REFERENCE SHELL — Franz Qlodin / Royal Hair / Aromatic Laundry
+   Those three share one admin system and change a single accent each:
+   lime #d9ff5c, gold #e0c5b6, aqua #7ad7f0. All are LIGHT tints carrying
+   ink text, on a cool grey ground with a white sidebar. DC Kids takes the
+   same system with a light pink drawn from its own #fc4c7a.
+   Appended last so it wins over the earlier dashboard layers.
+   ============================================================ */
+:root {
+  --ground:        #ebeff5;
+  --surface:       #ffffff;
+  --bg:            #ebeff5;
+  --card-bg:       #ffffff;
+  --sidebar-bg:    #ffffff;
+
+  --ink:           #242426;
+  --ink-75:        rgba(36, 36, 38, 0.75);
+  --ink-50:        rgba(36, 36, 38, 0.5);
+  --ink-25:        rgba(36, 36, 38, 0.25);
+  --ink-12:        rgba(36, 36, 38, 0.12);
+  --ink-06:        rgba(36, 36, 38, 0.06);
+  --text-primary:  #242426;
+  --text-secondary: rgba(36, 36, 38, 0.75);
+  --border:        rgba(36, 36, 38, 0.06);
+
+  /* The one accent. Light, so ink reads on it, exactly as lime/gold/aqua do. */
+  --accent:        #ffc4d7;
+  --accent-strong: #fc4c7a;
+  --sidebar-active: #ffc4d7;
+
+  --sidebar-width: 248px;
+  --glass:         rgba(255, 255, 255, 0.8);
+}
+
+body, .dashboard-container { background: var(--ground); }
+
+/* ---------- Sidebar: white surface on the ground, hairline edge ---------- */
+.admin-sidebar {
+  background: var(--surface);
+  border-right: 0;
+  box-shadow: 1px 0 0 var(--ink-06);
+  padding: 14px 12px;
+}
+.admin-sidebar .sidebar-brand { padding: 4px 4px 10px !important; justify-content: flex-start !important; }
+.admin-sidebar .sidebar-brand img { max-height: 40px !important; }
+
+.sidebar-nav-list { display: flex; flex-direction: column; gap: 2px; list-style: none; margin: 0; padding: 0; }
+
+/* Nav item: 40px pill, icon + label, ink-75 until active. */
+.admin-sidebar .sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--radius-full);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--ink-75);
+  background: transparent;
+  border: 0;
+  transition: color .2s, background-color .2s;
+}
+.admin-sidebar .sidebar-link svg { flex: none; width: 20px; height: 20px; stroke-width: 1.8; }
+.admin-sidebar .sidebar-link:hover { color: var(--ink); background: var(--ground); }
+
+/* Selected state is a fill, never a ring or a left bar. */
+.admin-sidebar .sidebar-link.active,
+.admin-sidebar .sidebar-link[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 500;
+  background: var(--accent);
+}
+.admin-sidebar .sidebar-link.active::before,
+.admin-sidebar .sidebar-link.active::after { display: none !important; }
+
+/* Counts sit right, and only when something needs action. */
+.admin-sidebar .sidebar-link .badge,
+.admin-sidebar .sidebar-link .chip-count,
+.admin-sidebar .sidebar-link .nav-count { margin-left: auto; }
+
+/* Group labels: the only uppercase in the system, set in mono. */
+.sidebar-nav-list > li.nav-group-label,
+.sidebar-group-label, .nav-section-title {
+  padding: 16px 12px 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-75);
+}
+
+.admin-sidebar .sidebar-footer,
+.admin-sidebar .sidebar-logout { margin-top: auto; padding-top: 12px; color: var(--ink-75); }
+
+/* ---------- Top bar: transparent until scrolled, then glass ---------- */
+.admin-header, .dashboard-header {
+  background: transparent;
+  border-bottom: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.admin-header.is-solid, .dashboard-header.is-solid {
+  background: var(--glass);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 0 var(--ink-06);
+}
+
+/* Search is a pill on the ground, not a bordered box. */
+.admin-header input[type="search"], .admin-header .search-input,
+.global-search input, .header-search input {
+  height: 40px;
+  border-radius: var(--radius-full);
+  background: var(--ground);
+  border: 0;
+  color: var(--ink);
+}
+
+/* ---------- Cards: flat white, hairline, tight radius ---------- */
+.card, .stat-card, .panel, .dashboard-card, .content-card,
+.table-card, .section-card, .chart-card {
+  background: var(--surface);
+  border: 1px solid var(--ink-06);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+
+/* The one dark card per screen: ink ground, accent action. */
+.dash-hero, .alert-card, .dashboard-recovery-alert {
+  background: var(--ink);
+  border: 0;
+  color: #fff;
+  border-radius: var(--radius-lg);
+}
+.dash-hero *, .alert-card * { color: inherit; }
+.dash-hero .btn, .alert-card .btn,
+.dash-hero button, .alert-card button {
+  background: var(--accent);
+  color: var(--ink);
+  border: 0;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+}
+
+/* ---------- Mobile tab bar: floating white pill, accent on active ---------- */
+.mobile-bottom-nav {
+  background: var(--surface);
+  border: 0;
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-lg);
+}
+.mobile-bottom-nav__btn.is-active,
+.mobile-bottom-nav__btn.active { color: var(--ink); }
+.mobile-bottom-nav__btn.is-active svg,
+.mobile-bottom-nav__btn.active svg { color: var(--ink); }
+
+/* ---------- Icon rail between 810 and 1199, as the reference does ---------- */
+@media (min-width: 810px) and (max-width: 1199.98px) {
+  .dashboard-container { grid-template-columns: 76px minmax(0, 1fr); }
+  .admin-sidebar { width: 76px; align-items: center; padding-inline: 10px; }
+  .admin-sidebar .sidebar-link { width: 48px; height: 44px; padding: 0; justify-content: center; border-radius: var(--radius-md); }
+  .admin-sidebar .sidebar-link span,
+  .admin-sidebar .sidebar-brand span { display: none; }
+}
+
+/* The earlier layers set the hero with an ID selector (#tab-dashboard
+   .dash-hero), which outranks a class. Match that specificity so the one dark
+   card per screen reads as ink, the way the reference alert card does. */
+#tab-dashboard .dash-hero,
+#dashboard-container .dash-hero {
+  background: var(--ink);
+  background-image: none;
+  border: 0;
+  color: #fff;
+}
+#tab-dashboard .dash-hero .dash-hero__snap { background: rgba(255,255,255,0.08); }
+#tab-dashboard .dash-hero .dash-hero__snap-div { background: rgba(255,255,255,0.14); }
+#tab-dashboard .dash-hero__title,
+#tab-dashboard .dash-hero__lede,
+#tab-dashboard .dash-hero__eyebrow { color: #fff; }
+#tab-dashboard .dash-hero__lede,
+#tab-dashboard .dash-hero__eyebrow { color: var(--white-75); }
+
+/* KPI cards: flat, label-first, number large and tabular — the reference
+   KPI tab shape rather than an icon badge card. */
+#tab-dashboard .stat-card { padding: 16px 18px; }
+#tab-dashboard .stat-card .stat-label { font-size: 12px; color: var(--ink-75); }
+#tab-dashboard .stat-card .stat-value {
+  font-size: 30px; font-weight: 500; letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums; color: var(--ink);
+}
+#tab-dashboard .stat-card .stat-icon,
+#tab-dashboard .stat-card [class*="icon"] {
+  background: var(--ground) !important;
+  color: var(--ink-75) !important;
+  box-shadow: none !important;
+}
+#tab-dashboard .stat-card::before { display: none !important; }
+
+/* ============================================================
+   DASHBOARD PATTERNS — A (KPI tabs + trend) and B (counter + ranked table)
+   Shapes taken from the reference admin.css so the two read the same.
+   ============================================================ */
+.adm-head { margin: 0 0 18px; }
+.adm-title { font-size: 32px; line-height: 1.1; font-weight: 500; letter-spacing: -0.02em; color: var(--ink); margin: 0; }
+.adm-status { display: inline-flex; align-items: center; gap: 8px; margin-top: 4px; font-size: 13px; color: var(--ink-75); }
+.adm-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--open, #3daa5c); flex: none; }
+
+.adm-card { background: var(--surface); border: 1px solid var(--ink-06); border-radius: var(--radius-lg); min-width: 0; }
+.adm-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px 0; min-height: 44px; }
+.adm-card-head h2 { font-size: 16px; font-weight: 500; letter-spacing: -0.01em; margin: 0; }
+.adm-card-body { padding: 12px 20px 20px; }
+.adm-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--ink-06); }
+.adm-meta { font-size: 12px; color: var(--ink-75); }
+.link-arrow { background: none; border: 0; padding: 0; font-size: 13px; color: var(--ink); cursor: pointer; }
+.link-arrow:hover { text-decoration: underline; }
+
+/* KPI tabs: the active one takes a ground fill with the reference tab shape. */
+.kpi-card { container-type: inline-size; margin-bottom: 16px; }
+.kpi-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; padding: 8px 8px 0; }
+.kpi-tab {
+  position: relative; isolation: isolate; display: flex; flex-direction: column;
+  align-items: flex-start; gap: 4px; min-width: 0; padding: 14px 16px 16px;
+  border: 0; background: none; cursor: pointer; text-align: left;
+  border-radius: var(--radius-xl) var(--radius-xl) var(--radius-sm) var(--radius-sm);
+  transition: background-color .2s;
+}
+.kpi-tab:hover:not(.is-active) { background: rgba(235, 239, 245, .5); }
+.kpi-tab-hl { position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: transparent; }
+.kpi-tab.is-active .kpi-tab-hl { background: var(--ground); }
+.kpi-label { font-size: 12px; color: var(--ink-75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.kpi-value { font-size: 24px; line-height: 1.2; font-weight: 500; letter-spacing: -.03em; font-variant-numeric: tabular-nums; color: var(--ink-75); white-space: nowrap; }
+.kpi-tab.is-active .kpi-value { color: var(--ink); }
+@container (min-width: 720px) { .kpi-value { font-size: 26px; } }
+@container (min-width: 900px) { .kpi-value { font-size: 30px; } }
+@container (max-width: 719px) { .kpi-tabs { grid-template-columns: repeat(2, minmax(0,1fr)); } .kpi-tab { border-radius: var(--radius-md); } }
+
+/* Direction from the arrow, good-or-bad from the colour. */
+.delta { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--ink-75); }
+.delta.is-good { color: #2f7d4a; }
+.delta.is-bad  { color: #8a4b1f; }
+.delta.is-neutral { color: var(--ink-75); }
+
+.kpi-chart-wrap { height: 240px; position: relative; }
+.chart-empty, .empty-line { margin: 0; padding: 28px 0; text-align: center; font-size: 13px; color: var(--ink-75); }
+
+/* Pattern B — dark counter card and the stage strip. */
+.dash-split { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 1023.98px) { .dash-split { grid-template-columns: 1fr; } }
+.adm-dark { background: var(--ink); border: 0; color: #fff; }
+.adm-dark .adm-meta { color: var(--white-75); }
+.counter-num { font-size: 64px; line-height: 1; font-weight: 400; letter-spacing: -.04em; font-variant-numeric: tabular-nums; margin: 6px 0 2px; }
+.stage-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0 14px; }
+.stage-col { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.stage-n { font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.stage-track { width: 100%; height: 56px; display: flex; align-items: flex-end; background: rgba(255,255,255,.12); border-radius: var(--radius-xs); overflow: hidden; }
+.stage-track i { display: block; width: 100%; background: var(--accent); border-radius: var(--radius-xs); }
+.stage-l { font-size: 12px; color: var(--white-75); }
+.kv-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.kv { display: flex; justify-content: space-between; font-size: 13px; color: var(--white-75); }
+.kv b { color: #fff; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+/* Ranked table: rank, name, count, share with an inline bar on a ground track. */
+.rank-table { width: 100%; border-collapse: collapse; }
+.rank-table td { padding: 10px 0; border-bottom: 1px solid var(--ink-06); font-size: 14px; vertical-align: middle; }
+.rank-table tr:last-child td { border-bottom: 0; }
+.rank-table .rank { width: 32px; color: var(--ink-75); font-variant-numeric: tabular-nums; }
+.rank-table .rank-name { color: var(--ink); }
+.rank-table .rank-num { width: 56px; text-align: right; color: var(--ink-75); font-variant-numeric: tabular-nums; }
+.rank-table .rank-share { width: 160px; position: relative; text-align: right; padding-left: 16px; }
+.rank-table .rank-share i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); height: 6px; background: var(--slate, #58718a); border-radius: var(--radius-full); opacity: .5; }
+.rank-table .rank-share span { position: relative; font-variant-numeric: tabular-nums; color: var(--ink); }
+
+@media (max-width: 809.98px) {
+  .adm-title { font-size: 28px; }
+  .kpi-tabs { display: flex; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; padding: 8px; }
+  .kpi-tabs::-webkit-scrollbar { display: none; }
+  .kpi-tab { flex: 0 0 auto; min-width: 150px; scroll-snap-align: start; border-radius: var(--radius-md); }
+  .kpi-value { font-size: 24px; }
+  .counter-num { font-size: 52px; }
+}
+
+/* ---- Sidebar group labels: the only uppercase in the system, set in mono ---- */
+.sidebar-nav-list .nav-group-label {
+  list-style: none;
+  padding: 16px 12px 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-75);
+}
+.sidebar-nav-list .nav-group-label:first-child { padding-top: 6px; }
+
+/* ---- Page head: titles left, period and the one primary action right ---- */
+.adm-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.adm-head__actions { display: flex; align-items: center; gap: 8px; }
+.adm-period {
+  height: 40px; padding: 0 32px 0 14px;
+  border: 1px solid var(--ink-12); border-radius: var(--radius-full);
+  background: var(--surface) url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23242426' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+  color: var(--ink); font-size: 13px; font-family: inherit;
+  -webkit-appearance: none; appearance: none; cursor: pointer;
+}
+/* Exactly one primary action per page: dark button, accent arrow square. */
+.adm-cta {
+  display: inline-flex; align-items: center; gap: 10px;
+  height: 40px; padding: 0 6px 0 16px;
+  border: 0; border-radius: var(--radius-full);
+  background: var(--ink); color: #fff; font-size: 13px; font-weight: 500;
+  font-family: inherit; cursor: pointer;
+}
+.adm-cta i {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: var(--radius-full);
+  background: var(--accent); color: var(--ink); font-style: normal;
+  transition: transform .2s;
+}
+.adm-cta:hover i { transform: translateX(2px); }
+
+/* ---- Dark action card ---- */
+.adm-alert {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 18px 20px; margin: 0 0 16px;
+}
+.adm-alert__text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.adm-alert__text strong { font-size: 15px; font-weight: 500; }
+.adm-alert__text span { font-size: 13px; color: var(--white-75); }
+.adm-alert__cta {
+  flex: none; height: 40px; padding: 0 18px; border: 0;
+  border-radius: var(--radius-full); background: var(--accent);
+  color: var(--ink); font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer;
+}
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+@media (max-width: 809.98px) {
+  .adm-head { align-items: flex-start; }
+  .adm-head__actions { width: 100%; }
+  .adm-period { flex: 1; }
+  .adm-alert { flex-direction: column; align-items: flex-start; }
+  .adm-alert__cta { width: 100%; }
+}
+
+/* ============================================================
+   PATTERN D — search, filters, results, right rail
+   Shared by Orders and Products. Columns: 260 / fluid / 300, as the
+   reference uses; the rail drops under the results below 1360.
+   ============================================================ */
+.patd-search {
+  display: grid; grid-template-columns: minmax(0,2fr) minmax(0,1fr) auto;
+  gap: 0; align-items: stretch; margin: 0 0 16px;
+  background: var(--surface); border: 1px solid var(--ink-06);
+  border-radius: var(--radius-lg); padding: 10px;
+}
+.patd-field { display: flex; flex-direction: column; gap: 2px; padding: 4px 12px; min-width: 0; border-right: 1px solid var(--ink-06); }
+.patd-field:last-of-type { border-right: 0; }
+.patd-field label { font-size: 12px; color: var(--ink-75); }
+.patd-field input, .patd-field select {
+  border: 0; background: none; padding: 0; height: 26px;
+  font-size: 14px; color: var(--ink); font-family: inherit; width: 100%;
+  -webkit-appearance: none; appearance: none;
+}
+.patd-field input:focus, .patd-field select:focus { outline: none; }
+.patd-search__go { align-self: center; margin-left: 8px; }
+
+.patd { display: grid; grid-template-columns: 260px minmax(0,1fr) 300px; gap: 16px; align-items: start; }
+@media (max-width: 1359.98px) { .patd { grid-template-columns: 260px minmax(0,1fr); } .patd-rail { grid-column: 1 / -1; } }
+@media (max-width: 1023.98px) { .patd { grid-template-columns: 1fr; } }
+
+.patd-filters {
+  position: sticky; top: 16px;
+  background: var(--surface); border: 1px solid var(--ink-06);
+  border-radius: var(--radius-lg); padding: 16px;
+}
+.patd-filters__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.patd-filters__title { font-size: 16px; font-weight: 500; }
+.patd-group { margin-top: 20px; display: flex; flex-direction: column; gap: 8px; }
+.patd-group__label { font-size: 12px; font-weight: 500; color: var(--ink-75); }
+.patd-select {
+  height: 38px; width: 100%; padding: 0 30px 0 12px;
+  border: 1px solid var(--ink-12); border-radius: var(--radius-md);
+  background: var(--surface) url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23242426' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;
+  font-size: 13px; color: var(--ink); font-family: inherit;
+  -webkit-appearance: none; appearance: none; cursor: pointer;
+}
+.patd-counts { display: flex; flex-direction: column; gap: 2px; }
+.patd-count-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-75); padding: 4px 0; text-transform: capitalize; }
+.patd-count-row b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+.patd-results { min-width: 0; }
+.patd-results__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.patd-count { font-size: 24px; font-weight: 500; letter-spacing: -.02em; margin: 0; }
+
+/* Result card: title, subtitle, meta row, snippet, footer with one quick action. */
+.res-list { display: flex; flex-direction: column; gap: 12px; }
+.res-card {
+  background: var(--surface); border: 1px solid var(--ink-06);
+  border-radius: var(--radius-lg); padding: 16px 20px; cursor: pointer;
+  transition: border-color .2s;
+}
+.res-card:hover { border-color: var(--ink-12); }
+.res-card__main { display: flex; align-items: flex-start; gap: 12px; }
+.res-card__body { min-width: 0; flex: 1; }
+.res-card__title { font-size: 15px; font-weight: 500; margin: 0 0 2px; color: var(--ink); }
+.res-card__sub { font-size: 13px; color: var(--ink-75); margin: 0 0 8px; }
+.res-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.res-card__type { font-size: 12px; color: var(--ink-75); text-transform: capitalize; }
+.res-card__snip { font-size: 13px; color: var(--ink-75); margin: 8px 0 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.res-card__more { flex: none; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border: 0; background: none; border-radius: var(--radius-md); color: var(--ink-75); cursor: pointer; }
+.res-card__more:hover { background: var(--ground); color: var(--ink); }
+.res-card__foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--ink-06); }
+.res-card__date { font-size: 13px; color: var(--ink-75); }
+.quick-action { border: 0; background: none; padding: 0; font-size: 13px; font-weight: 500; color: var(--ink); cursor: pointer; font-family: inherit; }
+.quick-action:hover { text-decoration: underline; }
+
+/* Badges carry words as well as tone; sand means attention, red only danger. */
+.badge { display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: var(--radius-full); font-size: 12px; font-weight: 500; text-transform: capitalize; background: var(--ground); color: var(--ink); }
+.badge.is-good { background: var(--accent); }
+.badge.is-wait { background: var(--sand); }
+.badge.is-danger { background: var(--danger-light); color: var(--danger); }
+.pill-tag { display: inline-flex; align-items: center; height: 22px; padding: 0 10px; border-radius: var(--radius-full); font-size: 12px; font-weight: 500; background: var(--ground); color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* Right rail list */
+.rail-list { display: flex; flex-direction: column; }
+.rail-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 2px 10px; width: 100%; text-align: left; padding: 10px 0; border: 0; border-bottom: 1px solid var(--ink-06); background: none; cursor: pointer; font-family: inherit; }
+.rail-row:last-child { border-bottom: 0; }
+.rail-row__name { font-size: 14px; color: var(--ink); }
+.rail-row__meta { grid-column: 1; font-size: 12px; color: var(--ink-75); }
+.rail-row__val { grid-row: 1 / span 2; align-self: center; font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 809.98px) {
+  .patd-search { grid-template-columns: 1fr; }
+  .patd-field { border-right: 0; border-bottom: 1px solid var(--ink-06); }
+  .patd-search__go { margin: 8px 0 0; width: 100%; justify-content: space-between; }
+  .patd-filters { position: static; }
+  .patd-count { font-size: 20px; }
+}
+
+/* Secondary actions beside the one primary Cta: outline, never competing. */
+.adm-ghost {
+  height: 40px; padding: 0 14px;
+  border: 1px solid var(--ink-12); border-radius: var(--radius-full);
+  background: var(--surface); color: var(--ink);
+  font-size: 13px; font-family: inherit; cursor: pointer;
+}
+.adm-ghost:hover { background: var(--ground); }
+.adm-head__actions { flex-wrap: wrap; }
+
+/* Section 8 table treatment, applied to the catalogue table. */
+#tab-products .table-responsive,
+#tab-inventory .table-responsive {
+  background: var(--surface); border: 1px solid var(--ink-06);
+  border-radius: var(--radius-lg); overflow: hidden;
+}
+#tab-products table thead th,
+#tab-inventory table thead th {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--surface);
+  font-size: 12px; font-weight: 500; color: var(--ink-75);
+  text-transform: none; letter-spacing: 0;
+  border-bottom: 1px solid var(--ink-06);
+}
+#tab-products table tbody td,
+#tab-inventory table tbody td { border-bottom: 1px solid var(--ink-06); }
+#tab-products table tbody tr:hover,
+#tab-inventory table tbody tr:hover { background: var(--ground); }
+#tab-products table tbody tr:last-child td { border-bottom: 0; }
+
+/* The hidden attribute must win over any display rule a class sets. */
+[hidden] { display: none !important; }
+
+/* Initials square standing in for a photo, as the reference Avatar does. */
+.avatar-sq {
+  flex: none; width: 40px; height: 40px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--r-img); background: var(--ground);
+  color: var(--ink-75); font-size: 13px; font-weight: 500; letter-spacing: .02em;
+}
+
+/* ============================================================
+   WHOLE-ADMIN PARITY
+   Everything below applies the reference system to the tabs that were not
+   rebuilt screen by screen, so all eleven read as one admin rather than two.
+   ============================================================ */
+
+/* Analytics keeps its own header markup because the period tabs and the date
+   picker are wired to it; it is styled to match adm-head instead. */
+.analytics-header { align-items: flex-end; gap: 16px; }
+.analytics-title { font-size: 32px; line-height: 1.1; font-weight: 500; letter-spacing: -.02em; color: var(--ink); margin: 0; }
+.analytics-subtitle { font-size: 13px; color: var(--ink-75); margin: 4px 0 0; }
+.analytics-tabs { display: inline-flex; gap: 4px; margin-top: 12px; background: var(--ground); padding: 3px; border-radius: var(--radius-full); }
+.analytics-tab { height: 32px; padding: 0 14px; border: 0; border-radius: var(--radius-full); background: none; color: var(--ink-75); font-size: 13px; font-family: inherit; cursor: pointer; }
+.analytics-tab.active { background: var(--surface); color: var(--ink); font-weight: 500; }
+.analytics-date-btn, .analytics-export-btn {
+  height: 40px; padding: 0 14px; display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid var(--ink-12); border-radius: var(--radius-full);
+  background: var(--surface); color: var(--ink); font-size: 13px; font-family: inherit; cursor: pointer;
+}
+.analytics-date-btn:hover, .analytics-export-btn:hover { background: var(--ground); }
+
+/* An empty page-header left in the dashboard markup reserves space for nothing. */
+#tab-dashboard > .page-header:empty { display: none; }
+
+/* Every remaining surface takes the card and table treatment, so Reviews,
+   Manage Staff, Reports, Settings and Inventory stop looking like the old UI. */
+#tab-inventory .card, #tab-reviews .card, #tab-admins .card,
+#tab-reports .card, #tab-settings .card, #tab-analytics .card,
+#tab-inventory .chart-card, #tab-reports .chart-card, #tab-analytics .chart-card,
+#tab-settings .settings-card, #tab-admins .admin-card, #tab-reviews .review-card {
+  background: var(--surface);
+  border: 1px solid var(--ink-06);
+  border-radius: var(--radius-lg);
+  box-shadow: none;
+}
+
+#tab-reviews table, #tab-admins table, #tab-reports table, #tab-analytics table { width: 100%; border-collapse: collapse; }
+#tab-reviews thead th, #tab-admins thead th, #tab-reports thead th, #tab-analytics thead th {
+  font-size: 12px; font-weight: 500; color: var(--ink-75);
+  text-transform: none; letter-spacing: 0;
+  border-bottom: 1px solid var(--ink-06); background: var(--surface);
+}
+#tab-reviews tbody td, #tab-admins tbody td, #tab-reports tbody td, #tab-analytics tbody td { border-bottom: 1px solid var(--ink-06); }
+#tab-reviews tbody tr:hover, #tab-admins tbody tr:hover, #tab-reports tbody tr:hover { background: var(--ground); }
+
+/* Buttons across the admin take the reference shapes. */
+.btn, .btn-primary, .btn-outline, .btn-secondary { border-radius: var(--radius-full); font-family: inherit; }
+.btn-primary { background: var(--ink); color: #fff; border: 0; }
+.btn-primary:hover { background: var(--charcoal); }
+.btn-outline, .btn-secondary { background: var(--surface); border: 1px solid var(--ink-12); color: var(--ink); }
+.btn-outline:hover, .btn-secondary:hover { background: var(--ground); }
+
+/* Inputs and selects everywhere: ground fill, no heavy borders. */
+.filter-input, .filter-select, .form-input, .form-select, .form-textarea,
+input[type="text"], input[type="email"], input[type="number"], input[type="search"], select, textarea {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--ink-12);
+  background: var(--surface);
+  color: var(--ink);
+  font-family: inherit;
+}
+.filter-bar { background: var(--surface); border: 1px solid var(--ink-06); border-radius: var(--radius-lg); box-shadow: none; }
+
+/* Status pills inherit the badge vocabulary rather than their own colours. */
+.status-pill, .supplier-status-pill {
+  height: 22px; padding: 0 10px; border-radius: var(--radius-full);
+  font-size: 12px; font-weight: 500; background: var(--ground); color: var(--ink);
+}
+.status-pill.active, .supplier-status-pill.is-active, .status-pill.paid, .status-pill.delivered, .status-pill.completed { background: var(--accent); }
+.status-pill.pending, .status-pill.processing, .status-pill.awaiting_payment { background: var(--sand); }
+.status-pill.cancelled { background: var(--danger-light); color: var(--danger); }
+
+/* Modals follow the same shapes. */
+.modal-content, .modal-box, .modal-panel { border-radius: var(--radius-lg); border: 1px solid var(--ink-06); }
+
+/* ---------- Dashboard hero and live bar ----------
+   These BEM blocks were sized entirely by admin.css. Unsized, the brand image
+   expanded to its natural 689px and pushed the hero open. */
+.dash-hero { position: relative; overflow: hidden; padding: 22px 24px; }
+.dash-hero__row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.dash-hero__logo { display: inline-flex; align-items: center; gap: 10px; flex: none; }
+.dash-hero__logo img { height: 36px; width: auto; object-fit: contain; }
+.dash-hero__logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--open); flex: none; }
+.dash-hero__actions { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.dash-hero__bell, .dash-hero__user {
+  position: relative; display: grid; place-items: center;
+  width: 36px; height: 36px; border: 0; border-radius: var(--r-pill);
+  background: rgba(255,255,255,.1); color: #fff; cursor: pointer;
+}
+.dash-hero__bell-badge {
+  position: absolute; top: -2px; right: -2px;
+  min-width: 18px; height: 18px; padding-inline: 5px;
+  display: grid; place-items: center; border-radius: var(--r-pill);
+  background: var(--lime); color: var(--ink); font-size: 11px; font-weight: 500;
+}
+.dash-hero__divider { width: 1px; height: 20px; background: rgba(255,255,255,.2); }
+.dash-hero__avatar { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-pill); background: var(--lime); color: var(--ink); font-size: 13px; font-weight: 500; }
+.dash-hero__eyebrow { font-size: 13px; color: var(--white-75); }
+.dash-hero__title { font-size: 32px; line-height: 1.1; font-weight: 500; letter-spacing: -.02em; margin: 4px 0 2px; color: #fff; }
+.dash-hero__lede { font-size: 14px; color: var(--white-75); margin: 0; }
+.dash-hero__date { text-align: right; color: var(--white-75); font-size: 13px; }
+.dash-hero__date strong { display: block; color: #fff; font-size: 15px; font-weight: 500; }
+
+.dashboard-livebar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 10px 16px; background: var(--surface);
+  border: 1px solid var(--ink-06); border-radius: var(--r-16);
+}
+.dashboard-livebar__status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); }
+.dashboard-livebar__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--open); flex: none; }
+.dashboard-livebar__updated { color: var(--ink-75); }
+.dashboard-livebar__actions { display: flex; align-items: center; gap: 8px; }
+.dashboard-livebar__button:last-child { background: var(--ink); color: #fff; }
+.dashboard-livebar__button:last-child:hover { background: var(--charcoal); }
+
+/* ---------- Quick actions ---------- */
+.quick-actions-section { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 16px; background: var(--surface); border: 1px solid var(--ink-06); border-radius: var(--r-16); }
+.quick-actions-grid { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+/* ---------- Recovery codes overlay ---------- */
+.rc-modal { padding: 24px; }
+.rc-title { font-size: 20px; font-weight: 500; margin: 0 0 8px; }
+.rc-codes { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin: 16px 0; }
+.rc-code { padding: 10px; border-radius: var(--r-12); background: var(--ground); font-family: var(--mono); font-size: 14px; text-align: center; }
+
+/* Nothing in the admin renders an image at its natural size. */
+.admin-main img, .modal-content img, .adm-side img { max-height: 320px; }
+
+/* The mobile brand mark in the top bar; admin.css hid it above the phone
+   breakpoint, where the sidebar already carries the brand. */
+.header-mobile-logo { display: none; }
+.header-mobile-logo img { height: 28px; width: auto; object-fit: contain; }
+@media (max-width: 809.98px) { .header-mobile-logo { display: flex; align-items: center; } }
+
+/* ---------- Settings ----------
+   Cards and rows, as the reference states them: a white surface with a
+   hairline, rows at 52px with an icon square, title and description. */
+.settings-sections { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+.settings-account-card, .settings-recovery-card, .settings-card, .settings-section {
+  background: var(--surface); border: 1px solid var(--ink-06);
+  border-radius: var(--r-16); padding: 16px 20px;
+}
+.settings-account-card { display: flex; align-items: center; gap: 12px; grid-column: 1 / -1; }
+.settings-recovery-card { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.settings-recovery-card__copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.settings-recovery-card__copy strong, .settings-section__title { font-size: 16px; font-weight: 500; color: var(--ink); }
+.settings-recovery-card__copy span { font-size: 13px; color: var(--ink-75); }
+.settings-list { display: flex; flex-direction: column; }
+.settings-row {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; min-height: 52px; padding: 10px 12px;
+  border: 0; border-radius: var(--r-12);
+  background: transparent; text-align: left; cursor: pointer;
+  font-family: inherit;
+}
+.settings-row:hover { background: var(--ground); }
+.settings-row__ic { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-12); background: var(--ground); color: var(--ink-75); }
+.settings-row__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.settings-row__title { font-size: 14px; font-weight: 500; color: var(--ink); }
+.settings-row__desc { font-size: 12px; color: var(--ink-75); }
+
+/* The page head is a layout block, not a surface — it should have no fill. */
+.adm-head, .adm-head__titles { background: none; border: 0; }

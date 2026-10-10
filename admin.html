@@ -18,7 +18,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono&family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=125">
+  <!-- admin.css retired: the reference system in admin-system.css is the single
+       source of styling, with admin-bridge.css mapping the class names this
+       markup still uses onto it. -->
+  <link rel="stylesheet" href="admin-bridge.css?v=6">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
