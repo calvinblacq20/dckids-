@@ -2665,28 +2665,3 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
   box-shadow: var(--sh-soft);
 }
 #modal-add-order [hidden] { display: none !important; }
-
-/* =============================================================
-   41. SVG charts
-   The reference draws its charts as plain SVG. These are the few rules the
-   drawing code leaves to the stylesheet.
-   ============================================================= */
-.adm-chart { position: relative; width: 100%; }
-.adm-chart svg { display: block; width: 100%; overflow: visible; }
-.adm-chart__empty { padding: 36px 16px; text-align: center; }
-.adm-chart__tip {
-  position: absolute; top: 4px; transform: translateX(-50%);
-  padding: 5px 10px; border-radius: var(--r-pill);
-  background: var(--ink); color: #fff;
-  font-size: 12px; white-space: nowrap; pointer-events: none;
-  box-shadow: var(--sh-soft);
-}
-
-/* Composition reads as one stacked bar with a legend, not a ring. */
-.adm-segbar { display: flex; height: 12px; border-radius: var(--r-pill); overflow: hidden; background: var(--ground); }
-.adm-segbar span { display: block; height: 100%; }
-.adm-seglegend { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.adm-seglegend li { display: flex; align-items: center; gap: 10px; font-size: 13px; }
-.adm-seglegend i { width: 10px; height: 10px; flex: none; border-radius: 3px; }
-.adm-seglegend b { font-weight: 500; color: var(--ink); }
-.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
