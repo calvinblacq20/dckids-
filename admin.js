@@ -2759,18 +2759,18 @@ function openOrderReceipt(orderId) {
     if (order.items && order.items.length > 0) {
         order.items.forEach(function(it) {
             var row = document.createElement('div');
-            row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f3f4f6;font-size:13px;';
+            row.className = 'receipt-row';
             var itemPrice = it.price || 0;
             var itemQty = it.qty || it.quantity || 1;
             var lineTotal = itemPrice * itemQty;
-            // Extract display name (strip size in parentheses since it's shown separately)
+            // The size is shown on its own line, so strip it from the name.
             var displayName = (it.name || 'Item').replace(/\s*\([^)]+\)\s*$/, '');
-            row.innerHTML = '<div style="flex:1;">' +
-                '<div style="font-weight:600;color:#1f2937;">' + escapeHtml(displayName) + '</div>' +
-                '<div style="font-size:11px;color:#9ca3af;">Size: ' + escapeHtml(it.size || '—') + ' &times; ' + itemQty + '</div>' +
-                '</div>' +
-                '<div style="font-weight:700;color:#0F4C3A;white-space:nowrap;">GHS ' + formatNumber(lineTotal) + '</div>';
-            itemsEl.appendChild(row);
+            row.innerHTML = '<span class="grow stack">' +
+                '<span class="receipt-row__name">' + escapeHtml(displayName) + '</span>' +
+                '<span class="t-cap muted">Size: ' + escapeHtml(it.size || '—') + ' × ' + itemQty + '</span>' +
+                '</span>' +
+                '<b class="tabular">GHS ' + formatNumber(lineTotal) + '</b>';
+            itemsEl.appendChild(row)
         });
     }
 

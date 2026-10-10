@@ -5581,51 +5581,35 @@
         </button>
       </div>
       <div class="modal-body" style="padding:0;">
-        <div id="adminReceiptCard" style="padding:20px;">
-          <!-- Header -->
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:14px;border-bottom:1px dashed #d1d5db;">
+        <div id="adminReceiptCard" class="receipt">
+          <div class="receipt__head">
             <div>
-              <div style="font-size:16px;font-weight:700;color:#0F4C3A;">DC Kids Brand</div>
-              <div style="font-size:11px;color:#9ca3af;margin-top:2px;">Merging Style with Comfort</div>
+              <div class="receipt__brand">DC Kids Brand</div>
+              <div class="t-cap muted">Merging Style with Comfort</div>
             </div>
-            <div style="text-align:right;">
-              <div id="adminReceiptOrderNum" style="font-size:13px;font-weight:700;color:#5E9C7E;font-family:monospace;"></div>
-              <div id="adminReceiptDate" style="font-size:11px;color:#9ca3af;margin-top:2px;"></div>
-            </div>
-          </div>
-          <!-- Customer -->
-          <div style="display:flex;gap:16px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px dashed #d1d5db;">
-            <div style="flex:1;">
-              <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;font-weight:600;">Customer</div>
-              <div id="adminReceiptCustomer" style="font-size:13px;font-weight:600;color:#1f2937;margin-top:2px;"></div>
-            </div>
-            <div style="flex:1;">
-              <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;font-weight:600;">Phone</div>
-              <div id="adminReceiptPhone" style="font-size:13px;font-weight:600;color:#1f2937;margin-top:2px;"></div>
+            <div class="receipt__ref">
+              <div id="adminReceiptOrderNum" class="t-mono"></div>
+              <div id="adminReceiptDate" class="t-cap muted"></div>
             </div>
           </div>
-          <!-- Status + Type -->
-          <div style="display:flex;gap:16px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px dashed #d1d5db;">
-            <div style="flex:1;">
-              <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;font-weight:600;">Status</div>
-              <div id="adminReceiptStatus" style="margin-top:4px;"></div>
-            </div>
-            <div style="flex:1;">
-              <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;font-weight:600;">Order Type</div>
-              <div id="adminReceiptType" style="font-size:13px;font-weight:600;color:#1f2937;margin-top:2px;text-transform:capitalize;"></div>
-            </div>
+
+          <div class="receipt__grid">
+            <div><span class="t-cap muted">Customer</span><b id="adminReceiptCustomer"></b></div>
+            <div><span class="t-cap muted">Phone</span><b id="adminReceiptPhone"></b></div>
+            <div><span class="t-cap muted">Status</span><span id="adminReceiptStatus"></span></div>
+            <div><span class="t-cap muted">Order type</span><b id="adminReceiptType"></b></div>
           </div>
-          <!-- Items -->
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;font-weight:600;margin-bottom:8px;">Items</div>
-          <div id="adminReceiptItems" style="margin-bottom:16px;"></div>
-          <!-- Total -->
-          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:14px;border-top:2px solid #0F4C3A;">
-            <div style="font-size:14px;font-weight:700;color:#1f2937;">Total</div>
-            <div id="adminReceiptTotal" style="font-size:20px;font-weight:800;color:#0F4C3A;"></div>
+
+          <div class="receipt__items" id="adminReceiptItems"></div>
+
+          <div class="receipt__total">
+            <span>Total</span>
+            <b id="adminReceiptTotal" class="tabular"></b>
           </div>
+
+          <p class="receipt__note t-cap muted">Thank you for shopping with DC Kids Brand.</p>
         </div>
-      </div>
-      <div class="modal-footer" style="gap:8px; display: flex; justify-content: flex-end; padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border);">
+        <div class="modal-footer" style="gap:8px; display: flex; justify-content: flex-end; padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border);">
         <button class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius: 8px;" type="button" onclick="closeModal('modal-order-receipt')">Close</button>
         <button id="adminReceiptPrintBtn" class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" type="button" onclick="printAdminReceipt()" style="border-radius: 8px; display:flex;align-items:center;gap:6px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
