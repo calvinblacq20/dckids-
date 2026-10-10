@@ -7,7 +7,8 @@ const jwt = require('jsonwebtoken');
 const { initializeApp: initializeFirebaseAdmin, applicationDefault, cert, getApps: getFirebaseApps } = require('firebase-admin/app');
 const { getAuth: getFirebaseAuth } = require('firebase-admin/auth');
 const db = require('./db');
-const { UPLOAD_DIR, VOLUME_PATH } = require('./storage');
+const { UPLOAD_DIR, VOLUME_PATH, DB_PATH, BACKUP_DIR } = require('./storage');
+const { checkHealth } = require('./health');
 const { createMaintenanceMiddleware } = require('./maintenance');
 const {
     DEFAULT_RECOVERY_CODE_COUNT,
@@ -163,6 +164,24 @@ app.use((req, res, next) => {
 // A denylist is the minimal change; the durable fix is to move the public files
 // into their own directory and mount only that, so a new private file is private
 // by default instead of exposed by being forgotten here.
+/* Liveness and readiness probes, lost when the branches were squashed
+   together. The detailed /api/health below is this server's own and keeps
+   its contract; these two only answer "is it up" and "can it serve", which
+   is what a platform healthcheck and an uptime monitor ask for. */
+const HEALTH_DIRS = [VOLUME_PATH, path.dirname(DB_PATH), UPLOAD_DIR, BACKUP_DIR].filter(Boolean);
+
+app.get('/healthz', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ ok: true });
+});
+
+app.get('/readyz', (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    checkHealth(db, HEALTH_DIRS, (result) => {
+        res.status(result.healthy ? 200 : 503).json({ ok: result.healthy });
+    });
+});
+
 const PRIVATE_DIRS = ['server', 'docs', 'node_modules', 'scratch', 'backups'];
 const PRIVATE_FILES = ['package.json', 'package-lock.json', 'dockerfile',
     'railway.json', 'eslint.config.js'];
