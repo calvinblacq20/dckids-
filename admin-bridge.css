@@ -2875,3 +2875,20 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 
 /* The filter tab still needs to read as selected without a fill. */
 .reports-filter-tab.active { font-weight: 500; color: var(--ink); border-bottom: 1.5px solid var(--ink); border-radius: 0; padding: 0 0 3px; }
+
+/* =============================================================
+   45. Stage strip track count
+   The reference's .stage-strip declares four equal columns because its own
+   board has four stages. Ours renders three (healthy, low, out), so the
+   children sat in 72.5px tracks at 89px wide and bled into each other.
+   Let the tracks follow however many stages are rendered.
+   ============================================================= */
+#dash-stage-strip {
+  grid-template-columns: none;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  /* .stage-col pads 8px and pulls back -8px so its hover background bleeds
+     into the gutter. At the reference's 10px gap those hit areas overlap by
+     6px, which highlights the neighbouring column; clear the padding. */
+  gap: 18px;
+}
