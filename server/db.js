@@ -774,6 +774,15 @@ const db = new sqlite3.Database(dbPath, (err) => {
                         else console.log("Migration: added orders.idempotency_key");
                     });
                 }
+                // Staff can take a percentage off an order at the counter. It
+                // is stored so the total can be explained later: without it a
+                // discounted order just looks mispriced during reconciliation.
+                if (names.indexOf('discount_percent') === -1) {
+                    db.run("ALTER TABLE orders ADD COLUMN discount_percent REAL DEFAULT 0", (er) => {
+                        if (er) console.error("Migration (discount_percent) failed:", er.message);
+                        else console.log("Migration: added orders.discount_percent");
+                    });
+                }
                 db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL");
             });
         });

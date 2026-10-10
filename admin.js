@@ -8482,7 +8482,6 @@ function updateNewOrderTotals() {
     var wholesaleMoq = moqEl ? parseInt(moqEl.value) || 10 : 10;
     var wholesaleDiscount = discountEl ? parseFloat(discountEl.value) || 20 : 20;
     
-    var qtyMultiplier = (orderType === 'wholesale') ? wholesaleMoq : 1;
     
     rows.forEach(function(tr) {
         var prodSelect = tr.querySelector('.order-item-product-select');
@@ -8505,11 +8504,15 @@ function updateNewOrderTotals() {
         }
         
         var basePrice = product.price || 0;
+        // Wholesale takes the discount off the unit price. It does NOT multiply
+        // by the MOQ: the server counts quantity in pieces and only enforces a
+        // floor, so multiplying here quoted ten times the real price and then
+        // the order was rejected for being under the floor.
         if (orderType === 'wholesale') {
-            basePrice = (basePrice * (1 - (wholesaleDiscount / 100))) * wholesaleMoq;
+            basePrice = basePrice * (1 - (wholesaleDiscount / 100));
         }
-        
-        var modifier = getPriceModifier(size) * qtyMultiplier;
+
+        var modifier = getPriceModifier(size);
         var finalUnitPrice = basePrice + modifier;
         var lineTotal = finalUnitPrice * qty;
         
@@ -8672,6 +8675,18 @@ function submitCreateOrder() {
             hasError = true;
             return;
         }
+        // The server enforces a pieces-per-item floor on wholesale. Say so here
+        // rather than letting it reject the whole form after it is filled in.
+        if (orderType === 'wholesale') {
+            var moqEl = document.getElementById('config-moq');
+            var moq = moqEl ? (parseInt(moqEl.value, 10) || 10) : 10;
+            if (qty < moq) {
+                showToast('Wholesale needs at least ' + moq + ' pieces per item', 'warning');
+                hasError = true;
+                return;
+            }
+            return;
+        }
         
         items.push({
             id: parseInt(prodId),
@@ -8689,12 +8704,17 @@ function submitCreateOrder() {
     var paymentRadio = document.querySelector('input[name="new-order-payment"]:checked');
     var paymentMethod = paymentRadio ? paymentRadio.value : 'cash';
     
+    var discountEl = document.getElementById('new-order-discount');
+    var discountPercent = discountEl ? (parseFloat(discountEl.value) || 0) : 0;
+
     var payload = {
         customer_name: customer.name,
         customer_phone: customer.phone,
         order_type: orderType,
+        payment_method: paymentMethod,
         items: items
     };
+    if (discountPercent > 0) payload.discount_percent = discountPercent;
     if (customer.email) payload.customer_email = customer.email;
     if (customer.area) payload.delivery_area = customer.area;
 

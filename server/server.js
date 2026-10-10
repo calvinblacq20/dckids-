@@ -1435,6 +1435,12 @@ function getPriceModifier(sizeLabel) {
 // Create new order (Storefront)
 app.post('/api/orders', optionalCustomer, (req, res) => {
     const { customer_name, customer_phone, customer_email, order_type, items, payment_method, delivery_area, delivery_address, notes } = req.body;
+    // A counter discount, in percent. Only staff may set one: a shopper
+    // could otherwise post their own and the total is computed here.
+    const rawDiscount = Number(req.body.discount_percent);
+    const discountPercent = (req.staff && isFinite(rawDiscount) && rawDiscount > 0)
+        ? Math.min(100, Math.round(rawDiscount * 100) / 100)
+        : 0;
     const address = delivery_address && typeof delivery_address === 'object' ? delivery_address : {};
 
     // Idempotency: the storefront sends a random key per checkout attempt. A
@@ -1580,6 +1586,9 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
 
         Promise.all(productPromises)
             .then(() => {
+                // The counter discount comes off the summed lines, not off
+                // each unit price, so it cannot be lost to rounding per item.
+                if (discountPercent > 0) total_amount = total_amount * (1 - discountPercent / 100);
                 total_amount = Math.round(total_amount * 100) / 100;
                 const initialStatus = order_type === 'preorder' ? 'pending_deposit' : 'pending';
                 // A temporary unique placeholder satisfies the UNIQUE NOT NULL
@@ -1591,10 +1600,10 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                 db.run(
                     `INSERT INTO orders (order_number, customer_name, customer_phone, customer_email, order_type, total_amount, status,
                         delivery_area, delivery_address_line1, delivery_address_line2, delivery_city, delivery_region, delivery_landmark,
-                        notes, customer_account_id, idempotency_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        notes, customer_account_id, idempotency_key, discount_percent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [tempNumber, customer_name, customer_phone, authoritativeEmail || null, order_type, total_amount, initialStatus,
                         delivery_area || address.city || null, address.line1 || null, address.line2 || null, address.city || null,
-                        address.region || null, address.landmark || null, notes || null, req.customer ? req.customer.cid : null, idemKey],
+                        address.region || null, address.landmark || null, notes || null, req.customer ? req.customer.cid : null, idemKey, discountPercent],
                     function(err) {
                         if (err) {
                             // Two identical retries raced: the first won the unique
@@ -2676,9 +2685,27 @@ async function authenticateCustomer(req, res, next) {
     } catch (err) { serverError(res, err); }
 }
 
+/* The storefront sends a Firebase token here when a customer is signed in,
+   and nothing when they are not. The admin sends a STAFF token, because it is
+   placing the order on someone's behalf — that is not a customer identity and
+   must not be handed to Firebase. Doing so answered every admin order with
+   503 firebase/not-configured (or 401 where Firebase is configured), so the
+   Create Order button could never work. Recognise staff first. */
 function optionalCustomer(req, res, next) {
-    if (!req.headers.authorization) return next();
-    return authenticateCustomer(req, res, next);
+    const header = req.headers.authorization;
+    if (!header) return next();
+    const token = header.split(' ')[1];
+    if (!token) return next();
+
+    jwt.verify(token, JWT_SECRET, (err, payload) => {
+        if (!err && payload && payload.kind !== 'customer') {
+            // A staff session. Record who placed it; leave req.customer unset
+            // so the order is not attached to a customer account.
+            req.staff = { id: payload.id, username: payload.username };
+            return next();
+        }
+        return authenticateCustomer(req, res, next);
+    });
 }
 
 // Legacy local-password endpoints stay mounted only as an explicit retirement
