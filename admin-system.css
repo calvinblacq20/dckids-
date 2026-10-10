@@ -2993,3 +2993,8 @@ a.adm-row:hover, button.adm-row:hover { background: var(--ground); }
     z-index: var(--z-tabbar, 20);
   }
 }
+
+/* The reference paints the ground via body:has(.adm), which does not hold here:
+   the sign-in view renders before the shell is shown, so the page sat on the
+   browser default. Paint it unconditionally for this document. */
+html, body { background: var(--ground); }
