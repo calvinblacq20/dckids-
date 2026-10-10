@@ -2153,3 +2153,33 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
   font-variant-numeric: tabular-nums; font-size: 14px; color: var(--ink-75);
 }
 .order-item-total-display { color: var(--ink); }
+
+/* =============================================================
+   35. Product cell in the inventory table
+   The name and category each wrapped to two lines once the column
+   narrowed, making the cell taller than its row and spilling the text
+   over the rows above and below. One line each, truncated.
+   ============================================================= */
+.table-product { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.table-product > * { flex: none; }
+.table-product-info { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.table-product-info h4,
+.table-product-info p {
+  margin: 0; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.table-product-info h4 { font-size: 14px; font-weight: 500; line-height: 20px; color: var(--ink); }
+.table-product-info p { font-size: 12px; line-height: 16px; color: var(--ink-50); }
+
+/* The fallback-image badge reads "Category image", which does not fit a 48px
+   table thumbnail — it wrapped and covered the picture. Over a thumbnail show
+   it as a corner marker and leave the words for assistive technology; the
+   detail and preview views have room for the full pill. */
+.admin-image-badge { max-width: calc(100% - 8px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.table-product .admin-image-badge {
+  left: auto; right: 3px; bottom: 3px;
+  width: 10px; height: 10px; padding: 0; max-width: none;
+  border-radius: 50%; background: var(--warning-ink);
+  box-shadow: 0 0 0 1.5px var(--surface);
+  text-indent: 110%;
+}
