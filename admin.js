@@ -1617,6 +1617,42 @@ function loadInventory() {
     });
 }
 
+/* ---- Reference mobile list -------------------------------------------------
+   Below 810 the reference hides the table and shows one compact row per
+   record: thumbnail, name over a meta line, a right-aligned figure and a
+   chevron. Tapping opens the detail sheet. Screens that have a .adm-rows
+   container beside their table fill it through here. */
+var ADM_ROW_CHEVRON = '<svg class="row-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+
+function buildAdmRow(row) {
+    var img = row.img
+        ? '<img class="style-mini" src="' + escapeHtml(row.img) + '" alt="" loading="lazy"' +
+          " onerror=\"this.onerror=null; this.src='images/placeholder.svg'\">"
+        : '';
+    var pill = row.pill ? ' <span class="pill-tag">' + escapeHtml(row.pill) + '</span>' : '';
+    var value = row.value ? '<span class="tabular">' + escapeHtml(row.value) + '</span>' : '';
+    return '<button type="button" class="adm-row" data-row-id="' + escapeHtml(String(row.id)) + '">' +
+        img +
+        '<span class="grow stack">' +
+            '<span class="adm-row__title">' + escapeHtml(row.title) + pill + '</span>' +
+            '<span class="t-cap muted">' + escapeHtml(row.meta) + '</span>' +
+        '</span>' + value + ADM_ROW_CHEVRON +
+    '</button>';
+}
+
+function fillAdmRows(containerId, items, map, onPick) {
+    var box = document.getElementById(containerId);
+    if (!box) return;
+    if (!items.length) {
+        box.innerHTML = '<p class="adm-empty t-cap muted">Nothing to show.</p>';
+        return;
+    }
+    box.innerHTML = items.map(function (item) { return buildAdmRow(map(item)); }).join('');
+    box.querySelectorAll('.adm-row').forEach(function (el) {
+        el.addEventListener('click', function () { onPick(el.getAttribute('data-row-id')); });
+    });
+}
+
 function renderInventoryTable() {
     var tbody = document.getElementById('inventory-tbody');
     if (!tbody) return;
@@ -1646,6 +1682,18 @@ function renderInventoryTable() {
             tbody.appendChild(tr);
         });
     }
+
+    fillAdmRows('inventory-rows', paged, function (p) {
+        var stock = Number(p.stock || 0);
+        return {
+            id: p.id,
+            img: resolveAdminProductImage(p).src,
+            title: p.name || 'Unnamed',
+            pill: stock <= 0 ? 'Out of stock' : (stock <= 5 ? 'Low' : ''),
+            meta: [p.sku || '—', p.cat || 'Uncategorised', stock + ' in stock'].join(' · '),
+            value: 'GHS ' + Number(p.price || 0).toFixed(2)
+        };
+    }, function (id) { openProductDetail(Number(id)); });
 
     renderPagination('inv-pagination', totalItems, invCurrentPage, INV_PER_PAGE, function(page) {
         invCurrentPage = page;
@@ -1969,6 +2017,18 @@ function renderProductsGrid() {
             tbody.appendChild(tr);
         });
     }
+
+    fillAdmRows('products-rows', products, function (p) {
+        var stock = Number(p.stock || 0);
+        return {
+            id: p.id,
+            img: resolveAdminProductImage(p).src,
+            title: p.name || 'Unnamed',
+            pill: stock <= 0 ? 'Out of stock' : (stock <= 5 ? 'Low' : ''),
+            meta: [p.sku || '—', p.cat || 'Uncategorised', stock + ' in stock'].join(' · '),
+            value: p.price != null ? 'GHS ' + Number(p.price).toFixed(2) : 'GHS —'
+        };
+    }, function (id) { openProductDetail(Number(id)); });
 
     renderPagination('prod-pagination', totalItems, prodCurrentPage, PROD_PER_PAGE, function(page) {
         prodCurrentPage = page;

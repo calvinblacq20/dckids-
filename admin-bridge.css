@@ -2360,3 +2360,22 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
     font-size: 13px;
   }
 }
+
+/* =============================================================
+   39. Reference mobile list beside a desktop table
+   Sections that follow the reference's split — .adm-table-wrap.desktop-only
+   plus .adm-rows.mobile-only — get its list styling from admin-system.css.
+   These few fill the gaps that stylesheet leaves to the screen.
+   ============================================================= */
+.adm-rows { background: var(--surface); border: 0.8px solid var(--ink-06); border-radius: var(--r-24); overflow: hidden; }
+.adm-rows:empty { display: none; }
+.adm-row { border: 0; background: none; font: inherit; cursor: pointer; color: var(--ink); }
+.adm-row__title { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-row .t-cap { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-row .style-mini { width: 40px; height: 40px; flex: none; object-fit: cover; border-radius: var(--r-16); background: var(--ground); }
+.adm-row .tabular { flex: none; font-size: 14px; font-variant-numeric: tabular-nums; }
+.adm-row .row-chevron { flex: none; color: var(--ink-25); }
+.adm-rows .adm-empty { padding: 28px 20px; text-align: center; }
+
+/* A section with its own mobile list must not also have its table carded —
+   .desktop-only hides the table, so the card rules simply never apply. */

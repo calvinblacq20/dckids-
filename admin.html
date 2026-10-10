@@ -19,7 +19,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=36">
+  <link rel="stylesheet" href="admin-bridge.css?v=38">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -1009,8 +1009,8 @@
         </div>
 
         <!-- Inventory Table -->
-        <div class="table-responsive">
-          <table id="inventory-table" class="admin-table data-table sticky-header" aria-label="Inventory table">
+        <div class="table-responsive adm-table-wrap desktop-only">
+          <table id="inventory-table" class="admin-table data-table adm-table sticky-header" aria-label="Inventory table">
             <thead>
               <tr>
                 <th>Product</th>
@@ -1029,6 +1029,7 @@
             </tbody>
           </table>
         </div>
+          <div class="adm-rows mobile-only" id="inventory-rows"></div>
 
         <div id="inv-pagination" class="pagination" aria-label="Inventory pagination"></div>
       </section>
@@ -1170,8 +1171,8 @@
         </div>
 
         <!-- Products Table -->
-        <div class="table-responsive">
-          <table id="products-table" class="admin-table data-table sticky-header" aria-label="Product management table">
+        <div class="table-responsive adm-table-wrap desktop-only">
+          <table id="products-table" class="admin-table data-table adm-table sticky-header" aria-label="Product management table">
             <thead>
               <tr>
                 <th style="width:36px; text-align:center;"><input type="checkbox" id="prod-bulk-select-all" onclick="prodBulkSelectAll(this.checked)" aria-label="Select all products"></th>
@@ -3949,6 +3950,7 @@
             </tbody>
           </table>
         </div>
+          <div class="adm-rows mobile-only" id="products-rows"></div>
 
         <div id="prod-pagination" class="pagination" aria-label="Product pagination"></div>
       </section>
@@ -4195,8 +4197,8 @@
         </div>
 
         <!-- Reviews Table -->
-        <div class="table-responsive">
-          <table id="reviews-table" class="admin-table data-table sticky-header" aria-label="Customer reviews table">
+        <div class="table-responsive adm-table-wrap desktop-only">
+          <table id="reviews-table" class="admin-table data-table adm-table sticky-header" aria-label="Customer reviews table">
             <thead>
               <tr>
                 <th>Product</th>
@@ -4214,6 +4216,7 @@
             </tbody>
           </table>
         </div>
+          <div class="adm-rows mobile-only" id="reviews-rows"></div>
 
         <div id="review-pagination" class="pagination" aria-label="Reviews pagination"></div>
       </section>
@@ -6275,7 +6278,7 @@
   <script src="vendor/chart.umd.js?v=4.5.1"></script>
   <script src="image-resolver.js?v=1"></script>
   <script src="admin-recovery-view.js?v=1"></script>
-  <script src="admin.js?v=130"></script>
+  <script src="admin.js?v=131"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
