@@ -62,8 +62,8 @@ const LEGACY_STORE_BANNER = "China Pre-Order Window OPEN! Orders close May 18th 
 // you read the console).
 const CSP_COMMON =
     "default-src 'self'; " +
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-    "font-src 'self' data: https://fonts.gstatic.com; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "font-src 'self' data:; " +
     "media-src 'self'; " +
     "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'";
 
