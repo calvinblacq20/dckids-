@@ -21,7 +21,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=20">
+  <link rel="stylesheet" href="admin-bridge.css?v=24">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -4585,8 +4585,43 @@
               <span class="adm-status"><i class="adm-dot"></i><span id="reports-status-line">&nbsp;</span></span>
             </div>
             <div class="adm-head__actions">
-              <button type="button" class="adm-ghost" onclick="rdrpCancel()">Cancel</button>
-              <button type="button" class="adm-ghost" onclick="rdrpApply()">Select</button>
+              <div class="reports-header-actions" style="position: relative;">
+            <div class="reports-date-picker-btn" onclick="toggleReportsDatePickerDropdown(event)">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              <span id="reports-date-range-display">Current reporting period</span>
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+            <div id="reports-datepicker-dropdown" class="date-range-picker" role="dialog" aria-label="Select date range">
+              <div class="drp-body">
+                <aside class="drp-presets" id="rdrp-presets">
+                  <span class="drp-presets__title">Date range</span>
+                  <button type="button" class="drp-preset rdrp-preset" data-preset="this-week">This week</button>
+                  <button type="button" class="drp-preset rdrp-preset" data-preset="this-month">This month</button>
+                  <button type="button" class="drp-preset rdrp-preset" data-preset="this-quarter">This quarter</button>
+                  <button type="button" class="drp-preset rdrp-preset" data-preset="this-year">This year</button>
+                  <button type="button" class="drp-preset rdrp-preset" data-preset="last-week">Last week</button>
+                  <button type="button" class="drp-preset rdrp-preset" data-preset="last-month">Last month</button>
+                  <button type="button" class="drp-preset rdrp-preset" data-preset="last-quarter">Last quarter</button>
+                  <button type="button" class="drp-preset rdrp-preset" data-preset="last-year">Last year</button>
+                  <button type="button" class="drp-preset rdrp-preset" data-preset="last-30">Last 30 days</button>
+                  <button type="button" class="drp-preset rdrp-preset" data-preset="last-90">Last 90 days</button>
+                  <button type="button" class="drp-preset rdrp-preset" data-preset="last-365">Last 365 days</button>
+                  <button type="button" class="drp-preset rdrp-preset" data-preset="all-time">All time</button>
+                </aside>
+                <div class="drp-calendars">
+                  <div class="drp-cal" id="rdrp-cal-left"></div>
+                  <div class="drp-cal" id="rdrp-cal-right"></div>
+                </div>
+              </div>
+              <div class="drp-footer">
+                <span class="drp-range-display" id="rdrp-range-display">Select start &amp; end dates</span>
+                <div class="drp-footer-actions">
+                  <button type="button" class="drp-btn drp-btn--ghost" onclick="rdrpCancel()">Cancel</button>
+                  <button type="button" class="drp-btn drp-btn--primary" onclick="rdrpApply()">Select</button>
+                </div>
+              </div>
+            </div>
+          </div>
             </div>
           </div>
 

@@ -2072,3 +2072,84 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 @media (min-width: 810px) {
   .mobile-bottom-nav { display: none; }
 }
+
+/* Reports date-range trigger. Recovered with the picker it opens. */
+.reports-header-actions { position: relative; }
+.reports-date-picker-btn {
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px;
+  border: 0.8px solid var(--ink-12); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink); font-size: 13px; cursor: pointer;
+}
+.reports-date-picker-btn:hover { background: var(--ground); }
+.reports-date-picker-btn svg { flex: none; color: var(--ink-50); }
+
+/* Anchor each picker to the edge its trigger sits on: the analytics one opens
+   from the left of its toolbar, the reports one from the right. A single
+   anchor sends the 729px panel off one side or the other. */
+.analytics-date-picker .date-range-picker { left: 0; right: auto; }
+.reports-header-actions .date-range-picker { right: 0; left: auto; }
+
+/* ---------- Date picker calendar ----------
+   Rendered by admin.js, so it never appears in a static sweep of the markup.
+   Seven columns for the weekday strip and the days, with the range painted
+   as a continuous band between its two ends. */
+.drp-cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.drp-cal-title { font-size: 14px; font-weight: 500; }
+.drp-nav-btn {
+  display: grid; place-items: center; width: 28px; height: 28px; flex: none;
+  border: 0; border-radius: var(--r-pill); background: none; color: var(--ink-75); cursor: pointer;
+}
+.drp-nav-btn:hover { background: var(--ground); color: var(--ink); }
+.drp-weekdays, .drp-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.drp-weekdays { margin-bottom: 4px; }
+.drp-weekdays span { text-align: center; font-size: 11px; color: var(--ink-50); }
+.drp-day {
+  display: grid; place-items: center; aspect-ratio: 1; min-width: 30px;
+  border: 0; border-radius: var(--r-pill); background: none;
+  color: var(--ink); font: inherit; font-size: 13px; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.drp-day:hover { background: var(--ground); }
+.drp-day--empty { visibility: hidden; cursor: default; }
+.drp-day--today { box-shadow: inset 0 0 0 1px var(--ink-25); }
+.drp-day--in-range { border-radius: 0; background: var(--lime-wash); }
+.drp-day--range-start,
+.drp-day--range-end,
+.drp-day--selected { background: var(--ink); color: #fff; }
+.drp-day--range-start { border-radius: var(--r-pill) 0 0 var(--r-pill); }
+.drp-day--range-end { border-radius: 0 var(--r-pill) var(--r-pill) 0; }
+.drp-day--range-start.drp-day--range-end { border-radius: var(--r-pill); }
+
+/* =============================================================
+   34. Last gaps found with the dynamic UI open
+   These only exist once admin.js has rendered a table, a calendar or the
+   create-order form, so a static sweep of the markup never sees them.
+   ============================================================= */
+.table-checkbox-cell { width: 40px; padding-right: 0; text-align: center; }
+.prod-bulk-check { width: 15px; height: 15px; accent-color: var(--ink); cursor: pointer; }
+
+.status-pill.preorder { background: #ebe6ff; color: var(--label-lilac); }
+.text-secondary { color: var(--ink-50); }
+
+.pagination-controls { display: flex; align-items: center; gap: 6px; }
+
+/* The left calendar has no "next" button, so its head needs a spacer of the
+   same width to keep the month title centred across both. */
+.drp-nav-spacer { width: 28px; height: 28px; flex: none; }
+.drp-nav-btn--mnext { margin-left: auto; }
+
+.preview-thumb-card {
+  width: 62px; height: 62px; flex: none; overflow: hidden; cursor: pointer;
+  border: 0.8px solid var(--ink-06); border-radius: var(--r-img); background: var(--ground);
+}
+.preview-thumb-card.is-active { border-color: var(--ink); }
+.preview-thumb-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.order-item-product-select { flex: 1 1 42%; min-width: 0; }
+.order-item-size-select { flex: 1 1 22%; min-width: 0; }
+.order-item-qty-input { width: 72px; flex: none; text-align: center; }
+.order-item-price-display,
+.order-item-total-display {
+  flex: none; min-width: 84px; text-align: right;
+  font-variant-numeric: tabular-nums; font-size: 14px; color: var(--ink-75);
+}
+.order-item-total-display { color: var(--ink); }
