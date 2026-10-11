@@ -114,6 +114,109 @@
             if (cb) cb();
         };
 
+        // ---- Writes ----
+        // Opening the create-order form worked, but submitting it did not:
+        // admin.js POSTs to /api/orders, which 404s on a host that only
+        // serves files, so the form ended on an error toast. The same is
+        // true of every other write the admin offers.
+        //
+        // So the showcase answers the app's own calls instead of letting
+        // them fall off the end. This is a last resort by design — it only
+        // ever replaces fetch after the showcase gate above has passed, it
+        // only touches same-origin /api/ paths, and anything else is handed
+        // to the real fetch untouched.
+        var realFetch = window.fetch.bind(window);
+        var nextOrderNumber = 10009;
+
+        var jsonResponse = function (body, status) {
+            return new Response(JSON.stringify(body), {
+                status: status || 200,
+                headers: { 'Content-Type': 'application/json' }
+            });
+        };
+
+        var findProduct = function (id) {
+            for (var i = 0; i < demoProducts.length; i++) {
+                if (String(demoProducts[i].id) === String(id)) return demoProducts[i];
+            }
+            return null;
+        };
+
+        var createOrder = function (payload) {
+            var items = (payload.items || []).map(function (line) {
+                var p = findProduct(line.id);
+                return {
+                    productId: line.id,
+                    name: p ? p.name : 'Item',
+                    qty: Number(line.quantity) || 1,
+                    price: p ? Number(p.price) : 0,
+                    size: line.size || ''
+                };
+            });
+            var total = items.reduce(function (sum, i) { return sum + i.price * i.qty; }, 0);
+            var discount = Number(payload.discount_percent) || 0;
+            if (discount > 0) total = total * (1 - Math.min(100, discount) / 100);
+            total = Math.round(total * 100) / 100;
+
+            var order = {
+                db_id: nextOrderNumber,
+                id: 'ORD-' + nextOrderNumber,
+                customer: payload.customer_name || 'Walk-in customer',
+                phone: payload.customer_phone || '',
+                total: total,
+                status: 'pending',
+                type: payload.order_type || 'retail',
+                order_type: payload.order_type || 'retail',
+                date: new Date().toISOString(),
+                delivery_area: (payload.delivery_address && payload.delivery_address.area) || '',
+                notes: payload.notes || '',
+                items: items
+            };
+            nextOrderNumber++;
+            demoOrders.unshift(order);
+            return { success: true, order_number: order.id, total_amount: total };
+        };
+
+        window.fetch = function (input, init) {
+            var url = typeof input === 'string' ? input : (input && input.url) || '';
+            var path = url.indexOf(location.origin) === 0 ? url.slice(location.origin.length) : url;
+            if (path.indexOf('/api/') !== 0) return realFetch(input, init);
+
+            var method = ((init && init.method) || (input && input.method) || 'GET').toUpperCase();
+            var body = {};
+            if (init && typeof init.body === 'string') {
+                try { body = JSON.parse(init.body); } catch (e) { body = {}; }
+            }
+
+            if (method === 'POST' && path.indexOf('/api/orders') === 0) {
+                return Promise.resolve(jsonResponse(createOrder(body)));
+            }
+
+            // Status changes: reflect them so the board moves as it would.
+            var statusMatch = path.match(/^\/api\/orders\/([^/?]+)\/status/);
+            if (statusMatch && method !== 'GET') {
+                var wanted = String(statusMatch[1]);
+                for (var i = 0; i < demoOrders.length; i++) {
+                    if (String(demoOrders[i].db_id) === wanted || demoOrders[i].id === wanted) {
+                        if (body.status) demoOrders[i].status = body.status;
+                        break;
+                    }
+                }
+                return Promise.resolve(jsonResponse({ success: true }));
+            }
+
+            if (method !== 'GET') return Promise.resolve(jsonResponse({ success: true }));
+
+            // Reads the overrides above do not already cover. An empty list
+            // is a truthful answer here — the showcase holds no such records
+            // — and it keeps the panels on their empty states instead of
+            // their error states.
+            if (path.indexOf('/api/orders') === 0)   return Promise.resolve(jsonResponse(demoOrders.slice()));
+            if (path.indexOf('/api/products') === 0) return Promise.resolve(jsonResponse(demoProducts.slice()));
+            if (path.indexOf('/api/settings') === 0) return Promise.resolve(jsonResponse({}));
+            return Promise.resolve(jsonResponse([]));
+        };
+
         var banner = document.createElement('div');
         banner.textContent = 'Showcase — sample data, not connected to a live store';
         banner.className = 'demo-banner';
