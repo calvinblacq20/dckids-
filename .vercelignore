@@ -1,0 +1,21 @@
+# The Vercel build is a static showcase: it serves the storefront and the
+# admin shell so the UI can be walked through, and nothing else runs there.
+# Everything below is either server-side, tooling, or documentation, and on a
+# static host it would simply be published as readable files. Keeping it out
+# of the upload is the difference between shipping a site and shipping the
+# source of the server that normally sits behind it.
+#
+# The real deployment is Railway (Dockerfile + railway.json) and is unaffected
+# by this file.
+
+server/
+.github/
+docs/
+*.md
+Dockerfile
+railway.json
+tailwind.*.config.js
+tailwind.config.js
+tailwind.input.css
+tailwind.store.css
+eslint.config.js
