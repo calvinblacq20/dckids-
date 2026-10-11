@@ -7981,7 +7981,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Check if already logged in — verify token is still valid
     var token = localStorage.getItem('adminToken');
-    if (token) {
+    if (token && token.indexOf('fallback-token') === 0) {
+        // Offline/showcase token (see admin-demo.js) — the convention this
+        // file already uses elsewhere. There is no real session to verify.
+        showDashboard(localStorage.getItem('adminRole') || 'manager');
+        loadStoreConfig();
+    } else if (token) {
         fetch(API_URL + '/me', {
             headers: { 'Authorization': 'Bearer ' + token }
         })
