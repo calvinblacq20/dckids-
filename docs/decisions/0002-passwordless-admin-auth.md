@@ -2,6 +2,9 @@
 
 **Status:** accepted · **Date:** 2026-07-15 (recorded 2026-07-17)
 
+> **Scope:** this record covers **staff** sign-in only. Shopper accounts are a
+> separate system — see [ADR 0006](0006-firebase-customer-accounts.md).
+
 ## Decision
 Staff sign in with a 6-digit emailed code (Resend), backed by one-time recovery codes and optional Google Sign-In. No passwords are stored. First allowlisted email (OWNER_EMAIL) bootstraps the owner; everyone else goes through owner approval.
 

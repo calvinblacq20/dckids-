@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>DC Kids Brand — Merging Style with Comfort | Newborn Essentials (0-12 yrs)</title>
   <meta name="description" content="DC Kids Brand — Ghana's favourite kids' fashion &amp; baby essentials store. Newborn to 12 years. Wholesale &amp; retail. Nationwide delivery. China pre-orders.">
   <meta name="keywords" content="kids fashion Ghana, baby clothes Accra, newborn essentials, wholesale kids clothing, China preorder, DC Kids Brand">
@@ -29,31 +29,22 @@
   <!-- PWA -->
   <link rel="manifest" href="/manifest.json">
   <link rel="apple-touch-icon" href="icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="DC Kids">
 
   <link rel="icon" href="icon.png" type="image/png">
   
   <!-- Font Awesome 6 -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css?v=6">
   
-  <!-- Preconnect to font/CDN hosts so the browser opens those TLS connections
-       in parallel with HTML parsing — measurably faster first paint on slow
-       mobile networks (the target market). -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
   <!-- Google Fonts: Inter & Playfair Display -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,600&display=swap" rel="stylesheet">
-
-  <!-- Tailwind: pre-built, purged stylesheet. Replaces the runtime Play CDN
-       (~300KB compiler in the browser) so the storefront paints fast on cheap
-       phones / 3G. Rebuild after adding new Tailwind classes: npm run build:css
-       (from server/). Loaded before styles.css so custom CSS still overrides. -->
-  <link rel="stylesheet" href="tailwind.store.css?v=1">
-
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=1">
+  
+  <!-- Locally compiled Tailwind utilities; rebuild with npm run build:css in server/. -->
+  <link rel="stylesheet" href="tailwind-storefront.css?v=1">
+  
   <style>
     body { background-color: #FAFAF8; }
     .hide-scroll::-webkit-scrollbar { display: none; }
@@ -272,7 +263,7 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="styles.css?v=31">
+  <link rel="stylesheet" href="styles.css?v=139">
 
   <!-- Structured data: Organization + WebSite (SEO + Google rich results) -->
   <script type="application/ld+json">
@@ -321,8 +312,14 @@
     
     <!-- Right: Search icon + Cart Button -->
     <div class="flex items-center gap-1">
+      <a id="accountHeaderLink" href="/account.html" class="header__action p-2 text-gray-600 hover:text-brand-green transition-colors" aria-label="My account" title="My account">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <circle cx="12" cy="8" r="4"></circle>
+          <path d="M4 21a8 8 0 0 1 16 0"></path>
+        </svg>
+      </a>
       <!-- Search trigger (focuses the input) -->
-      <button onclick="document.getElementById('storeSearchInput').focus(); document.getElementById('storeSearchInput').scrollIntoView({behavior: 'smooth', block: 'center'});" class="p-2 text-gray-600 hover:text-brand-green transition-colors" aria-label="Search">
+      <button onclick="document.getElementById('storeSearchInput').focus(); document.getElementById('storeSearchInput').scrollIntoView({behavior: 'smooth', block: 'center'});" class="header__action p-2 text-gray-600 hover:text-brand-green transition-colors" aria-label="Search">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <circle cx="11" cy="11" r="8"></circle>
           <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -330,7 +327,7 @@
       </button>
       
       <!-- Cart -->
-      <button id="cartBtn" class="relative p-2 text-gray-600 hover:text-brand-green transition-colors" aria-label="Open Cart">
+      <button id="cartBtn" class="header__action relative p-2 text-gray-600 hover:text-brand-green transition-colors" aria-label="Open Cart">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
           <circle cx="9" cy="21" r="1"></circle>
           <circle cx="20" cy="21" r="1"></circle>
@@ -400,6 +397,10 @@
     
     <div class="nav-drawer__divider"></div>
     
+    <a href="/account.html" class="nav-drawer__item" id="navAccountLink">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+      <span id="navAccountLabel">My Account</span>
+    </a>
     <a href="#" class="nav-drawer__item" id="navWishlistBtn" onclick="openWishlist(); return false;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
       My Wishlist
@@ -432,6 +433,17 @@
       will-change: transform;
     }
     #urgencyBanner .banner-track-wrapper:hover { animation-play-state: paused; }
+    #urgencyBanner::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      z-index: 5;
+      width: 52px;
+      height: 100%;
+      background: linear-gradient(90deg, rgba(252,236,236,0), #fcecec 38%);
+      pointer-events: none;
+    }
     @keyframes marquee {
       0%   { transform: translate3d(100vw, 0, 0); }
       100% { transform: translate3d(-100%, 0, 0); }
@@ -439,9 +451,9 @@
   </style>
   <div id="urgencyBanner" class="bg-brand-pink text-gray-800 py-3 px-4 relative flex items-center text-xs md:text-sm font-medium border-b border-black/5 pr-10" style="min-height:40px;">
     <div class="banner-track-wrapper">
-      <span class="banner-track" style="padding-right:60px;"><i class="fas fa-bullhorn text-gray-600 text-sm" style="margin-right:8px;"></i> <strong>China Pre-Order Window OPEN!</strong> Orders close May 18th — Don't miss out! &nbsp;&bull;&nbsp;</span>
-      <span class="banner-track" style="padding-right:60px;" aria-hidden="true"><i class="fas fa-bullhorn text-gray-600 text-sm" style="margin-right:8px;"></i> <strong>China Pre-Order Window OPEN!</strong> Orders close May 18th — Don't miss out! &nbsp;&bull;&nbsp;</span>
-      <span class="banner-track" style="padding-right:60px;" aria-hidden="true"><i class="fas fa-bullhorn text-gray-600 text-sm" style="margin-right:8px;"></i> <strong>China Pre-Order Window OPEN!</strong> Orders close May 18th — Don't miss out! &nbsp;&bull;&nbsp;</span>
+      <span class="banner-track" style="padding-right:60px;"><i class="fas fa-bullhorn text-gray-600 text-sm" style="margin-right:8px;"></i> <strong>China pre-orders are open!</strong> Message us on WhatsApp for the current closing date. &nbsp;&bull;&nbsp;</span>
+      <span class="banner-track" style="padding-right:60px;" aria-hidden="true"><i class="fas fa-bullhorn text-gray-600 text-sm" style="margin-right:8px;"></i> <strong>China pre-orders are open!</strong> Message us on WhatsApp for the current closing date. &nbsp;&bull;&nbsp;</span>
+      <span class="banner-track" style="padding-right:60px;" aria-hidden="true"><i class="fas fa-bullhorn text-gray-600 text-sm" style="margin-right:8px;"></i> <strong>China pre-orders are open!</strong> Message us on WhatsApp for the current closing date. &nbsp;&bull;&nbsp;</span>
     </div>
     <button id="closeBanner" class="absolute right-3 top-1/2 -translate-y-1/2 hover:opacity-75 p-1.5 cursor-pointer rounded-full hover:bg-black/10 transition-colors z-10" aria-label="Close banner" style="background:rgba(255,255,255,0.5);">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -449,7 +461,7 @@
   </div>
 
   <!-- ===== STORE SEARCH & WHATSAPP ===== -->
-  <div class="store-search-container max-w-2xl mx-auto px-4 mt-6 mb-4">
+  <div class="store-search-container homepage-primary-search max-w-2xl mx-auto px-4 mt-6 mb-4">
     <div class="flex items-center gap-3">
       <!-- Search bar container -->
       <div class="relative flex-1">
@@ -468,7 +480,7 @@
   </div>
 
   <!-- ===== CATEGORY PILLS ===== -->
-  <div class="w-full overflow-x-auto hide-scroll flex justify-start md:justify-center px-4 py-2 mb-6">
+  <div class="homepage-category-rail w-full overflow-x-auto hide-scroll flex justify-start md:justify-center px-4 py-2 mb-6">
     <nav id="categoryPills" class="flex gap-2.5 whitespace-nowrap">
       <a href="#all" class="category-pill active flex items-center gap-2 px-5 py-2.5 rounded-full border text-sm font-medium transition-all" data-filter="all">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> All
@@ -495,8 +507,8 @@
   </div>
 
   <!-- ===== HERO PROMO CAROUSEL ===== -->
-  <div class="max-w-[1600px] w-[95%] mx-auto px-4 mb-8">
-    <section class="relative w-full h-[72vh] md:h-[82vh] lg:h-[88vh] rounded-2xl overflow-hidden shadow-xl" id="promoCarousel">
+  <div class="homepage-promo-shell max-w-[1600px] w-[95%] mx-auto px-4 mb-8">
+    <section class="relative w-full h-[72vh] md:h-[82vh] lg:h-[88vh] rounded-2xl overflow-hidden shadow-xl" id="promoCarousel" aria-label="Featured collections" aria-roledescription="carousel" aria-live="off">
       <!-- Slides Track -->
       <div id="promoTrack" class="flex h-full w-full transition-transform duration-500 ease-out">
         <div class="promo-carousel__slide w-full h-full flex-shrink-0 relative">
@@ -523,9 +535,8 @@
       <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent pointer-events-none"></div>
       
       <!-- Text Overlay (vertical center) -->
-      <div class="absolute inset-y-0 left-6 md:left-12 flex flex-col justify-center max-w-md z-10 text-white gap-3.5">
-        <span class="text-xs uppercase tracking-wider font-semibold text-brand-green">DC Kids Brand</span>
-        <h1 class="font-serif text-3xl md:text-5xl leading-tight font-semibold">Style, Comfort &<br>Quality for Every Kid</h1>
+      <div class="promo-carousel__content absolute inset-y-0 left-6 md:left-20 flex flex-col justify-center max-w-md z-10 text-white gap-3.5">
+        <h1 class="font-serif text-3xl md:text-5xl leading-tight font-semibold">Style, Comfort &amp; Quality for Every Kid</h1>
         <p class="text-gray-200 text-sm md:text-base font-light">New arrivals you'll love</p>
         <div>
           <a href="#clothing" onclick="event.preventDefault();filterByCategory('clothing');" class="inline-block bg-brand-green hover:bg-brand-green/90 text-white font-medium px-6 py-3 rounded-xl transition-all shadow-lg hover:shadow-brand-green/20">
@@ -536,11 +547,11 @@
       
       <!-- Arrow Navigation (Direct carousel control) -->
       <button onclick="if(window.__carouselGoTo){window.__carouselGoTo('prev')}" 
-              class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center backdrop-blur-sm transition-colors z-20" aria-label="Previous Slide">
+              class="promo-carousel__arrow promo-carousel__arrow--previous absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center backdrop-blur-sm transition-colors z-20" aria-label="Previous slide">
         <i class="fas fa-chevron-left"></i>
       </button>
       <button onclick="if(window.__carouselGoTo){window.__carouselGoTo('next')}" 
-              class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center backdrop-blur-sm transition-colors z-20" aria-label="Next Slide">
+              class="promo-carousel__arrow promo-carousel__arrow--next absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center backdrop-blur-sm transition-colors z-20" aria-label="Next slide">
         <i class="fas fa-chevron-right"></i>
       </button>
       
@@ -550,7 +561,7 @@
   </div>
 
   <!-- ===== STOCK TOGGLE ===== -->
-  <div class="max-w-[1600px] w-[95%] mx-auto px-4 mb-6">
+  <div class="homepage-stock-panel max-w-[1600px] w-[95%] mx-auto px-4 mb-6">
     <div class="grid grid-cols-2 gap-3 sm:gap-4 stock-toggle-grid">
       <!-- Toggle Card 1: Available -->
       <button class="inventory-toggle__btn active flex items-center gap-4 p-4 md:p-5 bg-white border border-gray-200 rounded-2xl text-left shadow-sm hover:shadow-md transition-all cursor-pointer w-full group" data-stock="available">
@@ -577,7 +588,7 @@
   </div>
 
   <!-- ===== TRUST STRIP ===== -->
-  <div class="max-w-[1600px] w-[95%] mx-auto px-4 mb-8">
+  <div class="homepage-trust-strip max-w-[1600px] w-[95%] mx-auto px-4 mb-8">
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-b border-gray-200">
       <!-- Item 1 -->
       <div class="flex items-center gap-3">
@@ -623,7 +634,8 @@
   </div>
 
   <!-- ===== DYNAMIC PRODUCT SECTIONS ===== -->
-  <div id="dynamicSections">
+  <div id="shop" style="scroll-margin-top:80px;" aria-hidden="true"></div>
+  <div id="dynamicSections" tabindex="-1">
     <!-- Products organized by category will be injected here by JS -->
   </div>
 
@@ -632,7 +644,7 @@
     <section id="preorderSection" class="hidden pb-16">
       <div class="section-header flex justify-between items-center mb-6">
         <h2 class="text-xl font-semibold text-red-600">China Sourcing Pre-Orders</h2>
-        <span class="text-xs px-3 py-1 bg-red-50 text-red-600 border border-red-100 rounded-full font-medium">Ends May 18</span>
+        <span class="text-xs px-3 py-1 bg-red-50 text-red-600 border border-red-100 rounded-full font-medium">Closing date confirmed on WhatsApp</span>
       </div>
       
       <!-- Info banner -->
@@ -754,7 +766,7 @@
             <i class="fab fa-whatsapp"></i>
           </a>
           <!-- Instagram -->
-          <a href="https://instagram.com" target="_blank" rel="noopener" aria-label="Instagram"
+          <a href="https://www.instagram.com/dckidsbrand" target="_blank" rel="noopener" aria-label="Instagram"
              class="w-9 h-9 rounded-full bg-gray-800 hover:bg-pink-600 hover:text-white flex items-center justify-center transition-colors">
             <i class="fab fa-instagram"></i>
           </a>
@@ -765,11 +777,11 @@
       <div>
         <h4 class="text-white font-semibold text-sm mb-4">Customer Service</h4>
         <ul class="space-y-2.5 text-xs text-gray-400">
-          <li><a href="#" class="hover:text-white transition-colors">FAQs</a></li>
-          <li><a href="#" class="hover:text-white transition-colors">Shipping & Delivery</a></li>
-          <li><a href="#" class="hover:text-white transition-colors">Returns & Exchanges</a></li>
-          <li><a href="#" class="hover:text-white transition-colors">Size Guide</a></li>
-          <li><a href="#" class="hover:text-white transition-colors">Track Your Order</a></li>
+          <li><a href="/support.html#faqs" class="hover:text-white transition-colors">FAQs</a></li>
+          <li><a href="/support.html#shipping" class="hover:text-white transition-colors">Shipping &amp; Delivery</a></li>
+          <li><a href="/support.html#returns" class="hover:text-white transition-colors">Returns &amp; Exchanges</a></li>
+          <li><a href="/support.html#size-guide" class="hover:text-white transition-colors">Size Guide</a></li>
+          <li><a href="/track.html" class="hover:text-white transition-colors">Track Your Order</a></li>
         </ul>
       </div>
       
@@ -777,10 +789,10 @@
       <div>
         <h4 class="text-white font-semibold text-sm mb-4">Policies</h4>
         <ul class="space-y-2.5 text-xs text-gray-400">
-          <li><a href="#" class="hover:text-white transition-colors">Privacy Policy</a></li>
-          <li><a href="#" class="hover:text-white transition-colors">Refund Policy</a></li>
-          <li><a href="#" class="hover:text-white transition-colors">Shipping Policy</a></li>
-          <li><a href="#" class="hover:text-white transition-colors">Terms & Conditions</a></li>
+          <li><a href="/privacy.html" class="hover:text-white transition-colors">Privacy Policy</a></li>
+          <li><a href="/terms.html#returns" class="hover:text-white transition-colors">Refund Policy</a></li>
+          <li><a href="/terms.html#delivery" class="hover:text-white transition-colors">Shipping Policy</a></li>
+          <li><a href="/terms.html" class="hover:text-white transition-colors">Terms &amp; Conditions</a></li>
         </ul>
       </div>
       
@@ -790,7 +802,7 @@
         <p class="text-xs text-gray-400 leading-relaxed">
           We're passionate about bringing stylish, high-quality, and comfortable kids' fashion to families across Ghana.
         </p>
-        <a href="#" class="text-xs text-brand-green hover:underline flex items-center gap-1">
+        <a href="/support.html#about" class="text-xs text-brand-green hover:underline flex items-center gap-1">
           Learn more about us <i class="fas fa-arrow-right text-[10px]"></i>
         </a>
       </div>
@@ -801,15 +813,15 @@
         <ul class="space-y-3 text-xs text-gray-400">
           <li class="flex items-start gap-2">
             <i class="fas fa-phone-alt mt-0.5 text-gray-500"></i>
-            <span>+233 59 123 4567</span>
+            <a href="tel:+233549193805" class="hover:text-white transition-colors">+233 54 919 3805</a>
           </li>
           <li class="flex items-start gap-2">
-            <i class="far fa-envelope mt-0.5 text-gray-500"></i>
-            <span class="break-all">info@dckidsbrand.com</span>
+            <i class="fab fa-whatsapp mt-0.5 text-gray-500"></i>
+            <a href="https://wa.me/233549193805" target="_blank" rel="noopener" class="hover:text-white transition-colors">Chat on WhatsApp</a>
           </li>
           <li class="flex items-start gap-2">
             <i class="fas fa-map-marker-alt mt-0.5 text-gray-500"></i>
-            <span>ECOWAS Plaza Building,<br>Kasoa-Adade, Ghana</span>
+            <a href="https://maps.google.com/?q=ECOWAS+Plaza+Building+Kasoa+Adade+Ghana" target="_blank" rel="noopener" class="hover:text-white transition-colors">ECOWAS Plaza Building,<br>Kasoa-Adade, Ghana</a>
           </li>
         </ul>
       </div>
@@ -821,10 +833,8 @@
         <!-- Payment badges -->
         <div class="flex items-center gap-3">
           <span>We accept:</span>
-          <div class="flex gap-2.5 text-lg">
-            <i class="fab fa-cc-visa text-gray-400 hover:text-white transition-colors"></i>
-            <i class="fab fa-cc-mastercard text-gray-400 hover:text-white transition-colors"></i>
-            <i class="fab fa-cc-paypal text-gray-400 hover:text-white transition-colors"></i>
+          <div class="flex gap-2.5 text-xs text-gray-400">
+            <span>Paystack</span><span>•</span><span>Cards</span><span>•</span><span>Mobile Money</span>
           </div>
         </div>
         
@@ -884,9 +894,9 @@
         <span>Subtotal:</span>
         <span id="cartSubtotal">GHC 245</span>
       </div>
-      <button class="w-full bg-[#25D366] hover:bg-[#20ba56] text-white font-medium py-3.5 px-6 rounded-xl flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg transition-all active:scale-[0.98]" id="checkoutBtn">
-        <i class="fab fa-whatsapp text-lg"></i>
-        Checkout via WhatsApp
+      <button class="w-full bg-brand-darkgreen hover:bg-brand-darkgreen/95 text-white font-medium py-3.5 px-6 rounded-xl flex items-center justify-center gap-2.5 shadow-md hover:shadow-lg transition-all active:scale-[0.98]" id="checkoutBtn">
+        <i class="fas fa-lock text-sm"></i>
+        Choose checkout method
       </button>
     </div>
   </div>
@@ -905,7 +915,8 @@
 
   <script src="gradient.js?v=3"></script>
   <script src="image-resolver.js?v=1"></script>
-  <script src="app.js?v=26"></script>
+  <script type="module" src="firebase-auth.js?v=2"></script>
+  <script src="app.js?v=27"></script>
 
   <!-- ===== CHECKOUT MODAL ===== -->
   <div id="checkoutModal" style="display:none;position:fixed;inset:0;z-index:3000;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">
@@ -921,6 +932,8 @@
           <p style="font-size:13px;color:#9ca3af;margin:0;line-height:1.5;">Please provide your details to continue with the order.</p>
         </div>
 
+        <div id="checkoutValidationError" role="alert" aria-live="assertive" style="display:none;margin:0 0 16px;padding:11px 13px;border:1px solid #fecaca;border-radius:10px;background:#fef2f2;color:#b91c1c;font-size:12.5px;line-height:1.45;text-align:left;"></div>
+
         <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em;">Full Name <span style="color:#dc2626;">*</span></label>
         <div style="position:relative;margin-bottom:14px;">
           <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -933,11 +946,38 @@
           <input id="checkoutPhone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="15" placeholder="e.g. 0241234567" style="width:100%;padding:11px 12px 11px 36px;border:1.5px solid #e0e4e8;border-radius:12px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;transition:border-color 0.2s,box-shadow 0.2s;" onfocus="this.style.borderColor='#5E9C7E';this.style.boxShadow='0 0 0 3px rgba(94,156,126,0.1)'" onblur="this.style.borderColor='#e0e4e8';this.style.boxShadow='none'">
         </div>
 
-        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em;">Delivery Area / Town</label>
+        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em;">Email <span style="font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0;">(required for Paystack)</span></label>
+        <div style="position:relative;margin-bottom:14px;">
+          <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="m4 6 8 6 8-6"/></svg>
+          <input id="checkoutEmail" type="email" autocomplete="email" placeholder="you@example.com" style="width:100%;padding:11px 12px 11px 36px;border:1.5px solid #e0e4e8;border-radius:12px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;">
+        </div>
+
+        <div id="checkoutSavedAddressWrap" style="display:none;margin-bottom:14px;">
+          <label for="checkoutSavedAddress" style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em;">Saved Address</label>
+          <select id="checkoutSavedAddress" style="width:100%;padding:11px 12px;border:1.5px solid #e0e4e8;border-radius:12px;font-size:14px;background:#fff;font-family:inherit;"></select>
+        </div>
+
+        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em;">Delivery Address</label>
         <div style="position:relative;margin-bottom:14px;">
           <svg style="position:absolute;left:12px;top:50%;transform:translateY(-50%);pointer-events:none;" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          <input id="checkoutArea" type="text" placeholder="e.g. Kasoa, Accra, Kumasi" style="width:100%;padding:11px 12px 11px 36px;border:1.5px solid #e0e4e8;border-radius:12px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;transition:border-color 0.2s,box-shadow 0.2s;" onfocus="this.style.borderColor='#5E9C7E';this.style.boxShadow='0 0 0 3px rgba(94,156,126,0.1)'" onblur="this.style.borderColor='#e0e4e8';this.style.boxShadow='none'">
+          <input id="checkoutAddressLine1" type="text" autocomplete="street-address" placeholder="House number and street" style="width:100%;padding:11px 12px 11px 36px;border:1.5px solid #e0e4e8;border-radius:12px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;">
         </div>
+
+        <input id="checkoutAddressLine2" type="text" placeholder="Apartment or additional directions (optional)" style="width:100%;padding:11px 12px;border:1.5px solid #e0e4e8;border-radius:12px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">
+
+        <div class="checkout-address-grid">
+          <div>
+            <label for="checkoutCity">City / Area</label>
+            <input id="checkoutCity" type="text" autocomplete="address-level2" placeholder="Kasoa">
+          </div>
+          <div>
+            <label for="checkoutRegion">Region</label>
+            <input id="checkoutRegion" type="text" autocomplete="address-level1" placeholder="Central Region">
+          </div>
+        </div>
+
+        <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin:14px 0 5px;text-transform:uppercase;letter-spacing:0.04em;">Landmark <span style="font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0;">(optional)</span></label>
+        <input id="checkoutLandmark" type="text" placeholder="e.g. Opposite ECOWAS Plaza" style="width:100%;padding:11px 12px;border:1.5px solid #e0e4e8;border-radius:12px;font-size:14px;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">
 
         <label style="display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:5px;text-transform:uppercase;letter-spacing:0.04em;">Order Notes <span style="font-weight:400;color:#9ca3af;text-transform:none;letter-spacing:0;">(optional)</span></label>
         <div style="position:relative;margin-bottom:18px;">
@@ -955,25 +995,31 @@
         </div>
       </div>
 
-      <!-- Step 2: Thank You -->
+      <!-- Step 2: Choose checkout method -->
       <div id="checkoutStep2" style="display:none;text-align:center;">
         <div style="width:72px;height:72px;border-radius:50%;background:#E8F5EE;margin:0 auto 14px;display:flex;align-items:center;justify-content:center;">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#5E9C7E" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
-        <h2 style="font-size:22px;font-weight:700;color:#1f2937;margin:0 0 6px;">Thank You!</h2>
-        <p style="font-size:13px;color:#9ca3af;margin:0 0 20px;">Customer details added successfully.</p>
+        <h2 style="font-size:22px;font-weight:700;color:#1f2937;margin:0 0 6px;">Choose how to checkout</h2>
+        <p style="font-size:13px;color:#9ca3af;margin:0 0 20px;">Chat with DC Kids or pay securely online.</p>
         <hr style="border:none;border-top:1px solid #f3f4f6;margin-bottom:20px;">
         <div style="background:#f0f8f4;border-radius:12px;padding:14px 16px;text-align:left;margin-bottom:22px;display:flex;gap:12px;align-items:flex-start;">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5E9C7E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           <div>
-            <div style="font-size:13px;font-weight:700;color:#1f2937;margin-bottom:3px;">What's Next?</div>
-            <div style="font-size:12px;color:#6b7280;line-height:1.5;">You can now continue with the order and complete the checkout process.</div>
+            <div style="font-size:13px;font-weight:700;color:#1f2937;margin-bottom:3px;">Delivery is handled separately</div>
+            <div style="font-size:12px;color:#6b7280;line-height:1.5;">Paystack covers the products in your cart. DC Kids will contact you to confirm and collect the delivery charge.</div>
           </div>
         </div>
-        <button id="checkoutModalContinue" style="width:100%;padding:13px;border:none;border-radius:12px;font-size:14px;font-weight:600;color:#fff;background:#5E9C7E;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:background 0.15s;">
+        <button id="checkoutWhatsAppBtn" style="width:100%;padding:13px;border:none;border-radius:12px;font-size:14px;font-weight:600;color:#fff;background:#25D366;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:background 0.15s;">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.82 9.82 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.81 11.81 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.88 11.88 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.82 11.82 0 0 0-3.48-8.413z"/></svg>
-          Continue to Checkout
+          Continue with WhatsApp
         </button>
+        <button id="checkoutPaystackBtn" style="width:100%;margin-top:10px;padding:13px;border:none;border-radius:12px;font-size:14px;font-weight:700;color:#fff;background:#0F4C3A;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:background 0.15s;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>
+          Pay securely with Paystack
+        </button>
+        <p id="checkoutPaystackUnavailable" style="display:none;margin:9px 0 0;color:#9ca3af;font-size:11px;line-height:1.4;">Direct payment is not available yet. WhatsApp checkout still works.</p>
+        <button id="checkoutBackBtn" type="button" style="width:100%;margin-top:12px;padding:11px;border:1.5px solid #d1d5db;border-radius:12px;font-size:13px;font-weight:600;color:#4b5563;background:#fff;cursor:pointer;font-family:inherit;">&larr; Back to customer details</button>
       </div>
 
       <!-- Step 3: Receipt -->
@@ -1048,11 +1094,10 @@
   </style>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      var video = document.querySelector('.wholesale-video-container video');
+      const video = document.querySelector('.wholesale-video-container video');
       if (video) {
-        video.play().catch(function(err) {
-          console.log("Autoplay prevented, waiting for user interaction:", err);
-          var playOnInteract = function() {
+        video.play().catch(function() {
+          const playOnInteract = function() {
             video.play();
             document.removeEventListener('click', playOnInteract);
             document.removeEventListener('touchstart', playOnInteract);
@@ -1088,7 +1133,7 @@
     .pwa-modal__notnow { flex: 1; background: #fff; border: 1px solid #d1d5db; color: #374151; font-weight: 600; font-size: 15px; padding: 13px; border-radius: 12px; cursor: pointer; transition: background 0.15s; }
     .pwa-modal__notnow:hover { background: #f9fafb; }
     /* Floating "Install" bar — the entry point. The modal opens only when this is tapped. */
-    .pwa-fab { position: fixed; left: 16px; bottom: 18px; z-index: 8999; display: none; align-items: center; gap: 8px; background: #1f9d57; color: #fff; border: none; border-radius: 999px; padding: 11px 17px; font-family: Inter, system-ui, sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22); animation: pwaPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+    .pwa-fab { position: fixed; left: 16px; bottom: 18px; z-index: 850; display: none; align-items: center; gap: 8px; background: #1f9d57; color: #fff; border: none; border-radius: 999px; padding: 11px 17px; font-family: Inter, system-ui, sans-serif; font-weight: 700; font-size: 14px; cursor: pointer; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22); animation: pwaPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
     .pwa-fab:hover { background: #187a4a; }
     .pwa-fab svg { width: 18px; height: 18px; }
     @media (max-width: 480px) {
@@ -1268,8 +1313,8 @@
         font-size: 10px; font-weight: 700;
         display: flex; align-items: center; justify-content: center;
       }
-      /* lift page content so the floating pill doesn't cover the footer */
-      .footer, footer { padding-bottom: 90px !important; }
+      /* Reserve page space so the floating pill never covers final actions. */
+      body { padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
     }
   </style>
   <nav class="sf-bottom-nav" id="sfBottomNav" aria-label="Primary">

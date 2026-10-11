@@ -2,16 +2,18 @@
   "name": "server",
   "version": "1.0.0",
   "main": "server.js",
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
-    "test": "node test_operations.js && node test_smoke.js",
+    "test": "node test_deployment_contract.js && node test_maintenance_mode.js && node test_restore_seed.js && node test_storage.js && node test_storage_uploads.js && node test_backup_db.js && node test_reconcile_paystack.js && node test_shutdown_lifecycle.js && node test_recovery_codes.js && node test_admin_recovery_view.js && node test_smoke.js",
+    "reconcile:paystack": "node reconcile_paystack.js",
     "start": "node server.js",
     "build": "npm run build:css",
     "build:css": "npm run build:css:storefront && npm run build:css:admin",
-    "build:css:storefront": "tailwindcss -c ../tailwind.config.js -i ../tailwind.input.css -o ../tailwind.store.css --minify",
+    "build:css:storefront": "tailwindcss -c ../tailwind.storefront.config.js -i ../tailwind.input.css -o ../tailwind-storefront.css --minify",
     "build:css:admin": "tailwindcss -c ../tailwind.admin.config.js -i ../tailwind.input.css -o ../tailwind-admin.css --minify",
-    "lint": "eslint ..",
-    "backup": "node backup_db.js",
-    "test:ops": "node test_operations.js"
+    "lint": "eslint .."
   },
   "keywords": [],
   "author": "",
@@ -22,12 +24,13 @@
     "cors": "^2.8.6",
     "dotenv": "^16.4.5",
     "express": "^5.2.1",
+    "firebase-admin": "13.10.0",
     "jsonwebtoken": "^9.0.3",
     "sqlite3": "^6.0.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.7.0",
-    "tailwindcss": "^3.4.19"
+    "tailwindcss": "^3.4.17"
   }
 }

@@ -59,5 +59,12 @@ module.exports = [
             'no-prototype-builtins': 'warn',
             'no-useless-escape': 'warn'
         }
+    },
+    {
+        files: ['account.js', 'firebase-auth.js'],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: 'module'
+        }
     }
 ];

@@ -1,12 +1,12 @@
-# Security & Structure Audit — DC Kids Brand
+# Retrofit Audit — DC Kids Brand
 
-Full audit run 2026-07-11 against commit `cd61271`.
+Playbook retrofit audit (Phases 0–10), run 2026-07-11 against commit `cd61271`.
 Safety pass done first: tree clean, `server/.env` + `*.db` gitignored, backup taken and
 **verified restorable** (integrity ok; 27 orders, 267 products readable from the backup file).
 
-Most of the groundwork was already in place (project docs, PRD, ship checklist,
-41-check smoke suite, several security-fix rounds). This report covers what remains,
-ranked by risk. **No code was changed during this audit.**
+Much of a normal retrofit was already done in previous sessions (identity block, PRD,
+ship checklist, 41-check smoke suite, five security-fix rounds). This report covers what
+remains, ranked by risk. **No code was changed during this audit.**
 
 ---
 
@@ -32,11 +32,8 @@ ranked by risk. **No code was changed during this audit.**
   comes from the DB rather than the token. Test: "deleted staff token revoked instantly".
 - **S2 · ~~LOW~~ FIXED 2026-07-11** — the three admin `innerHTML` error sinks (toast,
   upload preview, staff-table error row) now escape their message.
-- **S3 · ~~LOW~~ FIXED 2026-07-17** — Content-Security-Policy shipped: the storefront gets a
-  strict policy (self-only scripts/connect, fonts allowlisted, no objects/frames); the admin
-  page gets a variant allowing its Tailwind CDN and Google Sign-In. Verified no violations
-  on any page. ('unsafe-inline' remains until inline handlers are refactored — the origin
-  allowlists still block injected external scripts, the main escalation path.)
+- **S3 · LOW — No Content-Security-Policy header.** Inline scripts and the Tailwind CDN
+  make a strict CSP a real project; document as post-launch hardening, not a quick fix.
 - **S4 · ~~INFO~~ FIXED 2026-07-11** — stale `server/test_flow_runner.js` deleted.
 
 ## 2. Missing structure (ranked)
@@ -46,18 +43,13 @@ ranked by risk. **No code was changed during this audit.**
   (0 errors; legacy patterns surface as warnings without blocking).
 - **M2 · ~~HIGH~~ FIXED 2026-07-11** — `privacy.html` + `terms.html` written for how the
   store actually works, linked in the footer and sitemap (stale preorder.html entry removed).
-- **M3 · ~~MEDIUM~~ FIXED 2026-07-14** — daily WAL-safe backup now runs in-process
-  (newest 30 kept, Telegram alert on failure). Quarterly restore drill still applies.
-- **M4 · ~~MEDIUM~~ FIXED 2026-07-14** — server errors (uncaught/unhandled/500 paths)
-  send rate-limited Telegram alerts through the existing bot. Host log persistence
-  still recommended.
-- **M7 · ~~HIGH~~ FIXED 2026-07-14** — admin customer book moved from browser
-  localStorage to the DB (`/api/customers` + bulk sync, phone-matched upserts, legacy
-  data auto-migrates). Owner and staff now see the same customers on any device.
-  Also added 2026-07-14: `/healthz` + `/readyz`, and checkout idempotency keys
-  (double-submit/network-retry safe).
+- **M3 · MEDIUM — Backups are manual.** `backup_db.js` works (verified today) but nothing
+  schedules it; schedule daily on the host + do one restore drill per quarter.
+- **M4 · MEDIUM — No error alerting.** Telegram alerts cover new orders only; server
+  errors go to console. Minimum: persist logs on the host and check on a cadence; better:
+  a free error tracker.
 - **M5 · LOW — Unbounded default fetches.** `/api/products` and `/api/orders` return the
-  full table unless pagination params are passed (best practice: paginate everything). Fine at
+  full table unless pagination params are passed (playbook: paginate everything). Fine at
   267 products / 27 orders; flip the default before the catalogue grows ~10×.
 - **M6 · LOW — No uptime monitor.** Point a free pinger at the domain post-deploy.
 
@@ -81,29 +73,3 @@ users (`cd61271`). The only open code-level items are S2 and S4 above.
 3. **S2 + S4** — escape the three sinks, delete the stale test runner (one commit)
 4. **S1** — decide: accept-and-document or add status re-check middleware (one commit)
 5. **M3/M4/M6** — host-level: scheduled backup, log persistence, uptime ping (at deploy)
-
----
-
-## 2026-07-17 completions (this pass)
-
-- **Inventory reservations (Phase 15)** — checkout now refuses to promise pieces already
-  sitting in pending/processing orders (per-item availability check; pre-orders exempt).
-  Tests: full-stock order accepted, oversell rejected, out-of-stock rejected. Suite: 47 checks.
-- **Audit trail (Phase 13)** — append-only log (transactions table) for sensitive admin
-  actions: order status changes/deletions, product create/delete, staff add/delete,
-  access approve/reject, settings changes — who, what, when.
-- **CSP (S3)** — shipped, see above.
-- **Email delivery hardening (Phase 11)** — sign-in/staff emails get a 10s timeout and one
-  retry on network errors / Resend 5xx.
-- **ADRs (Phase 11)** — docs/decisions/0001–0004: WhatsApp checkout, passwordless auth
-  (deliberate deviation, reasoned), SQLite + self-seeding, vanilla frontend + prebuilt Tailwind.
-- **RUNBOOK (Phase 12)** — docs/RUNBOOK.md: restart, health, lockout, backup/restore drill,
-  rollback, common failures.
-- **Collaboration rules (Phase 17)** — docs/CONTRIBUTING.md: protected main via PRs, CI-green
-  to merge, ownership map, dev1 resolution item. Branch protection itself is a 2-minute
-  owner action on GitHub (steps included).
-- **Maintenance cadence (Phase 10)** — docs/maintenance-reminders.ics: monthly + quarterly
-  recurring reminders, import once into any calendar.
-- **Deploy prep (Phase 5)** — render.yaml blueprint: one-service deploy, persistent disk via
-  DB_PATH, health checks, env vars declared (secrets entered in dashboard). Remaining
-  deploy-day items need the live domain: securityheaders scan, uptime monitor, Search Console.

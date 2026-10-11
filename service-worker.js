@@ -9,7 +9,7 @@
    - Images + fonts: cache-first.
    - Bumping VERSION wipes old caches on activate.
 */
-const VERSION = 'dckids-v142';
+const VERSION = 'dckids-v235';
 const STATIC_CACHE = 'dckids-static-' + VERSION;
 const RUNTIME_CACHE = 'dckids-runtime-' + VERSION;
 
@@ -19,10 +19,31 @@ const RUNTIME_CACHE = 'dckids-runtime-' + VERSION;
 const APP_SHELL = [
   '/index.html',
   '/admin.html',
+  '/account.html',
+  '/product.html',
+  '/support.html',
+  '/payment-result.html',
   '/styles.css',
-  '/tailwind.store.css',
+  '/product.css',
+  '/tailwind-storefront.css',
   '/tailwind-admin.css',
+  '/admin-bridge.css',
+  '/admin-system.css',
+  '/vendor/chart.umd.js',
+  '/vendor/fonts/fonts.css',
+  '/vendor/fonts/files/inter-latin-opsz-normal.woff2',
+  '/vendor/fonts/files/playfair-display-latin-wght-normal.woff2',
+  '/vendor/fonts/files/fragment-mono-latin-400-normal.woff2',
+  '/vendor/fontawesome/css/all.min.css',
+  '/vendor/fontawesome/webfonts/fa-solid-900.woff2',
+  '/vendor/fontawesome/webfonts/fa-regular-400.woff2',
+  '/vendor/fontawesome/webfonts/fa-brands-400.woff2',
   '/image-resolver.js',
+  '/admin-recovery-view.js',
+  '/account.js',
+  '/product.js',
+  '/payment-result.js',
+  '/firebase-auth.js',
   '/manifest.json',
   '/icon.png',
   '/images/placeholder.svg',
@@ -65,14 +86,29 @@ self.addEventListener('fetch', (event) => {
   const accept = req.headers.get('accept') || '';
   const isHtml = req.mode === 'navigate' || accept.includes('text/html') || url.pathname.endsWith('.html');
   const isApi = url.pathname.startsWith('/api/');
+  const carriesIdentity = req.headers.has('authorization');
+  const isPrivateCustomerApi = url.pathname.startsWith('/api/customer/') || url.pathname.startsWith('/api/wishlist');
+  const isPaymentApi = url.pathname.startsWith('/api/payments/') || url.pathname.startsWith('/api/checkout/paystack');
   const isCode = url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
   const isImage = req.destination === 'image' || /\.(?:png|jpe?g|gif|svg|webp|avif)$/i.test(url.pathname);
 
   // Live store config must NEVER be served from cache — always go to network so
   // admin changes (banner, discount, WhatsApp) reach shoppers immediately.
-  const isLiveConfig = url.pathname === '/api/settings' || url.pathname === '/api/products';
+  const isLiveConfig = url.pathname === '/api/settings' || url.pathname === '/api/products' || /^\/api\/products\/\d+$/.test(url.pathname);
   if (isLiveConfig) {
     event.respondWith(fetch(req).catch(() => caches.match(req)));
+    return;
+  }
+
+  // Customer/profile responses must never enter Cache Storage. Cache matching
+  // does not isolate users by Authorization header, so an offline fallback
+  // could otherwise expose the previous customer's private data on a shared
+  // device. Authenticated storefront calls (orders/reviews) follow this rule too.
+  if (isApi && (carriesIdentity || isPrivateCustomerApi || isPaymentApi)) {
+    event.respondWith(fetch(req).catch(() => new Response(
+      JSON.stringify({ error: 'Account data is unavailable while offline' }),
+      { status: 503, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }
+    )));
     return;
   }
 
@@ -89,7 +125,11 @@ self.addEventListener('fetch', (event) => {
         // shell. Falling back to /index.html here was bouncing the admin login
         // page to the storefront whenever the network blipped (e.g. the reload
         // right after a new SW takes control).
-        const fallback = url.pathname.startsWith('/admin') ? '/admin.html' : '/index.html';
+        const fallback = url.pathname.startsWith('/admin')
+          ? '/admin.html'
+          : (url.pathname.startsWith('/account')
+            ? '/account.html'
+            : (url.pathname.startsWith('/product') ? '/product.html' : '/index.html'));
         return caches.match(fallback);
       }))
     );

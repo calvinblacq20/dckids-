@@ -15,11 +15,11 @@
   <meta name="theme-color" content="#fc4c7a">
   <link rel="manifest" href="admin.manifest.json">
   <title>DC Kids — Admin Dashboard</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="admin.css?v=115">
-  <link rel="stylesheet" href="tailwind-admin.css?v=1">
+  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=1">
+  <!-- admin.css retired: the reference system in admin-system.css is the single
+       source of styling, with admin-bridge.css mapping the class names this
+       markup still uses onto it. -->
+  <link rel="stylesheet" href="admin-bridge.css?v=65">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -48,7 +48,9 @@
       .admin-header { padding: 0 12px !important; }
     }
   </style>
-  <!-- Tailwind utilities are compiled locally; preflight remains disabled. -->
+  <!-- Locally compiled Tailwind utilities; preflight stays disabled so it cannot reset the admin design system. -->
+  <link rel="stylesheet" href="tailwind-admin.css?v=1">
+  <link rel="stylesheet" href="admin-system.css?v=9">
   <style>
     /* ── Force light mode on the login page regardless of OS/browser dark preference.
        Dark mode is an admin-dashboard-only preference; the login screen is always light. ── */
@@ -279,111 +281,20 @@
       display: none;
     }
     .login-info:not(:empty) { display: block; }
-
-    /* ── Refreshed sign-in styling (tagline, verification badge, OTP boxes) ── */
-    .login-tagline { color: #9ca3af; font-size: 0.8rem; margin: 0 0 14px; }
-    .login-verify-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      color: #6b7280; font-size: 0.85rem; margin-top: 6px;
-    }
-    .login-verify-badge svg { color: #16a34a; }
-    .login-substep--center { text-align: center; }
-
-    /* Segmented 6-digit OTP input */
-    .otp-input { display: flex; gap: 8px; justify-content: center; margin-bottom: 12px; }
-    .otp-box {
-      flex: 1 1 0; min-width: 0; height: 56px;
-      border: 1.5px solid #e5e7eb; border-radius: 12px;
-      background: #fff !important; color: #1a1a2e !important;
-      text-align: center; font-size: 1.4rem; font-weight: 700;
-      outline: none; box-sizing: border-box;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    }
-    .otp-box::placeholder { color: #cbd5e1; font-weight: 400; }
-    .otp-box:focus { border-color: #16a34a; box-shadow: 0 0 0 3px rgba(22,163,74,0.18); }
-    .otp-box.filled { border-color: #9ca3af; }
-    @media (max-width: 420px) { .otp-box { height: 48px; font-size: 1.2rem; border-radius: 10px; } }
-
-    /* "Welcome back" — one-tap sign-in for accounts used on this device.
-       Stores emails only (never tokens), so it's a convenience, not a session. */
-    .login-accounts { display: flex; flex-direction: column; gap: 10px; margin-bottom: 6px; }
-    .account-chip {
-      display: flex; align-items: center; gap: 12px; width: 100%;
-      padding: 12px 14px; border: 1px solid #e5e7eb; border-radius: 14px;
-      background: #fff; cursor: pointer; text-align: left; transition: border-color .15s, box-shadow .15s, transform .05s;
-    }
-    .account-chip:hover { border-color: #16a34a; box-shadow: 0 2px 10px rgba(15,76,58,0.08); }
-    .account-chip:active { transform: translateY(1px); }
-    .account-chip__avatar {
-      width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
-      background: linear-gradient(135deg,#0F4C3A,#16a34a); color: #fff;
-      display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; text-transform: uppercase;
-    }
-    .account-chip__body { flex: 1; min-width: 0; }
-    .account-chip__label { font-size: 13px; font-weight: 600; color: #111827; }
-    .account-chip__email { font-size: 12.5px; color: #6b7280; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .account-chip__remove {
-      flex-shrink: 0; width: 26px; height: 26px; border: none; background: none; color: #b0b6bf;
-      border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; line-height: 1;
-    }
-    .account-chip__remove:hover { background: #f3f4f6; color: #dc2626; }
-    .login-other-account {
-      width: 100%; margin-top: 4px; padding: 12px; border: 1px solid #e5e7eb; border-radius: 14px;
-      background: #fafafa; color: #374151; font-weight: 600; font-size: 14px; cursor: pointer; transition: background .15s;
-    }
-    .login-other-account:hover { background: #f3f4f6; }
-
-    /* Legal footer shown on both the sign-in and request-access cards */
-    .login-legal { margin-top: 18px; font-size: 11.5px; line-height: 1.6; color: #9ca3af; text-align: center; }
-    .login-legal a { color: #0F4C3A; font-weight: 600; text-decoration: none; }
-    .login-legal a:hover { text-decoration: underline; }
-    .login-forget-all { margin-top: 12px; text-align: center; }
-    .login-forget-all a { font-size: 12.5px; color: #9ca3af; text-decoration: none; }
-    .login-forget-all a:hover { color: #dc2626; text-decoration: underline; }
-
-    .login-code-hint {
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-      color: #9ca3af; font-size: 0.8rem; margin: 0 0 2px;
-    }
-    .login-action-btn--icon { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-
-    /* Stacked action links with leading icons */
-    .login-links { display: flex; flex-direction: column; align-items: center; gap: 13px; margin-top: 14px; }
-    .login-link {
-      display: inline-flex; align-items: center; gap: 9px;
-      color: #fc4c7a; font-size: 0.92rem; font-weight: 600; text-decoration: none;
-    }
-    .login-link svg { color: #9ca3af; flex-shrink: 0; }
-    .login-link:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <!-- Shader Gradient Background Canvas -->
-  <canvas id="shader-bg-canvas"></canvas>
 
   <!-- ======================== LOGIN CONTAINER ======================== -->
   <div id="login-container" class="login-container">
     <div class="login-card">
       <div class="login-brand">
-        <img src="icon.png" alt="DC Kids Brand">
-        <p class="login-tagline">Merch for Little Champs</p>
+        <img src="icon.png" alt="DC Kids Logo">
         <h1 class="login-title">Admin sign in</h1>
-        <div class="login-verify-badge">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
-          <span>Secure verification</span>
-        </div>
       </div>
 
       <div id="login-info" class="login-info" role="status" aria-live="polite"></div>
       <div id="login-error" class="login-error" role="alert" aria-live="polite"></div>
-
-      <!-- Step 0: remembered accounts on this device (one-tap sign-in) -->
-      <div id="login-step-accounts" class="login-form" style="display:none;">
-        <p class="login-substep login-substep--center">Choose an account to sign in.</p>
-        <div id="login-accounts-list" class="login-accounts" role="list"></div>
-        <button type="button" class="login-other-account" onclick="useDifferentEmail(event)">Use a different email</button>
-        <p class="login-forget-all"><a href="#" onclick="forgetAllAccounts(event)">Not you? Forget accounts on this device</a></p>
-      </div>
 
       <!-- Step 1: enter email -->
       <div id="login-step-email" class="login-form">
@@ -393,7 +304,7 @@
           <div id="google-signin-btn" class="google-signin-btn"></div>
           <div class="login-or"><span>or</span></div>
         </div>
-        <p class="login-substep">Enter your email and we'll send you a 6-digit sign-in code.</p>
+        <p id="login-email-status" class="login-substep">Enter your email and we'll send you a 6-digit sign-in code.</p>
         <div class="form-group">
           <label for="login-email">Email</label>
           <div class="input-wrapper">
@@ -408,39 +319,21 @@
 
       <!-- Step 2: enter the 6-digit code -->
       <div id="login-step-code" class="login-form" style="display:none;">
-        <p class="login-substep login-substep--center">We sent a 6-digit code to <strong id="login-code-sent-to"></strong>.<br>Enter it below (valid for 10 minutes).</p>
-        <div class="otp-input" id="otp-input" role="group" aria-label="6-digit sign-in code">
-          <input type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="1" class="otp-box" placeholder="-" aria-label="Digit 1">
-          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" placeholder="-" aria-label="Digit 2">
-          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" placeholder="-" aria-label="Digit 3">
-          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" placeholder="-" aria-label="Digit 4">
-          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" placeholder="-" aria-label="Digit 5">
-          <input type="text" inputmode="numeric" maxlength="1" class="otp-box" placeholder="-" aria-label="Digit 6">
+        <p class="login-substep">We sent a 6-digit code to <strong id="login-code-sent-to"></strong>. Enter it below (valid for 10 minutes).</p>
+        <div class="form-group">
+          <label for="login-code">6-digit code</label>
+          <div class="input-wrapper">
+            <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
+            <input type="text" inputmode="numeric" maxlength="6" id="login-code" placeholder="123456" autocomplete="one-time-code" aria-label="6-digit code">
+          </div>
         </div>
-        <input type="hidden" id="login-code">
-        <p class="login-code-hint">
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"></circle><path d="m10.8 12.2 7.7-7.7"></path><path d="m16 6 2 2"></path><path d="m18.5 3.5 2 2"></path></svg>
-          Don't share your code with anyone.
+        <button id="login-verify-btn" type="button" class="login-action-btn" onclick="verifyLoginCode(event)">Verify &amp; sign in</button>
+        <p class="login-substep-links">
+          <a href="#" onclick="resendLoginCode(event)">Resend code</a> &nbsp;&middot;&nbsp;
+          <a href="#" onclick="loginBackToEmail(event)">Use a different email</a>
         </p>
-        <button id="login-verify-btn" type="button" class="login-action-btn login-action-btn--icon" onclick="verifyLoginCode(event)">
-          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-          Verify &amp; sign in
-        </button>
-        <div class="login-or"><span>OR</span></div>
-        <div class="login-links">
-          <a href="#" class="login-link" onclick="resendLoginCode(event)">
-            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M3 21v-5h5"></path></svg>
-            Resend code
-          </a>
-          <a href="#" class="login-link" onclick="loginBackToEmail(event)">
-            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg>
-            Use a different email
-          </a>
-          <a href="#" class="login-link" onclick="showRecoveryLogin(event)">
-            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-            Use a recovery code instead
-          </a>
-        </div>
       </div>
 
       <!-- Backup: recovery code -->
@@ -468,13 +361,8 @@
         <p class="login-substep-links"><a href="#" onclick="loginBackToEmail(event)">Back to email sign-in</a></p>
       </div>
 
+      <p class="login-request-access"><a href="#" onclick="showRecoveryLogin(event)">Use a recovery code instead</a></p>
       <p class="login-request-access">Need admin access? <a href="#" onclick="showSignupView(event)">Request access</a></p>
-
-      <p class="login-legal">
-        By signing in you agree to our
-        <a href="/terms.html" target="_blank" rel="noopener">Terms of Service</a> and
-        <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.
-      </p>
     </div>
   </div>
 
@@ -579,11 +467,6 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
             The owner approves every request before you can sign in.
           </p>
-          <p class="login-legal">
-            By requesting access you agree to our
-            <a href="/terms.html" target="_blank" rel="noopener">Terms of Service</a> and
-            <a href="/privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.
-          </p>
         </div>
       </div>
     </main>
@@ -591,104 +474,106 @@
   </div>
 
   <!-- ======================== DASHBOARD CONTAINER ======================== -->
-  <div id="dashboard-container" class="dashboard-container" style="display:none;">
+  <div id="dashboard-container" class="dashboard-container adm" style="display:none;">
 
     <!-- ==================== SIDEBAR OVERLAY (mobile) ==================== -->
     <div id="sidebar-overlay" class="sidebar-overlay" aria-hidden="true"></div>
 
     <!-- ==================== SIDEBAR ==================== -->
-    <aside id="admin-sidebar" class="admin-sidebar" aria-label="Main navigation">
-      <div class="sidebar-brand" style="justify-content: center; padding: 24px 16px;">
-        <img src="icon.png" alt="DC Kids BRAND" style="max-height: 80px; width: auto; object-fit: contain;">
-      </div>
+    <aside id="admin-sidebar" class="admin-sidebar adm-side" aria-label="Main navigation">
+      <div class="sidebar-brand adm-brand"><img src="icon.png" alt="" style="height:32px;width:auto;object-fit:contain;"><span class="adm-brand-text"><span class="t-title">DC Kids</span><span class="t-cap" style="color:var(--ink-75)">Store admin</span></span></div>
 
-      <nav class="sidebar-nav" aria-label="Dashboard navigation">
-        <ul class="sidebar-nav-list">
+      <nav class="sidebar-nav adm-nav" aria-label="Dashboard navigation">
+        
           <!-- 1. Dashboard -->
-          <li>
-            <a href="#" class="sidebar-link active" data-tab="tab-dashboard" aria-current="page">
+          <div class="adm-group">Shop</div>
+          
+            <a href="#" class="adm-nav-item sidebar-link active" data-tab="tab-dashboard" aria-current="page"><span class="adm-nav-hl" aria-hidden="true"></span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-              <span>Dashboard</span>
+              <span class="adm-nav-label">Dashboard</span>
             </a>
-          </li>
+          
           <!-- 2. Inventory -->
-          <li>
-            <a href="#" class="sidebar-link" data-tab="tab-inventory">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-              <span>Inventory</span>
+          
+            <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-inventory"><span class="adm-nav-hl" aria-hidden="true"></span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/></svg>
+              <span class="adm-nav-label">Inventory</span>
             </a>
-          </li>
+          
           <!-- 3. Products -->
-          <li>
-            <a href="#" class="sidebar-link" data-tab="tab-products">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-              <span>Products</span>
+          
+            <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-products"><span class="adm-nav-hl" aria-hidden="true"></span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/></svg>
+              <span class="adm-nav-label">Products</span>
             </a>
-          </li>
+          
           <!-- 4. Orders -->
-          <li>
-            <a href="#" class="sidebar-link" data-tab="tab-orders">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-              <span>Orders</span>
+          
+            <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-orders"><span class="adm-nav-hl" aria-hidden="true"></span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              <span class="adm-nav-label">Orders</span>
             </a>
-          </li>
+          
           <!-- 5. Customers -->
-          <li>
-            <a href="#" class="sidebar-link" data-tab="tab-customers">
+          <div class="adm-group">People</div>
+          
+            <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-customers"><span class="adm-nav-hl" aria-hidden="true"></span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              <span>Customers</span>
+              <span class="adm-nav-label">Customers</span>
             </a>
-          </li>
+          
           <!-- 6. Suppliers -->
-          <li>
-            <a href="#" class="sidebar-link" data-tab="tab-suppliers">
+          
+            <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-suppliers"><span class="adm-nav-hl" aria-hidden="true"></span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-              <span>Suppliers</span>
+              <span class="adm-nav-label">Suppliers</span>
             </a>
-          </li>
+          
           <!-- 7. Sales Analytics -->
-          <li>
-            <a href="#" class="sidebar-link" data-tab="tab-analytics">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-              <span>Sales Analytics</span>
+          <div class="adm-group">Money</div>
+          
+            <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-analytics"><span class="adm-nav-hl" aria-hidden="true"></span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+              <span class="adm-nav-label">Sales Analytics</span>
             </a>
-          </li>
+          
           <!-- 8. Reports -->
-          <li>
-            <a href="#" class="sidebar-link" data-tab="tab-reports">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-              <span>Reports</span>
+          
+            <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-reports"><span class="adm-nav-hl" aria-hidden="true"></span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="10 9 9 9 8 9"/></svg>
+              <span class="adm-nav-label">Reports</span>
             </a>
-          </li>
+          
           <!-- 9. Reviews -->
-          <li>
-            <a href="#" class="sidebar-link" data-tab="tab-reviews">
+          <div class="adm-group">Manage</div>
+          
+            <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-reviews"><span class="adm-nav-hl" aria-hidden="true"></span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-              <span>Reviews</span>
+              <span class="adm-nav-label">Reviews</span>
             </a>
-          </li>
+          
           <!-- 10. Settings -->
-          <li>
-            <a href="#" class="sidebar-link" data-tab="tab-admins">
+          
+            <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-admins"><span class="adm-nav-hl" aria-hidden="true"></span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-              <span>Manage Staff</span>
+              <span class="adm-nav-label">Manage Staff</span>
               <span id="staff-requests-badge" style="display:none; margin-left:auto; background:#fc4c7a; color:#fff; border-radius:999px; font-size:11px; font-weight:700; padding:2px 8px; line-height:1.4;">0</span>
             </a>
-          </li>
-          <li>
-            <a href="#" class="sidebar-link" data-tab="tab-settings">
+          
+          
+            <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-settings"><span class="adm-nav-hl" aria-hidden="true"></span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-              <span>Settings</span>
+              <span class="adm-nav-label">Settings</span>
             </a>
-          </li>
-        </ul>
+          
+        
       </nav>
 
 
 
       <div class="sidebar-footer">
         <div style="padding: 12px 16px; font-size: 11px; color: var(--text-secondary); line-height: 1.5; border-top: 1px solid var(--border);">
-          <div>© 2025 DC Kids Brand</div>
+          <div>© 2026 DC Kids Brand</div>
           <div>All rights reserved.</div>
         </div>
         <button id="sidebar-collapse-btn" class="sidebar-collapse-btn" type="button" aria-label="Collapse sidebar" style="position: absolute; bottom: 16px; left: 16px; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border); background: var(--card-bg); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; box-shadow: var(--shadow-sm);">
@@ -702,10 +587,10 @@
     </aside>
 
     <!-- ==================== MAIN AREA ==================== -->
-    <main id="admin-main" class="admin-main">
+    <main id="admin-main" class="admin-main adm-main">
 
       <!-- ============ TOP HEADER ============ -->
-      <header id="admin-header" class="admin-header">
+      <header id="admin-header" class="admin-header adm-bar">
         <div style="display: flex; align-items: center; gap: 24px; flex: 1;">
           <!-- Mobile Sidebar Toggle -->
           <div class="header-mobile-brand" id="headerMobileTitle">Dashboard</div>
@@ -730,36 +615,14 @@
           <div class="notification-wrapper">
             <button id="notification-btn" class="header-icon-btn" type="button" aria-label="Notifications" aria-haspopup="true">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              <span id="notification-count" class="notification-badge">3</span>
+              <span id="notification-count" class="notification-badge" style="display:none;">0</span>
             </button>
             <div id="notification-dropdown" class="notification-dropdown" role="menu" aria-label="Notifications list">
               <div class="notification-dropdown-header">
                 <h4>Notifications</h4>
                 <button type="button" class="btn-link" aria-label="Mark all as read">Mark all read</button>
               </div>
-              <ul id="notification-list" class="notification-list">
-                <li class="notification-item unread">
-                  <span class="notification-dot"></span>
-                  <div>
-                    <p class="notification-text">Low stock alert: Baby Romper (3 left)</p>
-                    <time class="notification-time">5 min ago</time>
-                  </div>
-                </li>
-                <li class="notification-item unread">
-                  <span class="notification-dot"></span>
-                  <div>
-                    <p class="notification-text">New order #1042 received</p>
-                    <time class="notification-time">20 min ago</time>
-                  </div>
-                </li>
-                <li class="notification-item unread">
-                  <span class="notification-dot"></span>
-                  <div>
-                    <p class="notification-text">Customer Jane D. registered</p>
-                    <time class="notification-time">1 hr ago</time>
-                  </div>
-                </li>
-              </ul>
+              <ul id="notification-list" class="notification-list"></ul>
             </div>
           </div>
           
@@ -814,7 +677,7 @@
 
             <button type="button" class="admin-user-menu__item" onclick="adminMenuGoto('settings')">
               <span class="aum-item-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
-              <span class="aum-item-text"><span class="aum-item-title">Account Settings</span><span class="aum-item-sub">Security, password, preferences</span></span>
+              <span class="aum-item-text"><span class="aum-item-title">Account Settings</span><span class="aum-item-sub">Profile and preferences</span></span>
               <span class="aum-item-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
             </button>
 
@@ -903,67 +766,138 @@
           </div>
         </div>
 
+        <div class="dashboard-livebar" aria-live="polite">
+          <div class="dashboard-livebar__status">
+            <span class="dashboard-livebar__dot" aria-hidden="true"></span>
+            <span>Live store data</span>
+            <span class="dashboard-livebar__updated" id="dashboard-last-updated">Updating&hellip;</span>
+          </div>
+          <div class="dashboard-livebar__actions">
+            <button type="button" class="dashboard-livebar__button" id="dashboard-refresh-btn" aria-label="Refresh dashboard data">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              Refresh
+            </button>
+            <a class="dashboard-livebar__button dashboard-livebar__button--store" href="/" target="_blank" rel="noopener">
+              View store
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3h7v7"></path><path d="M10 14 21 3"></path><path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"></path></svg>
+            </a>
+          </div>
+        </div>
+
+        <section class="dashboard-recovery-alert" id="dashboard-recovery-alert" role="status" aria-live="polite" aria-atomic="true" aria-labelledby="dashboard-recovery-alert-title" aria-describedby="dashboard-recovery-alert-message" hidden>
+          <span class="dashboard-recovery-alert__icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path><path d="M12 15v2"></path></svg>
+          </span>
+          <div class="dashboard-recovery-alert__copy">
+            <h2 id="dashboard-recovery-alert-title"></h2>
+            <p id="dashboard-recovery-alert-message"></p>
+          </div>
+          <button type="button" class="dashboard-recovery-alert__action" onclick="manageRecoveryCodes()">Manage recovery codes</button>
+        </section>
+
         <!-- Stat Widgets -->
-        <div class="stats-grid">
-          <!-- Total Products -->
-          <div class="stat-card" style="background: var(--card-bg); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-card); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-              <span style="color: var(--text-secondary); font-size: 14px; font-weight: 500;">Total Products</span>
-              <div class="stat-icon pink" style="width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
-              </div>
-            </div>
-            <div id="val-total-products" style="font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">1,245</div>
-            <div style="font-size: 12px; font-weight: 500; color: var(--success); display: flex; align-items: center; gap: 4px;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
-              12.5% <span style="color: var(--text-secondary); font-weight: 400;">from last month</span>
-            </div>
+        <!-- Page header: title + status line, as the reference top bar does. -->
+        <div class="adm-head">
+          <div class="adm-head__titles">
+            <h1 class="adm-title">Dashboard</h1>
+            <span class="adm-status"><i class="adm-dot"></i><span id="dash-status-line">Live store data</span></span>
           </div>
+          <div class="adm-head__actions">
+            <label class="sr-only" for="dash-period">Period</label>
+            <select id="dash-period" class="adm-period">
+              <option value="weekly">Last 7 days</option>
+              <option value="monthly" selected>This month</option>
+              <option value="yearly">This year</option>
+            </select>
+            <button type="button" class="adm-cta" data-dashboard-target="tab-products">
+              <span>Add product</span><i aria-hidden="true">&rarr;</i>
+            </button>
+          </div>
+        </div>
 
-          <!-- Low Stock Alert -->
-          <div class="stat-card" style="background: var(--card-bg); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-card); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-              <span style="color: var(--text-secondary); font-size: 14px; font-weight: 500;">Low Stock Alert</span>
-              <div class="stat-icon amber" style="width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-              </div>
-            </div>
-            <div id="val-low-stock" style="font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">24</div>
-            <div style="font-size: 12px; font-weight: 500; color: var(--danger); display: flex; align-items: center; gap: 4px;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
-              8.2% <span style="color: var(--text-secondary); font-weight: 400;">from last month</span>
-            </div>
+        <!-- One dark action card: the most urgent thing on this page, hidden when
+             there is nothing waiting. -->
+        <section class="adm-card adm-dark adm-alert" id="dash-alert" hidden>
+          <div class="adm-alert__text">
+            <strong id="dash-alert-title">Orders waiting on you</strong>
+            <span id="dash-alert-body">Review them and move each one forward.</span>
           </div>
+          <button type="button" class="adm-alert__cta" data-dashboard-target="tab-orders">Review orders</button>
+        </section>
 
-          <!-- Today's Sales -->
-          <div class="stat-card" style="background: var(--card-bg); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-card); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-              <span style="color: var(--text-secondary); font-size: 14px; font-weight: 500;">Today's Sales</span>
-              <div class="stat-icon green" style="width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-              </div>
-            </div>
-            <div id="val-today-sales" style="font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">GHS 12,450</div>
-            <div style="font-size: 12px; font-weight: 500; color: var(--success); display: flex; align-items: center; gap: 4px;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
-              18.7% <span style="color: var(--text-secondary); font-weight: 400;">from yesterday</span>
-            </div>
+        <!-- Pattern A — KPI tabs driving one trend chart.
+             The active tab redraws the chart for that metric. Products has no
+             daily history, so selecting it shows the stock card instead of a
+             fabricated flat line. -->
+        <section class="adm-card kpi-card" id="dash-kpi-card">
+          <div class="kpi-tabs" id="dash-kpi-tabs" role="tablist" aria-label="Dashboard metrics">
+            <button type="button" class="kpi-tab is-active" data-metric="revenue" role="tab" aria-selected="true">
+              <span class="kpi-tab-hl"></span>
+              <span class="kpi-label">Revenue</span>
+              <span class="kpi-value" id="val-period-revenue">&mdash;</span>
+              <span class="delta" id="delta-revenue"></span>
+              <span class="kpi-sub"><b id="val-today-sales">&mdash;</b> today</span>
+            </button>
+            <button type="button" class="kpi-tab" data-metric="orders" role="tab" aria-selected="false">
+              <span class="kpi-tab-hl"></span>
+              <span class="kpi-label">Orders</span>
+              <span class="kpi-value" id="val-total-orders">&mdash;</span>
+              <span class="delta" id="delta-orders"></span>
+            </button>
+            <button type="button" class="kpi-tab" data-metric="avg" role="tab" aria-selected="false">
+              <span class="kpi-tab-hl"></span>
+              <span class="kpi-label">Average order</span>
+              <span class="kpi-value" id="val-avg-order">&mdash;</span>
+              <span class="delta" id="delta-avg"></span>
+            </button>
+            <button type="button" class="kpi-tab" data-metric="products" role="tab" aria-selected="false">
+              <span class="kpi-tab-hl"></span>
+              <span class="kpi-label">Products</span>
+              <span class="kpi-value" id="val-total-products">&mdash;</span>
+              <span class="delta is-neutral" id="delta-products"></span>
+            </button>
           </div>
+          <div class="adm-card-body">
+            <div class="kpi-chart-wrap"><canvas id="kpiTrendChart" aria-label="Metric trend"></canvas></div>
+            <p class="chart-empty" id="dash-chart-empty" hidden></p>
+          </div>
+          <div class="adm-card-foot">
+            <span class="adm-meta" id="dash-kpi-range">Last 30 days</span>
+            <button type="button" class="link-arrow" data-dashboard-target="tab-analytics">View report &rarr;</button>
+          </div>
+        </section>
 
-          <!-- New Arrivals -->
-          <div class="stat-card" style="background: var(--card-bg); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-card); display: flex; flex-direction: column; justify-content: space-between; position: relative;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px;">
-              <span style="color: var(--text-secondary); font-size: 14px; font-weight: 500;">New Arrivals</span>
-              <div class="stat-icon pink" style="width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>
+        <div class="dash-split">
+          <!-- Pattern B — the one dark card per screen: what is on the shelf now. -->
+          <section class="adm-card adm-dark" id="dash-stock-card">
+            <div class="adm-card-body">
+              <span class="adm-meta">In stock now</span>
+              <div class="counter-num" id="val-in-stock">&mdash;</div>
+              <span class="adm-meta" id="val-in-stock-caption">products available</span>
+              <div class="stage-strip" id="dash-stage-strip"></div>
+              <div class="kv-list">
+                <div class="kv"><span>Low stock</span><b id="val-low-stock">&mdash;</b></div>
+                <div class="kv"><span>Out of stock</span><b id="val-out-stock">&mdash;</b></div>
+                <div class="kv"><span>Orders to review</span><b id="val-new-arrivals">&mdash;</b></div>
               </div>
+              <span class="adm-meta" id="val-low-stock-context"></span>
+              <span class="adm-meta" id="val-today-sales-context" hidden></span>
+              <span class="adm-meta" id="val-review-orders-context" hidden></span>
             </div>
-            <div id="val-new-arrivals" style="font-size: 28px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px;">18</div>
-            <div style="font-size: 12px; font-weight: 500; color: var(--success); display: flex; align-items: center; gap: 4px;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
-              5.3% <span style="color: var(--text-secondary); font-weight: 400;">from last week</span>
+          </section>
+
+          <!-- Ranked table: rank, name, count, share with an inline bar. -->
+          <section class="adm-card" id="dash-top-products">
+            <div class="adm-card-head"><h2>Top products</h2><span class="adm-meta" id="dash-top-range">Last 30 days</span></div>
+            <div class="adm-card-body">
+              <table class="rank-table"><tbody id="dash-top-products-body"></tbody></table>
+              <p class="empty-line" id="dash-top-empty" hidden>No sales in this period.</p>
             </div>
-          </div>
+            <div class="adm-card-foot">
+              <span class="adm-meta">By revenue</span>
+              <button type="button" class="link-arrow" data-dashboard-target="tab-products">See all &rarr;</button>
+            </div>
+          </section>
         </div>
 
         <!-- Quick Actions -->
@@ -991,50 +925,8 @@
 
         <!-- Charts Row -->
         <!-- Charts Row -->
-        <div class="dashboard-charts-grid">
-          <!-- Revenue Overview Chart -->
-          <div class="chart-card">
-            <div class="chart-card-header">
-              <h3 class="chart-title">Revenue Overview</h3>
-              <div class="chart-actions">
-                <select class="chart-filter" aria-label="Revenue chart period">
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly" selected>Monthly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-                <button class="btn btn-outline-small">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export
-                </button>
-              </div>
-            </div>
-            <div class="chart-body">
-              <canvas id="revenueChart" aria-label="Revenue overview chart"></canvas>
-            </div>
-          </div>
-
-          <!-- Inventory Status Chart -->
-          <div class="chart-card">
-            <div class="chart-card-header">
-              <h3 class="chart-title">Inventory Status</h3>
-            </div>
-            <div class="chart-body">
-              <canvas id="inventoryChart" aria-label="Inventory status chart"></canvas>
-            </div>
-          </div>
-
-          <!-- Recent Activity -->
-          <div class="activity-section chart-card flex-col">
-            <div class="chart-card-header">
-              <h3 class="chart-title">Recent Activity</h3>
-            </div>
-            <div id="activity-timeline" class="activity-timeline flex-grow-scroll">
-              <!-- Dynamic activity content goes here -->
-            </div>
-            <div class="activity-footer">
-              <a href="#">View All Activity</a>
-            </div>
-          </div>
-        </div>
+        <!-- Revenue Overview and Inventory Status removed: the KPI card now carries
+             the trend, and the dark card carries stock. -->
 
         <!-- Recent Products Table (hidden to match 2nd reference layout) -->
         <div class="recent-products-section" style="display: none;">
@@ -1071,13 +963,14 @@
 
       <!-- ==================== TAB: INVENTORY ==================== -->
       <section id="tab-inventory" class="tab-view" role="tabpanel" aria-label="Inventory Management">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Inventory Management</h1>
-            <p class="page-subtitle">Track and manage stock levels</p>
+        <div class="adm-head">
+            <div class="adm-head__titles">
+              <h1 class="adm-title">Inventory</h1>
+              <span class="adm-status"><i class="adm-dot"></i><span id="inventory-status-line">&nbsp;</span></span>
+            </div>
+            <div class="adm-head__actions">
+            </div>
           </div>
-
-        </div>
 
         <!-- Filter Bar -->
         <div class="filter-bar">
@@ -1116,8 +1009,8 @@
         </div>
 
         <!-- Inventory Table -->
-        <div class="table-responsive">
-          <table id="inventory-table" class="admin-table data-table sticky-header" aria-label="Inventory table">
+        <div class="table-responsive adm-table-wrap desktop-only">
+          <table id="inventory-table" class="admin-table data-table adm-table sticky-header" aria-label="Inventory table">
             <thead>
               <tr>
                 <th>Product</th>
@@ -1136,6 +1029,7 @@
             </tbody>
           </table>
         </div>
+          <div class="adm-rows mobile-only" id="inventory-rows"></div>
 
         <div id="inv-pagination" class="pagination" aria-label="Inventory pagination"></div>
       </section>
@@ -1146,76 +1040,24 @@
       
       <!-- ==================== TAB: PRODUCTS ==================== -->
       <section id="tab-products" class="tab-view" role="tabpanel" aria-label="Product Management">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Product Management</h1>
-            <p class="page-subtitle">Add, edit, and manage your products</p>
+        <div class="adm-head">
+            <div class="adm-head__titles">
+              <h1 class="adm-title">Products</h1>
+              <span class="adm-status"><i class="adm-dot"></i><span id="products-status-line">Loading catalogue&hellip;</span></span>
+            </div>
+            <div class="adm-head__actions">
+              <button type="button" class="adm-ghost" onclick="openImageHealthModal()">Image health</button>
+              <button type="button" class="adm-ghost" onclick="openBulkImageModal()">Bulk photos</button>
+              <button type="button" class="adm-ghost" onclick="exportProductCatalogueCSV()">Export CSV</button>
+              <button type="button" class="adm-ghost" onclick="openProductImportModal()">Import CSV</button>
+              <button type="button" class="adm-cta" id="add-product-btn" onclick="openAddProductModal()">
+                <span>Add product</span><i aria-hidden="true">&rarr;</i>
+              </button>
+            </div>
           </div>
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <button class="btn btn-outline" type="button" onclick="openImageHealthModal()">Image health</button>
-            <button class="btn btn-outline" type="button" onclick="openBulkImageModal()">Bulk photos</button>
-            <button class="btn btn-outline" type="button" onclick="exportProductCatalogueCSV()">Export CSV</button>
-            <button class="btn btn-outline" type="button" onclick="openProductImportModal()" style="display:inline-flex; align-items:center; gap:6px;">
-              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Import CSV
-            </button>
-            <button class="btn btn-primary" id="add-product-btn" onclick="openAddProductModal()">
-                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
-                Add Product
-            </button>
-          </div>
-        </div>
 
         <!-- Product Stats Cards -->
-        <div class="stats-grid mb-6" style="margin-bottom: 24px;">
-          <!-- Total Products -->
-          <div class="stat-card">
-            <div class="stat-icon pink">
-               <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-            </div>
-            <div class="stat-content">
-              <div class="stat-label">Total Products</div>
-              <div class="stat-number" id="prod-stat-total">89</div>
-            </div>
-          </div>
-
-          <!-- Low Stock -->
-          <div class="stat-card">
-            <div class="stat-icon amber">
-               <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-            </div>
-            <div class="stat-content">
-              <div class="stat-label">Low Stock</div>
-              <div class="stat-number" id="prod-stat-low">10</div>
-            </div>
-          </div>
-
-          <!-- In Stock -->
-          <div class="stat-card">
-            <div class="stat-icon green">
-               <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            </div>
-            <div class="stat-content">
-              <div class="stat-label">In Stock</div>
-              <div class="stat-number" id="prod-stat-instock">77</div>
-            </div>
-          </div>
-
-          <!-- Out of Stock -->
-          <div class="stat-card">
-            <div class="stat-icon red">
-               <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            </div>
-            <div class="stat-content">
-              <div class="stat-label">Out of Stock</div>
-              <div class="stat-number" id="prod-stat-out">2</div>
-            </div>
-          </div>
-          <button type="button" class="stat-card" onclick="document.getElementById('prod-image-filter').value='missing'; prodCurrentPage=1; renderProductsGrid();" style="text-align:left;cursor:pointer;">
-            <div class="stat-icon pink"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="m3 16 5-5 4 4 3-3 6 6"></path></svg></div>
-            <div class="stat-content"><div class="stat-label">Missing Real Photos</div><div class="stat-number" id="prod-stat-missing">0</div></div>
-          </button>
-        </div>
+        <div class="stats-grid" hidden aria-hidden="true"><span id="prod-stat-total"></span><span id="prod-stat-low"></span><span id="prod-stat-instock"></span><span id="prod-stat-out"></span></div>
 
         <!-- Filter Bar -->
         <div class="filter-bar">
@@ -1329,8 +1171,8 @@
         </div>
 
         <!-- Products Table -->
-        <div class="table-responsive">
-          <table id="products-table" class="admin-table data-table sticky-header" aria-label="Product management table">
+        <div class="table-responsive adm-table-wrap desktop-only">
+          <table id="products-table" class="admin-table data-table adm-table sticky-header" aria-label="Product management table">
             <thead>
               <tr>
                 <th style="width:36px; text-align:center;"><input type="checkbox" id="prod-bulk-select-all" onclick="prodBulkSelectAll(this.checked)" aria-label="Select all products"></th>
@@ -1349,7 +1191,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_1.jpg" alt="Party Dress" onerror="this.src='https://ui-avatars.com/api/?name=Party%20Dress&background=f3f4f6'">
+                    <img src="images/placeholder.svg" alt="Party Dress" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(1)">Party Dress</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -1380,7 +1222,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_2.jpg" alt="Crossbody Bag" onerror="this.src='https://ui-avatars.com/api/?name=Crossbody%20Bag&background=f3f4f6'">
+                    <img src="images/product_2.jpg" alt="Crossbody Bag" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(2)">Crossbody Bag</h4>
                       <p>Size: Standard</p>
@@ -1411,7 +1253,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_3.jpg" alt="Hair Bows Set" onerror="this.src='https://ui-avatars.com/api/?name=Hair%20Bows%20Set&background=f3f4f6'">
+                    <img src="images/product_3.jpg" alt="Hair Bows Set" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(3)">Hair Bows Set</h4>
                       <p>Size: Standard</p>
@@ -1442,7 +1284,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_4.jpg" alt="Sun Hat" onerror="this.src='https://ui-avatars.com/api/?name=Sun%20Hat&background=f3f4f6'">
+                    <img src="images/product_4.jpg" alt="Sun Hat" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(4)">Sun Hat</h4>
                       <p>Size: Standard</p>
@@ -1473,7 +1315,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_5.jpg" alt="Hair Bows Set" onerror="this.src='https://ui-avatars.com/api/?name=Hair%20Bows%20Set&background=f3f4f6'">
+                    <img src="images/product_5.jpg" alt="Hair Bows Set" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(5)">Hair Bows Set</h4>
                       <p>Size: Standard</p>
@@ -1504,7 +1346,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_6.jpg" alt="Sun Hat" onerror="this.src='https://ui-avatars.com/api/?name=Sun%20Hat&background=f3f4f6'">
+                    <img src="images/product_6.jpg" alt="Sun Hat" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(6)">Sun Hat</h4>
                       <p>Size: Standard</p>
@@ -1535,7 +1377,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_7.jpg" alt="Baby Beanie" onerror="this.src='https://ui-avatars.com/api/?name=Baby%20Beanie&background=f3f4f6'">
+                    <img src="images/product_7.jpg" alt="Baby Beanie" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(7)">Baby Beanie</h4>
                       <p>Size: Standard</p>
@@ -1566,7 +1408,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_8.jpg" alt="Knitted Swaddle" onerror="this.src='https://ui-avatars.com/api/?name=Knitted%20Swaddle&background=f3f4f6'">
+                    <img src="images/product_8.jpg" alt="Knitted Swaddle" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(8)">Knitted Swaddle</h4>
                       <p>Size: 0 - 12M</p>
@@ -1597,7 +1439,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_9.jpg" alt="Knitted Swaddle" onerror="this.src='https://ui-avatars.com/api/?name=Knitted%20Swaddle&background=f3f4f6'">
+                    <img src="images/product_9.jpg" alt="Knitted Swaddle" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(9)">Knitted Swaddle</h4>
                       <p>Size: 0 - 12M</p>
@@ -1628,7 +1470,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_10.jpg" alt="Knitted Swaddle" onerror="this.src='https://ui-avatars.com/api/?name=Knitted%20Swaddle&background=f3f4f6'">
+                    <img src="images/product_10.jpg" alt="Knitted Swaddle" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(10)">Knitted Swaddle</h4>
                       <p>Size: 0 - 12M</p>
@@ -1659,7 +1501,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_11.jpg" alt="Boutique Romper" onerror="this.src='https://ui-avatars.com/api/?name=Boutique%20Romper&background=f3f4f6'">
+                    <img src="images/product_11.jpg" alt="Boutique Romper" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(11)">Boutique Romper</h4>
                       <p>Size: 1Y - 6Y</p>
@@ -1690,7 +1532,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_12.jpg" alt="Special Occasion Suit" onerror="this.src='https://ui-avatars.com/api/?name=Special%20Occasion%20Suit&background=f3f4f6'">
+                    <img src="images/product_12.jpg" alt="Special Occasion Suit" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(12)">Special Occasion Suit</h4>
                       <p>Size: 1Y - 6Y</p>
@@ -1721,7 +1563,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_13.jpg" alt="Plush Baby Blanket" onerror="this.src='https://ui-avatars.com/api/?name=Plush%20Baby%20Blanket&background=f3f4f6'">
+                    <img src="images/product_13.jpg" alt="Plush Baby Blanket" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(13)">Plush Baby Blanket</h4>
                       <p>Size: Standard</p>
@@ -1752,7 +1594,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_14.jpg" alt="Plush Baby Blanket" onerror="this.src='https://ui-avatars.com/api/?name=Plush%20Baby%20Blanket&background=f3f4f6'">
+                    <img src="images/product_14.jpg" alt="Plush Baby Blanket" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(14)">Plush Baby Blanket</h4>
                       <p>Size: Standard</p>
@@ -1783,7 +1625,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_15.jpg" alt="Toddler Pillow" onerror="this.src='https://ui-avatars.com/api/?name=Toddler%20Pillow&background=f3f4f6'">
+                    <img src="images/product_15.jpg" alt="Toddler Pillow" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(15)">Toddler Pillow</h4>
                       <p>Size: Standard</p>
@@ -1814,7 +1656,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_16.jpg" alt="Cotton Crib Sheet" onerror="this.src='https://ui-avatars.com/api/?name=Cotton%20Crib%20Sheet&background=f3f4f6'">
+                    <img src="images/product_16.jpg" alt="Cotton Crib Sheet" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(16)">Cotton Crib Sheet</h4>
                       <p>Size: Standard</p>
@@ -1845,7 +1687,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_17.jpg" alt="Soft Duvet Cover" onerror="this.src='https://ui-avatars.com/api/?name=Soft%20Duvet%20Cover&background=f3f4f6'">
+                    <img src="images/product_17.jpg" alt="Soft Duvet Cover" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(17)">Soft Duvet Cover</h4>
                       <p>Size: Standard</p>
@@ -1876,7 +1718,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_18.jpg" alt="Soft Duvet Cover" onerror="this.src='https://ui-avatars.com/api/?name=Soft%20Duvet%20Cover&background=f3f4f6'">
+                    <img src="images/product_18.jpg" alt="Soft Duvet Cover" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(18)">Soft Duvet Cover</h4>
                       <p>Size: Standard</p>
@@ -1907,7 +1749,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_19.jpg" alt="Cotton Crib Sheet" onerror="this.src='https://ui-avatars.com/api/?name=Cotton%20Crib%20Sheet&background=f3f4f6'">
+                    <img src="images/product_19.jpg" alt="Cotton Crib Sheet" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(19)">Cotton Crib Sheet</h4>
                       <p>Size: Standard</p>
@@ -1938,7 +1780,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_20.jpg" alt="Swaddle Blanket" onerror="this.src='https://ui-avatars.com/api/?name=Swaddle%20Blanket&background=f3f4f6'">
+                    <img src="images/product_20.jpg" alt="Swaddle Blanket" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(20)">Swaddle Blanket</h4>
                       <p>Size: Standard</p>
@@ -1969,7 +1811,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_21.jpg" alt="Cotton Crib Sheet" onerror="this.src='https://ui-avatars.com/api/?name=Cotton%20Crib%20Sheet&background=f3f4f6'">
+                    <img src="images/product_21.jpg" alt="Cotton Crib Sheet" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(21)">Cotton Crib Sheet</h4>
                       <p>Size: Standard</p>
@@ -2000,7 +1842,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_22.jpg" alt="Waterproof Mattress Protector" onerror="this.src='https://ui-avatars.com/api/?name=Waterproof%20Mattress%20Protector&background=f3f4f6'">
+                    <img src="images/product_22.jpg" alt="Waterproof Mattress Protector" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(22)">Waterproof Mattress Protector</h4>
                       <p>Size: Standard</p>
@@ -2031,7 +1873,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_23.jpg" alt="Plush Baby Blanket" onerror="this.src='https://ui-avatars.com/api/?name=Plush%20Baby%20Blanket&background=f3f4f6'">
+                    <img src="images/product_23.jpg" alt="Plush Baby Blanket" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(23)">Plush Baby Blanket</h4>
                       <p>Size: Standard</p>
@@ -2062,7 +1904,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_24.jpg" alt="Party Dress" onerror="this.src='https://ui-avatars.com/api/?name=Party%20Dress&background=f3f4f6'">
+                    <img src="images/product_24.jpg" alt="Party Dress" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(24)">Party Dress</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2093,7 +1935,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_25.jpg" alt="Graphic Tee" onerror="this.src='https://ui-avatars.com/api/?name=Graphic%20Tee&background=f3f4f6'">
+                    <img src="images/product_25.jpg" alt="Graphic Tee" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(25)">Graphic Tee</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2124,7 +1966,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_26.jpg" alt="Casual Joggers" onerror="this.src='https://ui-avatars.com/api/?name=Casual%20Joggers&background=f3f4f6'">
+                    <img src="images/product_26.jpg" alt="Casual Joggers" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(26)">Casual Joggers</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2155,7 +1997,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_27.jpg" alt="Kids Two-Piece Set" onerror="this.src='https://ui-avatars.com/api/?name=Kids%20Two-Piece%20Set&background=f3f4f6'">
+                    <img src="images/product_27.jpg" alt="Kids Two-Piece Set" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(27)">Kids Two-Piece Set</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2186,7 +2028,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_28.jpg" alt="Baby Romper" onerror="this.src='https://ui-avatars.com/api/?name=Baby%20Romper&background=f3f4f6'">
+                    <img src="images/product_28.jpg" alt="Baby Romper" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(28)">Baby Romper</h4>
                       <p>Size: 0 - 12M</p>
@@ -2217,7 +2059,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_29.jpg" alt="Trendy Backpack" onerror="this.src='https://ui-avatars.com/api/?name=Trendy%20Backpack&background=f3f4f6'">
+                    <img src="images/product_29.jpg" alt="Trendy Backpack" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(29)">Trendy Backpack</h4>
                       <p>Size: Standard</p>
@@ -2248,7 +2090,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_30.jpg" alt="Kids Sunglasses" onerror="this.src='https://ui-avatars.com/api/?name=Kids%20Sunglasses&background=f3f4f6'">
+                    <img src="images/product_30.jpg" alt="Kids Sunglasses" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(30)">Kids Sunglasses</h4>
                       <p>Size: Standard</p>
@@ -2279,7 +2121,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_31.jpg" alt="Hair Bows Set" onerror="this.src='https://ui-avatars.com/api/?name=Hair%20Bows%20Set&background=f3f4f6'">
+                    <img src="images/product_31.jpg" alt="Hair Bows Set" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(31)">Hair Bows Set</h4>
                       <p>Size: Standard</p>
@@ -2310,7 +2152,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_32.jpg" alt="Trendy Backpack" onerror="this.src='https://ui-avatars.com/api/?name=Trendy%20Backpack&background=f3f4f6'">
+                    <img src="images/product_32.jpg" alt="Trendy Backpack" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(32)">Trendy Backpack</h4>
                       <p>Size: Standard</p>
@@ -2341,7 +2183,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_33.jpg" alt="Sun Hat" onerror="this.src='https://ui-avatars.com/api/?name=Sun%20Hat&background=f3f4f6'">
+                    <img src="images/product_33.jpg" alt="Sun Hat" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(33)">Sun Hat</h4>
                       <p>Size: Standard</p>
@@ -2372,7 +2214,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_34.jpg" alt="Trendy Backpack" onerror="this.src='https://ui-avatars.com/api/?name=Trendy%20Backpack&background=f3f4f6'">
+                    <img src="images/product_34.jpg" alt="Trendy Backpack" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(34)">Trendy Backpack</h4>
                       <p>Size: Standard</p>
@@ -2403,7 +2245,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_35.jpg" alt="Kids Sunglasses" onerror="this.src='https://ui-avatars.com/api/?name=Kids%20Sunglasses&background=f3f4f6'">
+                    <img src="images/product_35.jpg" alt="Kids Sunglasses" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(35)">Kids Sunglasses</h4>
                       <p>Size: Standard</p>
@@ -2434,7 +2276,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_36.jpg" alt="Casual Joggers" onerror="this.src='https://ui-avatars.com/api/?name=Casual%20Joggers&background=f3f4f6'">
+                    <img src="images/product_36.jpg" alt="Casual Joggers" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(36)">Casual Joggers</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2465,7 +2307,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_37.jpg" alt="Graphic Tee" onerror="this.src='https://ui-avatars.com/api/?name=Graphic%20Tee&background=f3f4f6'">
+                    <img src="images/product_37.jpg" alt="Graphic Tee" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(37)">Graphic Tee</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2496,7 +2338,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_38.jpg" alt="Graphic Tee" onerror="this.src='https://ui-avatars.com/api/?name=Graphic%20Tee&background=f3f4f6'">
+                    <img src="images/product_38.jpg" alt="Graphic Tee" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(38)">Graphic Tee</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2527,7 +2369,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_39.jpg" alt="Ribbed Leggings" onerror="this.src='https://ui-avatars.com/api/?name=Ribbed%20Leggings&background=f3f4f6'">
+                    <img src="images/product_39.jpg" alt="Ribbed Leggings" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(39)">Ribbed Leggings</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2558,7 +2400,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_40.jpg" alt="Kids Two-Piece Set" onerror="this.src='https://ui-avatars.com/api/?name=Kids%20Two-Piece%20Set&background=f3f4f6'">
+                    <img src="images/product_40.jpg" alt="Kids Two-Piece Set" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(40)">Kids Two-Piece Set</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2589,7 +2431,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_41.jpg" alt="Knit Sweater" onerror="this.src='https://ui-avatars.com/api/?name=Knit%20Sweater&background=f3f4f6'">
+                    <img src="images/product_41.jpg" alt="Knit Sweater" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(41)">Knit Sweater</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2620,7 +2462,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_42.jpg" alt="Casual Joggers" onerror="this.src='https://ui-avatars.com/api/?name=Casual%20Joggers&background=f3f4f6'">
+                    <img src="images/product_42.jpg" alt="Casual Joggers" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(42)">Casual Joggers</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2651,7 +2493,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_43.jpg" alt="Winter Jacket" onerror="this.src='https://ui-avatars.com/api/?name=Winter%20Jacket&background=f3f4f6'">
+                    <img src="images/product_43.jpg" alt="Winter Jacket" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(43)">Winter Jacket</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2682,7 +2524,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_44.jpg" alt="Cotton Summer Dress" onerror="this.src='https://ui-avatars.com/api/?name=Cotton%20Summer%20Dress&background=f3f4f6'">
+                    <img src="images/product_44.jpg" alt="Cotton Summer Dress" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(44)">Cotton Summer Dress</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2713,7 +2555,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_45.jpg" alt="Denim Overalls" onerror="this.src='https://ui-avatars.com/api/?name=Denim%20Overalls&background=f3f4f6'">
+                    <img src="images/product_45.jpg" alt="Denim Overalls" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(45)">Denim Overalls</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2744,7 +2586,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_46.jpg" alt="Kids Two-Piece Set" onerror="this.src='https://ui-avatars.com/api/?name=Kids%20Two-Piece%20Set&background=f3f4f6'">
+                    <img src="images/product_46.jpg" alt="Kids Two-Piece Set" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(46)">Kids Two-Piece Set</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2775,7 +2617,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_47.jpg" alt="Party Dress" onerror="this.src='https://ui-avatars.com/api/?name=Party%20Dress&background=f3f4f6'">
+                    <img src="images/product_47.jpg" alt="Party Dress" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(47)">Party Dress</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2806,7 +2648,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_48.jpg" alt="Winter Jacket" onerror="this.src='https://ui-avatars.com/api/?name=Winter%20Jacket&background=f3f4f6'">
+                    <img src="images/product_48.jpg" alt="Winter Jacket" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(48)">Winter Jacket</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2837,7 +2679,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_49.jpg" alt="Casual Joggers" onerror="this.src='https://ui-avatars.com/api/?name=Casual%20Joggers&background=f3f4f6'">
+                    <img src="images/product_49.jpg" alt="Casual Joggers" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(49)">Casual Joggers</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2868,7 +2710,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_50.jpg" alt="Polo Shirt & Shorts" onerror="this.src='https://ui-avatars.com/api/?name=Polo%20Shirt%20%26%20Shorts&background=f3f4f6'">
+                    <img src="images/product_50.jpg" alt="Polo Shirt & Shorts" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(50)">Polo Shirt & Shorts</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2899,7 +2741,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_51.jpg" alt="Cotton Summer Dress" onerror="this.src='https://ui-avatars.com/api/?name=Cotton%20Summer%20Dress&background=f3f4f6'">
+                    <img src="images/product_51.jpg" alt="Cotton Summer Dress" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(51)">Cotton Summer Dress</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2930,7 +2772,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_52.jpg" alt="Kids Two-Piece Set" onerror="this.src='https://ui-avatars.com/api/?name=Kids%20Two-Piece%20Set&background=f3f4f6'">
+                    <img src="images/product_52.jpg" alt="Kids Two-Piece Set" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(52)">Kids Two-Piece Set</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -2961,7 +2803,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_53.jpg" alt="Newborn Mittens" onerror="this.src='https://ui-avatars.com/api/?name=Newborn%20Mittens&background=f3f4f6'">
+                    <img src="images/product_53.jpg" alt="Newborn Mittens" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(53)">Newborn Mittens</h4>
                       <p>Size: 0 - 12M</p>
@@ -2992,7 +2834,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_54.jpg" alt="Bodysuit 3-Pack" onerror="this.src='https://ui-avatars.com/api/?name=Bodysuit%203-Pack&background=f3f4f6'">
+                    <img src="images/product_54.jpg" alt="Bodysuit 3-Pack" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(54)">Bodysuit 3-Pack</h4>
                       <p>Size: 0 - 12M</p>
@@ -3023,7 +2865,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_55.jpg" alt="Winter Jacket" onerror="this.src='https://ui-avatars.com/api/?name=Winter%20Jacket&background=f3f4f6'">
+                    <img src="images/product_55.jpg" alt="Winter Jacket" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(55)">Winter Jacket</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3054,7 +2896,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_56.jpg" alt="Casual Joggers" onerror="this.src='https://ui-avatars.com/api/?name=Casual%20Joggers&background=f3f4f6'">
+                    <img src="images/product_56.jpg" alt="Casual Joggers" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(56)">Casual Joggers</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3085,7 +2927,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_57.jpg" alt="Kids Two-Piece Set" onerror="this.src='https://ui-avatars.com/api/?name=Kids%20Two-Piece%20Set&background=f3f4f6'">
+                    <img src="images/product_57.jpg" alt="Kids Two-Piece Set" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(57)">Kids Two-Piece Set</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3116,7 +2958,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_58.jpg" alt="Knit Sweater" onerror="this.src='https://ui-avatars.com/api/?name=Knit%20Sweater&background=f3f4f6'">
+                    <img src="images/product_58.jpg" alt="Knit Sweater" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(58)">Knit Sweater</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3147,7 +2989,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_59.jpg" alt="Ribbed Leggings" onerror="this.src='https://ui-avatars.com/api/?name=Ribbed%20Leggings&background=f3f4f6'">
+                    <img src="images/product_59.jpg" alt="Ribbed Leggings" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(59)">Ribbed Leggings</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3178,7 +3020,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_60.jpg" alt="Denim Overalls" onerror="this.src='https://ui-avatars.com/api/?name=Denim%20Overalls&background=f3f4f6'">
+                    <img src="images/product_60.jpg" alt="Denim Overalls" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(60)">Denim Overalls</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3209,7 +3051,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_61.jpg" alt="Party Dress" onerror="this.src='https://ui-avatars.com/api/?name=Party%20Dress&background=f3f4f6'">
+                    <img src="images/product_61.jpg" alt="Party Dress" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(61)">Party Dress</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3240,7 +3082,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_62.jpg" alt="Graphic Tee" onerror="this.src='https://ui-avatars.com/api/?name=Graphic%20Tee&background=f3f4f6'">
+                    <img src="images/product_62.jpg" alt="Graphic Tee" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(62)">Graphic Tee</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3271,7 +3113,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_63.jpg" alt="Ribbed Leggings" onerror="this.src='https://ui-avatars.com/api/?name=Ribbed%20Leggings&background=f3f4f6'">
+                    <img src="images/product_63.jpg" alt="Ribbed Leggings" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(63)">Ribbed Leggings</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3302,7 +3144,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_64.jpg" alt="Graphic Tee" onerror="this.src='https://ui-avatars.com/api/?name=Graphic%20Tee&background=f3f4f6'">
+                    <img src="images/product_64.jpg" alt="Graphic Tee" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(64)">Graphic Tee</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3333,7 +3175,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_65.jpg" alt="Kids Two-Piece Set" onerror="this.src='https://ui-avatars.com/api/?name=Kids%20Two-Piece%20Set&background=f3f4f6'">
+                    <img src="images/product_65.jpg" alt="Kids Two-Piece Set" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(65)">Kids Two-Piece Set</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3364,7 +3206,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_66.jpg" alt="Toddler Sneakers" onerror="this.src='https://ui-avatars.com/api/?name=Toddler%20Sneakers&background=f3f4f6'">
+                    <img src="images/product_66.jpg" alt="Toddler Sneakers" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(66)">Toddler Sneakers</h4>
                       <p>Size: Size 25 - 35</p>
@@ -3395,7 +3237,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_67.jpg" alt="Princess Sandals" onerror="this.src='https://ui-avatars.com/api/?name=Princess%20Sandals&background=f3f4f6'">
+                    <img src="images/product_67.jpg" alt="Princess Sandals" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(67)">Princess Sandals</h4>
                       <p>Size: Size 25 - 35</p>
@@ -3426,7 +3268,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_68.jpg" alt="Slip-on Loafers" onerror="this.src='https://ui-avatars.com/api/?name=Slip-on%20Loafers&background=f3f4f6'">
+                    <img src="images/product_68.jpg" alt="Slip-on Loafers" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(68)">Slip-on Loafers</h4>
                       <p>Size: Size 25 - 35</p>
@@ -3457,7 +3299,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_69.jpg" alt="Canvas Shoes" onerror="this.src='https://ui-avatars.com/api/?name=Canvas%20Shoes&background=f3f4f6'">
+                    <img src="images/product_69.jpg" alt="Canvas Shoes" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(69)">Canvas Shoes</h4>
                       <p>Size: Size 25 - 35</p>
@@ -3488,7 +3330,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_70.jpg" alt="Canvas Shoes" onerror="this.src='https://ui-avatars.com/api/?name=Canvas%20Shoes&background=f3f4f6'">
+                    <img src="images/product_70.jpg" alt="Canvas Shoes" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(70)">Canvas Shoes</h4>
                       <p>Size: Size 25 - 35</p>
@@ -3519,7 +3361,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_71.jpg" alt="Slip-on Loafers" onerror="this.src='https://ui-avatars.com/api/?name=Slip-on%20Loafers&background=f3f4f6'">
+                    <img src="images/product_71.jpg" alt="Slip-on Loafers" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(71)">Slip-on Loafers</h4>
                       <p>Size: Size 25 - 35</p>
@@ -3550,7 +3392,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_72.jpg" alt="Princess Sandals" onerror="this.src='https://ui-avatars.com/api/?name=Princess%20Sandals&background=f3f4f6'">
+                    <img src="images/product_72.jpg" alt="Princess Sandals" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(72)">Princess Sandals</h4>
                       <p>Size: Size 25 - 35</p>
@@ -3581,7 +3423,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_73.jpg" alt="Canvas Shoes" onerror="this.src='https://ui-avatars.com/api/?name=Canvas%20Shoes&background=f3f4f6'">
+                    <img src="images/product_73.jpg" alt="Canvas Shoes" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(73)">Canvas Shoes</h4>
                       <p>Size: Size 25 - 35</p>
@@ -3612,7 +3454,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_74.jpg" alt="Toddler Sneakers" onerror="this.src='https://ui-avatars.com/api/?name=Toddler%20Sneakers&background=f3f4f6'">
+                    <img src="images/product_74.jpg" alt="Toddler Sneakers" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(74)">Toddler Sneakers</h4>
                       <p>Size: Size 25 - 35</p>
@@ -3643,7 +3485,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_75.jpg" alt="Slip-on Loafers" onerror="this.src='https://ui-avatars.com/api/?name=Slip-on%20Loafers&background=f3f4f6'">
+                    <img src="images/product_75.jpg" alt="Slip-on Loafers" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(75)">Slip-on Loafers</h4>
                       <p>Size: Size 25 - 35</p>
@@ -3674,7 +3516,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_76.jpg" alt="Breathable Mesh Shoes" onerror="this.src='https://ui-avatars.com/api/?name=Breathable%20Mesh%20Shoes&background=f3f4f6'">
+                    <img src="images/product_76.jpg" alt="Breathable Mesh Shoes" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(76)">Breathable Mesh Shoes</h4>
                       <p>Size: Size 25 - 35</p>
@@ -3705,7 +3547,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_77.jpg" alt="Light-up Sneakers" onerror="this.src='https://ui-avatars.com/api/?name=Light-up%20Sneakers&background=f3f4f6'">
+                    <img src="images/product_77.jpg" alt="Light-up Sneakers" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(77)">Light-up Sneakers</h4>
                       <p>Size: Size 25 - 35</p>
@@ -3736,7 +3578,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_78.jpg" alt="Designer Kids Tracksuit" onerror="this.src='https://ui-avatars.com/api/?name=Designer%20Kids%20Tracksuit&background=f3f4f6'">
+                    <img src="images/product_78.jpg" alt="Designer Kids Tracksuit" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(78)">Designer Kids Tracksuit</h4>
                       <p>Size: 1Y - 6Y</p>
@@ -3767,7 +3609,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_79.jpg" alt="Winter Jacket" onerror="this.src='https://ui-avatars.com/api/?name=Winter%20Jacket&background=f3f4f6'">
+                    <img src="images/product_79.jpg" alt="Winter Jacket" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(79)">Winter Jacket</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3798,7 +3640,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_80.jpg" alt="Kids Two-Piece Set" onerror="this.src='https://ui-avatars.com/api/?name=Kids%20Two-Piece%20Set&background=f3f4f6'">
+                    <img src="images/product_80.jpg" alt="Kids Two-Piece Set" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(80)">Kids Two-Piece Set</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3829,7 +3671,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_81.jpg" alt="Denim Overalls" onerror="this.src='https://ui-avatars.com/api/?name=Denim%20Overalls&background=f3f4f6'">
+                    <img src="images/product_81.jpg" alt="Denim Overalls" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(81)">Denim Overalls</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3860,7 +3702,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_82.jpg" alt="Winter Jacket" onerror="this.src='https://ui-avatars.com/api/?name=Winter%20Jacket&background=f3f4f6'">
+                    <img src="images/product_82.jpg" alt="Winter Jacket" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(82)">Winter Jacket</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3891,7 +3733,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_83.jpg" alt="Special Occasion Suit" onerror="this.src='https://ui-avatars.com/api/?name=Special%20Occasion%20Suit&background=f3f4f6'">
+                    <img src="images/product_83.jpg" alt="Special Occasion Suit" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(83)">Special Occasion Suit</h4>
                       <p>Size: 1Y - 6Y</p>
@@ -3922,7 +3764,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_bedsheets.jpg" alt="Cotton Summer Dress" onerror="this.src='https://ui-avatars.com/api/?name=Cotton%20Summer%20Dress&background=f3f4f6'">
+                    <img src="images/product_bedsheets.jpg" alt="Cotton Summer Dress" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(84)">Cotton Summer Dress</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3953,7 +3795,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_boys_sets.jpg" alt="Ribbed Leggings" onerror="this.src='https://ui-avatars.com/api/?name=Ribbed%20Leggings&background=f3f4f6'">
+                    <img src="images/product_boys_sets.jpg" alt="Ribbed Leggings" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(85)">Ribbed Leggings</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -3984,7 +3826,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_girls_dresses.jpg" alt="Knit Sweater" onerror="this.src='https://ui-avatars.com/api/?name=Knit%20Sweater&background=f3f4f6'">
+                    <img src="images/product_girls_dresses.jpg" alt="Knit Sweater" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(86)">Knit Sweater</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -4015,7 +3857,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_kaftan.jpg" alt="Winter Jacket" onerror="this.src='https://ui-avatars.com/api/?name=Winter%20Jacket&background=f3f4f6'">
+                    <img src="images/product_kaftan.jpg" alt="Winter Jacket" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(87)">Winter Jacket</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -4046,7 +3888,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_kids_bags.jpg" alt="Kids Two-Piece Set" onerror="this.src='https://ui-avatars.com/api/?name=Kids%20Two-Piece%20Set&background=f3f4f6'">
+                    <img src="images/product_kids_bags.jpg" alt="Kids Two-Piece Set" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(88)">Kids Two-Piece Set</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -4077,7 +3919,7 @@
               <tr>
                 <td>
                   <div class="table-product">
-                    <img src="images/product_kids_shoes.jpg" alt="Ribbed Leggings" onerror="this.src='https://ui-avatars.com/api/?name=Ribbed%20Leggings&background=f3f4f6'">
+                    <img src="images/product_kids_shoes.jpg" alt="Ribbed Leggings" onerror="this.onerror=null; this.src='images/placeholder.svg'">
                     <div class="table-product-info">
                       <h4 onclick="openEditModal(89)">Ribbed Leggings</h4>
                       <p>Size: 2Y - 8Y</p>
@@ -4108,6 +3950,7 @@
             </tbody>
           </table>
         </div>
+          <div class="adm-rows mobile-only" id="products-rows"></div>
 
         <div id="prod-pagination" class="pagination" aria-label="Product pagination"></div>
       </section>
@@ -4115,142 +3958,213 @@
 
       <!-- ==================== TAB: ORDERS ==================== -->
       <section id="tab-orders" class="tab-view" role="tabpanel" aria-label="Order Management">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Order Management</h1>
-            <p class="page-subtitle">Track and manage customer orders</p>
-          </div>
-          <button id="create-order-btn" class="btn btn-primary" type="button" onclick="openCreateOrderModal()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Create Order
-          </button>
-        </div>
-
-        <!-- Filter Bar -->
-        <div class="filter-bar">
-          <div class="filter-group">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="search" id="order-search" class="filter-input" placeholder="Search orders…" aria-label="Search orders">
-          </div>
-          <select id="order-status-filter" class="filter-select" aria-label="Filter orders by status">
-            <option value="">All Status</option>
-            <option value="pending">Pending</option>
-            <option value="processing">Processing</option>
-            <option value="delivered">Delivered</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-          <select id="order-type-filter" class="filter-select" aria-label="Filter orders by type"><option value="">All Types</option><option value="retail">Retail</option><option value="wholesale">Wholesale</option><option value="preorder">China Pre-Order</option></select>
-          <select id="order-date-filter" class="filter-select" aria-label="Filter orders by date">
-            <option value="">All Time</option>
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-            <option value="year">This Year</option>
-          </select>
-        </div>
-
-        <!-- Orders Table -->
-        <div class="table-responsive">
-          <table id="orders-table" class="admin-table data-table sticky-header" aria-label="Orders table">
-            <thead>
-              <tr>
-                <th>Order ID</th>
-                <th>Customer</th>
-                <th>Items</th>
-                <th>Total</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="orders-tbody">
-              <tr>
-                <td colspan="7" class="empty-state">No orders found</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div id="order-pagination" class="pagination" aria-label="Orders pagination"></div>
-      </section>
-
-      <!-- ==================== TAB: CUSTOMERS ==================== -->
-      <section id="tab-customers" class="tab-view" role="tabpanel" aria-label="Customer Management">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Customer Management</h1>
-            <p class="page-subtitle">Manage your customer relationships</p>
-          </div>
-          <button id="add-customer-btn" class="btn btn-primary" type="button" onclick="openAddCustomerModal()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-            Add Customer
-          </button>
-        </div>
-
-
-        <!-- Customer Stats -->
-        <div class="stats-grid stats-grid-3">
-          <div class="stat-card stat-card-sm">
-            <div class="stat-content">
-              <span class="stat-value" id="cust-total-count">0</span>
-              <span class="stat-label">Total Customers</span>
+          <div class="adm-head">
+            <div class="adm-head__titles">
+              <h1 class="adm-title">Orders</h1>
+              <span class="adm-status"><i class="adm-dot"></i><span id="orders-status-line">Loading orders&hellip;</span></span>
+            </div>
+            <div class="adm-head__actions">
+              <button type="button" class="adm-cta" id="create-order-btn" onclick="openCreateOrderModal()">
+                <span>Create order</span><i aria-hidden="true">&rarr;</i>
+              </button>
             </div>
           </div>
-          <div class="stat-card stat-card-sm">
-            <div class="stat-content">
-              <span class="stat-value" id="cust-active-count">0</span>
-              <span class="stat-label">Active</span>
+
+          <!-- Search card: free text first, then the page's most useful filter. -->
+          <form class="patd-search" id="orders-search-card" onsubmit="return false;">
+            <div class="patd-field">
+              <label for="order-search">Who or what?</label>
+              <input type="search" id="order-search" placeholder="Name, phone or order number" aria-label="Search orders">
+            </div>
+            <div class="patd-field">
+              <label for="order-date-filter">When</label>
+              <select id="order-date-filter" aria-label="Filter orders by date">
+                <option value="">Any date</option>
+                <option value="today">Today</option>
+                <option value="week">This week</option>
+                <option value="month">This month</option>
+                <option value="year">This year</option>
+              </select>
+            </div>
+            <button type="button" class="adm-cta patd-search__go" onclick="renderOrdersTable()">
+              <span>Search</span><i aria-hidden="true">&rarr;</i>
+            </button>
+          </form>
+
+          <section class="adm-card adm-dark adm-alert" id="orders-alert" hidden>
+            <div class="adm-alert__text">
+              <strong id="orders-alert-title"></strong>
+              <span id="orders-alert-body"></span>
+            </div>
+            <button type="button" class="adm-alert__cta" id="orders-alert-cta">Show them</button>
+          </section>
+
+          <div class="patd">
+            <!-- Filter panel: sticky, scrolls on its own, no Apply button. -->
+            <aside class="patd-filters" aria-label="Order filters">
+              <div class="patd-filters__head">
+                <span class="patd-filters__title">Filters</span>
+                <button type="button" class="link-arrow" id="orders-clear-filters" hidden>Clear all</button>
+              </div>
+              <div class="patd-group">
+                <span class="patd-group__label">Status</span>
+                <select id="order-status-filter" class="patd-select" aria-label="Filter orders by status">
+                  <option value="">All status</option>
+                  <option value="attention">Requires attention</option>
+                  <option value="pending">Pending</option>
+                  <option value="awaiting_payment">Awaiting payment</option>
+                  <option value="payment_review">Payment review</option>
+                  <option value="paid">Paid</option>
+                  <option value="processing">Processing</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+              <div class="patd-group">
+                <span class="patd-group__label">Type</span>
+                <select id="order-type-filter" class="patd-select" aria-label="Filter orders by type">
+                  <option value="">All types</option>
+                  <option value="retail">Retail</option>
+                  <option value="wholesale">Wholesale</option>
+                  <option value="preorder">China pre-order</option>
+                </select>
+              </div>
+              <div class="patd-group">
+                <span class="patd-group__label">Counts</span>
+                <div class="patd-counts" id="orders-filter-counts"></div>
+              </div>
+            </aside>
+
+            <!-- Results -->
+            <div class="patd-results">
+              <div class="patd-results__head">
+                <h2 class="patd-count" id="orders-result-count">&mdash;</h2>
+                <label class="patd-sort">
+                  <span class="sr-only">Sort orders</span>
+                  <select id="orders-sort" class="adm-period">
+                    <option value="newest">Sort: Newest</option>
+                    <option value="oldest">Sort: Oldest</option>
+                    <option value="total">Sort: Highest total</option>
+                    <option value="customer">Sort: Customer A&ndash;Z</option>
+                  </select>
+                </label>
+              </div>
+              <div class="res-list" id="orders-tbody" role="list"></div>
+              <div id="order-pagination" class="pagination" aria-label="Orders pagination"></div>
+            </div>
+
+            <!-- Right rail: one short list, no promo. -->
+            <aside class="patd-rail" aria-label="Order summary">
+              <section class="adm-card">
+                <div class="adm-card-head"><h2>Needs payment</h2></div>
+                <div class="adm-card-body">
+                  <div class="rail-list" id="orders-rail-list"></div>
+                  <p class="empty-line" id="orders-rail-empty" hidden>Nothing waiting on payment.</p>
+                </div>
+              </section>
+            </aside>
+          </div>
+        </section>
+
+        <section id="tab-customers" class="tab-view" role="tabpanel" aria-label="Customer Management">
+          <div class="adm-head">
+            <div class="adm-head__titles">
+              <h1 class="adm-title">Customers</h1>
+              <span class="adm-status"><i class="adm-dot"></i><span id="customers-status-line">Loading customers&hellip;</span></span>
+            </div>
+            <div class="adm-head__actions">
+              <button type="button" class="adm-ghost" onclick="syncCustomersToServer && syncCustomersToServer()">Sync</button>
+              <button type="button" class="adm-cta" id="add-customer-btn" onclick="openAddCustomerModal()">
+                <span>Add customer</span><i aria-hidden="true">&rarr;</i>
+              </button>
             </div>
           </div>
-          <div class="stat-card stat-card-sm">
-            <div class="stat-content">
-              <span class="stat-value" id="cust-new-count">0</span>
-              <span class="stat-label">New This Month</span>
+
+          <form class="patd-search" onsubmit="return false;">
+            <div class="patd-field">
+              <label for="cust-search">Who are you looking for?</label>
+              <input type="search" id="cust-search" placeholder="Name or phone number" aria-label="Search customers">
+            </div>
+            <div class="patd-field">
+              <label for="cust-group-filter">Group</label>
+              <select id="cust-group-filter" aria-label="Filter customers by group">
+                <option value="">All groups</option>
+                <option value="Retail">Retail</option>
+                <option value="Wholesale">Wholesale</option>
+                <option value="VIP">VIP</option>
+              </select>
+            </div>
+            <button type="button" class="adm-cta patd-search__go" onclick="renderCustomersTable()">
+              <span>Search</span><i aria-hidden="true">&rarr;</i>
+            </button>
+          </form>
+
+          <div class="patd">
+            <aside class="patd-filters" aria-label="Customer filters">
+              <div class="patd-filters__head"><span class="patd-filters__title">Filters</span></div>
+              <div class="patd-group">
+                <span class="patd-group__label">Account</span>
+                <select id="cust-account-filter" class="patd-select" aria-label="Filter by account status">
+                  <option value="">Everyone</option>
+                  <option value="registered">Has an account</option>
+                  <option value="guest">Guest only</option>
+                </select>
+              </div>
+              <div class="patd-group">
+                <span class="patd-group__label">Spend</span>
+                <select id="cust-spend-filter" class="patd-select" aria-label="Filter by spend">
+                  <option value="">Any spend</option>
+                  <option value="has">Has ordered</option>
+                  <option value="none">Never ordered</option>
+                </select>
+              </div>
+              <div class="patd-group">
+                <span class="patd-group__label">Counts</span>
+                <div class="patd-counts" id="customers-filter-counts"></div>
+              </div>
+              <!-- Kept so the existing stat writers still have somewhere to go. -->
+              <div hidden aria-hidden="true">
+                <span id="cust-total-count"></span><span id="cust-active-count"></span><span id="cust-new-count"></span>
+              </div>
+            </aside>
+
+            <div class="patd-results">
+              <div class="patd-results__head">
+                <h2 class="patd-count" id="customers-result-count">&mdash;</h2>
+                <label class="patd-sort">
+                  <span class="sr-only">Sort customers</span>
+                  <select id="customers-sort" class="adm-period">
+                    <option value="spend">Sort: Highest spend</option>
+                    <option value="orders">Sort: Most orders</option>
+                    <option value="name">Sort: Name A&ndash;Z</option>
+                  </select>
+                </label>
+              </div>
+              <div class="res-list" id="customers-tbody" role="list"></div>
+              <div id="cust-pagination" class="pagination" aria-label="Customers pagination"></div>
+            </div>
+
+            <aside class="patd-rail" aria-label="Customer summary">
+              <section class="adm-card">
+                <div class="adm-card-head"><h2>Top spenders</h2></div>
+                <div class="adm-card-body">
+                  <div class="rail-list" id="customers-rail-list"></div>
+                  <p class="empty-line" id="customers-rail-empty" hidden>No spend recorded yet.</p>
+                </div>
+              </section>
+            </aside>
+          </div>
+        </section>
+
+        <section id="tab-reviews" class="tab-view" role="tabpanel" aria-label="Customer Reviews" style="display: none;">
+        <div class="adm-head">
+            <div class="adm-head__titles">
+              <h1 class="adm-title">Reviews</h1>
+              <span class="adm-status"><i class="adm-dot"></i><span id="reviews-status-line">&nbsp;</span></span>
+            </div>
+            <div class="adm-head__actions">
             </div>
           </div>
-        </div>
-
-        <!-- Search -->
-        <div class="filter-bar">
-          <div class="filter-group">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="search" id="cust-search" class="filter-input" placeholder="Search customers…" aria-label="Search customers">
-          </div>
-          <select id="cust-group-filter" class="filter-select" aria-label="Filter customers by group"><option value="">All Groups</option><option value="Retail">Retail</option><option value="Wholesale">Wholesale</option><option value="VIP">VIP</option></select>
-        </div>
-
-        <!-- Customer Table -->
-        <div class="table-responsive">
-          <table id="customers-table" class="admin-table data-table sticky-header" aria-label="Customers table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Phone</th>
-                <th>Orders</th>
-                <th>Total Spent</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="customers-tbody">
-              <tr>
-                <td colspan="7" class="empty-state">No customers found</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div id="cust-pagination" class="pagination" aria-label="Customers pagination"></div>
-      </section>
-
-      <!-- ==================== TAB: REVIEWS ==================== -->
-      <section id="tab-reviews" class="tab-view" role="tabpanel" aria-label="Customer Reviews" style="display: none;">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Customer Reviews</h1>
-            <p class="page-subtitle">View and moderate reviews left on your products</p>
-          </div>
-        </div>
 
         <!-- Review Stats -->
         <div class="stats-grid stats-grid-3">
@@ -4283,41 +4197,22 @@
         </div>
 
         <!-- Reviews Table -->
-        <div class="table-responsive">
-          <table id="reviews-table" class="admin-table data-table sticky-header" aria-label="Customer reviews table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Customer</th>
-                <th>Rating</th>
-                <th>Review</th>
-                <th>Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="reviews-tbody">
-              <tr>
-                <td colspan="6" class="empty-state">No reviews found</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <div class="res-list" id="reviews-list" aria-label="Customer reviews"></div>
 
         <div id="review-pagination" class="pagination" aria-label="Reviews pagination"></div>
       </section>
 
       <!-- ==================== TAB: STAFF / ADMINS ==================== -->
       <section id="tab-admins" class="tab-view" role="tabpanel" aria-label="Staff Management" style="display: none;">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Staff Management</h1>
-            <p class="page-subtitle">Add, modify, or remove staff and administrator access credentials</p>
+        <div class="adm-head">
+            <div class="adm-head__titles">
+              <h1 class="adm-title">Manage staff</h1>
+              <span class="adm-status"><i class="adm-dot"></i><span id="admins-status-line">&nbsp;</span></span>
+            </div>
+            <div class="adm-head__actions">
+              <button type="button" class="adm-ghost" onclick="openAddStaffModal()">Add Staff Member</button>
+            </div>
           </div>
-          <button id="add-staff-btn" class="btn btn-primary" type="button" onclick="openAddStaffModal()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-            Add Staff Member
-          </button>
-        </div>
 
         <!-- Pending access requests (sign-ups awaiting the owner's decision) -->
         <div id="access-requests-panel" style="display:none; margin-bottom:24px; background:#fff6f8; border:1px solid #f6c6d1; border-radius:16px; padding:18px 20px;">
@@ -4352,8 +4247,8 @@
         </div>
 
         <!-- Staff Table -->
-        <div class="table-responsive">
-          <table class="admin-table data-table sticky-header" id="staff-table" aria-label="Staff users list">
+        <div class="table-responsive adm-table-wrap desktop-only">
+          <table class="admin-table data-table adm-table sticky-header" id="staff-table" aria-label="Staff users list">
             <thead>
               <tr>
                 <th scope="col" style="width: 80px;">ID</th>
@@ -4367,56 +4262,87 @@
             </tbody>
           </table>
         </div>
+          <div class="adm-rows mobile-only" id="staff-rows"></div>
       </section>
 
       <!-- ==================== TAB: SUPPLIERS ==================== -->
       <section id="tab-suppliers" class="tab-view" role="tabpanel" aria-label="Supplier Management">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Supplier Management</h1>
-            <p class="page-subtitle">Manage your product suppliers</p>
+          <div class="adm-head">
+            <div class="adm-head__titles">
+              <h1 class="adm-title">Suppliers</h1>
+              <span class="adm-status"><i class="adm-dot"></i><span id="suppliers-status-line">Loading suppliers&hellip;</span></span>
+            </div>
+            <div class="adm-head__actions">
+              <button type="button" class="adm-cta" id="add-supplier-btn" onclick="openSupplierModal()">
+                <span>Add supplier</span><i aria-hidden="true">&rarr;</i>
+              </button>
+            </div>
           </div>
-          <button id="add-supplier-btn" class="btn btn-primary" type="button" onclick="openSupplierModal()">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Supplier
-          </button>
-        </div>
 
-        <!-- Search -->
-        <div class="filter-bar">
-          <div class="filter-group">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="search" id="supp-search" class="filter-input" placeholder="Search suppliers…" aria-label="Search suppliers">
+          <form class="patd-search" onsubmit="return false;">
+            <div class="patd-field">
+              <label for="supp-search">Which supplier?</label>
+              <input type="search" id="supp-search" placeholder="Company, contact or what they supply" aria-label="Search suppliers">
+            </div>
+            <div class="patd-field">
+              <label for="supp-status-filter">Status</label>
+              <select id="supp-status-filter" aria-label="Filter suppliers by status">
+                <option value="">Any status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </div>
+            <button type="button" class="adm-cta patd-search__go" onclick="renderSuppliersTable()">
+              <span>Search</span><i aria-hidden="true">&rarr;</i>
+            </button>
+          </form>
+
+          <div class="patd">
+            <aside class="patd-filters" aria-label="Supplier filters">
+              <div class="patd-filters__head"><span class="patd-filters__title">Filters</span></div>
+              <div class="patd-group">
+                <span class="patd-group__label">Contact details</span>
+                <select id="supp-contact-filter" class="patd-select" aria-label="Filter by contact details held">
+                  <option value="">Any</option>
+                  <option value="email">Has an email</option>
+                  <option value="phone">Has a phone number</option>
+                  <option value="missing">Missing contact details</option>
+                </select>
+              </div>
+              <div class="patd-group">
+                <span class="patd-group__label">Counts</span>
+                <div class="patd-counts" id="suppliers-filter-counts"></div>
+              </div>
+            </aside>
+
+            <div class="patd-results">
+              <div class="patd-results__head">
+                <h2 class="patd-count" id="suppliers-result-count">&mdash;</h2>
+                <label class="patd-sort">
+                  <span class="sr-only">Sort suppliers</span>
+                  <select id="suppliers-sort" class="adm-period">
+                    <option value="name">Sort: Company A&ndash;Z</option>
+                    <option value="status">Sort: Active first</option>
+                  </select>
+                </label>
+              </div>
+              <div class="res-list" id="suppliers-tbody" role="list"></div>
+              <div id="supp-pagination" class="pagination" aria-label="Suppliers pagination"></div>
+            </div>
+
+            <aside class="patd-rail" aria-label="Supplier summary">
+              <section class="adm-card">
+                <div class="adm-card-head"><h2>Missing details</h2></div>
+                <div class="adm-card-body">
+                  <div class="rail-list" id="suppliers-rail-list"></div>
+                  <p class="empty-line" id="suppliers-rail-empty" hidden>Every supplier has contact details.</p>
+                </div>
+              </section>
+            </aside>
           </div>
-        </div>
+        </section>
 
-        <!-- Suppliers Table -->
-        <div class="table-responsive">
-          <table class="admin-table data-table sticky-header" aria-label="Suppliers table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Contact</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Products Supplied</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="suppliers-tbody">
-              <tr>
-                <td colspan="7" class="empty-state">No suppliers found</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div id="supp-pagination" class="pagination" aria-label="Suppliers pagination"></div>
-      </section>
-
-      <!-- ==================== TAB: ANALYTICS ==================== -->
-      <section id="tab-analytics" class="tab-view analytics-dashboard" role="tabpanel" aria-label="Sales Analytics">
+        <section id="tab-analytics" class="tab-view analytics-dashboard" role="tabpanel" aria-label="Sales Analytics">
         <div class="analytics-shell">
           <div class="analytics-header">
             <div>
@@ -4637,15 +4563,16 @@
 
       <!-- ==================== TAB: REPORTS ==================== -->
       <section id="tab-reports" class="tab-view" role="tabpanel" aria-label="Reports">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Reports & Analytics</h1>
-            <p class="page-subtitle">Generate business insights and export reports.</p>
-          </div>
-          <div class="reports-header-actions" style="position: relative;">
+        <div class="adm-head">
+            <div class="adm-head__titles">
+              <h1 class="adm-title">Reports</h1>
+              <span class="adm-status"><i class="adm-dot"></i><span id="reports-status-line">&nbsp;</span></span>
+            </div>
+            <div class="adm-head__actions">
+              <div class="reports-header-actions" style="position: relative;">
             <div class="reports-date-picker-btn" onclick="toggleReportsDatePickerDropdown(event)">
               <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-              <span id="reports-date-range-display">May 12, 2025 - May 18, 2025</span>
+              <span id="reports-date-range-display">Current reporting period</span>
               <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
             </div>
             <div id="reports-datepicker-dropdown" class="date-range-picker" role="dialog" aria-label="Select date range">
@@ -4679,7 +4606,8 @@
               </div>
             </div>
           </div>
-        </div>
+            </div>
+          </div>
 
         <div class="reports-filter-tabs">
           <button class="reports-filter-tab" data-filter="today" onclick="switchReportsFilter(this, 'today')">Today</button>
@@ -4810,8 +4738,8 @@
               </div>
               <div class="reports-kpi-details">
                 <div class="reports-kpi-label">Total Sales</div>
-                <div class="reports-kpi-value" id="reports-kpi-sales">GHS 2,45,680</div>
-                <div class="reports-kpi-growth text-emerald" id="reports-kpi-sales-growth">↑ 12.5% <span class="text-secondary" style="font-weight: normal; font-size: 11px;">vs last 30 days</span></div>
+                <div class="reports-kpi-value" id="reports-kpi-sales">GHS 0</div>
+                <div class="reports-kpi-growth text-emerald" id="reports-kpi-sales-growth">Awaiting live data</div>
               </div>
             </div>
             <div class="reports-kpi-widget">
@@ -4820,8 +4748,8 @@
               </div>
               <div class="reports-kpi-details">
                 <div class="reports-kpi-label">Total Revenue</div>
-                <div class="reports-kpi-value" id="reports-kpi-revenue">GHS 3,12,450</div>
-                <div class="reports-kpi-growth text-emerald" id="reports-kpi-revenue-growth">↑ 8.3% <span class="text-secondary" style="font-weight: normal; font-size: 11px;">vs last 30 days</span></div>
+                <div class="reports-kpi-value" id="reports-kpi-revenue">GHS 0</div>
+                <div class="reports-kpi-growth text-emerald" id="reports-kpi-revenue-growth">Awaiting live data</div>
               </div>
             </div>
             <div class="reports-kpi-widget">
@@ -4830,8 +4758,8 @@
               </div>
               <div class="reports-kpi-details">
                 <div class="reports-kpi-label">Total Orders</div>
-                <div class="reports-kpi-value" id="reports-kpi-orders">1,256</div>
-                <div class="reports-kpi-growth text-emerald" id="reports-kpi-orders-growth">↑ 10.2% <span class="text-secondary" style="font-weight: normal; font-size: 11px;">vs last 30 days</span></div>
+                <div class="reports-kpi-value" id="reports-kpi-orders">0</div>
+                <div class="reports-kpi-growth text-emerald" id="reports-kpi-orders-growth">Awaiting live data</div>
               </div>
             </div>
             <div class="reports-kpi-widget">
@@ -4840,8 +4768,8 @@
               </div>
               <div class="reports-kpi-details">
                 <div class="reports-kpi-label">Total Customers</div>
-                <div class="reports-kpi-value" id="reports-kpi-customers">842</div>
-                <div class="reports-kpi-growth text-emerald" id="reports-kpi-customers-growth">↑ 7.6% <span class="text-secondary" style="font-weight: normal; font-size: 11px;">vs last 30 days</span></div>
+                <div class="reports-kpi-value" id="reports-kpi-customers">0</div>
+                <div class="reports-kpi-growth text-emerald" id="reports-kpi-customers-growth">Awaiting live data</div>
               </div>
             </div>
           </div>
@@ -4878,28 +4806,28 @@
             <div class="insight-icon-circle bg-emerald text-white"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
             <div class="insight-content">
               <h5 class="insight-title">Business is growing</h5>
-              <p class="insight-desc">Revenue increased by <strong class="text-emerald" id="insight-rev-growth">12.5%</strong> compared to the previous period.</p>
+              <p class="insight-desc">Revenue changed by <strong class="text-emerald" id="insight-rev-growth">0%</strong> compared to the previous period.</p>
             </div>
           </div>
           <div class="insight-card bg-rose-light">
             <div class="insight-icon-circle bg-pink text-white"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
             <div class="insight-content">
               <h5 class="insight-title">Best Performing Day</h5>
-              <p class="insight-desc">Sales peaked on <strong id="insight-best-day">May 18</strong> with a total revenue of <strong id="insight-best-day-rev">GHS 3,480</strong>.</p>
+              <p class="insight-desc">Sales peaked on <strong id="insight-best-day">No sales yet</strong> with a total revenue of <strong id="insight-best-day-rev">GHS 0</strong>.</p>
             </div>
           </div>
           <div class="insight-card bg-purple-light">
             <div class="insight-icon-circle bg-purple text-white"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.59 13.41L13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div>
             <div class="insight-content">
               <h5 class="insight-title">Top Category</h5>
-              <p class="insight-desc"><strong id="insight-top-category">Girls Dresses</strong> continues to lead, accounting for <strong id="insight-top-category-share">40%</strong> of total sales.</p>
+              <p class="insight-desc"><strong id="insight-top-category">No category yet</strong> currently accounts for <strong id="insight-top-category-share">0%</strong> of total sales.</p>
             </div>
           </div>
           <div class="insight-card bg-gold-light">
             <div class="insight-icon-circle bg-gold text-white"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2" ry="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
             <div class="insight-content">
               <h5 class="insight-title">Best Payment Method</h5>
-              <p class="insight-desc"><strong id="insight-top-payment">Mobile Money</strong> is the most popular, representing <strong id="insight-top-payment-share">60%</strong> of all transactions.</p>
+              <p class="insight-desc"><strong id="insight-top-payment">No payments yet</strong> currently represents <strong id="insight-top-payment-share">0%</strong> of all transactions.</p>
             </div>
           </div>
         </div>
@@ -4907,12 +4835,14 @@
 
       <!-- ==================== TAB: SETTINGS ==================== -->
       <section id="tab-settings" class="tab-view" role="tabpanel" aria-label="Settings">
-        <div class="page-header">
-          <div>
-            <h1 class="page-title">Settings</h1>
-            <p class="page-subtitle">Manage your account and preferences</p>
+        <div class="adm-head">
+            <div class="adm-head__titles">
+              <h1 class="adm-title">Settings</h1>
+              <span class="adm-status"><i class="adm-dot"></i><span id="settings-status-line">&nbsp;</span></span>
+            </div>
+            <div class="adm-head__actions">
+            </div>
           </div>
-        </div>
 
         <div class="settings-sections">
           <div class="settings-account-card" id="settingsAccountCard">
@@ -4926,6 +4856,24 @@
               <span>Log out</span>
             </button>
           </div>
+          <section class="settings-recovery-card" id="recovery-security-card" tabindex="-1" aria-labelledby="recovery-security-title">
+            <div class="settings-recovery-card__copy">
+              <span class="settings-recovery-card__icon" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path><path d="M12 15v2"></path></svg>
+              </span>
+              <div>
+                <h2 id="recovery-security-title">Security &amp; recovery codes</h2>
+                <p>Use a one-time code when email or Google sign-in is unavailable.</p>
+                <p id="recovery-code-status" role="status" aria-live="polite" aria-atomic="true">Open Settings to check your unused codes.</p>
+                <p class="settings-recovery-card__warning">Generating a new set permanently invalidates every previous recovery code.</p>
+              </div>
+            </div>
+            <div class="settings-recovery-card__actions">
+              <span class="settings-recovery-card__label">Recovery code use</span>
+              <strong id="recovery-code-remaining">Checking…</strong>
+              <button type="button" id="recovery-code-regenerate-btn" class="btn btn-primary" onclick="regenerateRecoveryCodes()">Generate new codes</button>
+            </div>
+          </section>
           <div class="settings-list"><button class="settings-row" type="button" onclick="openModal('modal-settings-store')"><span class="settings-row__ic ic-violet"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l1.5-5h15L21 9"></path><path d="M4 9v10a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9"></path><path d="M9 20v-6h6v6"></path></svg></span><span class="settings-row__txt"><span class="settings-row__title">Storefront Configuration</span><span class="settings-row__desc">WhatsApp, wholesale &amp; store notice</span></span><svg class="settings-row__chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button><button class="settings-row" type="button" onclick="openModal('modal-settings-profile')"><span class="settings-row__ic ic-pink"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span><span class="settings-row__txt"><span class="settings-row__title">Profile</span><span class="settings-row__desc">Your display name &amp; phone</span></span><svg class="settings-row__chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button><button class="settings-row" type="button" onclick="openCategoryManager()"><span class="settings-row__ic ic-violet"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg></span><span class="settings-row__txt"><span class="settings-row__title">Product Categories</span><span class="settings-row__desc">Add, rename &amp; remove categories</span></span><svg class="settings-row__chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button><button class="settings-row" type="button" onclick="openModal('modal-settings-notifications')"><span class="settings-row__ic ic-green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg></span><span class="settings-row__txt"><span class="settings-row__title">Notifications</span><span class="settings-row__desc">Choose which alerts you receive</span></span><svg class="settings-row__chev" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg></button></div>
         </div>
 
@@ -4976,23 +4924,6 @@
   </div>
   <div class="settings-form-actions">
     <button id="save-profile-btn" class="btn btn-primary settings-action-btn" type="button" onclick="saveProfile()">Save Profile</button>
-  </div></div></div></div>
-        <div id="modal-settings-password" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Change Password" style="display:none;"><div class="modal-content"><div class="modal-header"><h2 class="modal-title">Change Password</h2><button class="modal-close-btn" type="button" aria-label="Close" onclick="closeModal('modal-settings-password')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><div class="modal-body"><div class="form-group">
-    <label for="settings-current-pw">Current Password</label>
-    <input type="password" id="settings-current-pw" class="form-input" placeholder="Current password" aria-label="Current password" autocomplete="current-password">
-  </div>
-  <div class="form-row">
-    <div class="form-group">
-      <label for="settings-new-pw">New Password</label>
-      <input type="password" id="settings-new-pw" class="form-input" placeholder="New password" aria-label="New password" autocomplete="new-password">
-    </div>
-    <div class="form-group">
-      <label for="settings-confirm-pw">Confirm Password</label>
-      <input type="password" id="settings-confirm-pw" class="form-input" placeholder="Confirm new password" aria-label="Confirm new password" autocomplete="new-password">
-    </div>
-  </div>
-  <div class="settings-form-actions">
-    <button id="update-pw-btn" class="btn btn-primary settings-action-btn" type="button" onclick="updatePassword()">Update Password</button>
   </div></div></div></div>
         <div id="modal-settings-notifications" class="modal-overlay" role="dialog" aria-modal="true" aria-label="Notifications" style="display:none;"><div class="modal-content"><div class="modal-header"><h2 class="modal-title">Notifications</h2><button class="modal-close-btn" type="button" aria-label="Close" onclick="closeModal('modal-settings-notifications')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg></button></div><div class="modal-body"><div class="setting-row">
     <div class="setting-info">
@@ -5107,22 +5038,7 @@
               </div>
             </div>
 
-            <div style="grid-column: span 2;">
-              <style>
-                .pmode-toggle{display:inline-flex;background:#f1f5f9;border-radius:10px;padding:4px;gap:4px;max-width:100%;flex-wrap:wrap;}
-                .pmode-btn{border:none;background:transparent;color:#64748b;font-size:13px;font-weight:600;padding:8px 14px;border-radius:8px;cursor:pointer;transition:background .15s,color .15s,box-shadow .15s;}
-                .pmode-btn--active{background:#fff;color:#e11d48;box-shadow:0 1px 3px rgba(0,0,0,.12);}
-                .pmode-btn:focus-visible{outline:2px solid #e11d48;outline-offset:2px;}
-              </style>
-              <label class="block text-sm font-medium text-gray-700 mb-1.5" style="display: block; margin-bottom: 6px;">Pricing</label>
-              <div id="modal-product-pmode-toggle" class="pmode-toggle" role="tablist" aria-label="Pricing mode">
-                <button type="button" class="pmode-btn pmode-btn--active" data-mode="single" role="tab" onclick="setPricingMode('modal-product','single')">One price for all sizes</button>
-                <button type="button" class="pmode-btn" data-mode="persize" role="tab" onclick="setPricingMode('modal-product','persize')">Different price per size</button>
-              </div>
-              <input type="hidden" id="modal-product-pmode" value="single">
-            </div>
-
-            <div style="grid-column: span 1;" data-pmode-for="modal-product" data-pmode="single">
+            <div style="grid-column: span 1;">
               <label for="modal-product-price" class="block text-sm font-medium text-gray-700 mb-1.5" style="display: block; margin-bottom: 6px;">Price (GHS)</label>
               <input type="number" inputmode="decimal" min="0" step="0.01" id="modal-product-price" value="180.00" class="w-full border border-solid border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-gray-900 shadow-sm" style="box-sizing: border-box; width: 100%; border-radius: 8px; padding: 10px 12px; font-size: 13px;" />
             </div>
@@ -5159,8 +5075,8 @@
               </div>
             </div>
 
-            <div style="grid-column: span 1;" data-pmode-for="modal-product" data-pmode="single">
-              <label for="modal-product-size" class="block text-sm font-medium text-gray-700 mb-1.5" style="display: block; margin-bottom: 6px;">Size Range <span style="font-weight:400;color:#9ca3af;">(label only, e.g. 0–12M)</span></label>
+            <div style="grid-column: span 1;">
+              <label for="modal-product-size" class="block text-sm font-medium text-gray-700 mb-1.5" style="display: block; margin-bottom: 6px;">Size Range</label>
               <input type="text" id="modal-product-size" value="Standard" class="w-full border border-solid border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-gray-900 shadow-sm" style="box-sizing: border-box; width: 100%; border-radius: 8px; padding: 10px 12px; font-size: 13px;" />
             </div>
 
@@ -5174,8 +5090,8 @@
               <textarea id="modal-product-desc" rows="3" class="w-full border border-solid border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-gray-900 shadow-sm resize-none" style="box-sizing: border-box; width: 100%; border-radius: 8px; padding: 10px 12px; font-size: 13px; font-family: inherit;"></textarea>
             </div>
 
-            <div style="grid-column: span 2;" data-pmode-for="modal-product" data-pmode="persize">
-              <label class="block text-sm font-medium text-gray-700 mb-1.5" style="display:block;margin-bottom:6px;">Sizes &amp; Pricing <span style="font-weight:400;color:#9ca3af;">— give each size its own price; shoppers see the range on the storefront</span></label>
+            <div style="grid-column: span 2;">
+              <label class="block text-sm font-medium text-gray-700 mb-1.5" style="display:block;margin-bottom:6px;">Sizes &amp; Pricing <span style="font-weight:400;color:#9ca3af;">(optional — give each size its own price; overrides Size Range on the storefront)</span></label>
               <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
                 <select id="modal-product-size-preset" class="size-preset-select" style="flex:1;min-width:160px;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;font-size:13px;background:#fff;"></select>
                 <button type="button" class="btn btn-outline-small" onclick="applySizePreset('modal-product')">Apply preset</button>
@@ -5202,13 +5118,17 @@
     </div>
   </div>
 
+
   <!-- ==================== MODAL: BULK PRODUCT IMAGES ==================== -->
   <div id="modal-bulk-images" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-bulk-images-title" style="display:none;">
     <div class="modal-content" style="max-width:760px;">
       <div class="modal-header"><h2 id="modal-bulk-images-title" class="modal-title">Bulk product photos</h2><button class="modal-close-btn" type="button" aria-label="Close" onclick="closeBulkImageModal()">&times;</button></div>
       <div class="modal-body">
-        <p style="font-size:13px;color:#666;">Name files with the product SKU (for example <code>CLO-0001.jpg</code>) or <code>product-123.webp</code>. Matching is reviewed before upload.</p>
-        <div class="bulk-image-drop"><input id="bulk-image-files" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple onchange="previewBulkImageFiles(this.files)"></div>
+        <div class="bulk-image-drop">
+          <strong>Select JPG, PNG, or WebP files</strong>
+          <p style="font-size:13px;color:#666;margin:6px 0 12px;">Name each file with its SKU (for example CLO-0001.jpg) or product-&lt;id&gt;.jpg.</p>
+          <input id="bulk-image-files" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple onchange="previewBulkImageFiles(this.files)">
+        </div>
         <div id="bulk-image-summary" class="bulk-image-summary" style="display:none;"></div>
         <div id="bulk-image-list" class="bulk-image-list"></div>
         <div id="bulk-image-status" style="margin-top:12px;font-size:13px;" role="status" aria-live="polite"></div>
@@ -5217,13 +5137,15 @@
     </div>
   </div>
 
+  <!-- ==================== MODAL: IMAGE HEALTH ==================== -->
   <div id="modal-image-health" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-image-health-title" style="display:none;">
-    <div class="modal-content" style="max-width:760px;">
+    <div class="modal-content" style="max-width:720px;">
       <div class="modal-header"><h2 id="modal-image-health-title" class="modal-title">Catalogue image health</h2><button class="modal-close-btn" type="button" aria-label="Close" onclick="closeImageHealthModal()">&times;</button></div>
-      <div class="modal-body"><div id="image-health-content">Loading report…</div></div>
-      <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeImageHealthModal()">Close</button></div>
+      <div class="modal-body"><div id="image-health-content">Loading report?</div></div>
+      <div class="modal-footer"><button type="button" class="btn btn-outline" onclick="closeImageHealthModal()">Close</button><button type="button" class="btn btn-primary" onclick="loadImageHealthReport()">Refresh</button></div>
     </div>
   </div>
+
   <!-- ==================== MODAL: PRODUCT CSV IMPORT ==================== -->
   <div id="modal-product-import" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-product-import-title" style="display:none;">
     <div class="modal-content" style="max-width:560px;">
@@ -5283,7 +5205,7 @@
       <div class="p-6 md:p-8 overflow-y-auto flex-1">
         <form class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12" id="add-product-form" onsubmit="return false;">
           <!-- Hidden inputs for database mapping -->
-          <input type="hidden" id="add-product-img-src" value="images/product_1.jpg">
+          <input type="hidden" id="add-product-img-src" value="images/placeholder.svg">
           <input type="file" id="add-product-img-input" style="display: none;" accept="image/*">
           <input type="file" id="add-product-img-camera" style="display: none;" accept="image/*" capture="environment">
 
@@ -5354,16 +5276,7 @@
                 </div>
               </div>
 
-              <div class="md:col-span-2">
-                <label class="block text-sm font-bold text-gray-900 mb-2">Pricing</label>
-                <div id="add-product-pmode-toggle" class="pmode-toggle" role="tablist" aria-label="Pricing mode">
-                  <button type="button" class="pmode-btn pmode-btn--active" data-mode="single" role="tab" onclick="setPricingMode('add-product','single')">One price for all sizes</button>
-                  <button type="button" class="pmode-btn" data-mode="persize" role="tab" onclick="setPricingMode('add-product','persize')">Different price per size</button>
-                </div>
-                <input type="hidden" id="add-product-pmode" value="single">
-              </div>
-
-              <div data-pmode-for="add-product" data-pmode="single">
+              <div>
                 <label class="block text-sm font-bold text-gray-900 mb-2">Price (GHS) <span class="text-rose-500">*</span></label>
                 <div class="relative">
                   <input type="number" id="add-product-price" placeholder="Enter price" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-gray-400 shadow-sm transition-shadow" inputmode="decimal" min="0" step="0.01" required />
@@ -5416,8 +5329,8 @@
                 </div>
               </div>
 
-              <div data-pmode-for="add-product" data-pmode="single">
-                <label class="block text-sm font-bold text-gray-900 mb-2">Size Range <span style="font-weight:400;color:#9ca3af;">(label only)</span></label>
+              <div>
+                <label class="block text-sm font-bold text-gray-900 mb-2">Size Range</label>
                 <input type="text" id="add-product-size" placeholder="e.g. 2Y - 8Y, Standard" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-gray-400 shadow-sm transition-shadow" />
               </div>
 
@@ -5434,8 +5347,8 @@
                 </div>
               </div>
 
-              <div class="md:col-span-2 mt-2" data-pmode-for="add-product" data-pmode="persize">
-                <label class="block text-sm font-bold text-gray-900 mb-2">Sizes &amp; Pricing <span style="font-weight:400;color:#9ca3af;">— give each size its own price; shoppers see the range on the storefront</span></label>
+              <div class="md:col-span-2 mt-2">
+                <label class="block text-sm font-bold text-gray-900 mb-2">Sizes &amp; Pricing <span style="font-weight:400;color:#9ca3af;">(optional — give each size its own price; overrides Size Range on the storefront)</span></label>
                 <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;">
                   <select id="add-product-size-preset" class="size-preset-select" style="flex:1;min-width:160px;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;font-size:13px;background:#fff;"></select>
                   <button type="button" class="btn btn-outline-small" onclick="applySizePreset('add-product')">Apply preset</button>
@@ -5533,6 +5446,9 @@
           <label for="modal-order-status">Status</label>
           <select id="modal-order-status" class="form-input" aria-label="Order status">
             <option value="pending">Pending</option>
+            <option value="awaiting_payment">Awaiting payment</option>
+            <option value="payment_review">Payment review</option>
+            <option value="paid">Paid</option>
             <option value="processing">Processing</option>
             <option value="delivered">Delivered</option>
             <option value="cancelled">Cancelled</option>
@@ -5657,7 +5573,7 @@
 
   <!-- ==================== Order Receipt Modal ==================== -->
   <div id="modal-order-receipt" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-receipt-title" style="display:none;">
-    <div class="modal-content" style="max-width:440px;">
+    <div class="modal-content" style="max-width:760px;">
       <div class="modal-header">
         <h2 id="modal-receipt-title" class="modal-title">Order Receipt</h2>
         <button class="modal-close-btn" type="button" aria-label="Close modal" onclick="closeModal('modal-order-receipt')">
@@ -5665,51 +5581,52 @@
         </button>
       </div>
       <div class="modal-body" style="padding:0;">
-        <div id="adminReceiptCard" style="padding:20px;">
-          <!-- Header -->
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:14px;border-bottom:1px dashed #d1d5db;">
+        <div id="adminReceiptCard" class="receipt">
+          <header class="receipt__id">
+            <img src="icon.png" alt="" class="receipt__logo" onerror="this.style.display='none'">
             <div>
-              <div style="font-size:16px;font-weight:700;color:#0F4C3A;">DC Kids Brand</div>
-              <div style="font-size:11px;color:#9ca3af;margin-top:2px;">Merging Style with Comfort</div>
+              <div class="receipt__brand">DC Kids Brand</div>
+              <div class="t-cap muted">Merging Style with Comfort</div>
+              <div class="t-cap muted" id="adminReceiptShop"></div>
             </div>
-            <div style="text-align:right;">
-              <div id="adminReceiptOrderNum" style="font-size:13px;font-weight:700;color:#5E9C7E;font-family:monospace;"></div>
-              <div id="adminReceiptDate" style="font-size:11px;color:#9ca3af;margin-top:2px;"></div>
+          </header>
+
+          <div class="receipt__headline">
+            <div>
+              <div class="receipt__kicker">Official receipt</div>
+              <div class="receipt__amount" id="adminReceiptTotal"></div>
+              <div class="receipt__paidnote" id="adminReceiptPaidNote"></div>
             </div>
-          </div>
-          <!-- Customer -->
-          <div style="display:flex;gap:16px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px dashed #d1d5db;">
-            <div style="flex:1;">
-              <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;font-weight:600;">Customer</div>
-              <div id="adminReceiptCustomer" style="font-size:13px;font-weight:600;color:#1f2937;margin-top:2px;"></div>
-            </div>
-            <div style="flex:1;">
-              <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;font-weight:600;">Phone</div>
-              <div id="adminReceiptPhone" style="font-size:13px;font-weight:600;color:#1f2937;margin-top:2px;"></div>
+            <div class="receipt__stamp" id="adminReceiptStamp">
+              <b id="adminReceiptStatus"></b>
+              <span id="adminReceiptDate"></span>
             </div>
           </div>
-          <!-- Status + Type -->
-          <div style="display:flex;gap:16px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px dashed #d1d5db;">
-            <div style="flex:1;">
-              <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;font-weight:600;">Status</div>
-              <div id="adminReceiptStatus" style="margin-top:4px;"></div>
-            </div>
-            <div style="flex:1;">
-              <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;font-weight:600;">Order Type</div>
-              <div id="adminReceiptType" style="font-size:13px;font-weight:600;color:#1f2937;margin-top:2px;text-transform:capitalize;"></div>
-            </div>
-          </div>
-          <!-- Items -->
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#9ca3af;font-weight:600;margin-bottom:8px;">Items</div>
-          <div id="adminReceiptItems" style="margin-bottom:16px;"></div>
-          <!-- Total -->
-          <div style="display:flex;justify-content:space-between;align-items:center;padding-top:14px;border-top:2px solid #0F4C3A;">
-            <div style="font-size:14px;font-weight:700;color:#1f2937;">Total</div>
-            <div id="adminReceiptTotal" style="font-size:20px;font-weight:800;color:#0F4C3A;"></div>
-          </div>
+
+          <dl class="receipt__facts">
+            <div><dt>Receipt no.</dt><dd class="t-mono" id="adminReceiptOrderNum"></dd></div>
+            <div><dt>Date and time</dt><dd id="adminReceiptDateTime"></dd></div>
+            <div><dt>Order type</dt><dd id="adminReceiptType"></dd></div>
+            <div><dt>Payment method</dt><dd id="adminReceiptMethod"></dd></div>
+            <div><dt>Phone</dt><dd id="adminReceiptPhone"></dd></div>
+            <div><dt>Received by</dt><dd>DC Kids Brand</dd></div>
+          </dl>
+
+          <section class="receipt__from">
+            <div class="receipt__kicker">Received from</div>
+            <div class="receipt__name" id="adminReceiptCustomer"></div>
+            <div class="t-cap muted" id="adminReceiptContact"></div>
+          </section>
+
+          <table class="receipt__table">
+            <thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Amount</th></tr></thead>
+            <tbody id="adminReceiptItems"></tbody>
+          </table>
+
+          <div class="receipt__sum" id="adminReceiptSum"></div>
+          <p class="receipt__note t-cap muted">Thank you for shopping with DC Kids Brand.</p>
         </div>
-      </div>
-      <div class="modal-footer" style="gap:8px; display: flex; justify-content: flex-end; padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border);">
+        <div class="modal-footer" style="gap:8px; display: flex; justify-content: flex-end; padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border);">
         <button class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius: 8px;" type="button" onclick="closeModal('modal-order-receipt')">Close</button>
         <button id="adminReceiptPrintBtn" class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" type="button" onclick="printAdminReceipt()" style="border-radius: 8px; display:flex;align-items:center;gap:6px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
@@ -5744,6 +5661,12 @@
         <div class="form-group">
           <label for="modal-cust-name">Full Name</label>
           <input type="text" id="modal-cust-name" class="form-input" placeholder="Customer name" required aria-required="true">
+        </div>
+
+        <div class="form-group">
+          <label for="modal-cust-email">Account Email</label>
+          <input type="email" id="modal-cust-email" class="form-input" placeholder="No account email" readonly aria-readonly="true">
+          <small class="form-hint">Verified account email cannot be changed from the admin dashboard.</small>
         </div>
 
 
@@ -5795,6 +5718,11 @@
           <div>
             <label class="block text-sm font-bold text-gray-900 mb-2">Full Name <span class="text-rose-500">*</span></label>
             <input type="text" id="add-customer-name" placeholder="Enter full name" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-gray-400 shadow-sm transition-shadow" required />
+          </div>
+
+          <div>
+            <label class="block text-sm font-bold text-gray-900 mb-2">Email <span class="text-gray-400 font-medium">(Optional)</span></label>
+            <input type="email" id="add-customer-email" placeholder="customer@example.com" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-gray-400 shadow-sm transition-shadow" autocomplete="email" />
           </div>
 
 
@@ -6151,6 +6079,7 @@
           <span class="detail-total__label">Total</span>
           <span id="od-total" class="detail-total__value">GHS 0.00</span>
         </div>
+            <div class="detail-card" id="od-discount-row" hidden><div class="detail-row"><span class="detail-row__label">Discount</span><span id="od-discount" class="detail-row__value"></span></div></div>
 
         <div class="detail-card">
           <div class="detail-row"><span class="detail-row__label">Status</span><span id="od-status" class="detail-row__value">Pending</span></div>
@@ -6274,6 +6203,28 @@
     </div>
   </div>
 
+  <!-- ==================== Admin Activity Log ==================== -->
+  <div id="modal-audit-log" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="audit-log-title" style="display:none;">
+    <div class="modal-content audit-log-modal">
+      <div class="modal-header">
+        <div>
+          <h2 id="audit-log-title" class="modal-title">Admin Activity Log</h2>
+          <p class="audit-log-subtitle">Shared, server-recorded changes across every admin device.</p>
+        </div>
+        <button class="modal-close-btn" type="button" aria-label="Close activity log" onclick="closeModal('modal-audit-log')">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="modal-body audit-log-body">
+        <div id="audit-log-list" class="audit-log-list" aria-live="polite"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="loadAuditLog()">Refresh activity</button>
+        <button type="button" class="btn btn-primary" onclick="closeModal('modal-audit-log')">Done</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== Confirm Modal ==================== -->
   <div id="modal-confirm" class="modal-overlay" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message" style="display:none;">
     <div class="modal-content modal-content-sm">
@@ -6308,11 +6259,10 @@
   </div>
 
   <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="vendor/chart.umd.js?v=4.5.1"></script>
   <script src="image-resolver.js?v=1"></script>
-  <!-- Inert unless the page is opened with ?demo=1 — see admin-demo.js -->
-  <script src="admin-demo.js?v=2"></script>
-  <script src="admin.js?v=124"></script>
+  <script src="admin-recovery-view.js?v=1"></script>
+  <script src="admin.js?v=147"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
@@ -6340,11 +6290,7 @@
       <div class="px-8 py-6 border-b border-gray-100 flex items-start justify-between relative bg-white">
         <div>
           <h2 class="text-xl font-bold text-gray-900 mb-1" id="modal-add-order-title" style="margin:0;">Create New Order</h2>
-          <div class="flex items-center text-xs text-gray-500 gap-2 mt-1">
-            <span>Orders</span>
-            <span>&gt;</span>
-            <span class="text-gray-700 font-medium">Create New Order</span>
-          </div>
+          <button type="button" class="adm-back" onclick="closeCreateOrderModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>Orders</button>
         </div>
         <button class="text-gray-400 hover:text-gray-600 transition-colors absolute top-6 right-6 border-none bg-transparent cursor-pointer p-1" type="button" onclick="closeCreateOrderModal()" aria-label="Close modal">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -6367,7 +6313,12 @@
                 Customer Information
               </h3>
               
-              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              
+              <div class="segmented neworder-seg" id="new-order-cust-mode" role="radiogroup" aria-label="Customer">
+                <button type="button" role="radio" aria-checked="true" class="is-active" onclick="setNewOrderCustomerMode('existing')">Existing</button>
+                <button type="button" role="radio" aria-checked="false" onclick="setNewOrderCustomerMode('new')">New customer</button>
+              </div>
+              <div id="new-order-cust-existing"><div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Select Customer <span class="text-rose-500">*</span></label>
                   <div class="relative">
@@ -6385,6 +6336,12 @@
                   <div class="text-sm font-bold text-gray-800" id="new-order-cust-info-phone">Phone: -</div>
                   <div class="text-xs text-gray-500" id="new-order-cust-info-email">Email: -</div>
                 </div>
+              </div></div>
+              <div id="new-order-cust-new" class="grid grid-cols-1 md:grid-cols-2 gap-4" hidden>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-2">Full name <span class="text-rose-500">*</span></label><input type="text" id="new-order-new-name" placeholder="Ama Mensah" autocomplete="off"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-2">Phone number <span class="text-rose-500">*</span></label><input type="tel" id="new-order-new-phone" placeholder="024 123 4567" autocomplete="off"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-2">Email</label><input type="email" id="new-order-new-email" placeholder="Optional" autocomplete="off"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-2">Town or area</label><input type="text" id="new-order-new-area" placeholder="Kasoa" autocomplete="off"></div>
               </div>
             </div>
 
@@ -6419,7 +6376,21 @@
               </button>
             </div>
 
-          </div>
+          
+            <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+              <h3 class="text-base font-bold text-gray-900 mb-4" style="margin-top:0;">Delivery</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2"><label class="block text-xs font-bold text-gray-500 uppercase mb-2">Address</label>
+                  <input type="text" id="new-order-addr-line1" placeholder="House number and street" autocomplete="off"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-2">Town or area</label>
+                  <input type="text" id="new-order-addr-city" placeholder="Kasoa" autocomplete="off"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-2">Landmark</label>
+                  <input type="text" id="new-order-addr-landmark" placeholder="Near the filling station" autocomplete="off"></div>
+                <div class="md:col-span-2"><label class="block text-xs font-bold text-gray-500 uppercase mb-2">Order notes</label>
+                  <input type="text" id="new-order-notes" placeholder="Anything the rider should know" autocomplete="off"></div>
+              </div>
+            </div>
+</div>
 
           <!-- Right Column: Details & Summary (4 cols) -->
           <div class="lg:col-span-4 flex flex-col gap-6">
@@ -6486,12 +6457,9 @@
                     <span class="font-semibold text-gray-500">%</span>
                   </div>
                 </div>
-                <div class="flex justify-between text-sm text-gray-600">
-                  <span>VAT / Tax</span>
-                  <span class="font-bold text-gray-800" id="new-order-tax">GH₵ 0.00</span>
                 </div>
-              </div>
               
+              <div class="flex justify-between text-sm" id="new-order-discount-line" hidden><span class="text-gray-600">Discount applied</span><span class="font-bold" id="new-order-discount-amount">GH₵ 0.00</span></div>
               <div class="flex justify-between items-center pt-1">
                 <span class="text-sm font-bold text-gray-900">Total Amount</span>
                 <span class="text-xl font-black text-rose-600" id="new-order-total">GH₵ 0.00</span>
