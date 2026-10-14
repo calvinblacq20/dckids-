@@ -4129,6 +4129,17 @@
 
             <!-- Right rail: one short list, no promo. -->
             <aside class="patd-rail" aria-label="Order summary">
+              <!-- The reference leads its rail with the money still outstanding
+                   and the one action that moves it. -->
+              <section class="adm-card adm-dark dash-rail__cta" id="orders-owed-cta" hidden>
+                <h2 class="dash-rail__cta-title" id="orders-owed-title">&nbsp;</h2>
+                <p class="dash-rail__cta-copy" id="orders-owed-copy">&nbsp;</p>
+                <button type="button" class="adm-cta" id="orders-owed-action">
+                  <span>Send reminders</span>
+                  <i class="adm-cta__arrow" aria-hidden="true">&rarr;</i>
+                </button>
+              </section>
+
               <section class="adm-card">
                 <div class="adm-card-head"><h2>Needs payment</h2></div>
                 <div class="adm-card-body">
@@ -6338,7 +6349,7 @@
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
   <script src="admin-demo.js?v=12"></script>
-  <script src="admin.js?v=160"></script>
+  <script src="admin.js?v=161"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

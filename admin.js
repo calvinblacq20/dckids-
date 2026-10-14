@@ -2571,8 +2571,40 @@ function renderOrdersTable() {
     // Heading carries the count, as the reference results column does.
     var countEl = document.getElementById('orders-result-count');
     if (countEl) countEl.textContent = totalItems + (totalItems === 1 ? ' order' : ' orders');
+    // The reference counts what is still live and what is brand new, rather
+    // than the size of the table — those are the two numbers worth knowing
+    // before reading a single row.
+    var CLOSED_STAGES = ['completed', 'delivered', 'cancelled'];
+    var NEW_REQUEST_STAGES = ['pending', 'pending_deposit', 'awaiting_payment'];
+    var openOrders = all.filter(function (o) {
+        return CLOSED_STAGES.indexOf(String(o.status || '').toLowerCase()) === -1;
+    });
+    var freshOrders = all.filter(function (o) {
+        return NEW_REQUEST_STAGES.indexOf(String(o.status || '').toLowerCase()) !== -1;
+    });
     var statusLine = document.getElementById('orders-status-line');
-    if (statusLine) statusLine.textContent = all.length + ' total \u00b7 showing ' + totalItems;
+    if (statusLine) {
+        statusLine.textContent =
+            openOrders.length + (openOrders.length === 1 ? ' open order' : ' open orders') +
+            ' \u00b7 ' +
+            freshOrders.length + (freshOrders.length === 1 ? ' new request' : ' new requests');
+    }
+
+    // The money still outstanding, and the one action that moves it.
+    var owedTotal = freshOrders.reduce(function (sum, o) { return sum + (Number(o.total) || 0); }, 0);
+    var owedCta = document.getElementById('orders-owed-cta');
+    if (owedCta) {
+        owedCta.hidden = freshOrders.length === 0;
+        var owedTitle = document.getElementById('orders-owed-title');
+        var owedCopy = document.getElementById('orders-owed-copy');
+        if (owedTitle) {
+            owedTitle.textContent = freshOrders.length +
+                (freshOrders.length === 1 ? ' order still owes ' : ' orders still owe ') + dashMoney(owedTotal);
+        }
+        if (owedCopy) {
+            owedCopy.textContent = 'Message each customer on WhatsApp before the stock is held any longer.';
+        }
+    }
 
     // Filter counts, so the owner can see where the work is without clicking.
     var counts = document.getElementById('orders-filter-counts');
