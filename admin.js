@@ -11322,6 +11322,31 @@ function renderTopProducts(list) {
 
 /* The same board for people rather than products. Built from the orders the
    dashboard already holds, so it agrees with the figures above it. */
+/* Share hands the receipt to whatever the device already uses — on a phone
+   that is the share sheet, on a desktop the clipboard. The receipt is a
+   document the customer asks for over WhatsApp, so copying its text is the
+   useful fallback rather than an error. */
+function shareAdminReceipt() {
+    var card = document.getElementById('adminReceiptCard');
+    if (!card) return;
+    var title = 'DC Kids Brand receipt';
+    var text = card.innerText.replace(/\n{3,}/g, '\n\n').trim();
+
+    if (navigator.share) {
+        navigator.share({ title: title, text: text }).catch(function () { /* dismissed */ });
+        return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+            showToast('Receipt copied — paste it to the customer', 'success');
+        }).catch(function () {
+            showToast('Could not copy the receipt', 'error');
+        });
+        return;
+    }
+    showToast('Sharing is not available on this device', 'warning');
+}
+
 function renderTopBuyers() {
     var body = document.getElementById('dash-top-buyers-body');
     var empty = document.getElementById('dash-buyers-empty');
@@ -11548,9 +11573,15 @@ function renderPayments() {
             ? when.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) +
               ', ' + when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             : '\u2014';
+        // The reference reaches a receipt through its payment, which is the
+        // only place the reference number is already in front of you.
+        var ref = escapeHtml(p.reference || '\u2014');
+        var refCell = p.order_number
+            ? '<button type="button" class="link-arrow" onclick="openOrderReceipt(\'' + escapeHtml(p.order_number) + '\')">' + ref + '</button>'
+            : ref;
         return '<tr>' +
             '<td data-label="Date">' + escapeHtml(date) + '</td>' +
-            '<td data-label="Reference" class="tabular">' + escapeHtml(p.reference || '\u2014') + '</td>' +
+            '<td data-label="Reference" class="tabular">' + refCell + '</td>' +
             '<td data-label="Client">' + escapeHtml(p.customer_name || '\u2014') + '</td>' +
             '<td data-label="Order" class="tabular">' + escapeHtml(p.order_number || '\u2014') + '</td>' +
             '<td data-label="Method">' + escapeHtml(PAYMENT_METHOD_SHORT[p.method] || p.method) + '</td>' +
