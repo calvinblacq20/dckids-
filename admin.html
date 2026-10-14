@@ -4076,7 +4076,6 @@
               <span class="adm-status"><i class="adm-dot"></i><span id="customers-status-line">Loading customers&hellip;</span></span>
             </div>
             <div class="adm-head__actions">
-              <button type="button" class="adm-ghost" onclick="syncCustomersToServer && syncCustomersToServer()">Sync</button>
               <button type="button" class="adm-cta" id="add-customer-btn" onclick="openAddCustomerModal()">
                 <span>Add customer</span><i aria-hidden="true">&rarr;</i>
               </button>
@@ -5831,7 +5830,7 @@
         </div>
       </div>
 
-      <form id="supplier-form" class="supplier-form" novalidate>
+      <form id="supplier-form" class="supplier-form" onsubmit="return false;" novalidate>
         <input type="hidden" id="modal-supp-id">
         <input type="hidden" id="modal-supp-logo">
 
@@ -6266,8 +6265,8 @@
   <script src="image-resolver.js?v=1"></script>
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
-  <script src="admin-demo.js?v=9"></script>
-  <script src="admin.js?v=155"></script>
+  <script src="admin-demo.js?v=10"></script>
+  <script src="admin.js?v=156"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

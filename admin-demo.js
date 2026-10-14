@@ -252,6 +252,93 @@
                 return Promise.resolve(jsonResponse({ success: true }));
             }
 
+            // Creates, edits and deletes for the other tabs. Acknowledging a
+            // write without recording it is worse than refusing it: the form
+            // reported "added successfully", closed, and the list was
+            // unchanged, so every Add button looked broken. These mutate the
+            // arrays the GETs above read, so the reload each form triggers
+            // shows the record.
+            var nextId = function (list) {
+                return list.reduce(function (max, r) { return Math.max(max, Number(r.id) || 0); }, 0) + 1;
+            };
+            var idFromPath = function (prefix) {
+                var m = path.match(new RegExp('^' + prefix + '/([^/?]+)'));
+                return m ? m[1] : null;
+            };
+            var removeFrom = function (list, id) {
+                for (var i = 0; i < list.length; i++) {
+                    if (String(list[i].id) === String(id)) { list.splice(i, 1); return true; }
+                }
+                return false;
+            };
+            var mergeInto = function (list, id, patch) {
+                for (var i = 0; i < list.length; i++) {
+                    if (String(list[i].id) === String(id)) {
+                        Object.keys(patch).forEach(function (k) { list[i][k] = patch[k]; });
+                        return list[i];
+                    }
+                }
+                return null;
+            };
+
+            var collections = [
+                { prefix: '/api/admin/customers', list: demoCustomers, build: function (b) {
+                    return {
+                        id: nextId(demoCustomers), name: b.name || 'New customer', email: b.email || '',
+                        phone: b.phone || '', address: b.address || '', city: b.city || '',
+                        country: b.country || 'Ghana', customer_group: b.customer_group || 'Retail',
+                        notes: b.notes || '', status: b.status || 'active', customer_account_id: null,
+                        registered_account: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+                        order_count: 0, total_spent: 0, last_order_at: null
+                    };
+                } },
+                { prefix: '/api/suppliers', list: demoSuppliers, build: function (b) {
+                    return {
+                        id: nextId(demoSuppliers), supplier_name: b.supplier_name || b.company || 'New supplier',
+                        contact_person: b.contact_person || '', email: b.email || '', phone: b.phone || '',
+                        business_address: b.business_address || b.address || '',
+                        products_supplied: b.products_supplied || '', status: b.status || 'active',
+                        notes: b.notes || '', supplier_logo: null, created_at: new Date().toISOString()
+                    };
+                } },
+                { prefix: '/api/users', list: demoStaff, build: function (b) {
+                    return {
+                        id: nextId(demoStaff), username: b.email || b.username || 'new@dckidsbrand.com',
+                        role: b.role || 'staff', email: b.email || b.username || '',
+                        full_name: b.full_name || b.name || 'New account', phone: b.phone || '',
+                        status: b.status || 'active'
+                    };
+                } },
+                { prefix: '/api/products', list: demoProducts, build: function (b) {
+                    return {
+                        id: nextId(demoProducts), name: b.name || 'New product', sku: b.sku || '',
+                        size: b.size || '', price: Number(b.price) || 0, img: b.img || 'images/placeholder.svg',
+                        cat: b.cat || b.category || 'clothing', stock: Number(b.stock) || 0,
+                        badge: b.badge || '', fulfillment_type: b.fulfillment_type || 'in_stock',
+                        description: b.description || ''
+                    };
+                } }
+            ];
+
+            for (var ci = 0; ci < collections.length; ci++) {
+                var c = collections[ci];
+                if (path.indexOf(c.prefix) !== 0) continue;
+                var recordId = idFromPath(c.prefix);
+                if (method === 'POST' && !recordId) {
+                    var made = c.build(body);
+                    c.list.unshift(made);
+                    return Promise.resolve(jsonResponse(made, 201));
+                }
+                if ((method === 'PUT' || method === 'PATCH') && recordId) {
+                    var updated = mergeInto(c.list, recordId, body);
+                    return Promise.resolve(jsonResponse(updated || { success: true }));
+                }
+                if (method === 'DELETE' && recordId) {
+                    removeFrom(c.list, recordId);
+                    return Promise.resolve(jsonResponse({ success: true }));
+                }
+            }
+
             if (method !== 'GET') return Promise.resolve(jsonResponse({ success: true }));
 
             // Reads the overrides above do not already cover. An empty list
