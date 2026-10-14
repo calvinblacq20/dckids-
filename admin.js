@@ -7470,10 +7470,17 @@ function setupEventListeners() {
         if (sidebarOverlay) sidebarOverlay.classList.remove('active');
     }
 
-    if (mobileSidebarToggle && adminSidebar) {
-        mobileSidebarToggle.addEventListener('click', function(e) {
-            e.stopPropagation();
-            adminSidebar.classList.contains('open') ? closeMobileSidebar() : openMobileSidebar();
+    // The dashboard hides the top bar, because its hero already carries the
+    // same notifications and account actions. The hero therefore has its own
+    // menu button, and both open the one sidebar.
+    var sidebarToggles = [mobileSidebarToggle, document.getElementById('dash-hero-menu')].filter(Boolean);
+
+    if (sidebarToggles.length && adminSidebar) {
+        sidebarToggles.forEach(function (toggle) {
+            toggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                adminSidebar.classList.contains('open') ? closeMobileSidebar() : openMobileSidebar();
+            });
         });
 
         // Overlay tap closes sidebar
@@ -7484,7 +7491,8 @@ function setupEventListeners() {
         // Close sidebar when clicking outside on mobile
         document.addEventListener('click', function(e) {
             if (window.innerWidth <= 1024) {
-                if (!adminSidebar.contains(e.target) && !mobileSidebarToggle.contains(e.target)) {
+                var onToggle = sidebarToggles.some(function (t) { return t.contains(e.target); });
+                if (!adminSidebar.contains(e.target) && !onToggle) {
                     closeMobileSidebar();
                 }
             }

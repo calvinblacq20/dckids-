@@ -444,23 +444,25 @@ body, .dashboard-container { background: var(--ground); }
   .admin-sidebar .sidebar-brand span { display: none; }
 }
 
-/* The earlier layers set the hero with an ID selector (#tab-dashboard
-   .dash-hero), which outranks a class. Match that specificity so the one dark
-   card per screen reads as ink, the way the reference alert card does. */
+/* The hero is a surface, not the dark card. It used to be ink, sitting
+   directly under a top bar that repeated its bell and account button; with
+   that bar gone from the dashboard the hero carries those actions alone, and
+   a white card puts them on the same ground as everything beneath it.
+
+   These selectors keep their ID specificity because earlier layers set the
+   hero that way, and a plain class rule here would silently lose to them. */
 #tab-dashboard .dash-hero,
 #dashboard-container .dash-hero {
-  background: var(--ink);
+  background: var(--surface);
   background-image: none;
-  border: 0;
-  color: #fff;
+  border: 0.8px solid var(--ink-06);
+  color: var(--ink);
 }
-#tab-dashboard .dash-hero .dash-hero__snap { background: rgba(255,255,255,0.08); }
-#tab-dashboard .dash-hero .dash-hero__snap-div { background: rgba(255,255,255,0.14); }
-#tab-dashboard .dash-hero__title,
+#tab-dashboard .dash-hero .dash-hero__snap { background: var(--ink-06); }
+#tab-dashboard .dash-hero .dash-hero__snap-div { background: var(--ink-12); }
+#tab-dashboard .dash-hero__title { color: var(--ink); }
 #tab-dashboard .dash-hero__lede,
-#tab-dashboard .dash-hero__eyebrow { color: #fff; }
-#tab-dashboard .dash-hero__lede,
-#tab-dashboard .dash-hero__eyebrow { color: var(--white-75); }
+#tab-dashboard .dash-hero__eyebrow { color: var(--ink-50); }
 
 /* KPI cards: flat, label-first, number large and tabular — the reference
    KPI tab shape rather than an icon badge card. */
@@ -845,7 +847,7 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
 .dash-hero__bell, .dash-hero__user {
   position: relative; display: grid; place-items: center;
   width: 36px; height: 36px; border: 0; border-radius: var(--r-pill);
-  background: rgba(255,255,255,.1); color: #fff; cursor: pointer;
+  background: var(--ground); color: var(--ink); cursor: pointer;
 }
 .dash-hero__bell-badge {
   position: absolute; top: -2px; right: -2px;
@@ -853,13 +855,13 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
   display: grid; place-items: center; border-radius: var(--r-pill);
   background: var(--lime); color: var(--ink); font-size: 11px; font-weight: 500;
 }
-.dash-hero__divider { width: 1px; height: 20px; background: rgba(255,255,255,.2); }
+.dash-hero__divider { width: 1px; height: 20px; background: var(--ink-12); }
 .dash-hero__avatar { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-pill); background: var(--lime); color: var(--ink); font-size: 13px; font-weight: 500; }
-.dash-hero__eyebrow { font-size: 13px; color: var(--white-75); }
-.dash-hero__title { font-size: 32px; line-height: 1.1; font-weight: 500; letter-spacing: -.02em; margin: 4px 0 2px; color: #fff; }
-.dash-hero__lede { font-size: 14px; color: var(--white-75); margin: 0; }
-.dash-hero__date { text-align: right; color: var(--white-75); font-size: 13px; }
-.dash-hero__date strong { display: block; color: #fff; font-size: 15px; font-weight: 500; }
+.dash-hero__eyebrow { font-size: 13px; color: var(--ink-50); }
+.dash-hero__title { font-size: 32px; line-height: 1.1; font-weight: 500; letter-spacing: -.02em; margin: 4px 0 2px; color: var(--ink); }
+.dash-hero__lede { font-size: 14px; color: var(--ink-50); margin: 0; }
+.dash-hero__date { text-align: right; color: var(--ink-50); font-size: 13px; }
+.dash-hero__date strong { display: block; color: var(--ink); font-size: 15px; font-weight: 500; }
 
 .dashboard-livebar {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
@@ -991,10 +993,10 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
 .dash-hero__search input, .dash-hero__search-input {
   width: 100%; height: 44px; padding: 0 44px;
   border: 0; border-radius: var(--r-pill);
-  background: rgba(255,255,255,.12); color: #fff; font-size: 14px; font-family: inherit;
+  background: var(--ground); color: var(--ink); font-size: 14px; font-family: inherit;
 }
-.dash-hero__search input::placeholder { color: rgba(255,255,255,.6); }
-.dash-hero__search input:focus { outline: 2px solid rgba(255,255,255,.5); outline-offset: 0; }
+.dash-hero__search input::placeholder { color: var(--ink-50); }
+.dash-hero__search input:focus { outline: 2px solid var(--ink-25); outline-offset: 0; }
 .dash-hero__search-filter {
   position: absolute; right: 6px; display: grid; place-items: center;
   width: 32px; height: 32px; border: 0; border-radius: var(--r-pill);
@@ -1343,11 +1345,11 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
 /* =============================================================
    16. Dashboard hero, live bar, quick actions, stat grids
    ============================================================= */
-.dash-hero__greet { font-size: 13px; color: var(--white-75); }
-.dash-hero__msg { font-size: 14px; color: var(--white-75); margin: 2px 0 0; }
+.dash-hero__greet { font-size: 13px; color: var(--ink-50); }
+.dash-hero__msg { font-size: 14px; color: var(--ink-50); margin: 2px 0 0; }
 .dash-hero__aside { margin-left: auto; text-align: right; flex: none; }
-.dash-hero__date-day { display: block; font-size: 15px; font-weight: 500; color: #fff; }
-.dash-hero__date-full { display: block; font-size: 12px; color: var(--white-75); }
+.dash-hero__date-day { display: block; font-size: 15px; font-weight: 500; color: var(--ink); }
+.dash-hero__date-full { display: block; font-size: 12px; color: var(--ink-50); }
 .dash-hero__filter { margin-top: 10px; }
 .dash-hero__search-results {
   position: absolute; left: 24px; right: 24px; top: calc(100% - 12px); z-index: var(--z-dropdown);
@@ -2942,3 +2944,26 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 }
 
 @media print { .demo-banner { display: none; } }
+
+/* =============================================================
+   47. Dashboard hero: the bar it replaced, and the button it inherited
+   The hero used to sit directly under a top bar carrying the same bell and
+   the same account button — the actions appeared twice, a few pixels apart.
+   The hero is a surface now (its colours are corrected where they are
+   defined, further up, not overridden here), and on the dashboard the bar
+   goes, since the hero already carries what it offered.
+
+   The bar is untouched on every other tab, where it is the only place those
+   actions exist — which is why this is scoped to the dashboard rather than
+   removed outright. The menu button the bar owned moves into the hero, so
+   the markup there gained one.
+   ============================================================= */
+.dash-hero button.dash-hero__menu {
+  width: 40px;
+  height: 40px;
+  background: var(--ground);
+  color: var(--ink);
+}
+
+/* Dashboard only. #admin-header outranks the class rules that show it. */
+body.dash-active #admin-header { display: none; }

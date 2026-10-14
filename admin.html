@@ -19,7 +19,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=66">
+  <link rel="stylesheet" href="admin-bridge.css?v=69">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -722,6 +722,9 @@
         <!-- ==================== MOBILE GREETING HERO ==================== -->
         <div class="dash-hero" id="dashHero">
           <div class="dash-hero__row">
+            <button type="button" id="dash-hero-menu" class="sidebar-toggle dash-hero__menu" aria-label="Open menu">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
             <div class="dash-hero__logo">
               <img src="icon.png" alt="DC Kids" onerror="this.style.display='none'">
               <span class="dash-hero__logo-dot" aria-hidden="true"></span>
