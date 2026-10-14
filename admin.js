@@ -2606,15 +2606,10 @@ function renderOrdersTable() {
         }
     }
 
-    // Filter counts, so the owner can see where the work is without clicking.
-    var counts = document.getElementById('orders-filter-counts');
-    if (counts) {
-        var byStatus = {};
-        all.forEach(function (o) { var k = String(o.status || 'pending').toLowerCase(); byStatus[k] = (byStatus[k] || 0) + 1; });
-        counts.innerHTML = Object.keys(byStatus).sort().map(function (k) {
-            return '<div class="patd-count-row"><span>' + escapeHtml(k.replace(/_/g, ' ')) + '</span><b>' + byStatus[k] + '</b></div>';
-        }).join('');
-    }
+    // Counts sit beside the stage they belong to, and count the whole table
+    // rather than the filtered view — otherwise ticking a stage would rewrite
+    // the very numbers used to decide what to tick.
+    renderStageCounts(all);
 
     renderOrdersRail(all);
 
@@ -2635,8 +2630,9 @@ function renderOrdersTable() {
             if (b) b.textContent = 'GHS ' + formatNumber(owed) + ' outstanding. Confirm each one so the customer hears back.';
             var cta = document.getElementById('orders-alert-cta');
             if (cta) cta.onclick = function () {
-                var sel = document.getElementById('order-status-filter');
-                if (sel) { sel.value = 'awaiting_payment'; orderCurrentPage = 1; renderOrdersTable(); }
+                setOrderStages(['payment']);
+                orderCurrentPage = 1;
+                renderOrdersTable();
             };
         }
     }
@@ -2790,13 +2786,56 @@ function closeOrderDetail() {
     document.body.style.overflow = '';
 }
 
+/* The stages the orders list is grouped by. Several raw statuses read as one
+   stage to the person working the list — an order that is paid and one that is
+   being packed are both "in hand" — so the filter groups them rather than
+   making the owner know the difference. */
+var ORDER_STAGES = [
+    { key: 'new',       statuses: ['pending', 'pending_deposit'] },
+    { key: 'payment',   statuses: ['awaiting_payment', 'payment_review'] },
+    { key: 'packing',   statuses: ['paid', 'processing'] },
+    { key: 'sending',   statuses: ['shipped', 'dispatched'] },
+    { key: 'done',      statuses: ['delivered', 'completed'] },
+    { key: 'cancelled', statuses: ['cancelled'] }
+];
+
+function orderStageKey(order) {
+    var status = String((order && order.status) || '').toLowerCase();
+    for (var i = 0; i < ORDER_STAGES.length; i++) {
+        if (ORDER_STAGES[i].statuses.indexOf(status) !== -1) return ORDER_STAGES[i].key;
+    }
+    return 'new';
+}
+
+function selectedOrderStages() {
+    var boxes = document.querySelectorAll('.order-stage');
+    if (!boxes.length) return null;           // markup absent: do not filter
+    var on = [];
+    boxes.forEach(function (b) { if (b.checked) on.push(b.value); });
+    return on;
+}
+
+function setOrderStages(keys) {
+    document.querySelectorAll('.order-stage').forEach(function (b) {
+        b.checked = keys.indexOf(b.value) !== -1;
+    });
+}
+
+function renderStageCounts(all) {
+    var rows = Array.isArray(all) ? all : [];
+    ORDER_STAGES.forEach(function (stage) {
+        var el = document.getElementById('stage-count-' + stage.key);
+        if (!el) return;
+        el.textContent = rows.filter(function (o) { return orderStageKey(o) === stage.key; }).length;
+    });
+}
+
 function getFilteredOrders() {
     var searchEl = document.getElementById('order-search');
-    var statusEl = document.getElementById('order-status-filter');
     var typeEl = document.getElementById('order-type-filter');
     var query = searchEl ? searchEl.value.toLowerCase() : '';
-    var status = statusEl ? statusEl.value : 'all';
     var type = typeEl ? typeEl.value : '';
+    var stages = selectedOrderStages();
 
     return getOrders().filter(function(o) {
         var phone = o.phone || '';
@@ -2811,11 +2850,9 @@ function getFilteredOrders() {
             o.id.toLowerCase().indexOf(query) >= 0 || 
             o.customer.toLowerCase().indexOf(query) >= 0 ||
             phone.toLowerCase().indexOf(query) >= 0;
-        var normalizedStatus = String(o.status || '').toLowerCase();
-        var matchesStatus = status === 'all' || status === '' || normalizedStatus === status;
-        if (status === 'attention') {
-            matchesStatus = ['pending', 'pending_deposit', 'awaiting_payment', 'payment_review'].indexOf(normalizedStatus) >= 0;
-        }
+        // No stage ticked means the owner has filtered everything out, and an
+        // empty list is the honest answer to that — not the whole table back.
+        var matchesStatus = stages === null || stages.indexOf(orderStageKey(o)) !== -1;
         var otype = (o.order_type || o.type || 'retail').toLowerCase();
         var matchesType = !type || otype === type;
         return matchesSearch && matchesStatus && matchesType;
@@ -7700,12 +7737,9 @@ function setupEventListeners() {
                     }
                 }
                 if (target === 'tab-orders' && filter === 'attention') {
-                    var orderFilter = document.getElementById('order-status-filter');
-                    if (orderFilter) {
-                        orderFilter.value = 'attention';
-                        orderCurrentPage = 1;
-                        orderFilter.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
+                    setOrderStages(['new', 'payment']);
+                    orderCurrentPage = 1;
+                    renderOrdersTable();
                 }
             }, 80);
         }
@@ -7852,7 +7886,7 @@ function setupEventListeners() {
         if (e.target.id === 'review-search') { reviewCurrentPage = 1; renderReviewsTable(); }
     });
     document.addEventListener('change', function(e) {
-        if (e.target.id === 'order-status-filter') { orderCurrentPage = 1; renderOrdersTable(); }
+        if (e.target.classList && e.target.classList.contains('order-stage')) { orderCurrentPage = 1; renderOrdersTable(); }
         if (e.target.id === 'order-type-filter') { orderCurrentPage = 1; renderOrdersTable(); }
         if (e.target.id === 'order-date-filter') { orderCurrentPage = 1; renderOrdersTable(); }
         if (e.target.id === 'cust-group-filter') { custCurrentPage = 1; renderCustomersTable(); }

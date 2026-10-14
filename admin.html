@@ -19,7 +19,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=74">
+  <link rel="stylesheet" href="admin-bridge.css?v=75">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -4080,20 +4080,19 @@
                 <span class="patd-filters__title">Filters</span>
                 <button type="button" class="link-arrow" id="orders-clear-filters" hidden>Clear all</button>
               </div>
-              <div class="patd-group">
-                <span class="patd-group__label">Status</span>
-                <select id="order-status-filter" class="patd-select" aria-label="Filter orders by status">
-                  <option value="">All status</option>
-                  <option value="attention">Requires attention</option>
-                  <option value="pending">Pending</option>
-                  <option value="awaiting_payment">Awaiting payment</option>
-                  <option value="payment_review">Payment review</option>
-                  <option value="paid">Paid</option>
-                  <option value="processing">Processing</option>
-                  <option value="delivered">Delivered</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
+              <!-- Stage, as the reference reads it: every stage listed with its
+                   count, several selectable at once. A dropdown could only ever
+                   answer one stage at a time and hid the counts behind it. The
+                   finished stages start unticked so the list opens on live work. -->
+              <fieldset class="patd-group patd-stages">
+                <legend class="patd-group__label">Stage</legend>
+                <label class="patd-stage"><input type="checkbox" class="order-stage" value="new" checked><span class="patd-stage__name">New request</span><b class="patd-stage__count" id="stage-count-new">0</b></label>
+                <label class="patd-stage"><input type="checkbox" class="order-stage" value="payment" checked><span class="patd-stage__name">Awaiting payment</span><b class="patd-stage__count" id="stage-count-payment">0</b></label>
+                <label class="patd-stage"><input type="checkbox" class="order-stage" value="packing" checked><span class="patd-stage__name">Packing</span><b class="patd-stage__count" id="stage-count-packing">0</b></label>
+                <label class="patd-stage"><input type="checkbox" class="order-stage" value="sending" checked><span class="patd-stage__name">On the way</span><b class="patd-stage__count" id="stage-count-sending">0</b></label>
+                <label class="patd-stage"><input type="checkbox" class="order-stage" value="done"><span class="patd-stage__name">Delivered</span><b class="patd-stage__count" id="stage-count-done">0</b></label>
+                <label class="patd-stage"><input type="checkbox" class="order-stage" value="cancelled"><span class="patd-stage__name">Cancelled</span><b class="patd-stage__count" id="stage-count-cancelled">0</b></label>
+              </fieldset>
               <div class="patd-group">
                 <span class="patd-group__label">Type</span>
                 <select id="order-type-filter" class="patd-select" aria-label="Filter orders by type">
@@ -4103,10 +4102,7 @@
                   <option value="preorder">China pre-order</option>
                 </select>
               </div>
-              <div class="patd-group">
-                <span class="patd-group__label">Counts</span>
-                <div class="patd-counts" id="orders-filter-counts"></div>
-              </div>
+
             </aside>
 
             <!-- Results -->
@@ -6349,7 +6345,7 @@
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
   <script src="admin-demo.js?v=12"></script>
-  <script src="admin.js?v=161"></script>
+  <script src="admin.js?v=162"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

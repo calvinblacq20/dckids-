@@ -3034,3 +3034,23 @@ body.is-authed #admin-header { display: none; }
   }
   .dash-rail { margin-top: 0; position: sticky; top: 18px; }
 }
+
+/* =============================================================
+   49. Stage filter
+   Every stage visible with its count, several selectable at once — the
+   reference's shape. The count is the whole table's, not the filtered
+   view's, so ticking a stage never rewrites the numbers used to choose it.
+   ============================================================= */
+.patd-stages { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.patd-stages .patd-group__label { padding: 0; }
+.patd-stage {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 8px; margin-inline: -8px;
+  border-radius: var(--r-8); cursor: pointer; font-size: 13px; color: var(--ink-75);
+}
+.patd-stage:hover { background: var(--ground); color: var(--ink); }
+.patd-stage input { width: 16px; height: 16px; flex: none; accent-color: var(--ink); cursor: pointer; }
+.patd-stage__name { flex: 1; min-width: 0; }
+.patd-stage__count { flex: none; font-size: 12px; font-weight: 500; color: var(--ink-50); font-variant-numeric: tabular-nums; }
+.patd-stage:has(input:checked) { color: var(--ink); }
+.patd-stage:has(input:checked) .patd-stage__count { color: var(--ink); }
