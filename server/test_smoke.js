@@ -784,6 +784,35 @@ async function run() {
     check('admin.html closes every div it opens', divOpens === divCloses,
         `${divOpens} opened, ${divCloses} closed`);
 
+    // --- Order source ---
+    // The dashboard ranks these, so the column has to hold one of a known set
+    // rather than whatever the caller typed.
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Source Known', customer_phone: '0249000101',
+        order_type: 'retail', items: [{ id: 1, quantity: 1, size: sizeLabel }],
+        source: 'Instagram'
+    }));
+    const knownSource = (await r.json()).order_number;
+
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Source Junk', customer_phone: '0249000102',
+        order_type: 'retail', items: [{ id: 1, quantity: 1, size: sizeLabel }],
+        source: 'carrier pigeon'
+    }));
+    check('an unrecognised source does not block the sale', r.status === 200, `status ${r.status}`);
+    const junkSource = (await r.json()).order_number;
+
+    const sourceRows = await (await fetch(`${BASE}/api/orders`, { headers: auth })).json();
+    const findSource = (number) => (sourceRows.find((o) => o.order_number === number) || {}).source;
+    check('a recognised source is stored, lowercased', findSource(knownSource) === 'instagram', String(findSource(knownSource)));
+    // A guest order carrying nonsense still came through the storefront, so the
+    // fallback is right. What must never happen is the nonsense being stored.
+    const allowedSources = ['instagram', 'whatsapp', 'tiktok', 'facebook', 'referral', 'walk-in', 'storefront'];
+    check('an unrecognised source never reaches the column',
+        allowedSources.indexOf(findSource(junkSource)) !== -1, String(findSource(junkSource)));
+    check('an order placed without a source is recorded as the storefront',
+        findSource(order.order_number) === 'storefront', String(findSource(order.order_number)));
+
     // --- Content-Security-Policy ---
     // The admin's "Continue with Google" button only renders once
     // GOOGLE_CLIENT_ID is set, so a policy missing the Google Identity origins

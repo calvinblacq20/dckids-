@@ -316,6 +316,17 @@ const PAYSTACK_LEGACY_WEBHOOK_URL = String(process.env.PAYSTACK_LEGACY_WEBHOOK_U
 // the browser) — there is no client secret because we use the ID-token flow.
 const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || '').trim();
 
+// Where an order reached the shop from. A closed list rather than free text:
+// the dashboard ranks these, and two spellings of "instagram" would split one
+// channel into two rows. Anything unrecognised is stored as null rather than
+// rejected — a mistyped source is not a reason to refuse a sale.
+const ORDER_SOURCES = ['instagram', 'whatsapp', 'tiktok', 'facebook', 'referral', 'walk-in', 'storefront'];
+
+function normalizeSource(value) {
+    const key = String(value || '').trim().toLowerCase();
+    return ORDER_SOURCES.indexOf(key) === -1 ? null : key;
+}
+
 // Owner allowlist: a comma-separated list of emails in OWNER_EMAIL that are
 // auto-activated as owner (manager) on sign-up — e.g. your dev email now plus
 // the real admin's email at deploy. Everyone else goes to 'pending' and must be
@@ -1139,6 +1150,7 @@ const ADMIN_CUSTOMER_SELECT = `
            COALESCE(c.customer_group, 'Retail') AS customer_group,
            COALESCE(c.notes, '') AS notes,
            COALESCE(c.status, 'active') AS status,
+           c.source,
            c.customer_account_id,
            CASE WHEN ca.firebase_uid IS NOT NULL THEN 1 ELSE 0 END AS registered_account,
            c.created_at, c.updated_at,
@@ -1165,13 +1177,16 @@ function normalizeAdminCustomerInput(body, options) {
     const customerGroup = ['Retail', 'Wholesale', 'VIP'].includes(source.customer_group) ? source.customer_group : 'Retail';
     const notes = String(source.notes || '').trim();
     const status = source.status === 'inactive' ? 'inactive' : 'active';
+    // How this customer found the shop. Same closed list as an order's, so the
+    // two can be counted together.
+    const foundThrough = normalizeSource(source.source);
     if (name.length < 2 || name.length > 100) throw paymentError('Customer name must be between 2 and 100 characters');
     if ((!options || options.requirePhone) && !phone) throw paymentError('Customer phone number is required');
     if (phone.length > 30) throw paymentError('Customer phone number is too long');
     if (email && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254)) throw paymentError('Enter a valid customer email address');
     if (address.length > 300 || city.length > 100 || country.length > 100) throw paymentError('Customer address is too long');
     if (notes.length > 1000) throw paymentError('Customer notes are too long');
-    return { name, phone, email, address, city, country, customerGroup, notes, status };
+    return { name, phone, email, address, city, country, customerGroup, notes, status, foundThrough };
 }
 
 async function getAdminCustomerById(customerId) {
@@ -1190,10 +1205,10 @@ app.post('/api/admin/customers', authenticateToken, requireManager, async (req, 
         const customer = normalizeAdminCustomerInput(req.body, { requirePhone: true });
         const inserted = await dbRunAsync(
             `INSERT INTO customers
-                (name, phone, email, address, city, country, customer_group, notes, status, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+                (name, phone, email, address, city, country, customer_group, notes, status, source, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
             [customer.name, customer.phone, customer.email || null, customer.address, customer.city,
-                customer.country, customer.customerGroup, customer.notes, customer.status]
+                customer.country, customer.customerGroup, customer.notes, customer.status, customer.foundThrough]
         );
         const row = await getAdminCustomerById(inserted.lastID);
         logAdminAction(req, 'create', 'customer', inserted.lastID, `Added customer: ${customer.name}`);
@@ -1467,6 +1482,10 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
     const discountPercent = (req.staff && isFinite(rawDiscount) && rawDiscount > 0)
         ? Math.min(100, Math.round(rawDiscount * 100) / 100)
         : 0;
+    // Staff pick the channel on the counter form; the storefront posts none,
+    // so an order that came through the site is recorded as such.
+    const orderSource = normalizeSource(req.body.source) || (req.staff ? null : 'storefront');
+
     const address = delivery_address && typeof delivery_address === 'object' ? delivery_address : {};
 
     // Idempotency: the storefront sends a random key per checkout attempt. A
@@ -1626,10 +1645,10 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                 db.run(
                     `INSERT INTO orders (order_number, customer_name, customer_phone, customer_email, order_type, total_amount, status,
                         delivery_area, delivery_address_line1, delivery_address_line2, delivery_city, delivery_region, delivery_landmark,
-                        notes, customer_account_id, idempotency_key, discount_percent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        notes, customer_account_id, idempotency_key, discount_percent, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [tempNumber, customer_name, customer_phone, authoritativeEmail || null, order_type, total_amount, initialStatus,
                         delivery_area || address.city || null, address.line1 || null, address.line2 || null, address.city || null,
-                        address.region || null, address.landmark || null, notes || null, req.customer ? req.customer.cid : null, idemKey, discountPercent],
+                        address.region || null, address.landmark || null, notes || null, req.customer ? req.customer.cid : null, idemKey, discountPercent, orderSource],
                     function(err) {
                         if (err) {
                             // Two identical retries raced: the first won the unique
@@ -1808,8 +1827,8 @@ async function createPaystackOrder(checkout, priced, customer) {
         const inserted = await dbRunAsync(
             `INSERT INTO orders (order_number, customer_name, customer_phone, customer_email, order_type, total_amount, status,
                 delivery_area, delivery_address_line1, delivery_address_line2, delivery_city, delivery_region,
-                delivery_landmark, notes, customer_account_id)
-             VALUES (?, ?, ?, ?, ?, ?, 'awaiting_payment', ?, ?, ?, ?, ?, ?, ?, ?)`,
+                delivery_landmark, notes, customer_account_id, source)
+             VALUES (?, ?, ?, ?, ?, ?, 'awaiting_payment', ?, ?, ?, ?, ?, ?, ?, ?, 'storefront')`,
             [temporaryNumber, checkout.customerName, checkout.customerPhone, checkout.customerEmail, checkout.orderType,
                 priced.totalAmount, checkout.address.city, checkout.address.line1, checkout.address.line2 || null,
                 checkout.address.city, checkout.address.region, checkout.address.landmark || null, checkout.notes || null,

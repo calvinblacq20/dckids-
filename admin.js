@@ -8846,6 +8846,10 @@ async function submitCreateOrder() {
         items: items,
         idempotency_key: newOrderIdemKey
     };
+    // The channel the staff member picked on the form. Left off entirely when
+    // not recorded, so the server stores null rather than an empty string.
+    var sourceEl = document.getElementById('new-order-source');
+    if (sourceEl && sourceEl.value) payload.source = sourceEl.value;
     if (discountPercent > 0) payload.discount_percent = discountPercent;
     if (customer.email) payload.customer_email = customer.email;
     if (city) payload.delivery_area = city;
@@ -11273,8 +11277,20 @@ function renderDashboardRail(products) {
     });
 }
 
-/* Which of the three ways a customer buys decides the price, the stock hold
-   and whether a deposit is owed, so the split is worth ranking. */
+/* The reference ranks where orders came from, and now so can this: orders
+   carry a channel from a closed list, so the rows are counted rather than
+   guessed. Orders predating the column have none and are left out of the
+   ranking instead of being bundled into a wrong row. */
+var ORDER_SOURCE_LABELS = {
+    instagram: 'Instagram',
+    whatsapp: 'WhatsApp',
+    tiktok: 'TikTok',
+    facebook: 'Facebook',
+    referral: 'Referral',
+    'walk-in': 'Walk-in',
+    storefront: 'Online store'
+};
+
 function renderOrderMix() {
     var body = document.getElementById('dash-order-mix-body');
     var empty = document.getElementById('dash-mix-empty');
@@ -11283,17 +11299,17 @@ function renderOrderMix() {
     var all = (Array.isArray(window.adminOrders) ? window.adminOrders : [])
         .filter(function (o) { return String(o.status || '').toLowerCase() !== 'cancelled'; });
 
-    var labels = { retail: 'Retail', wholesale: 'Wholesale', preorder: 'Pre-order' };
-    var counts = { retail: 0, wholesale: 0, preorder: 0 };
+    var counts = {};
+    var known = 0;
     all.forEach(function (o) {
-        var t = String(o.order_type || o.type || 'retail').toLowerCase();
-        if (counts[t] === undefined) t = 'retail';
-        counts[t]++;
+        var key = String(o.source || '').toLowerCase();
+        if (!ORDER_SOURCE_LABELS[key]) return;
+        counts[key] = (counts[key] || 0) + 1;
+        known++;
     });
 
     var rows = Object.keys(counts)
-        .map(function (k) { return { key: k, label: labels[k], count: counts[k] }; })
-        .filter(function (r) { return r.count > 0; })
+        .map(function (k) { return { label: ORDER_SOURCE_LABELS[k], count: counts[k] }; })
         .sort(function (a, b) { return b.count - a.count; });
 
     if (!rows.length) {
@@ -11303,10 +11319,9 @@ function renderOrderMix() {
     }
     if (empty) empty.hidden = true;
 
-    var total = all.length || 1;
     var max = rows[0].count || 1;
     body.innerHTML = rows.map(function (r, i) {
-        var share = Math.round((r.count / total) * 100);
+        var share = Math.round((r.count / known) * 100);
         var bar = Math.round((r.count / max) * 100);
         return '<tr>' +
             '<td class="rank">' + (i + 1) + '</td>' +

@@ -971,17 +971,17 @@
              ranking here. -->
         <section class="adm-card" id="dash-order-mix">
           <div class="adm-card-head">
-            <h2>How orders arrive</h2>
+            <h2>Where orders came from</h2>
             <span class="adm-meta" id="dash-mix-range">Last 30 days</span>
           </div>
           <div class="adm-card-body">
             <table class="rank-table">
               <thead>
-                <tr><th>#</th><th>Type</th><th>Orders</th><th>Share</th></tr>
+                <tr><th>#</th><th>Source</th><th>Orders</th><th>Share</th></tr>
               </thead>
               <tbody id="dash-order-mix-body"></tbody>
             </table>
-            <p class="empty-line" id="dash-mix-empty" hidden>No orders in this period.</p>
+            <p class="empty-line" id="dash-mix-empty" hidden>No orders carry a source yet.</p>
           </div>
         </section>
 
@@ -6337,8 +6337,8 @@
   <script src="image-resolver.js?v=1"></script>
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
-  <script src="admin-demo.js?v=11"></script>
-  <script src="admin.js?v=159"></script>
+  <script src="admin-demo.js?v=12"></script>
+  <script src="admin.js?v=160"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
@@ -6475,6 +6475,25 @@
             <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
               <h3 class="text-base font-bold text-gray-900 mb-4" style="margin-top:0;">Order Settings</h3>
               
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-2" for="new-order-source">How did they reach us?</label>
+                <div class="relative">
+                  <select id="new-order-source" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-gray-900 shadow-sm bg-white cursor-pointer">
+                    <option value="">Not recorded</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="tiktok">TikTok</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="referral">Referral</option>
+                    <option value="walk-in">Walk-in</option>
+                    <option value="storefront">Online store</option>
+                  </select>
+                  <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Order Type</label>
                 <div class="relative">
