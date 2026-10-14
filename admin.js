@@ -706,42 +706,44 @@ var navTargetMap = {
 function placeAdminControls(targetId) {
     var cluster = document.getElementById('admin-head-controls');
     if (!cluster) {
-        var burger = document.getElementById('mobile-sidebar-toggle');
         var notif = document.querySelector('.notification-wrapper');
         var account = document.querySelector('.user-profile-wrapper');
         if (!notif || !account) return;
         cluster = document.createElement('div');
         cluster.id = 'admin-head-controls';
         cluster.className = 'adm-head-controls';
-        if (burger) cluster.appendChild(burger);
         cluster.appendChild(notif);
         cluster.appendChild(account);
-        // Park it in the document straight away. Returning early for the
-        // dashboard without this left the cluster — and the only copies of
-        // these three controls — detached, so every later lookup found
-        // nothing and no tab got them back.
+        // Park it in the document straight away: these are the only copies of
+        // the two controls, and leaving the cluster detached would take their
+        // dropdowns with it.
         document.body.appendChild(cluster);
     }
 
-    if (targetId === 'tab-dashboard') {
-        cluster.style.display = 'none';
+    var hero = document.querySelector('#tab-dashboard .dash-hero__actions');
+    if (targetId === 'tab-dashboard' && hero) {
+        // One set, on the dashboard, in the hero. The hero ships its own bell
+        // and avatar, but those are decoration — the real controls, with the
+        // dropdown and the account menu bound to them, are these. Hide the
+        // pair the markup carries so the hero shows one of each.
+        ['dashHeroBell', 'dashHeroUser'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+        var divider = document.querySelector('#tab-dashboard .dash-hero__divider');
+        if (divider) divider.style.display = 'none';
+        if (cluster.parentElement !== hero) hero.appendChild(cluster);
+        cluster.style.display = '';
         return;
     }
-    cluster.style.display = '';
 
-    var section = document.getElementById(targetId);
-    if (!section) return;
-    // Analytics is laid out differently and has no .adm-head, so fall back to
-    // its own actions row rather than leaving that one tab without controls.
-    var head = section.querySelector('.adm-head') || section.querySelector('.analytics-header');
-    if (!head) return;
-    var slot = head.querySelector('.adm-head__actions') || head.querySelector('.analytics-actions');
-    if (!slot) {
-        slot = document.createElement('div');
-        slot.className = 'adm-head__actions';
-        head.appendChild(slot);
-    }
-    if (cluster.parentElement !== slot) slot.appendChild(cluster);
+    // Every other tab prints its own title and its own actions. Repeating the
+    // bell and the account button under each one was the duplication again in
+    // a new place, so they stay on the dashboard. The cluster keeps its place
+    // in <body> while hidden, because hiding an ancestor of the dropdowns is
+    // what made them unopenable before.
+    if (cluster.parentElement !== document.body) document.body.appendChild(cluster);
+    cluster.style.display = 'none';
 }
 
 function switchTab(targetId) {

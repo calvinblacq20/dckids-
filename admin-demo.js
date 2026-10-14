@@ -23,7 +23,19 @@
     'use strict';
     var params = new URLSearchParams(location.search);
     var isShowcaseHost = /\.vercel\.app$/i.test(location.hostname);
-    if (params.get('demo') !== '1' && !isShowcaseHost) return;
+    if (params.get('demo') !== '1' && !isShowcaseHost) {
+        // The token this file sets survives in localStorage. Opening the admin
+        // again without the flag left admin.js treating it as a session and
+        // showing an empty dashboard — every list at zero — instead of the
+        // sign-in screen. Clear it on the way out so the next load is honest.
+        try {
+            if ((localStorage.getItem('adminToken') || '').indexOf('fallback-token-demo') === 0) {
+                localStorage.removeItem('adminToken');
+                localStorage.removeItem('adminRole');
+            }
+        } catch (e) { /* storage unavailable — nothing to clean up */ }
+        return;
+    }
 
     var DEMO_TOKEN = 'fallback-token-demo-preview';
     localStorage.setItem('adminToken', DEMO_TOKEN);
