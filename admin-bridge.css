@@ -2998,3 +2998,39 @@ body.is-authed #admin-header { display: none; }
 }
 .adm-head-controls .sidebar-toggle { background: var(--ground); }
 .adm-head__actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* =============================================================
+   48. Dashboard layout: the work, and the rail beside it
+   The reference puts everything needing a decision today in a column to the
+   right of the work itself, so the counts are readable without leaving the
+   page. The rail only earns its width once there is room for it — below
+   1200px it stacks under the content rather than squeezing both.
+   ============================================================= */
+.dash-layout { display: block; }
+.dash-main { min-width: 0; }
+
+.dash-rail { display: flex; flex-direction: column; gap: 14px; margin-top: 18px; min-width: 0; }
+.dash-rail__card { align-self: stretch; }
+.dash-rail__cta { padding: 20px; }
+.dash-rail__cta-title { font-size: 19px; line-height: 1.25; font-weight: 500; letter-spacing: -.01em; margin: 0 0 8px; }
+.dash-rail__cta-copy { font-size: 13px; line-height: 1.5; margin: 0 0 16px; color: var(--white-75); }
+
+.res-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.res-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 9px 0; border-bottom: 0.8px solid var(--ink-06); font-size: 13px;
+}
+.res-row:last-child { border-bottom: 0; }
+.res-row__name { display: flex; flex-direction: column; gap: 2px; min-width: 0; color: var(--ink); }
+.res-row__name em { font-style: normal; font-size: 11px; color: var(--ink-50); font-family: var(--mono); }
+.res-row__value { flex: none; font-size: 13px; color: var(--ink-75); font-variant-numeric: tabular-nums; }
+
+@media (min-width: 1200px) {
+  .dash-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    align-items: start;
+    gap: 20px;
+  }
+  .dash-rail { margin-top: 0; position: sticky; top: 18px; }
+}

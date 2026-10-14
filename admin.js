@@ -11188,6 +11188,135 @@ function renderTopProducts(list) {
     }).join('');
 }
 
+/* ============================================================
+   DASHBOARD RAIL AND ORDER MIX
+   The reference keeps a rail beside the work: each thing needing a decision
+   today, with its count and the way in. These are the DC Kids readings of it —
+   stock that is about to run out, orders packed and waiting to go, and
+   pre-orders still short of their deposit.
+   ============================================================ */
+var RAIL_AWAITING_PAYMENT = ['pending', 'awaiting_payment', 'payment_review'];
+var RAIL_READY_TO_SEND = ['paid', 'processing'];
+
+function dashRailOrders(statuses) {
+    var all = Array.isArray(window.adminOrders) ? window.adminOrders : [];
+    return all.filter(function (o) {
+        return statuses.indexOf(String(o.status || '').toLowerCase()) !== -1;
+    });
+}
+
+function fillRailList(listId, emptyId, countId, rows, build) {
+    var list = document.getElementById(listId);
+    var empty = document.getElementById(emptyId);
+    var count = document.getElementById(countId);
+    if (count) count.textContent = rows.length;
+    if (!list) return;
+    if (!rows.length) {
+        list.innerHTML = '';
+        if (empty) empty.hidden = false;
+        return;
+    }
+    if (empty) empty.hidden = true;
+    list.innerHTML = rows.slice(0, 4).map(build).join('');
+}
+
+function renderDashboardRail(products) {
+    var safe = Array.isArray(products) ? products : [];
+
+    // The one dark card: what is waiting on money, which is the decision that
+    // unblocks everything behind it.
+    var awaiting = dashRailOrders(RAIL_AWAITING_PAYMENT);
+    var owed = awaiting.reduce(function (sum, o) { return sum + (Number(o.total) || 0); }, 0);
+    var cta = document.getElementById('dash-rail-cta');
+    if (cta) {
+        cta.hidden = awaiting.length === 0;
+        var title = document.getElementById('dash-rail-cta-title');
+        var copy = document.getElementById('dash-rail-cta-copy');
+        if (title) {
+            title.textContent = awaiting.length === 1
+                ? '1 order is waiting on payment'
+                : awaiting.length + ' orders are waiting on payment';
+        }
+        if (copy) {
+            copy.textContent = owed > 0
+                ? 'Together they hold ' + dashMoney(owed) + '. Confirm payment and the stock moves with them.'
+                : 'Confirm payment and the stock moves with them.';
+        }
+    }
+
+    var low = safe.filter(function (p) { var n = Number(p.stock || 0); return n > 0 && n <= 5; })
+        .sort(function (a, b) { return Number(a.stock || 0) - Number(b.stock || 0); });
+    fillRailList('dash-rail-low', 'dash-rail-low-empty', 'dash-rail-low-count', low, function (p) {
+        var left = Number(p.stock || 0);
+        return '<li class="res-row">' +
+            '<span class="res-row__name">' + escapeHtml(p.name || 'Unnamed') + '</span>' +
+            '<span class="res-row__value">' + left + ' left</span>' +
+            '</li>';
+    });
+
+    var ready = dashRailOrders(RAIL_READY_TO_SEND);
+    fillRailList('dash-rail-ready', 'dash-rail-ready-empty', 'dash-rail-ready-count', ready, function (o) {
+        return '<li class="res-row">' +
+            '<span class="res-row__name">' + escapeHtml(o.customer || 'Customer') +
+            '<em>' + escapeHtml(o.id || '') + '</em></span>' +
+            '<span class="res-row__value">' + dashMoney(Number(o.total) || 0) + '</span>' +
+            '</li>';
+    });
+
+    var deposit = dashRailOrders(['pending_deposit']);
+    fillRailList('dash-rail-deposit', 'dash-rail-deposit-empty', 'dash-rail-deposit-count', deposit, function (o) {
+        return '<li class="res-row">' +
+            '<span class="res-row__name">' + escapeHtml(o.customer || 'Customer') +
+            '<em>' + escapeHtml(o.id || '') + '</em></span>' +
+            '<span class="res-row__value">' + dashMoney(Number(o.total) || 0) + '</span>' +
+            '</li>';
+    });
+}
+
+/* Which of the three ways a customer buys decides the price, the stock hold
+   and whether a deposit is owed, so the split is worth ranking. */
+function renderOrderMix() {
+    var body = document.getElementById('dash-order-mix-body');
+    var empty = document.getElementById('dash-mix-empty');
+    if (!body) return;
+
+    var all = (Array.isArray(window.adminOrders) ? window.adminOrders : [])
+        .filter(function (o) { return String(o.status || '').toLowerCase() !== 'cancelled'; });
+
+    var labels = { retail: 'Retail', wholesale: 'Wholesale', preorder: 'Pre-order' };
+    var counts = { retail: 0, wholesale: 0, preorder: 0 };
+    all.forEach(function (o) {
+        var t = String(o.order_type || o.type || 'retail').toLowerCase();
+        if (counts[t] === undefined) t = 'retail';
+        counts[t]++;
+    });
+
+    var rows = Object.keys(counts)
+        .map(function (k) { return { key: k, label: labels[k], count: counts[k] }; })
+        .filter(function (r) { return r.count > 0; })
+        .sort(function (a, b) { return b.count - a.count; });
+
+    if (!rows.length) {
+        body.innerHTML = '';
+        if (empty) empty.hidden = false;
+        return;
+    }
+    if (empty) empty.hidden = true;
+
+    var total = all.length || 1;
+    var max = rows[0].count || 1;
+    body.innerHTML = rows.map(function (r, i) {
+        var share = Math.round((r.count / total) * 100);
+        var bar = Math.round((r.count / max) * 100);
+        return '<tr>' +
+            '<td class="rank">' + (i + 1) + '</td>' +
+            '<td class="rank-name">' + r.label + '</td>' +
+            '<td class="rank-num">' + r.count + '</td>' +
+            '<td class="rank-share"><i style="width:' + bar + '%"></i><span>' + share + '%</span></td>' +
+            '</tr>';
+    }).join('');
+}
+
 function renderDashboardPatterns(analytics, products) {
     dashAnalytics = analytics || null;
     var k = (analytics && analytics.kpis) || {};
@@ -11199,6 +11328,9 @@ function renderDashboardPatterns(analytics, products) {
     set('val-period-revenue', dashMoney(k.totalRevenue));
     set('val-total-orders', String(k.totalOrders != null ? k.totalOrders : 0));
     set('val-avg-order', dashMoney(k.avgOrderValue));
+    renderDashboardRail(safe);
+    renderOrderMix();
+
     renderDelta(document.getElementById('delta-revenue'), g.totalRevenue, true);
     renderDelta(document.getElementById('delta-orders'), g.totalOrders, true);
     renderDelta(document.getElementById('delta-avg'), g.avgOrderValue, true);

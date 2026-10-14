@@ -9,7 +9,7 @@
    - Images + fonts: cache-first.
    - Bumping VERSION wipes old caches on activate.
 */
-const VERSION = 'dckids-v249';
+const VERSION = 'dckids-v250';
 const STATIC_CACHE = 'dckids-static-' + VERSION;
 const RUNTIME_CACHE = 'dckids-runtime-' + VERSION;
 

@@ -19,7 +19,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=73">
+  <link rel="stylesheet" href="admin-bridge.css?v=74">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -800,6 +800,8 @@
 
         <!-- Stat Widgets -->
         <!-- Page header: title + status line, as the reference top bar does. -->
+        <div class="dash-layout">
+          <div class="dash-main">
         <div class="adm-head">
           <div class="adm-head__titles">
             <h1 class="adm-title">Dashboard</h1>
@@ -961,6 +963,75 @@
               </tbody>
             </table>
           </div>
+        </div>
+
+        <!-- The reference ranks where orders came from. DC Kids sells the same
+             catalogue three ways, and which way a customer buys decides the
+             price, the stock hold and the deposit — so that is the split worth
+             ranking here. -->
+        <section class="adm-card" id="dash-order-mix">
+          <div class="adm-card-head">
+            <h2>How orders arrive</h2>
+            <span class="adm-meta" id="dash-mix-range">Last 30 days</span>
+          </div>
+          <div class="adm-card-body">
+            <table class="rank-table">
+              <thead>
+                <tr><th>#</th><th>Type</th><th>Orders</th><th>Share</th></tr>
+              </thead>
+              <tbody id="dash-order-mix-body"></tbody>
+            </table>
+            <p class="empty-line" id="dash-mix-empty" hidden>No orders in this period.</p>
+          </div>
+        </section>
+
+          </div>
+
+          <!-- The rail the reference keeps beside the work: what needs a
+               decision today, each with the count and the way in. -->
+          <aside class="dash-rail" aria-label="Needs your attention">
+            <section class="adm-card adm-dark dash-rail__cta" id="dash-rail-cta" hidden>
+              <h2 class="dash-rail__cta-title" id="dash-rail-cta-title">&nbsp;</h2>
+              <p class="dash-rail__cta-copy" id="dash-rail-cta-copy">&nbsp;</p>
+              <button type="button" class="adm-cta" data-dashboard-target="tab-orders">
+                <span>Review orders</span>
+                <i class="adm-cta__arrow" aria-hidden="true">&rarr;</i>
+              </button>
+            </section>
+
+            <section class="adm-card dash-rail__card">
+              <div class="adm-card-head">
+                <h2>Running low</h2>
+                <span class="chip-count" id="dash-rail-low-count">0</span>
+              </div>
+              <div class="adm-card-body">
+                <ul class="res-list" id="dash-rail-low"></ul>
+                <p class="empty-line" id="dash-rail-low-empty" hidden>Nothing is running low.</p>
+              </div>
+            </section>
+
+            <section class="adm-card dash-rail__card">
+              <div class="adm-card-head">
+                <h2>Ready to send</h2>
+                <span class="chip-count" id="dash-rail-ready-count">0</span>
+              </div>
+              <div class="adm-card-body">
+                <ul class="res-list" id="dash-rail-ready"></ul>
+                <p class="empty-line" id="dash-rail-ready-empty" hidden>Nothing is waiting to go out.</p>
+              </div>
+            </section>
+
+            <section class="adm-card dash-rail__card">
+              <div class="adm-card-head">
+                <h2>Pre-orders awaiting deposit</h2>
+                <span class="chip-count" id="dash-rail-deposit-count">0</span>
+              </div>
+              <div class="adm-card-body">
+                <ul class="res-list" id="dash-rail-deposit"></ul>
+                <p class="empty-line" id="dash-rail-deposit-empty" hidden>No pre-orders are waiting.</p>
+              </div>
+            </section>
+          </aside>
         </div>
       </section>
 
@@ -6267,7 +6338,7 @@
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
   <script src="admin-demo.js?v=11"></script>
-  <script src="admin.js?v=158"></script>
+  <script src="admin.js?v=159"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
