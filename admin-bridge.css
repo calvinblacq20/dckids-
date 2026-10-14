@@ -3071,3 +3071,48 @@ body.is-authed #admin-header { display: none; }
 .rail-row--ranked .rail-row__name { display: flex; flex-direction: column; gap: 1px; min-width: 0; text-align: left; }
 .rail-row--ranked .rail-row__name em { font-style: normal; font-size: 11px; color: var(--ink-50); }
 .rail-row--ranked .rail-row__val { margin-left: auto; }
+
+/* =============================================================
+   51. Payments
+   The received figure carries the page, so it gets the room. Method share
+   reads as one bar plus a legend rather than a chart: there are rarely more
+   than four methods, and the proportion is the whole point.
+   ============================================================= */
+.pay-split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+@media (min-width: 900px) { .pay-split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+
+.pay-received .counter-num { font-size: 44px; line-height: 1.05; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.pay-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; margin-top: 20px; }
+.pay-fact { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pay-fact span { font-size: 12px; color: var(--ink-50); }
+.pay-fact b { font-size: 15px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.pay-bar { display: flex; height: 10px; border-radius: var(--r-pill); overflow: hidden; background: var(--ground); margin-bottom: 16px; }
+.pay-bar__seg { display: block; height: 100%; }
+.pay-bar__seg--0 { background: var(--lime); }
+.pay-bar__seg--1 { background: var(--label-lilac, #8b7cc8); }
+.pay-bar__seg--2 { background: var(--label-sky, #6ba8d8); }
+.pay-bar__seg--3 { background: var(--ink-25); }
+
+.pay-methods { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.pay-method { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.pay-method__dot { flex: none; width: 10px; height: 10px; border-radius: 50%; }
+.pay-method__name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; color: var(--ink); }
+.pay-method__name em { font-style: normal; font-size: 11px; color: var(--ink-50); }
+.pay-method__amt { flex: none; color: var(--ink-75); font-variant-numeric: tabular-nums; }
+.pay-method__pct { flex: none; width: 40px; text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.pay-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px; }
+.pay-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pay-pill {
+  border: 0.8px solid var(--ink-12); background: var(--surface); color: var(--ink-75);
+  padding: 7px 14px; border-radius: var(--r-pill); font: inherit; font-size: 13px; cursor: pointer;
+}
+.pay-pill:hover { background: var(--ground); }
+.pay-pill.is-on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.pay-search { margin-left: auto; flex: 1 1 220px; max-width: 320px; }
+.pay-search input {
+  width: 100%; height: 40px; padding: 0 14px;
+  border: 0.8px solid var(--ink-12); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink); font: inherit; font-size: 13px;
+}

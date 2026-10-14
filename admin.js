@@ -772,6 +772,8 @@ function switchTab(targetId) {
 
     placeAdminControls(targetId);
 
+    if (targetId === 'tab-payments') { initPaymentPills(); loadPayments(); }
+
     // Set active on matching nav item
     var matchingNav = document.querySelector('.sidebar-link[data-tab="' + targetId + '"]');
     if (matchingNav) {
@@ -7930,6 +7932,7 @@ function setupEventListeners() {
         if (e.target.id === 'cust-search') { custCurrentPage = 1; renderCustomersTable(); }
         if (e.target.id === 'prod-search') { prodCurrentPage = 1; renderProductsGrid(); }
         if (e.target.id === 'review-search') { reviewCurrentPage = 1; renderReviewsTable(); }
+        if (e.target.id === 'pay-search') renderPayments();
     });
     document.addEventListener('change', function(e) {
         if (e.target.classList && e.target.classList.contains('order-stage')) { orderCurrentPage = 1; renderOrdersTable(); }
@@ -7937,6 +7940,7 @@ function setupEventListeners() {
         if (e.target.id === 'order-date-filter') { orderCurrentPage = 1; renderOrdersTable(); }
         if (e.target.id === 'cust-group-filter') { custCurrentPage = 1; renderCustomersTable(); }
         if (e.target.id === 'cust-source-filter') { custCurrentPage = 1; renderCustomersTable(); }
+        if (e.target.id === 'payments-period') loadPayments();
         if (e.target.id === 'prod-cat-filter' || e.target.id === 'prod-status-filter' || e.target.id === 'prod-fulfillment-filter' || e.target.id === 'prod-image-filter' || e.target.id === 'prod-sort') { prodCurrentPage = 1; renderProductsGrid(); }
     });
 
@@ -10188,6 +10192,7 @@ function downloadProductCsvTemplate() {
     { tab: 'tab-customers', label: 'Customers',       icon: ICON.customers },
     { tab: 'tab-products',  label: 'Products',        icon: ICON.products },
     { tab: 'tab-suppliers', label: 'Suppliers',       icon: ICON.suppliers },
+    { tab: 'tab-payments',  label: 'Payments',        icon: ICON.reports },
     { tab: 'tab-analytics', label: 'Sales Analytics', icon: ICON.analytics },
     { tab: 'tab-reports',   label: 'Reports',         icon: ICON.reports },
     { tab: 'tab-settings',  label: 'Settings',        icon: ICON.settings }
@@ -11335,6 +11340,169 @@ function fillRailList(listId, emptyId, countId, rows, build) {
     }
     if (empty) empty.hidden = true;
     list.innerHTML = rows.slice(0, 4).map(build).join('');
+}
+
+/* ============================================================
+   PAYMENTS
+   What arrived, as opposed to what the orders are worth. One order can be
+   settled in parts and an order can be worth money nobody has paid, so this
+   reads the payments table rather than totting up order totals.
+   ============================================================ */
+var paymentsData = { payments: [], summary: null, by_method: [] };
+var paymentsMethodFilter = '';
+
+var PAYMENT_METHOD_SHORT = {
+    'Mobile Money': 'MoMo',
+    'Bank Transfer': 'Bank',
+    'Cash on Delivery': 'Cash'
+};
+
+function paymentsPeriod() {
+    var el = document.getElementById('payments-period');
+    return el ? el.value : '30';
+}
+
+function loadPayments() {
+    var token = localStorage.getItem('adminToken');
+    if (!token) return;
+    fetch(API_URL + '/admin/payments?period=' + encodeURIComponent(paymentsPeriod()), {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function (res) {
+        if (res.status === 401 || res.status === 403) { handleSessionExpiry(); return null; }
+        if (!res.ok) throw new Error('Payments unavailable');
+        return res.json();
+    })
+    .then(function (data) {
+        if (!data) return;
+        paymentsData = {
+            payments: Array.isArray(data.payments) ? data.payments : [],
+            summary: data.summary || null,
+            by_method: Array.isArray(data.by_method) ? data.by_method : []
+        };
+        renderPayments();
+    })
+    .catch(function (err) {
+        console.warn('Payments unavailable:', err && err.message ? err.message : err);
+        paymentsData = { payments: [], summary: null, by_method: [] };
+        renderPayments();
+    });
+}
+
+function initPaymentPills() {
+    var host = document.getElementById('pay-method-filters');
+    if (!host || host.dataset.bound) return;
+    host.dataset.bound = '1';
+    host.addEventListener('click', function (e) {
+        var pill = e.target.closest('.pay-pill');
+        if (!pill) return;
+        paymentsMethodFilter = pill.getAttribute('data-method') || '';
+        host.querySelectorAll('.pay-pill').forEach(function (b) {
+            b.classList.toggle('is-on', b === pill);
+        });
+        renderPayments();
+    });
+}
+
+function filteredPayments() {
+    var searchEl = document.getElementById('pay-search');
+    var q = searchEl ? searchEl.value.trim().toLowerCase() : '';
+    return paymentsData.payments.filter(function (p) {
+        var matchesMethod = !paymentsMethodFilter || p.method === paymentsMethodFilter;
+        if (!q) return matchesMethod;
+        var hay = [p.customer_name, p.order_number, p.reference].join(' ').toLowerCase();
+        return matchesMethod && hay.indexOf(q) !== -1;
+    });
+}
+
+function renderPayments() {
+    var summary = paymentsData.summary || { received: 0, count: 0, average: 0, previous: 0, still_owed: 0 };
+
+    var periodLabel = { '7': 'Last 7 days', '30': 'Last 30 days', '90': 'Last 90 days', '365': 'Last 12 months' }[paymentsPeriod()] || 'Last 30 days';
+    var line = document.getElementById('payments-status-line');
+    if (line) {
+        line.textContent = periodLabel + ' \u00b7 ' + summary.count +
+            (summary.count === 1 ? ' payment' : ' payments');
+    }
+
+    var set = function (id, text) { var el = document.getElementById(id); if (el) el.textContent = text; };
+    set('pay-received', 'GHS ' + formatNumber(summary.received));
+    set('pay-previous', 'GHS ' + formatNumber(summary.previous));
+    set('pay-owed', 'GHS ' + formatNumber(summary.still_owed));
+    set('pay-count', String(summary.count));
+    set('pay-average', 'GHS ' + formatNumber(summary.average));
+
+    // Against nothing, a change has no meaning — so the first period shows a
+    // dash rather than an invented percentage.
+    var delta = document.getElementById('pay-delta');
+    if (delta) {
+        if (!summary.previous) {
+            delta.textContent = '\u2014';
+            delta.className = 'delta is-neutral';
+        } else {
+            var pct = Math.round(((summary.received - summary.previous) / summary.previous) * 100);
+            delta.textContent = (pct >= 0 ? '\u2191 ' : '\u2193 ') + Math.abs(pct) + '%';
+            delta.className = 'delta ' + (pct >= 0 ? 'is-up' : 'is-down');
+        }
+    }
+
+    var bar = document.getElementById('pay-method-bar');
+    var list = document.getElementById('pay-method-list');
+    var methodEmpty = document.getElementById('pay-method-empty');
+    var methods = paymentsData.by_method;
+    var methodTotal = methods.reduce(function (sum, m) { return sum + Number(m.amount || 0); }, 0);
+    if (list) {
+        if (!methods.length) {
+            list.innerHTML = '';
+            if (bar) bar.innerHTML = '';
+            if (methodEmpty) methodEmpty.hidden = false;
+        } else {
+            if (methodEmpty) methodEmpty.hidden = true;
+            if (bar) {
+                bar.innerHTML = methods.map(function (m, i) {
+                    var pct = methodTotal ? (Number(m.amount || 0) / methodTotal) * 100 : 0;
+                    return '<i class="pay-bar__seg pay-bar__seg--' + (i % 4) + '" style="width:' + pct + '%"></i>';
+                }).join('');
+            }
+            list.innerHTML = methods.map(function (m, i) {
+                var pct = methodTotal ? Math.round((Number(m.amount || 0) / methodTotal) * 100) : 0;
+                return '<li class="pay-method">' +
+                    '<span class="pay-method__dot pay-bar__seg--' + (i % 4) + '"></span>' +
+                    '<span class="pay-method__name">' + escapeHtml(m.method) +
+                    '<em>' + m.count + (m.count === 1 ? ' payment' : ' payments') + '</em></span>' +
+                    '<span class="pay-method__amt">GHS ' + formatNumber(m.amount) + '</span>' +
+                    '<span class="pay-method__pct">' + pct + '%</span>' +
+                    '</li>';
+            }).join('');
+        }
+    }
+
+    var rows = filteredPayments();
+    var body = document.getElementById('payments-tbody');
+    var empty = document.getElementById('payments-empty');
+    if (!body) return;
+    if (!rows.length) {
+        body.innerHTML = '';
+        if (empty) empty.hidden = false;
+        return;
+    }
+    if (empty) empty.hidden = true;
+    body.innerHTML = rows.map(function (p) {
+        var when = p.paid_at ? new Date(p.paid_at) : null;
+        var date = when
+            ? when.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) +
+              ', ' + when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '\u2014';
+        return '<tr>' +
+            '<td data-label="Date">' + escapeHtml(date) + '</td>' +
+            '<td data-label="Reference" class="tabular">' + escapeHtml(p.reference || '\u2014') + '</td>' +
+            '<td data-label="Client">' + escapeHtml(p.customer_name || '\u2014') + '</td>' +
+            '<td data-label="Order" class="tabular">' + escapeHtml(p.order_number || '\u2014') + '</td>' +
+            '<td data-label="Method">' + escapeHtml(PAYMENT_METHOD_SHORT[p.method] || p.method) + '</td>' +
+            '<td data-label="Type">' + escapeHtml(p.kind || '\u2014') + '</td>' +
+            '<td data-label="Amount" class="is-num tabular">GHS ' + formatNumber(p.amount) + '</td>' +
+            '</tr>';
+    }).join('');
 }
 
 function renderDashboardRail(products) {

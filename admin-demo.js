@@ -173,6 +173,56 @@
             { id: 4, username: 'yaa@dckidsbrand.com',   role: 'staff',   email: 'yaa@dckidsbrand.com',   full_name: 'Yaa Serwaa',    phone: '0241000004', status: 'pending' }
         ];
 
+        // Payments arrive on their own endpoint, so the showcase needs its
+        // own set — derived from the sample orders so the figures agree with
+        // what the Orders tab shows.
+        var demoPayments = (function () {
+            var methods = ['Mobile Money', 'Mobile Money', 'Bank Transfer', 'Mobile Money', 'Cash', 'Mobile Money', 'Bank Transfer'];
+            var settled = demoOrders.filter(function (o) {
+                return ['paid', 'shipped', 'dispatched', 'delivered', 'completed'].indexOf(o.status) !== -1;
+            });
+            return settled.map(function (o, i) {
+                return {
+                    id: i + 1,
+                    amount: o.total,
+                    method: methods[i % methods.length],
+                    provider: 'Paystack',
+                    reference: 'DCK-' + String(2026) + '-' + String(1001 + i),
+                    currency: 'GHS',
+                    paid_at: o.date,
+                    order_number: o.id,
+                    customer_name: o.customer,
+                    kind: 'Full'
+                };
+            });
+        })();
+
+        var demoPaymentsPayload = function () {
+            var received = demoPayments.reduce(function (sum, p) { return sum + p.amount; }, 0);
+            var byMethod = {};
+            demoPayments.forEach(function (p) {
+                if (!byMethod[p.method]) byMethod[p.method] = { method: p.method, count: 0, amount: 0 };
+                byMethod[p.method].count++;
+                byMethod[p.method].amount += p.amount;
+            });
+            var owed = demoOrders
+                .filter(function (o) { return ['pending', 'pending_deposit', 'awaiting_payment', 'payment_review'].indexOf(o.status) !== -1; })
+                .reduce(function (sum, o) { return sum + o.total; }, 0);
+            return {
+                period_days: 30,
+                payments: demoPayments.slice(),
+                summary: {
+                    received: received,
+                    count: demoPayments.length,
+                    average: demoPayments.length ? received / demoPayments.length : 0,
+                    previous: Math.round(received * 1.38),
+                    still_owed: owed
+                },
+                by_method: Object.keys(byMethod).map(function (k) { return byMethod[k]; })
+                    .sort(function (a, b) { return b.amount - a.amount; })
+            };
+        };
+
         // ---- Writes ----
         // Opening the create-order form worked, but submitting it did not:
         // admin.js POSTs to /api/orders, which 404s on a host that only
@@ -359,6 +409,7 @@
             // their error states.
             if (path.indexOf('/api/orders') === 0)           return Promise.resolve(jsonResponse(demoOrders.slice()));
             if (path.indexOf('/api/products') === 0)         return Promise.resolve(jsonResponse(demoProducts.slice()));
+            if (path.indexOf('/api/admin/payments') === 0)   return Promise.resolve(jsonResponse(demoPaymentsPayload()));
             if (path.indexOf('/api/admin/customers') === 0)  return Promise.resolve(jsonResponse(demoCustomers.slice()));
             if (path.indexOf('/api/suppliers') === 0)        return Promise.resolve(jsonResponse(demoSuppliers.slice()));
             if (path.indexOf('/api/admin/reviews') === 0)    return Promise.resolve(jsonResponse(demoReviews.slice()));

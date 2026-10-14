@@ -2039,6 +2039,90 @@ function forwardLegacyPaystackEvent(rawBody, signature) {
     return forwardPaystackEvent(rawBody, signature, PAYSTACK_LEGACY_WEBHOOK_URL, 'Legacy', 'forwardLegacyPaystackWebhook');
 }
 
+/* The money that actually arrived, which is a different question from what
+   the orders are worth. A payment belongs to an order but is not the order:
+   one order can be settled in parts, and an order can be worth money that has
+   never been paid. This reads the payments table rather than inferring
+   takings from order totals. */
+const PAYMENT_PERIODS = { '7': 7, '30': 30, '90': 90, '365': 365 };
+
+app.get('/api/admin/payments', authenticateToken, async (req, res) => {
+    try {
+        const days = PAYMENT_PERIODS[String(req.query.period || '30')] || 30;
+        const since = new Date(Date.now() - days * 86400000).toISOString();
+        const previousSince = new Date(Date.now() - days * 2 * 86400000).toISOString();
+
+        // paid_at is when the money landed; created_at is only when the row was
+        // written, so an unpaid attempt would otherwise count as takings.
+        const rows = await dbAllAsync(
+            `SELECT p.id, p.amount, p.payment_method, p.provider, p.provider_reference,
+                    p.currency, p.channel, p.paid_at, p.status,
+                    o.order_number, o.customer_name, o.total_amount
+               FROM payments p
+               LEFT JOIN orders o ON o.id = p.order_id
+              WHERE lower(COALESCE(p.status, '')) IN ('paid', 'success', 'completed')
+                AND COALESCE(p.paid_at, p.created_at) >= ?
+              ORDER BY COALESCE(p.paid_at, p.created_at) DESC`,
+            [since]
+        );
+
+        const previous = await dbGetAsync(
+            `SELECT COALESCE(SUM(amount), 0) AS total
+               FROM payments
+              WHERE lower(COALESCE(status, '')) IN ('paid', 'success', 'completed')
+                AND COALESCE(paid_at, created_at) >= ? AND COALESCE(paid_at, created_at) < ?`,
+            [previousSince, since]
+        );
+
+        // Still owed is a live figure, not a period one: it is what the open
+        // orders are carrying right now.
+        const owed = await dbGetAsync(
+            `SELECT COALESCE(SUM(total_amount), 0) AS total
+               FROM orders
+              WHERE lower(COALESCE(status, '')) IN
+                    ('pending','pending_deposit','awaiting_payment','payment_review')`
+        );
+
+        const received = rows.reduce((sum, r) => sum + Number(r.amount || 0), 0);
+        const byMethod = {};
+        rows.forEach((r) => {
+            const key = String(r.payment_method || 'Other');
+            if (!byMethod[key]) byMethod[key] = { method: key, count: 0, amount: 0 };
+            byMethod[key].count += 1;
+            byMethod[key].amount += Number(r.amount || 0);
+        });
+
+        res.json({
+            period_days: days,
+            payments: rows.map((r) => ({
+                id: r.id,
+                amount: Number(r.amount || 0),
+                method: r.payment_method || 'Other',
+                provider: r.provider || null,
+                reference: r.provider_reference || null,
+                currency: r.currency || 'GHS',
+                paid_at: r.paid_at || null,
+                order_number: r.order_number || null,
+                customer_name: r.customer_name || null,
+                // Full when the payment settles the order outright, part when
+                // it does not. Derived, because the table records the amount
+                // but never what it was meant to cover.
+                kind: Number(r.amount || 0) >= Number(r.total_amount || 0) ? 'Full' : 'Part'
+            })),
+            summary: {
+                received,
+                count: rows.length,
+                average: rows.length ? received / rows.length : 0,
+                previous: Number((previous && previous.total) || 0),
+                still_owed: Number((owed && owed.total) || 0)
+            },
+            by_method: Object.keys(byMethod)
+                .map((k) => byMethod[k])
+                .sort((a, b) => b.amount - a.amount)
+        });
+    } catch (error) { serverError(res, error); }
+});
+
 app.get('/api/payments/paystack/config', (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
     res.json({ enabled: Boolean(PAYSTACK_SECRET_KEY), akua_forwarding: Boolean(PAYSTACK_AKUA_WEBHOOK_URL) });

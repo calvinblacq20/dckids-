@@ -19,7 +19,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=76">
+  <link rel="stylesheet" href="admin-bridge.css?v=77">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -531,6 +531,11 @@
           
           <!-- 7. Sales Analytics -->
           <div class="adm-group">Money</div>
+
+            <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-payments"><span class="adm-nav-hl" aria-hidden="true"></span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              <span class="adm-nav-label">Payments</span>
+            </a>
           
             <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-analytics"><span class="adm-nav-hl" aria-hidden="true"></span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
@@ -4448,6 +4453,84 @@
           </div>
         </section>
 
+      <!-- ==================== TAB: PAYMENTS ==================== -->
+      <section id="tab-payments" class="tab-view" role="tabpanel" aria-label="Payments">
+        <div class="adm-head">
+          <div class="adm-head__titles">
+            <h1 class="adm-title">Payments</h1>
+            <span class="adm-status"><i class="adm-dot"></i><span id="payments-status-line">&nbsp;</span></span>
+          </div>
+          <div class="adm-head__actions">
+            <label class="sr-only" for="payments-period">Period</label>
+            <select id="payments-period" class="adm-period">
+              <option value="7">Last 7 days</option>
+              <option value="30" selected>Last 30 days</option>
+              <option value="90">Last 90 days</option>
+              <option value="365">Last 12 months</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pay-split">
+          <!-- What arrived, against what arrived before it, and what is still
+               outstanding — the three figures that say whether a quiet month
+               is a slow month or an unpaid one. -->
+          <section class="adm-card pay-received">
+            <div class="adm-card-head">
+              <h2>Received</h2>
+              <span class="delta" id="pay-delta">&mdash;</span>
+            </div>
+            <div class="adm-card-body">
+              <div class="counter-num" id="pay-received">&mdash;</div>
+              <div class="pay-facts">
+                <div class="pay-fact"><span>Previous period</span><b id="pay-previous">&mdash;</b></div>
+                <div class="pay-fact"><span>Still owed on open orders</span><b id="pay-owed">&mdash;</b></div>
+                <div class="pay-fact"><span>Payments</span><b id="pay-count">&mdash;</b></div>
+                <div class="pay-fact"><span>Average payment</span><b id="pay-average">&mdash;</b></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="adm-card">
+            <div class="adm-card-head"><h2>By method</h2></div>
+            <div class="adm-card-body">
+              <div class="pay-bar" id="pay-method-bar" aria-hidden="true"></div>
+              <ul class="pay-methods" id="pay-method-list"></ul>
+              <p class="empty-line" id="pay-method-empty" hidden>No payments in this period.</p>
+            </div>
+          </section>
+        </div>
+
+        <div class="pay-toolbar">
+          <div class="pay-pills" id="pay-method-filters" role="group" aria-label="Filter by method">
+            <button type="button" class="pay-pill is-on" data-method="">All</button>
+            <button type="button" class="pay-pill" data-method="Mobile Money">MoMo</button>
+            <button type="button" class="pay-pill" data-method="Cash">Cash</button>
+            <button type="button" class="pay-pill" data-method="Bank Transfer">Bank</button>
+            <button type="button" class="pay-pill" data-method="Card">Card</button>
+          </div>
+          <label class="pay-search">
+            <span class="sr-only">Search payments</span>
+            <input type="search" id="pay-search" placeholder="Client, reference or order number" aria-label="Search payments">
+          </label>
+        </div>
+
+        <section class="adm-card">
+          <div class="adm-table-wrap">
+            <table class="adm-table">
+              <thead>
+                <tr>
+                  <th>Date</th><th>Reference</th><th>Client</th><th>Order</th>
+                  <th>Method</th><th>Type</th><th class="is-num">Amount</th>
+                </tr>
+              </thead>
+              <tbody id="payments-tbody"></tbody>
+            </table>
+          </div>
+          <p class="empty-line" id="payments-empty" hidden>No payments match this view.</p>
+        </section>
+      </section>
+
         <section id="tab-analytics" class="tab-view analytics-dashboard" role="tabpanel" aria-label="Sales Analytics">
         <div class="analytics-shell">
           <div class="analytics-header">
@@ -6370,8 +6453,8 @@
   <script src="image-resolver.js?v=1"></script>
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
-  <script src="admin-demo.js?v=13"></script>
-  <script src="admin.js?v=163"></script>
+  <script src="admin-demo.js?v=14"></script>
+  <script src="admin.js?v=164"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

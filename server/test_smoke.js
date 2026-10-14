@@ -813,6 +813,26 @@ async function run() {
     check('an order placed without a source is recorded as the storefront',
         findSource(order.order_number) === 'storefront', String(findSource(order.order_number)));
 
+    // --- Payments ---
+    // Takings are not order totals: an order can be worth money nobody paid,
+    // so this endpoint reads the payments table and must stay authenticated.
+    r = await fetch(`${BASE}/api/admin/payments`);
+    check('payments require a signed-in admin', r.status === 401 || r.status === 403, `status ${r.status}`);
+
+    r = await fetch(`${BASE}/api/admin/payments?period=30`, { headers: auth });
+    check('payments endpoint answers for a period', r.status === 200, `status ${r.status}`);
+    const payBody = await r.json();
+    check('payments reply carries rows, a summary and a method split',
+        Array.isArray(payBody.payments) && !!payBody.summary && Array.isArray(payBody.by_method),
+        Object.keys(payBody).join(','));
+    check('the summary average agrees with its own total and count',
+        payBody.summary.count === 0
+            ? payBody.summary.average === 0
+            : Math.abs(payBody.summary.average - (payBody.summary.received / payBody.summary.count)) < 0.01,
+        JSON.stringify(payBody.summary));
+    check('still-owed counts the unpaid open orders', Number(payBody.summary.still_owed) >= 0,
+        String(payBody.summary.still_owed));
+
     // --- Content-Security-Policy ---
     // The admin's "Continue with Google" button only renders once
     // GOOGLE_CLIENT_ID is set, so a policy missing the Google Identity origins
