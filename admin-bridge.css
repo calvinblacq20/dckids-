@@ -313,7 +313,7 @@ img { max-width: 100%; }
   --glass:         rgba(255, 255, 255, 0.8);
 }
 
-body, .dashboard-container { background: var(--ground); }
+body, .dashboard-container { background: var(--page); }
 
 /* ---------- Sidebar: white surface on the ground, hairline edge ---------- */
 .admin-sidebar {

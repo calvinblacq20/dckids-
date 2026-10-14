@@ -21,6 +21,12 @@
   color-scheme: light;
 
   --ground: #ebeff5;
+  /* The page sits lighter than the chips. --ground does both jobs in ~119
+     places: it paints the page behind the cards, and it fills the small
+     controls that sit on top of them. Lightening it everywhere would have
+     made those chips vanish against a white card, so the page gets its own
+     value and --ground keeps filling. */
+  --page: #f6f8fb;
   --surface: #ffffff;
   --ink: #242426;
   --ink-75: rgba(36, 36, 38, 0.75);
@@ -220,7 +226,7 @@ a {
   position: relative;
   min-height: 100dvh;
   margin-inline: auto;
-  background: var(--ground);
+  background: var(--page);
   display: flex;
   flex-direction: column;
 }
@@ -943,9 +949,9 @@ button.row:active, a.row:active { background: var(--ink-06); }
   --adm-bar-h: 60px;
   --gutter: 16px;
   min-height: 100dvh;
-  background: var(--ground);
+  background: var(--page);
 }
-body:has(.adm) { background: var(--ground); }
+body:has(.adm) { background: var(--page); }
 
 @media (min-width: 810px) {
   .adm {
