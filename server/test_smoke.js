@@ -774,6 +774,16 @@ async function run() {
     });
     check('malformed JSON returns 400', r.status === 400, `status ${r.status}`);
 
+    // An unclosed <div> in admin.html once nested every modal declared after
+    // the receipt inside a display:none container, so they could be opened
+    // but never seen. Nothing caught it, because each modal's own display
+    // property still read "flex". Balance is the cheap proxy for that.
+    const adminHtml = fs.readFileSync(path.join(__dirname, '..', 'admin.html'), 'utf8');
+    const divOpens = (adminHtml.match(/<div[\s>]/g) || []).length;
+    const divCloses = (adminHtml.match(/<\/div>/g) || []).length;
+    check('admin.html closes every div it opens', divOpens === divCloses,
+        `${divOpens} opened, ${divCloses} closed`);
+
     // --- Content-Security-Policy ---
     // The admin's "Continue with Google" button only renders once
     // GOOGLE_CLIENT_ID is set, so a policy missing the Google Identity origins
