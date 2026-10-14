@@ -192,6 +192,8 @@ function normalizeAdminCustomer(customer) {
         joinDate: row.created_at || row.joinDate || '',
         lastOrderAt: row.last_order_at || '',
         totalSpent: Number(row.total_spent || row.totalSpent || 0),
+        owed: Number(row.amount_owed || row.owed || 0),
+        source: String(row.source || '').toLowerCase(),
         orderCount: Number(row.order_count || row.orderCount || 0),
         status: row.status === 'inactive' ? 'inactive' : 'active'
     };
@@ -3385,19 +3387,52 @@ function sortCustomersList(list) {
 }
 
 function renderCustomersRail(all) {
+    // A ranked board rather than a plain list: the position is the point when
+    // the question is who to thank, who to discount and who to ask for a
+    // referral. Spend first, orders as the tie-break, so somebody who buys
+    // often is not pushed under a single large order.
     var list = document.getElementById('customers-rail-list');
     var empty = document.getElementById('customers-rail-empty');
-    if (!list) return;
-    var top = all.filter(function (c) { return Number(c.totalSpent || 0) > 0; })
-        .sort(function (a, b) { return Number(b.totalSpent || 0) - Number(a.totalSpent || 0); })
-        .slice(0, 5);
-    if (!top.length) { list.innerHTML = ''; if (empty) empty.hidden = false; return; }
-    if (empty) empty.hidden = true;
-    list.innerHTML = top.map(function (c) {
+    if (list) {
+        var top = all.filter(function (c) { return Number(c.totalSpent || 0) > 0; })
+            .sort(function (a, b) {
+                var bySpend = Number(b.totalSpent || 0) - Number(a.totalSpent || 0);
+                return bySpend !== 0 ? bySpend : Number(b.orderCount || 0) - Number(a.orderCount || 0);
+            })
+            .slice(0, 5);
+        if (!top.length) {
+            list.innerHTML = '';
+            if (empty) empty.hidden = false;
+        } else {
+            if (empty) empty.hidden = true;
+            list.innerHTML = top.map(function (c, i) {
+                return '<button type="button" class="rail-row rail-row--ranked" onclick="openCustomerDetail(\'' + c.id + '\')">' +
+                    '<span class="rail-row__rank">' + (i + 1) + '</span>' +
+                    '<span class="rail-row__name">' + escapeHtml(c.name || 'Unnamed') +
+                    '<em>' + (c.orderCount || 0) + (Number(c.orderCount) === 1 ? ' order' : ' orders') + '</em></span>' +
+                    '<span class="rail-row__val">GHS ' + formatNumber(c.totalSpent || 0) + '</span>' +
+                    '</button>';
+            }).join('');
+        }
+    }
+
+    var owedList = document.getElementById('customers-owed-list');
+    var owedEmpty = document.getElementById('customers-owed-empty');
+    var owedCount = document.getElementById('customers-owed-count');
+    var owing = all.filter(function (c) { return Number(c.owed || 0) > 0; })
+        .sort(function (a, b) { return Number(b.owed || 0) - Number(a.owed || 0); });
+    if (owedCount) owedCount.textContent = owing.length;
+    if (!owedList) return;
+    if (!owing.length) {
+        owedList.innerHTML = '';
+        if (owedEmpty) owedEmpty.hidden = false;
+        return;
+    }
+    if (owedEmpty) owedEmpty.hidden = true;
+    owedList.innerHTML = owing.slice(0, 6).map(function (c) {
         return '<button type="button" class="rail-row" onclick="openCustomerDetail(\'' + c.id + '\')">' +
             '<span class="rail-row__name">' + escapeHtml(c.name || 'Unnamed') + '</span>' +
-            '<span class="rail-row__meta">' + (c.orderCount || 0) + (Number(c.orderCount) === 1 ? ' order' : ' orders') + '</span>' +
-            '<span class="rail-row__val">GHS ' + formatNumber(c.totalSpent || 0) + '</span>' +
+            '<span class="rail-row__val">GHS ' + formatNumber(c.owed || 0) + '</span>' +
             '</button>';
     }).join('');
 }
@@ -3423,8 +3458,15 @@ function renderCustomersTable() {
 
     var withAccount = all.filter(function (c) { return c.registered; }).length;
     var ordered = all.filter(function (c) { return Number(c.orderCount || 0) > 0; }).length;
+    var owingAll = all.filter(function (c) { return Number(c.owed || 0) > 0; });
+    var owedSum = owingAll.reduce(function (sum, c) { return sum + Number(c.owed || 0); }, 0);
     var statusLine = document.getElementById('customers-status-line');
-    if (statusLine) statusLine.textContent = all.length + ' total \u00b7 ' + ordered + ' have ordered \u00b7 ' + withAccount + ' with an account';
+    if (statusLine) {
+        // The reference leads on who they are and what is outstanding, which is
+        // the pair that decides whether anyone needs chasing today.
+        statusLine.textContent = all.length + (all.length === 1 ? ' client' : ' clients') +
+            ' \u00b7 ' + owingAll.length + ' owe GHS ' + formatNumber(owedSum);
+    }
 
     var counts = document.getElementById('customers-filter-counts');
     if (counts) {
@@ -3505,7 +3547,11 @@ function getFilteredCustomers() {
         var spend = spendEl ? spendEl.value : '';
         var matchesSpend = !spend || (spend === 'has' ? Number(c.orderCount || 0) > 0 : Number(c.orderCount || 0) === 0);
 
-        return matchesSearch && matchesGroup && matchesAccount && matchesSpend;
+        var sourceEl = document.getElementById('cust-source-filter');
+        var source = sourceEl ? sourceEl.value : '';
+        var matchesSource = !source || String(c.source || '') === source;
+
+        return matchesSearch && matchesGroup && matchesAccount && matchesSpend && matchesSource;
     });
 }
 
@@ -7890,6 +7936,7 @@ function setupEventListeners() {
         if (e.target.id === 'order-type-filter') { orderCurrentPage = 1; renderOrdersTable(); }
         if (e.target.id === 'order-date-filter') { orderCurrentPage = 1; renderOrdersTable(); }
         if (e.target.id === 'cust-group-filter') { custCurrentPage = 1; renderCustomersTable(); }
+        if (e.target.id === 'cust-source-filter') { custCurrentPage = 1; renderCustomersTable(); }
         if (e.target.id === 'prod-cat-filter' || e.target.id === 'prod-status-filter' || e.target.id === 'prod-fulfillment-filter' || e.target.id === 'prod-image-filter' || e.target.id === 'prod-sort') { prodCurrentPage = 1; renderProductsGrid(); }
     });
 

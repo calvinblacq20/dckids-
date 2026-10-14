@@ -1158,6 +1158,11 @@ const ADMIN_CUSTOMER_SELECT = `
            COALESCE(SUM(CASE WHEN lower(COALESCE(o.status, '')) IN
                ('paid','processing','shipped','dispatched','delivered','completed')
                THEN o.total_amount ELSE 0 END), 0) AS total_spent,
+           -- What is on order but not yet paid for. The admin chases this, so
+           -- it belongs beside what the customer has already spent.
+           COALESCE(SUM(CASE WHEN lower(COALESCE(o.status, '')) IN
+               ('pending','pending_deposit','awaiting_payment','payment_review')
+               THEN o.total_amount ELSE 0 END), 0) AS amount_owed,
            MAX(o.created_at) AS last_order_at
       FROM customers c
       LEFT JOIN customer_accounts ca ON ca.id = c.customer_account_id

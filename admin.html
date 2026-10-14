@@ -19,7 +19,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=75">
+  <link rel="stylesheet" href="admin-bridge.css?v=76">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -4191,6 +4191,19 @@
                 </select>
               </div>
               <div class="patd-group">
+                <span class="patd-group__label">Found us through</span>
+                <select id="cust-source-filter" class="patd-select" aria-label="Filter by how the customer found the shop">
+                  <option value="">Any channel</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="tiktok">TikTok</option>
+                  <option value="facebook">Facebook</option>
+                  <option value="referral">Referral</option>
+                  <option value="walk-in">Walk-in</option>
+                  <option value="storefront">Online store</option>
+                </select>
+              </div>
+              <div class="patd-group">
                 <span class="patd-group__label">Spend</span>
                 <select id="cust-spend-filter" class="patd-select" aria-label="Filter by spend">
                   <option value="">Any spend</option>
@@ -4225,8 +4238,21 @@
             </div>
 
             <aside class="patd-rail" aria-label="Customer summary">
+              <!-- What the reference leads its client rail with: who owes, and
+                   how much, so the chase is one glance away. -->
               <section class="adm-card">
-                <div class="adm-card-head"><h2>Top spenders</h2></div>
+                <div class="adm-card-head">
+                  <h2>Owes the shop</h2>
+                  <span class="chip-count" id="customers-owed-count">0</span>
+                </div>
+                <div class="adm-card-body">
+                  <div class="rail-list" id="customers-owed-list"></div>
+                  <p class="empty-line" id="customers-owed-empty" hidden>Nobody owes anything.</p>
+                </div>
+              </section>
+
+              <section class="adm-card">
+                <div class="adm-card-head"><h2>Loyalty leaderboard</h2></div>
                 <div class="adm-card-body">
                   <div class="rail-list" id="customers-rail-list"></div>
                   <p class="empty-line" id="customers-rail-empty" hidden>No spend recorded yet.</p>
@@ -6344,8 +6370,8 @@
   <script src="image-resolver.js?v=1"></script>
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
-  <script src="admin-demo.js?v=12"></script>
-  <script src="admin.js?v=162"></script>
+  <script src="admin-demo.js?v=13"></script>
+  <script src="admin.js?v=163"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
