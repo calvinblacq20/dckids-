@@ -2965,5 +2965,16 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
   color: var(--ink);
 }
 
-/* Dashboard only. #admin-header outranks the class rules that show it. */
-body.dash-active #admin-header { display: none; }
+/* The bar goes on every tab, not just the dashboard: it repeated the page
+   name each tab already prints as its title. Its three controls move into the
+   open tab's head — see placeAdminControls in admin.js. #admin-header
+   outranks the class rules that show it. */
+body.is-authed #admin-header { display: none; }
+
+.adm-head-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.adm-head-controls .sidebar-toggle { background: var(--ground); }
+.adm-head__actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

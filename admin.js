@@ -692,6 +692,58 @@ var navTargetMap = {
     'tab-admins': 'Manage Staff'
 };
 
+/* The top bar is gone. It carried the page name, which every tab already
+   prints as its own title — "Inventory" sat directly above "Inventory" — and
+   it carried the menu, notifications and account buttons, which the dashboard
+   hero already repeats.
+
+   Rather than delete those three, they move into whichever tab is open, so
+   there is one header per screen instead of two. The real elements are moved,
+   not copied: their dropdowns and click handlers are bound to these nodes, and
+   rebuilding them would leave the menus wired to elements no longer on the
+   page. The dashboard is the exception — its hero carries its own set, so the
+   cluster hides there instead. */
+function placeAdminControls(targetId) {
+    var cluster = document.getElementById('admin-head-controls');
+    if (!cluster) {
+        var burger = document.getElementById('mobile-sidebar-toggle');
+        var notif = document.querySelector('.notification-wrapper');
+        var account = document.querySelector('.user-profile-wrapper');
+        if (!notif || !account) return;
+        cluster = document.createElement('div');
+        cluster.id = 'admin-head-controls';
+        cluster.className = 'adm-head-controls';
+        if (burger) cluster.appendChild(burger);
+        cluster.appendChild(notif);
+        cluster.appendChild(account);
+        // Park it in the document straight away. Returning early for the
+        // dashboard without this left the cluster — and the only copies of
+        // these three controls — detached, so every later lookup found
+        // nothing and no tab got them back.
+        document.body.appendChild(cluster);
+    }
+
+    if (targetId === 'tab-dashboard') {
+        cluster.style.display = 'none';
+        return;
+    }
+    cluster.style.display = '';
+
+    var section = document.getElementById(targetId);
+    if (!section) return;
+    // Analytics is laid out differently and has no .adm-head, so fall back to
+    // its own actions row rather than leaving that one tab without controls.
+    var head = section.querySelector('.adm-head') || section.querySelector('.analytics-header');
+    if (!head) return;
+    var slot = head.querySelector('.adm-head__actions') || head.querySelector('.analytics-actions');
+    if (!slot) {
+        slot = document.createElement('div');
+        slot.className = 'adm-head__actions';
+        head.appendChild(slot);
+    }
+    if (cluster.parentElement !== slot) slot.appendChild(cluster);
+}
+
 function switchTab(targetId) {
     // Hide all tabs
     var tabs = document.querySelectorAll('.tab-view');
@@ -713,6 +765,8 @@ function switchTab(targetId) {
         target.style.display = '';
         target.classList.add('active');
     }
+
+    placeAdminControls(targetId);
 
     // Set active on matching nav item
     var matchingNav = document.querySelector('.sidebar-link[data-tab="' + targetId + '"]');
