@@ -235,6 +235,26 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 .header-dropdown.open, .dropdown-menu.open, .search-results.open,
 .admin-search-results.open, .analytics-date-menu.open, .drp-menu.open { display: block; }
 
+/* At <=1024 the JS moves the account menu to <body> so a hidden bar cannot
+   clip it, and tags it --mobile. That class was styled by the retired
+   admin.css and has had no rules since the rebuild: as a body child the
+   "top: calc(100% + 8px)" above resolves against the viewport, so the menu
+   opened at roughly y=706 on a 698px-tall screen — just under the fold, with
+   nothing on screen to show for the tap. The notification dropdown sets the
+   same geometry inline when it relocates; this matches it. */
+.admin-user-menu.admin-user-menu--mobile {
+  position: fixed;
+  top: 14px;
+  left: 12px;
+  right: 12px;
+  bottom: auto;
+  width: auto;
+  max-width: none;
+  max-height: calc(100dvh - 110px);
+  overflow-y: auto;
+  z-index: 1300;
+}
+
 .notification-wrapper, .user-profile-wrapper, .analytics-date-picker,
 .header-search, .global-search { position: relative; }
 
