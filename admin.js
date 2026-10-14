@@ -1660,6 +1660,14 @@ function renderInventoryTable() {
     var products = getFilteredInventory();
     var sorted = sortInventory(products);
     var totalItems = sorted.length;
+
+    var invStatus = document.getElementById('inventory-status-line');
+    if (invStatus) {
+        var invAll = (typeof globalProducts !== 'undefined' && Array.isArray(globalProducts)) ? globalProducts.length : totalItems;
+        var invLow = sorted.filter(function (p) { var n = Number(p.stock || 0); return n > 0 && n <= 5; }).length;
+        var invOut = sorted.filter(function (p) { return Number(p.stock || 0) <= 0; }).length;
+        invStatus.textContent = totalItems + ' of ' + invAll + ' items \u00b7 ' + invLow + ' low \u00b7 ' + invOut + ' out of stock';
+    }
     var start = (invCurrentPage - 1) * INV_PER_PAGE;
     var paged = sorted.slice(start, start + INV_PER_PAGE);
 
@@ -4962,6 +4970,13 @@ function loadReports(filterType) {
     var previousRevenue = previousOrders.filter(isRevenueEligibleOrder).reduce(function(sum, o) { return sum + (o.total || 0); }, 0);
 
     var currentOrdersCount = currentOrders.length;
+
+    var repStatus = document.getElementById('reports-status-line');
+    if (repStatus) {
+        repStatus.textContent = currentOrdersCount === 1
+            ? '1 order in this period'
+            : currentOrdersCount + ' orders in this period';
+    }
     var previousOrdersCount = previousOrders.length;
 
     var currentCustMap = {};
@@ -6186,6 +6201,17 @@ function renderReviewsTable() {
 
     var reviews = getFilteredReviews();
     var totalItems = reviews.length;
+
+    var revStatus = document.getElementById('reviews-status-line');
+    if (revStatus) {
+        if (!totalItems) {
+            revStatus.textContent = 'No reviews yet';
+        } else {
+            var revAvg = reviews.reduce(function (sum, r) { return sum + (Number(r.rating) || 0); }, 0) / totalItems;
+            var revLow = reviews.filter(function (r) { return (Number(r.rating) || 0) <= 2; }).length;
+            revStatus.textContent = totalItems + ' reviews \u00b7 ' + revAvg.toFixed(1) + ' average \u00b7 ' + revLow + ' needing attention';
+        }
+    }
     var start = (reviewCurrentPage - 1) * REVIEW_PER_PAGE;
     var paged = reviews.slice(start, start + REVIEW_PER_PAGE);
 
@@ -9156,6 +9182,11 @@ function loadAdmins() {
         document.getElementById('staff-total-count').textContent = total;
         document.getElementById('staff-manager-count').textContent = managers;
         document.getElementById('staff-member-count').textContent = staff;
+
+        var staffStatus = document.getElementById('admins-status-line');
+        if (staffStatus) {
+            staffStatus.textContent = total + ' accounts \u00b7 ' + managers + ' managers \u00b7 ' + staff + ' staff';
+        }
     })
     .catch(function(err) {
         if (tbody) {

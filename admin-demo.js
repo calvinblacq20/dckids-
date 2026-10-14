@@ -109,10 +109,57 @@
             });
         };
 
+        // loadReviews() returns early for a fallback token and never reaches
+        // the network, so the shim below never sees it. Seed it the same way
+        // the orders list is seeded. admin.js resets window.adminReviews to []
+        // when it parses, which is after this file, so this has to run here
+        // rather than at the top.
+        window.loadReviews = function () {
+            window.adminReviews = demoReviews.slice();
+            if (typeof renderReviewStats === 'function') renderReviewStats();
+            if (typeof renderReviewsTable === 'function') renderReviewsTable();
+        };
+
         window.fetchOrdersFromServer = function (cb) {
             window.adminOrders = demoOrders.slice();
             if (cb) cb();
         };
+
+        // ---- The records behind the other tabs ----
+        // Customers, Suppliers, Reviews and Staff each read their own
+        // endpoint, so without these four the showcase opened on four empty
+        // screens. The field names are the ones the server's own queries
+        // return, so the renderers receive exactly the shape they expect.
+        var demoCustomers = [
+            { id: 1, name: 'Akua Mensah',  email: 'akua.mensah@example.com',  phone: '0241234567', address: '14 Nii Boi Street', city: 'Kasoa',      country: 'Ghana', customer_group: 'Retail',    notes: '', status: 'active', customer_account_id: 1, registered_account: 1, created_at: daysAgo(96), updated_at: daysAgo(6),  order_count: 4, total_spent: 742,  last_order_at: daysAgo(6) },
+            { id: 2, name: 'Kwame Asante', email: 'kwame.asante@example.com', phone: '0249876543', address: '2 Spintex Road',     city: 'Accra',      country: 'Ghana', customer_group: 'Retail',    notes: '', status: 'active', customer_account_id: 2, registered_account: 1, created_at: daysAgo(71), updated_at: daysAgo(4),  order_count: 3, total_spent: 615,  last_order_at: daysAgo(4) },
+            { id: 3, name: 'Ama Owusu',    email: '',                         phone: '0201112222', address: '7 Harbour Road',     city: 'Tema',       country: 'Ghana', customer_group: 'Retail',    notes: 'Prefers express delivery.', status: 'active', customer_account_id: null, registered_account: 0, created_at: daysAgo(44), updated_at: daysAgo(2), order_count: 2, total_spent: 300, last_order_at: daysAgo(2) },
+            { id: 4, name: 'Yaw Boateng',  email: 'yaw.boateng@example.com',  phone: '0277654321', address: '19 Adum High Street', city: 'Kumasi',    country: 'Ghana', customer_group: 'Wholesale', notes: 'Buys in packs of ten.',     status: 'active', customer_account_id: null, registered_account: 0, created_at: daysAgo(120), updated_at: daysAgo(8), order_count: 6, total_spent: 2480, last_order_at: daysAgo(8) },
+            { id: 5, name: 'Adwoa Poku',   email: 'adwoa.poku@example.com',   phone: '0244445555', address: '5 Lagos Avenue',     city: 'East Legon', country: 'Ghana', customer_group: 'Retail',    notes: '', status: 'active', customer_account_id: 3, registered_account: 1, created_at: daysAgo(30), updated_at: daysAgo(3), order_count: 2, total_spent: 465, last_order_at: daysAgo(3) },
+            { id: 6, name: 'Efua Darko',   email: '',                         phone: '0551239876', address: '',                   city: 'Accra',      country: 'Ghana', customer_group: 'Retail',    notes: '', status: 'inactive', customer_account_id: null, registered_account: 0, created_at: daysAgo(18), updated_at: daysAgo(1), order_count: 1, total_spent: 0, last_order_at: daysAgo(1) }
+        ];
+
+        var demoSuppliers = [
+            { id: 1, supplier_name: 'Guangzhou Little Threads', contact_person: 'Li Wei',       email: 'li.wei@example.com',    phone: '+86 20 5555 0101', business_address: 'Baiyun District, Guangzhou', products_supplied: 'Clothing, sets',       status: 'active',   notes: 'Main pre-order partner.', supplier_logo: null, created_at: daysAgo(210) },
+            { id: 2, supplier_name: 'Accra Kids Textiles',      contact_person: 'Gifty Annan',  email: 'gifty@example.com',     phone: '0302556677',       business_address: 'Spintex Road, Accra',        products_supplied: 'Bedding, bathcare',    status: 'active',   notes: '',                        supplier_logo: null, created_at: daysAgo(150) },
+            { id: 3, supplier_name: 'Tema Footwear Works',      contact_person: 'Kojo Mensah',  email: '',                      phone: '',                 business_address: 'Community 1, Tema',          products_supplied: 'Shoes, sandals',       status: 'active',   notes: 'Contact details still to confirm.', supplier_logo: null, created_at: daysAgo(64) },
+            { id: 4, supplier_name: 'Kumasi Accessories Hub',   contact_person: 'Abena Sarpong', email: 'abena@example.com',    phone: '0244778899',       business_address: 'Adum, Kumasi',               products_supplied: 'Bags, hair accessories', status: 'inactive', notes: 'Paused for the season.',  supplier_logo: null, created_at: daysAgo(35) }
+        ];
+
+        var demoReviews = [
+            { id: 1, product_id: 1, customer_id: 1, author_name: 'Akua Mensah',  rating: 5, title: 'Beautifully soft',        body: 'The cotton is lovely and it washed well. Buying another set.',        verified_purchase: 1, status: 'approved', created_at: daysAgo(5),  product_name: 'Baby Romper Set' },
+            { id: 2, product_id: 2, customer_id: 2, author_name: 'Kwame Asante', rating: 4, title: 'Good for everyday',       body: 'Sturdy enough for school runs. Slightly narrow fit.',                 verified_purchase: 1, status: 'approved', created_at: daysAgo(9),  product_name: 'Kids Sneakers' },
+            { id: 3, product_id: 3, customer_id: 3, author_name: 'Ama Owusu',    rating: 5, title: 'Exactly as pictured',     body: 'Colours are true to the photos and it arrived quickly.',              verified_purchase: 1, status: 'approved', created_at: daysAgo(12), product_name: 'Floral Dress' },
+            { id: 4, product_id: 4, customer_id: null, author_name: 'Nana Agyeman', rating: 2, title: 'Strap came loose',     body: 'One strap started fraying after a fortnight. Hoping for a swap.',     verified_purchase: 0, status: 'pending',  created_at: daysAgo(2),  product_name: 'School Bag' },
+            { id: 5, product_id: 7, customer_id: 5, author_name: 'Adwoa Poku',   rating: 4, title: 'Great value',             body: 'Three pairs for the price is hard to beat.',                          verified_purchase: 1, status: 'approved', created_at: daysAgo(16), product_name: 'Patterned Socks (3-pack)' }
+        ];
+
+        var demoStaff = [
+            { id: 1, username: 'owner@dckidsbrand.com', role: 'manager', email: 'owner@dckidsbrand.com', full_name: 'Store Owner',  phone: '0241000001', status: 'active' },
+            { id: 2, username: 'ama@dckidsbrand.com',   role: 'manager', email: 'ama@dckidsbrand.com',   full_name: 'Ama Boateng',   phone: '0241000002', status: 'active' },
+            { id: 3, username: 'kofi@dckidsbrand.com',  role: 'staff',   email: 'kofi@dckidsbrand.com',  full_name: 'Kofi Appiah',   phone: '0241000003', status: 'active' },
+            { id: 4, username: 'yaa@dckidsbrand.com',   role: 'staff',   email: 'yaa@dckidsbrand.com',   full_name: 'Yaa Serwaa',    phone: '0241000004', status: 'pending' }
+        ];
 
         // ---- Writes ----
         // Opening the create-order form worked, but submitting it did not:
@@ -211,9 +258,13 @@
             // is a truthful answer here — the showcase holds no such records
             // — and it keeps the panels on their empty states instead of
             // their error states.
-            if (path.indexOf('/api/orders') === 0)   return Promise.resolve(jsonResponse(demoOrders.slice()));
-            if (path.indexOf('/api/products') === 0) return Promise.resolve(jsonResponse(demoProducts.slice()));
-            if (path.indexOf('/api/settings') === 0) return Promise.resolve(jsonResponse({}));
+            if (path.indexOf('/api/orders') === 0)           return Promise.resolve(jsonResponse(demoOrders.slice()));
+            if (path.indexOf('/api/products') === 0)         return Promise.resolve(jsonResponse(demoProducts.slice()));
+            if (path.indexOf('/api/admin/customers') === 0)  return Promise.resolve(jsonResponse(demoCustomers.slice()));
+            if (path.indexOf('/api/suppliers') === 0)        return Promise.resolve(jsonResponse(demoSuppliers.slice()));
+            if (path.indexOf('/api/admin/reviews') === 0)    return Promise.resolve(jsonResponse(demoReviews.slice()));
+            if (path.indexOf('/api/users') === 0)            return Promise.resolve(jsonResponse(demoStaff.slice()));
+            if (path.indexOf('/api/settings') === 0)         return Promise.resolve(jsonResponse({}));
             return Promise.resolve(jsonResponse([]));
         };
 
