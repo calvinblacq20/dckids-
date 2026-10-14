@@ -11290,22 +11290,77 @@ function renderTopProducts(list) {
     var body = document.getElementById('dash-top-products-body');
     var empty = document.getElementById('dash-top-empty');
     if (!body) return;
-    var rows = Array.isArray(list) ? list.slice(0, 5) : [];
+    var rows = Array.isArray(list) ? list.slice() : [];
+
+    // Ranked by units sold, not by revenue: "top seller" is the thing that
+    // leaves the shelf most often, and one expensive coat would otherwise
+    // outrank a line that sells every week.
+    rows.sort(function (a, b) { return Number(b.quantity || 0) - Number(a.quantity || 0); });
+    rows = rows.slice(0, 5);
+
     if (!rows.length) {
         body.innerHTML = '';
         if (empty) empty.hidden = false;
         return;
     }
     if (empty) empty.hidden = true;
-    var max = Math.max.apply(null, rows.map(function (r) { return Number(r.revenue || r.total || 0); })) || 1;
+
+    var total = rows.reduce(function (sum, r) { return sum + Number(r.quantity || 0); }, 0) || 1;
+    var max = Number(rows[0].quantity || 0) || 1;
     body.innerHTML = rows.map(function (r, i) {
-        var value = Number(r.revenue || r.total || 0);
-        var share = Math.round((value / max) * 100);
+        var units = Number(r.quantity || 0);
+        var share = Math.round((units / total) * 100);
+        var bar = Math.round((units / max) * 100);
         return '<tr>' +
             '<td class="rank">' + (i + 1) + '</td>' +
             '<td class="rank-name">' + escapeHtml(r.name || r.product_name || 'Unnamed') + '</td>' +
-            '<td class="rank-num">' + (r.quantity != null ? r.quantity : '') + '</td>' +
-            '<td class="rank-share"><i style="width:' + share + '%"></i><span>' + dashMoney(value) + '</span></td>' +
+            '<td class="rank-num">' + units + '</td>' +
+            '<td class="rank-share"><i style="width:' + bar + '%"></i><span>' + share + '%</span></td>' +
+            '</tr>';
+    }).join('');
+}
+
+/* The same board for people rather than products. Built from the orders the
+   dashboard already holds, so it agrees with the figures above it. */
+function renderTopBuyers() {
+    var body = document.getElementById('dash-top-buyers-body');
+    var empty = document.getElementById('dash-buyers-empty');
+    if (!body) return;
+
+    var EARNING = ['paid', 'processing', 'shipped', 'dispatched', 'delivered', 'completed'];
+    var byBuyer = {};
+    (Array.isArray(window.adminOrders) ? window.adminOrders : []).forEach(function (o) {
+        if (EARNING.indexOf(String(o.status || '').toLowerCase()) === -1) return;
+        var name = String(o.customer || '').trim() || 'Walk-in customer';
+        if (!byBuyer[name]) byBuyer[name] = { name: name, orders: 0, spend: 0 };
+        byBuyer[name].orders += 1;
+        byBuyer[name].spend += Number(o.total || 0);
+    });
+
+    var rows = Object.keys(byBuyer).map(function (k) { return byBuyer[k]; })
+        .sort(function (a, b) {
+            var bySpend = b.spend - a.spend;
+            return bySpend !== 0 ? bySpend : b.orders - a.orders;
+        });
+    var total = rows.reduce(function (sum, r) { return sum + r.spend; }, 0) || 1;
+    rows = rows.slice(0, 5);
+
+    if (!rows.length) {
+        body.innerHTML = '';
+        if (empty) empty.hidden = false;
+        return;
+    }
+    if (empty) empty.hidden = true;
+
+    var max = rows[0].spend || 1;
+    body.innerHTML = rows.map(function (r, i) {
+        var share = Math.round((r.spend / total) * 100);
+        var bar = Math.round((r.spend / max) * 100);
+        return '<tr>' +
+            '<td class="rank">' + (i + 1) + '</td>' +
+            '<td class="rank-name">' + escapeHtml(r.name) + '</td>' +
+            '<td class="rank-num">' + r.orders + '</td>' +
+            '<td class="rank-share"><i style="width:' + bar + '%"></i><span>' + share + '%</span></td>' +
             '</tr>';
     }).join('');
 }
@@ -11626,6 +11681,7 @@ function renderDashboardPatterns(analytics, products) {
     set('val-avg-order', dashMoney(k.avgOrderValue));
     renderDashboardRail(safe);
     renderOrderMix();
+    renderTopBuyers();
 
     renderDelta(document.getElementById('delta-revenue'), g.totalRevenue, true);
     renderDelta(document.getElementById('delta-orders'), g.totalOrders, true);

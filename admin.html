@@ -898,13 +898,16 @@
 
           <!-- Ranked table: rank, name, count, share with an inline bar. -->
           <section class="adm-card" id="dash-top-products">
-            <div class="adm-card-head"><h2>Top products</h2><span class="adm-meta" id="dash-top-range">Last 30 days</span></div>
+            <div class="adm-card-head"><h2>Top sellers</h2><span class="adm-meta" id="dash-top-range">Last 30 days</span></div>
             <div class="adm-card-body">
-              <table class="rank-table"><tbody id="dash-top-products-body"></tbody></table>
+              <table class="rank-table">
+                <thead><tr><th>#</th><th>Item</th><th>Orders</th><th>Share</th></tr></thead>
+                <tbody id="dash-top-products-body"></tbody>
+              </table>
               <p class="empty-line" id="dash-top-empty" hidden>No sales in this period.</p>
             </div>
             <div class="adm-card-foot">
-              <span class="adm-meta">By revenue</span>
+              <span class="adm-meta">By units sold</span>
               <button type="button" class="link-arrow" data-dashboard-target="tab-products">See all &rarr;</button>
             </div>
           </section>
@@ -969,6 +972,27 @@
             </table>
           </div>
         </div>
+
+        <!-- Who is worth rewarding. The leaderboard on Clients answers this in
+             detail; the dashboard carries the same five so loyalty is visible
+             without leaving the page. -->
+        <section class="adm-card" id="dash-top-buyers">
+          <div class="adm-card-head">
+            <h2>Top buyers</h2>
+            <span class="adm-meta">By spend</span>
+          </div>
+          <div class="adm-card-body">
+            <table class="rank-table">
+              <thead><tr><th>#</th><th>Client</th><th>Orders</th><th>Share</th></tr></thead>
+              <tbody id="dash-top-buyers-body"></tbody>
+            </table>
+            <p class="empty-line" id="dash-buyers-empty" hidden>No spend recorded yet.</p>
+          </div>
+          <div class="adm-card-foot">
+            <span class="adm-meta">Share of takings</span>
+            <button type="button" class="link-arrow" data-dashboard-target="tab-customers">See all &rarr;</button>
+          </div>
+        </section>
 
         <!-- The reference ranks where orders came from. DC Kids sells the same
              catalogue three ways, and which way a customer buys decides the
@@ -6453,8 +6477,8 @@
   <script src="image-resolver.js?v=1"></script>
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
-  <script src="admin-demo.js?v=14"></script>
-  <script src="admin.js?v=164"></script>
+  <script src="admin-demo.js?v=15"></script>
+  <script src="admin.js?v=165"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

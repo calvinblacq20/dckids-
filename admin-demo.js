@@ -110,8 +110,24 @@
                 });
             }
 
+            // The dashboard ranks sellers from this, so the showcase has to
+            // carry it too — counted off the sample orders' own lines rather
+            // than invented, so the board agrees with the orders list.
+            var units = {};
+            earning.forEach(function (o) {
+                (o.items || []).forEach(function (line) {
+                    var name = line.name || 'Item';
+                    if (!units[name]) units[name] = { name: name, quantity: 0, revenue: 0 };
+                    units[name].quantity += Number(line.qty) || 0;
+                    units[name].revenue += (Number(line.price) || 0) * (Number(line.qty) || 0);
+                });
+            });
+            var topProducts = Object.keys(units).map(function (k) { return units[k]; })
+                .sort(function (a, b) { return b.quantity - a.quantity; });
+
             return Promise.resolve({
                 trend: trend,
+                topProducts: topProducts,
                 kpis: {
                     totalRevenue: totalRevenue,
                     totalOrders: counted,
