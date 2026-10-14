@@ -6264,7 +6264,7 @@
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
   <script src="admin-demo.js?v=7"></script>
-  <script src="admin.js?v=148"></script>
+  <script src="admin.js?v=150"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
@@ -6277,6 +6277,18 @@
         window.location.reload();
       });
       window.addEventListener('load', function() {
+        // The showcase build serves sample data from the page itself, so a
+        // service worker in front of it adds nothing but a cache that can
+        // hand back a previous build's scripts. Skip it there, and clear any
+        // worker a previous visit left behind.
+        var showcase = /\.vercel\.app$/i.test(location.hostname)
+          || new URLSearchParams(location.search).get('demo') === '1';
+        if (showcase) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            regs.forEach(function (r) { r.unregister(); });
+          }).catch(function () {});
+          return;
+        }
         navigator.serviceWorker.register('/service-worker.js').catch(function(err) {
           console.warn('SW registration failed:', err);
         });
