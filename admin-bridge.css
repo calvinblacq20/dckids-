@@ -2926,6 +2926,26 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 .detail-chip--muted { color: var(--ink-50); }
 .detail-hero__badge { color: var(--label-lime); }
 
+/* Each `.is-*` / state modifier sets its fill one notch more specific than
+   the bare class stripped above, so every variant has to be named for the
+   fill to actually come off. The tone it carried moves onto the word. */
+.badge.is-good, .badge.is-wait, .badge.is-danger,
+.status-pill.active, .status-pill.paid, .status-pill.delivered,
+.status-pill.completed, .status-pill.dispatched, .status-pill.preorder,
+.status-pill.pending, .status-pill.pending_deposit, .status-pill.processing,
+.status-pill.payment_review, .status-pill.awaiting_payment,
+.status-pill.cancelled, .status-pill.payment_failed,
+.status-pill.in-stock, .status-pill.low-stock, .status-pill.out-of-stock,
+.supplier-status-pill.is-active {
+  background: none;
+  border-radius: 0;
+}
+/* States the block above strips that section 44 had not yet given a tone. */
+.status-pill.pending_deposit, .status-pill.payment_review,
+.status-pill.awaiting_payment { color: var(--warning-ink); }
+.status-pill.payment_failed { color: var(--danger); }
+.supplier-status-pill.is-active { color: var(--open); }
+
 /* A row of bare labels needs its own spacing back. */
 .detail-chips { gap: 10px; }
 .res-card__meta { gap: 10px; }
