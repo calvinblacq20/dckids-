@@ -9,7 +9,7 @@
    - Images + fonts: cache-first.
    - Bumping VERSION wipes old caches on activate.
 */
-const VERSION = 'dckids-v277';
+const VERSION = 'dckids-v278';
 const STATIC_CACHE = 'dckids-static-' + VERSION;
 const RUNTIME_CACHE = 'dckids-runtime-' + VERSION;
 
@@ -47,9 +47,9 @@ const APP_SHELL = [
   '/manifest.json',
   '/icon.png',
   // The launch screen's layers, so it paints at once on a return visit.
-  '/brand/splash-dc.webp',
-  '/brand/splash-mark.webp',
-  '/brand/splash-tagline.webp',
+  '/brand/splash-dc.webp?v=2',
+  '/brand/splash-mark.webp?v=2',
+  '/brand/splash-tagline.webp?v=2',
   '/images/placeholder.svg',
   '/images/category-fallbacks/newborn.webp',
   '/images/category-fallbacks/clothing.webp',
