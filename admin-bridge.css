@@ -172,6 +172,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 .modal-footer {
   display: flex; align-items: center; justify-content: flex-end; gap: 10px;
   padding: 16px 24px 20px; border: 0;
+  /* Without wrapping, flex-end throws the surplus buttons out of the LEFT
+     edge, off screen and unreachable — a footer with three buttons simply
+     lost one on a phone. Wrapping keeps them all inside. */
+  flex-wrap: wrap;
 }
 .modal-close { position: absolute; top: 16px; right: 16px; }
 
@@ -570,9 +574,25 @@ body, .dashboard-container { background: var(--page); }
 .rank-table .rank { width: 32px; color: var(--ink-75); font-variant-numeric: tabular-nums; }
 .rank-table .rank-name { color: var(--ink); }
 .rank-table .rank-num { width: 56px; text-align: right; color: var(--ink-75); font-variant-numeric: tabular-nums; }
-.rank-table .rank-share { width: 160px; position: relative; text-align: right; padding-left: 16px; }
-.rank-table .rank-share i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); height: 6px; background: var(--slate, #58718a); border-radius: var(--radius-full); opacity: .5; }
-.rank-table .rank-share span { position: relative; font-variant-numeric: tabular-nums; color: var(--ink); }
+/* The bar lives in its own track rather than being stretched across the whole
+   cell: at a high share it used to run underneath the percentage. */
+.rank-table .rank-share {
+  width: 190px; padding-left: 16px;
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+}
+.rank-track {
+  flex: none; width: 110px; height: 6px;
+  border-radius: var(--r-pill); background: var(--ink-06); overflow: hidden;
+}
+.rank-track i { display: block; height: 100%; background: var(--ink-25); border-radius: inherit; }
+.rank-table .rank-share b {
+  flex: none; min-width: 38px; text-align: right;
+  font-weight: 400; font-variant-numeric: tabular-nums; color: var(--ink);
+}
+@media (max-width: 599.98px) {
+  .rank-table .rank-share { width: 120px; padding-left: 8px; gap: 8px; }
+  .rank-track { width: 52px; }
+}
 
 @media (max-width: 809.98px) {
   .adm-title { font-size: 28px; }
@@ -753,7 +773,11 @@ body, .dashboard-container { background: var(--page); }
 #tab-products .table-responsive,
 #tab-inventory .table-responsive {
   background: var(--surface); border: 1px solid var(--ink-06);
-  border-radius: var(--radius-lg); overflow: hidden;
+  border-radius: var(--radius-lg);
+  /* Rounded corners need the rows clipped, but `overflow: hidden` here also
+     swallowed the last column on a laptop — nine columns do not fit 1024px
+     and there was no way to reach them. Clip vertically, scroll sideways. */
+  overflow-x: auto; overflow-y: hidden;
 }
 #tab-products table thead th,
 #tab-inventory table thead th {
@@ -1564,7 +1588,9 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
   display: grid; place-items: center; width: 52px; height: 52px; flex: none;
   border-radius: var(--r-pill); background: var(--lime); color: var(--ink); font-size: 17px; font-weight: 500;
 }
-.settings-account-card__meta { min-width: 0; flex: 1; }
+/* Two inline spans ran together as one sentence — the name belongs above
+   the role, not beside it. */
+.settings-account-card__meta { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .settings-account-card__name { font-size: 16px; font-weight: 500; color: var(--ink); }
 .settings-account-card__sub { font-size: 13px; color: var(--ink-50); }
 .settings-account-card__logout { flex: none; }
@@ -1858,7 +1884,10 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
    container collapses every cell, so only style the div form of it. */
 div.order-item-row { display: flex; align-items: center; gap: 8px; }
 .order-product-select { flex: 1; min-width: 0; }
-.order-qty-input { width: 84px; flex: none; text-align: center; }
+/* Scoped to the row because the shared `input[type="number"]` rule above is
+   more specific than a lone class, and its width:100% made the quantity box
+   fill the row and shove the remove button off the screen. */
+.order-item-row .order-qty-input { width: 84px; flex: none; text-align: center; }
 .add-order-item-btn {
   display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
   padding: 8px 12px; border: 1px dashed var(--ink-12); border-radius: var(--r-pill);
@@ -2109,6 +2138,11 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 /* Clear the bar so the last card is never trapped underneath it. */
 @media (max-width: 809.98px) {
   .admin-main.adm-main { padding-bottom: calc(84px + var(--safe-bottom)); }
+  /* Showcase mode floats its banner above that bar, so the page has to end
+     clear of both — otherwise the last row sits under the banner with no
+     scroll left to free it. !important only because the inline rule in
+     admin.html this overrides is itself !important. */
+  body.is-demo .admin-main.adm-main { padding-bottom: calc(150px + var(--safe-bottom)) !important; }
 }
 @media (min-width: 810px) {
   .mobile-bottom-nav { display: none; }
@@ -2731,8 +2765,9 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
   margin-inline: 0;
 }
 /* .detail-body is pulled up 24px for the same reason — to lap its rounded
-   corners over the bottom of that photo. */
-.detail-sheet .detail-body { margin-top: 0; }
+   corners over the bottom of that photo. The inline bleed goes too: the sheet
+   has no gutter to bleed into, so -16px simply hung the body off the left. */
+.detail-sheet .detail-body { margin-top: 0; margin-inline: 0; }
 
 /* =============================================================
    43. Receipt

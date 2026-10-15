@@ -2715,10 +2715,17 @@ function openOrderDetail(orderId) {
         if (fc && fc.phone) phone = fc.phone;
     }
 
-    var dateStr = o.date || o.created_at || '—';
-    try {
-        if (o.created_at) dateStr = new Date(o.created_at).toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
-    } catch (e) {}
+    // Format whichever of the two the order carries. Formatting only the one
+    // and falling back to the other raw printed an ISO timestamp at the top of
+    // the sheet whenever an order had a date but no created_at.
+    var rawDate = o.created_at || o.date || null;
+    var dateStr = '—';
+    if (rawDate) {
+        var parsedDate = new Date(rawDate);
+        dateStr = isNaN(parsedDate.getTime())
+            ? String(rawDate)
+            : parsedDate.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
 
     var status = o.status || 'pending';
     var statusCap = status.charAt(0).toUpperCase() + status.slice(1);
@@ -11315,7 +11322,7 @@ function renderTopProducts(list) {
             '<td class="rank">' + (i + 1) + '</td>' +
             '<td class="rank-name">' + escapeHtml(r.name || r.product_name || 'Unnamed') + '</td>' +
             '<td class="rank-num">' + units + '</td>' +
-            '<td class="rank-share"><i style="width:' + bar + '%"></i><span>' + share + '%</span></td>' +
+            '<td class="rank-share"><span class="rank-track"><i style="width:' + bar + '%"></i></span><b>' + share + '%</b></td>' +
             '</tr>';
     }).join('');
 }
@@ -11385,7 +11392,7 @@ function renderTopBuyers() {
             '<td class="rank">' + (i + 1) + '</td>' +
             '<td class="rank-name">' + escapeHtml(r.name) + '</td>' +
             '<td class="rank-num">' + r.orders + '</td>' +
-            '<td class="rank-share"><i style="width:' + bar + '%"></i><span>' + share + '%</span></td>' +
+            '<td class="rank-share"><span class="rank-track"><i style="width:' + bar + '%"></i></span><b>' + share + '%</b></td>' +
             '</tr>';
     }).join('');
 }
@@ -11694,7 +11701,7 @@ function renderOrderMix() {
             '<td class="rank">' + (i + 1) + '</td>' +
             '<td class="rank-name">' + r.label + '</td>' +
             '<td class="rank-num">' + r.count + '</td>' +
-            '<td class="rank-share"><i style="width:' + bar + '%"></i><span>' + share + '%</span></td>' +
+            '<td class="rank-share"><span class="rank-track"><i style="width:' + bar + '%"></i></span><b>' + share + '%</b></td>' +
             '</tr>';
     }).join('');
 }
