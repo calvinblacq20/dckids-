@@ -212,8 +212,6 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 @media (max-width: 809.98px) {
   .admin-main { --pad-t: 16px; --pad-x: var(--gutter, 16px); padding: var(--pad-t) var(--pad-x) 96px; }
   .page-title { font-size: 28px; }
-  .modal-overlay { padding: 0; place-items: end stretch; }
-  .modal-content, .rc-modal { width: 100%; max-height: 92dvh; border-radius: var(--r-24) var(--r-24) 0 0; }
   .admin-table tbody td, .data-table tbody td { height: 52px; }
   .filter-group { flex-basis: 100%; }
 }
@@ -654,6 +652,22 @@ body, .dashboard-container { background: var(--page); }
   border-radius: var(--radius-full); background: var(--accent);
   color: var(--ink); font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer;
 }
+/* The modal submit buttons were raw Tailwind rose-500 (#f43f5e), a red that
+   belongs to no part of this palette and sat badly beside the house pink.
+   Same shape as .adm-alert__cta, which is what a primary action looks like
+   here: the accent behind ink, not white on red. */
+.btn-pink {
+  background: var(--accent);
+  color: var(--ink);
+  border: 0;
+}
+.btn-pink:hover { background: var(--accent-strong); color: #fff; }
+
+/* The dark-mode switch is built in JS, and the Tailwind CDN only generates
+   the classes it finds in the page it scans at load — so a `peer-checked:`
+   variant on injected markup never existed. Plain CSS instead. */
+.peer:checked ~ .toggle-track { background-color: var(--accent); }
+
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 @media (max-width: 809.98px) {
@@ -1130,8 +1144,14 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
   justify-content: center;
   align-items: center;
 }
-@media (max-width: 809.98px) {
+/* A dialog rises from the bottom edge on a phone, where a sheet is the
+   native shape and the full width is worth having. Anything wider — a
+   tablet, or a desktop window dragged narrow — gets a dialog that floats
+   clear of all four edges, so you can see it is a dialog. */
+@media (max-width: 599.98px) {
   .modal-overlay, .rc-overlay, .detail-overlay { align-items: flex-end; }
+  .modal-overlay { padding: 0; place-items: end stretch; }
+  .modal-content, .rc-modal { width: 100%; max-height: 92dvh; border-radius: var(--r-24) var(--r-24) 0 0; }
 }
 
 /* WhatsApp keeps its own green: it is a platform affordance, not a brand
@@ -2489,22 +2509,26 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
    8/4 split with an Order Summary — but wore it as a floating card with
    boxed fields. Dress it as the page it is.
    ============================================================= */
+/* Dressed as a page but served as a dialog, it covered the screen to every
+   edge with no way to see what it sat on. It keeps the page's calm interior
+   — ground behind cards, no boxed fields — inside a panel that floats. */
 #modal-add-order {
-  padding: 0;
-  background: var(--ground);
-  align-items: stretch;
-  justify-content: stretch;
+  padding: 24px;
+  align-items: center;
+  justify-content: center;
   overflow-y: auto;
 }
 #modal-add-order > div:first-child {
   width: 100%;
-  max-width: none;
-  max-height: none;
-  min-height: 100%;
-  border-radius: 0;
-  box-shadow: none;
+  max-width: 1100px;
+  max-height: calc(100dvh - 48px);
+  min-height: 0;
+  border-radius: var(--r-24);
+  box-shadow: var(--sh-deep);
   background: var(--ground);
-  overflow: visible;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ---- Page head: back link, title, no rule ---- */
@@ -2533,7 +2557,10 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 #modal-add-order .overflow-y-auto {
   background: transparent;
   padding: 18px var(--gutter, 28px) 28px;
-  overflow: visible;
+  /* The panel is bounded now, so the body is what scrolls. `visible` suited
+     the full-page version, where the overlay itself did the scrolling. */
+  overflow-y: auto;
+  min-height: 0;
 }
 #modal-add-order .grid.lg\:grid-cols-12 { width: min(100%, 1240px); margin-inline: auto; }
 
@@ -3190,3 +3217,61 @@ body.is-authed #admin-header { display: none; }
   border: 0.8px solid var(--ink-12); border-radius: var(--r-pill);
   background: var(--surface); color: var(--ink); font: inherit; font-size: 13px;
 }
+
+/* =============================================================
+   52. Motion
+   The mode is resolved before first paint into <html data-motion>,
+   so CSS and JS read the same answer and cannot disagree. The
+   curves are CSS equivalents of the reference's springs: `settle`
+   carries no bounce, `small` a little.
+   ============================================================= */
+:root {
+  --ease-small: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-settle: cubic-bezier(0.44, 0, 0.56, 1);
+}
+
+/* A screen arrives rather than appearing: switchTab replays this on the tab
+   it has just shown. The class was already being applied and had no rule
+   behind it, so nothing moved. */
+[data-motion="full"] .m-reveal { animation: m-reveal 0.42s var(--ease-small) both; }
+[data-motion="calm"] .m-reveal { animation: m-fade 0.3s ease both; }
+@keyframes m-reveal { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes m-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* The cards inside a screen follow it in, each a beat behind the last. Six is
+   enough for what is above the fold; the rest are already in place by the time
+   they are scrolled to. */
+[data-motion="full"] .m-reveal > .adm-card:nth-child(-n + 6),
+[data-motion="full"] .m-reveal > * > .adm-card:nth-child(-n + 6) {
+  animation: m-reveal 0.42s var(--ease-small) both;
+}
+[data-motion="full"] .m-reveal > .adm-card:nth-child(1), [data-motion="full"] .m-reveal > * > .adm-card:nth-child(1) { animation-delay: 0.04s; }
+[data-motion="full"] .m-reveal > .adm-card:nth-child(2), [data-motion="full"] .m-reveal > * > .adm-card:nth-child(2) { animation-delay: 0.08s; }
+[data-motion="full"] .m-reveal > .adm-card:nth-child(3), [data-motion="full"] .m-reveal > * > .adm-card:nth-child(3) { animation-delay: 0.12s; }
+[data-motion="full"] .m-reveal > .adm-card:nth-child(4), [data-motion="full"] .m-reveal > * > .adm-card:nth-child(4) { animation-delay: 0.16s; }
+[data-motion="full"] .m-reveal > .adm-card:nth-child(5), [data-motion="full"] .m-reveal > * > .adm-card:nth-child(5) { animation-delay: 0.2s; }
+[data-motion="full"] .m-reveal > .adm-card:nth-child(6), [data-motion="full"] .m-reveal > * > .adm-card:nth-child(6) { animation-delay: 0.24s; }
+
+/* Dialogs rise into place instead of snapping on. */
+[data-motion="full"] .modal-overlay.active > .modal-content,
+[data-motion="full"] [role="dialog"][style*="flex"] > div:first-child {
+  animation: m-dialog 0.32s var(--ease-small) both;
+}
+@keyframes m-dialog { from { opacity: 0; transform: translateY(12px) scale(0.985); } to { opacity: 1; transform: none; } }
+@media (max-width: 599.98px) {
+  /* On a phone the dialog is a sheet, so it comes up from the edge it sits on. */
+  @keyframes m-dialog { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+}
+
+/* The dashboard says "Live store data" twice: once in the live bar, with the
+   time it was updated and the control to refresh it, and again as a bare
+   status under the title. The bar is the one carrying information, so the
+   repeat goes — and only where the bar is actually present, since every other
+   tab needs its status line. */
+#tab-dashboard:has(.dashboard-livebar) .adm-head .adm-status { display: none; }
+
+/* The WhatsApp draft: a plain field, because it is meant to be read and
+   edited before it is sent. */
+.wa-update__text { min-height: 180px; font-size: 14px; line-height: 1.5; resize: vertical; }
+.wa-update__open { display: inline-flex; align-items: center; gap: 7px; padding: 9px 15px; border-radius: var(--r-pill); font-size: 13px; text-decoration: none; }
+.wa-update__open[aria-disabled="true"] { cursor: not-allowed; }
