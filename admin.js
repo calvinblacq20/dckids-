@@ -2667,6 +2667,9 @@ function renderOrdersTable() {
                     '</div>' +
                     (itemNames ? '<p class="res-card__snip">' + escapeHtml(itemNames) + '</p>' : '') +
                   '</div>' +
+                  '<button type="button" class="res-card__more" title="WhatsApp update" onclick="event.stopPropagation();openWhatsAppUpdate(\'' + o.id + '\')" aria-label="Send a WhatsApp update">' +
+                    '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/><path d="M17.5 14.4c-.3-.2-1.7-.9-2-1-.3-.1-.5-.2-.7.1-.2.3-.7 1-.9 1.2-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.5-.5c.1-.2.2-.3.3-.5 0-.2 0-.4 0-.5 0-.2-.7-1.6-.9-2.2-.2-.5-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.2.2 2.1 3.2 5.1 4.4.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3z"/></svg>' +
+                  '</button>' +
                   '<button type="button" class="res-card__more" title="Receipt" onclick="openOrderReceipt(\'' + o.id + '\')" aria-label="Open receipt">' +
                     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
                   '</button>' +
@@ -2868,6 +2871,162 @@ function getFilteredOrders() {
         var matchesType = !type || otype === type;
         return matchesSearch && matchesStatus && matchesType;
     });
+}
+
+/* ============================================================
+   WHATSAPP MESSAGES
+   Checkout happens on WhatsApp, so every update to a customer does too.
+   The owner reads the message before it is sent: nothing leaves here on
+   its own.
+   ============================================================ */
+
+/* wa.me needs the number in international digits. A Ghanaian number is
+   written 024 123 4567 day to day, and handing that to wa.me as-is produces
+   a link that simply does not open a chat. */
+function normalizeGhPhone(input) {
+    var digits = String(input == null ? '' : input).replace(/\D/g, '');
+    if (/^233\d{9}$/.test(digits)) return digits;
+    if (/^0\d{9}$/.test(digits)) return '233' + digits.slice(1);
+    if (/^[235]\d{8}$/.test(digits)) return '233' + digits;
+    return null;
+}
+
+/* 024 123 4567 */
+function formatGhPhone(input) {
+    var normalized = normalizeGhPhone(input);
+    if (!normalized) return String(input == null ? '' : input);
+    var local = '0' + normalized.slice(3);
+    return local.slice(0, 3) + ' ' + local.slice(3, 6) + ' ' + local.slice(6);
+}
+
+function whatsappLink(phone, text) {
+    var normalized = normalizeGhPhone(phone);
+    var base = normalized ? 'https://wa.me/' + normalized : 'https://wa.me/';
+    return base + '?text=' + encodeURIComponent(text);
+}
+
+var WA_SHOP_NAME = 'DC Kids Brand';
+var WA_SHOP_TAGLINE = 'Merging Style with Comfort';
+
+function waFirstName(name) {
+    var trimmed = String(name == null ? '' : name).trim();
+    return trimmed ? trimmed.split(/\s+/)[0] : 'there';
+}
+
+function waSign() {
+    return '\n\n' + WA_SHOP_TAGLINE + '\n' + WA_SHOP_NAME;
+}
+
+function waMoney(amount) {
+    return 'GHS ' + formatNumber(Number(amount || 0));
+}
+
+/* What is still owed on an order. Pre-orders take a deposit, so the balance
+   is what the customer has not paid yet, not the whole total. */
+function orderBalanceDue(order) {
+    var total = Number(order.total || 0);
+    var paid = Number(order.amount_paid != null ? order.amount_paid : (order.deposit_paid || 0));
+    var owed = total - paid;
+    return owed > 0 ? owed : 0;
+}
+
+/* The message for where this order is now. One per status, because "your
+   order is on its way" and "your order is waiting on payment" are not the
+   same note, and a customer can tell when they have been sent a template. */
+function buildOrderMessage(order) {
+    var hi = 'Hi ' + waFirstName(order.customer || order.customer_name) + ',';
+    var num = order.order_number || order.id || '';
+    var what = 'your order (' + num + ')';
+    var balance = orderBalanceDue(order);
+    var owing = balance > 0 ? ' Balance: ' + waMoney(balance) + ', payable by MoMo or on delivery.' : '';
+    var status = String(order.status || '').toLowerCase();
+
+    switch (status) {
+        case 'pending':
+            return hi + ' thank you for your order! We have ' + what + ' and are confirming the items now. Total: ' + waMoney(order.total) + '.' + waSign();
+        case 'pending_deposit':
+            return hi + ' ' + what + ' is a China pre-order, so it starts once the deposit is in. Send the deposit by MoMo and we will place it with the supplier straight away.' + (balance > 0 ? ' Outstanding: ' + waMoney(balance) + '.' : '') + waSign();
+        case 'awaiting_payment':
+        case 'payment_review':
+            return hi + ' ' + what + ' is held for you and waiting on payment.' + owing + ' Send it by MoMo and we will get it moving.' + waSign();
+        case 'paid':
+            return hi + ' we have received your payment for ' + what + ' — thank you. We are packing it now.' + waSign();
+        case 'processing':
+            return hi + ' ' + what + ' is being packed and will be on its way shortly.' + owing + waSign();
+        case 'shipped':
+        case 'dispatched':
+            return hi + ' ' + what + ' has left us and is on its way. The rider will call when they are close.' + owing + waSign();
+        case 'delivered':
+        case 'completed':
+            return hi + ' ' + what + ' has been delivered. We hope they love it! If anything is not right, message us here and we will sort it.' + waSign();
+        case 'cancelled':
+            return hi + ' ' + what + ' has been cancelled. Message us any time you would like us to put it together again.' + waSign();
+        default:
+            return hi + ' an update on ' + what + '.' + owing + waSign();
+    }
+}
+
+/* The owner reads it first. Copy suits a desktop where WhatsApp Web is
+   already open; the button opens the chat with the message prefilled. */
+function openWhatsAppUpdate(orderId) {
+    var order = (window.adminOrders || []).filter(function (o) {
+        return String(o.id) === String(orderId) || String(o.order_number) === String(orderId);
+    })[0];
+    if (!order) { showToast('Order not found', 'error'); return; }
+
+    var phone = order.phone || order.customer_phone || '';
+    var text = buildOrderMessage(order);
+    var normalized = normalizeGhPhone(phone);
+
+    var body = document.getElementById('wa-update-text');
+    if (body) body.value = text;
+    var who = document.getElementById('wa-update-who');
+    if (who) {
+        who.textContent = normalized
+            ? (order.customer || 'Customer') + ' \u00b7 ' + formatGhPhone(phone)
+            : (order.customer || 'Customer') + ' \u00b7 no usable number';
+    }
+    var open = document.getElementById('wa-update-open');
+    if (open) {
+        if (normalized) {
+            open.href = whatsappLink(phone, text);
+            open.removeAttribute('aria-disabled');
+            open.style.pointerEvents = '';
+            open.style.opacity = '';
+        } else {
+            // Without a number there is no chat to open; the text can still be copied.
+            open.removeAttribute('href');
+            open.setAttribute('aria-disabled', 'true');
+            open.style.pointerEvents = 'none';
+            open.style.opacity = '.45';
+        }
+    }
+    openModal('modal-wa-update');
+}
+
+/* The link carries whatever was typed, so the edited text is what gets sent. */
+function refreshWhatsAppLink() {
+    var body = document.getElementById('wa-update-text');
+    var open = document.getElementById('wa-update-open');
+    if (!body || !open || open.getAttribute('aria-disabled') === 'true') return;
+    var current = open.getAttribute('href') || '';
+    var phone = current.replace(/^https:\/\/wa\.me\//, '').split('?')[0];
+    open.href = whatsappLink(phone, body.value);
+}
+
+function copyWhatsAppUpdate() {
+    var body = document.getElementById('wa-update-text');
+    if (!body) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(body.value).then(function () {
+            showToast('Message copied', 'success');
+        }).catch(function () {
+            showToast('Could not copy the message', 'error');
+        });
+        return;
+    }
+    body.select();
+    showToast('Press Ctrl+C to copy', 'info');
 }
 
 function openOrderReceipt(orderId) {
@@ -9663,9 +9822,8 @@ function openCustomerDetail(customerId) {
     // Wire WhatsApp button to message the customer directly
     var waBtn = document.getElementById('cust-detail-wa-btn');
     if (waBtn && c.phone) {
-        var cleaned = c.phone.replace(/[^0-9]/g, '');
-        waBtn.href = 'https://wa.me/' + cleaned + '?text=' + encodeURIComponent('Hi ' + (c.name || 'there') + ', this is DC Kids Brand. How can we help you today?');
-        waBtn.style.display = 'inline-flex';
+        waBtn.href = whatsappLink(c.phone, 'Hi ' + waFirstName(c.name) + ', this is DC Kids Brand. How can we help you today?' + waSign());
+        waBtn.style.display = normalizeGhPhone(c.phone) ? 'inline-flex' : 'none';
     } else if (waBtn) {
         waBtn.style.display = 'none';
     }

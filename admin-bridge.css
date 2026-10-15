@@ -3262,3 +3262,16 @@ body.is-authed #admin-header { display: none; }
   /* On a phone the dialog is a sheet, so it comes up from the edge it sits on. */
   @keyframes m-dialog { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
 }
+
+/* The dashboard says "Live store data" twice: once in the live bar, with the
+   time it was updated and the control to refresh it, and again as a bare
+   status under the title. The bar is the one carrying information, so the
+   repeat goes — and only where the bar is actually present, since every other
+   tab needs its status line. */
+#tab-dashboard:has(.dashboard-livebar) .adm-head .adm-status { display: none; }
+
+/* The WhatsApp draft: a plain field, because it is meant to be read and
+   edited before it is sent. */
+.wa-update__text { min-height: 180px; font-size: 14px; line-height: 1.5; resize: vertical; }
+.wa-update__open { display: inline-flex; align-items: center; gap: 7px; padding: 9px 15px; border-radius: var(--r-pill); font-size: 13px; text-decoration: none; }
+.wa-update__open[aria-disabled="true"] { cursor: not-allowed; }
