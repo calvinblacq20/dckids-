@@ -181,7 +181,15 @@ async function run() {
     check('genuine product images remain unchanged', realImage.src === 'images/product_42.jpg' && realImage.isCategoryFallback === false);
     const swSource = fs.readFileSync(path.join(__dirname, '..', 'service-worker.js'), 'utf8');
     check('service worker caches category fallbacks', categoryAssets.every(name => swSource.includes('/images/category-fallbacks/' + name + '.webp')));
-    check('service worker image failure returns SVG placeholder', swSource.includes("isImage ? caches.match('/images/placeholder.svg')"));
+    check('service worker image failure returns SVG placeholder',
+        swSource.includes("isImage ? imageFallback()") && swSource.includes("caches.match('/images/placeholder.svg')"));
+    // respondWith(undefined) throws "Failed to convert value to 'Response'", and
+    // a page fallback served for a script yields "Unexpected token '<'". Both
+    // leave a page that renders with dead handlers, so both are asserted here.
+    check('service worker never falls back to a page for a non-navigation',
+        swSource.includes('if (!isHtml) return offlineResponse(accept);'));
+    check('service worker cache misses resolve to a Response',
+        swSource.includes('hit || offlineResponse(accept)'));
     check('service worker includes offline product page assets', ['/product.html', '/product.css', '/product.js'].every(asset => swSource.includes(asset)));
     const storefrontSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
