@@ -19,7 +19,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=84">
+  <link rel="stylesheet" href="admin-bridge.css?v=86">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -4545,7 +4545,7 @@
               <thead>
                 <tr>
                   <th>Date</th><th>Reference</th><th>Client</th><th>Order</th>
-                  <th>Method</th><th>Type</th><th class="is-num">Amount</th>
+                  <th>Method</th><th>Type</th><th class="is-num">Amount</th><th>Receipt</th>
                 </tr>
               </thead>
               <tbody id="payments-tbody"></tbody>
@@ -6482,7 +6482,7 @@
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
   <script src="admin-demo.js?v=15"></script>
-  <script src="admin.js?v=167"></script>
+  <script src="admin.js?v=169"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

@@ -11580,20 +11580,25 @@ function renderPayments() {
             ? when.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) +
               ', ' + when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             : '\u2014';
-        // The reference reaches a receipt through its payment, which is the
-        // only place the reference number is already in front of you.
+        // The receipt is reached from its payment, which is the only place the
+        // reference number is already in front of you. It gets a named button
+        // rather than hiding the action on the reference text, which reads as
+        // data and has no hover to reveal itself on a phone.
         var ref = escapeHtml(p.reference || '\u2014');
-        var refCell = p.order_number
-            ? '<button type="button" class="link-arrow" onclick="openOrderReceipt(\'' + escapeHtml(p.order_number) + '\')">' + ref + '</button>'
-            : ref;
+        var receiptCell = p.order_number
+            ? '<button type="button" class="pay-receipt" onclick="openOrderReceipt(\'' + escapeHtml(p.order_number) + '\')">' +
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+                'Receipt</button>'
+            : '\u2014';
         return '<tr>' +
             '<td data-label="Date">' + escapeHtml(date) + '</td>' +
-            '<td data-label="Reference" class="tabular">' + refCell + '</td>' +
+            '<td data-label="Reference" class="tabular">' + ref + '</td>' +
             '<td data-label="Client">' + escapeHtml(p.customer_name || '\u2014') + '</td>' +
             '<td data-label="Order" class="tabular">' + escapeHtml(p.order_number || '\u2014') + '</td>' +
             '<td data-label="Method">' + escapeHtml(PAYMENT_METHOD_SHORT[p.method] || p.method) + '</td>' +
             '<td data-label="Type">' + escapeHtml(p.kind || '\u2014') + '</td>' +
             '<td data-label="Amount" class="is-num tabular">GHS ' + formatNumber(p.amount) + '</td>' +
+            '<td data-label="Receipt">' + receiptCell + '</td>' +
             '</tr>';
     }).join('');
 }

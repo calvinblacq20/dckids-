@@ -3159,6 +3159,17 @@ body.is-authed #admin-header { display: none; }
 
 .pay-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px; }
 .pay-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+/* A reference number reads as text, and a phone has no hover to reveal that
+   it is a link, so the receipt gets a named button of its own. */
+.pay-receipt {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px;
+  border: 0.8px solid var(--ink-12); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink);
+  font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer;
+}
+.pay-receipt:hover { background: var(--ground); border-color: var(--ink-25); }
+.pay-receipt svg { flex: none; color: var(--ink-50); }
 .pay-pill {
   border: 0.8px solid var(--ink-12); background: var(--surface); color: var(--ink-75);
   padding: 7px 14px; border-radius: var(--r-pill); font: inherit; font-size: 13px; cursor: pointer;
