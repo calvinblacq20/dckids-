@@ -19,7 +19,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=88">
+  <link rel="stylesheet" href="admin-bridge.css?v=91">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -5323,7 +5323,7 @@
         <button type="button" id="cancel-modal-btn" class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius: 8px;">
           Cancel
         </button>
-        <button type="button" id="save-product-btn" class="px-5 py-2.5 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors font-medium shadow-sm border-none cursor-pointer" style="border-radius: 8px;">
+        <button type="button" id="save-product-btn" class="px-5 py-2.5 rounded-lg transition-colors font-medium shadow-sm border-none cursor-pointer" style="border-radius: 8px;">
           Update Product
         </button>
       </div>
@@ -5609,7 +5609,7 @@
         <button type="button" id="cancel-add-modal-btn" class="px-6 py-2.5 border border-gray-200 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-sm bg-white cursor-pointer" onclick="closeAddProductModal()">
           Cancel
         </button>
-        <button type="button" id="add-product-save-btn" class="px-6 py-2.5 bg-rose-500 text-white text-sm font-bold rounded-xl hover:bg-rose-600 transition-colors shadow-sm flex items-center gap-2 cursor-pointer">
+        <button type="button" id="add-product-save-btn" class="px-6 py-2.5 text-sm font-bold rounded-xl transition-colors shadow-sm flex items-center gap-2 cursor-pointer">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
           Save Product
         </button>
@@ -5676,7 +5676,7 @@
       <div class="modal-footer">
         <button class="px-5 py-2.5 border border-solid border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius: 8px; margin-right:auto;" type="button" onclick="deleteOrder()">🗑 Delete Order</button>
         <button class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius: 8px;" type="button" onclick="closeModal('modal-order')">Cancel</button>
-        <button id="save-order-btn" class="px-5 py-2.5 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors font-medium shadow-sm border-none cursor-pointer" style="border-radius: 8px;" type="button" onclick="saveOrder()">Save Order</button>
+        <button id="save-order-btn" class="px-5 py-2.5 btn-pink rounded-lg transition-colors font-medium shadow-sm border-none cursor-pointer" style="border-radius: 8px;" type="button" onclick="saveOrder()">Save Order</button>
       </div>
     </div>
   </div>
@@ -5779,7 +5779,7 @@
       </div>
       <div class="modal-footer">
         <button class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius: 8px;" type="button" onclick="closeModal('modal-order-item-preview')">Close</button>
-        <button id="btn-preview-view-product" class="px-5 py-2.5 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors font-medium shadow-sm border-none cursor-pointer" style="border-radius: 8px;" type="button">View Product</button>
+        <button id="btn-preview-view-product" class="px-5 py-2.5 btn-pink rounded-lg transition-colors font-medium shadow-sm border-none cursor-pointer" style="border-radius: 8px;" type="button">View Product</button>
       </div>
     </div>
   </div>
@@ -5909,7 +5909,7 @@
       </div>
       <div class="modal-footer">
         <button class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius: 8px;" type="button" onclick="closeModal('modal-customer')">Cancel</button>
-        <button id="save-customer-btn" class="px-5 py-2.5 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors font-medium shadow-sm border-none cursor-pointer" style="border-radius: 8px;" type="button" onclick="saveCustomer()">Save Customer</button>
+        <button id="save-customer-btn" class="px-5 py-2.5 btn-pink rounded-lg transition-colors font-medium shadow-sm border-none cursor-pointer" style="border-radius: 8px;" type="button" onclick="saveCustomer()">Save Customer</button>
       </div>
     </div>
   </div>
@@ -6132,7 +6132,7 @@
         <button class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer modal-cancel-btn" style="border-radius: 8px;" type="button">
           Cancel
         </button>
-        <button id="save-supplier-btn" class="px-5 py-2.5 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors font-medium shadow-sm border-none cursor-pointer flex items-center justify-center gap-2" style="border-radius: 8px;" type="button">
+        <button id="save-supplier-btn" class="px-5 py-2.5 btn-pink rounded-lg transition-colors font-medium shadow-sm border-none cursor-pointer flex items-center justify-center gap-2" style="border-radius: 8px;" type="button">
           <span class="supplier-btn__spinner animate-spin" style="display: none; width: 14px; height: 14px; border: 2px solid white; border-top-color: transparent; border-radius: 50%;"></span>
           <span class="supplier-btn__label">Save Supplier</span>
         </button>
@@ -6455,7 +6455,7 @@
       </div>
       <div class="modal-footer confirm-footer">
         <button id="confirm-cancel" onclick="closeModal('modal-confirm')" class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius: 8px;" type="button">Cancel</button>
-        <button id="confirm-ok" class="px-5 py-2.5 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors font-medium shadow-sm border-none cursor-pointer" style="border-radius: 8px;" type="button">Confirm</button>
+        <button id="confirm-ok" class="px-5 py-2.5 btn-pink rounded-lg transition-colors font-medium shadow-sm border-none cursor-pointer" style="border-radius: 8px;" type="button">Confirm</button>
       </div>
     </div>
   </div>
@@ -6482,7 +6482,7 @@
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
   <script src="admin-demo.js?v=15"></script>
-  <script src="admin.js?v=169"></script>
+  <script src="admin.js?v=172"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

@@ -7386,7 +7386,7 @@ function buildTabContent(tabId) {
                 '<div id="report-preview" class="mb-6"></div>' +
                 '<div class="flex gap-3">' +
                 '<button class="bg-gray-900 hover:bg-gray-800 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm flex items-center gap-2" id="download-csv" onclick="downloadReportCSV()"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg> Download CSV</button>' +
-                '<button class="bg-rose-500 hover:bg-rose-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm flex items-center gap-2" id="download-pdf" onclick="exportToPDF()"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Print / PDF</button>' +
+                '<button class="btn-pink px-5 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm flex items-center gap-2" id="download-pdf" onclick="exportToPDF()"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg> Print / PDF</button>' +
                 '</div>';
 
         case 'tab-settings':
@@ -7406,12 +7406,12 @@ function buildTabContent(tabId) {
                 '<div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm"><h4 class="font-semibold text-gray-900 mb-4">Appearance</h4>' +
                 '<div class="flex items-center justify-between py-3 border-b border-gray-50">' +
                 '<div><div class="font-semibold text-sm text-gray-900">Dark Mode</div><div class="text-xs text-gray-500">Toggle dark theme</div></div>' +
-                '<label class="relative inline-block w-12 h-6 cursor-pointer"><input type="checkbox" id="settings-dark-toggle" onchange="toggleDarkMode()" class="sr-only peer"><div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div></label>' +
+                '<label class="relative inline-block w-12 h-6 cursor-pointer"><input type="checkbox" id="settings-dark-toggle" onchange="toggleDarkMode()" class="sr-only peer"><div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all toggle-track"></div></label>' +
                 '</div></div>' +
 
                 // General settings
                 '<div class="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm"><h4 class="font-semibold text-gray-900 mb-4">General</h4>' +
-                '<button class="bg-rose-500 hover:bg-rose-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm w-full mt-2" id="save-settings-btn" onclick="saveSettingsForm()">Save Settings</button>' +
+                '<button class="btn-pink px-5 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-sm w-full mt-2" id="save-settings-btn" onclick="saveSettingsForm()">Save Settings</button>' +
                 '</div>' +
 
                 '</div>';
@@ -7444,7 +7444,7 @@ function ensureModalsExist() {
             '</div>' +
             '<div class="flex flex-col"><label class="text-sm font-medium text-gray-700 mb-1">Notes</label><textarea id="modal-order-notes" rows="3" class="px-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none resize-y"></textarea></div>' +
             '</div>' +
-            '<div class="px-6 py-4 border-t border-gray-100 flex justify-between gap-3 bg-gray-50/50"><button class="px-5 py-2.5 border border-solid border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius:8px;" onclick="deleteOrder()">🗑 Delete Order</button><div class="flex gap-3"><button class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius: 8px;" onclick="closeModal(\'modal-order\')">Cancel</button><button class="px-5 py-2.5 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors font-medium shadow-sm border-none cursor-pointer" style="border-radius: 8px;" onclick="saveOrder()">Save Order</button></div></div>' +
+            '<div class="px-6 py-4 border-t border-gray-100 flex justify-between gap-3 bg-gray-50/50"><button class="px-5 py-2.5 border border-solid border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius:8px;" onclick="deleteOrder()">🗑 Delete Order</button><div class="flex gap-3"><button class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius: 8px;" onclick="closeModal(\'modal-order\')">Cancel</button><button class="px-5 py-2.5 btn-pink rounded-lg transition-colors font-medium shadow-sm border-none cursor-pointer" style="border-radius: 8px;" onclick="saveOrder()">Save Order</button></div></div>' +
             '</div>';
         document.body.appendChild(orderModal);
     }
@@ -7464,7 +7464,7 @@ function ensureModalsExist() {
             '<div class="flex flex-col"><label class="text-sm font-medium text-gray-700 mb-1">Status</label><select id="modal-cust-status" class="px-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none bg-white"><option value="active">Active</option><option value="inactive">Inactive</option></select></div></div>' +
             '<div class="flex flex-col"><label class="text-sm font-medium text-gray-700 mb-1">Address</label><input type="text" id="modal-cust-address" class="px-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none"></div>' +
             '</div>' +
-            '<div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50"><button class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius: 8px;" onclick="closeModal(\'modal-customer\')">Cancel</button><button class="px-5 py-2.5 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors font-medium shadow-sm border-none cursor-pointer" style="border-radius: 8px;" onclick="saveCustomer()">Save Customer</button></div>' +
+            '<div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50"><button class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius: 8px;" onclick="closeModal(\'modal-customer\')">Cancel</button><button class="px-5 py-2.5 btn-pink rounded-lg transition-colors font-medium shadow-sm border-none cursor-pointer" style="border-radius: 8px;" onclick="saveCustomer()">Save Customer</button></div>' +
             '</div>';
         document.body.appendChild(custModal);
     }
@@ -7486,7 +7486,7 @@ function ensureModalsExist() {
             '<div class="grid grid-cols-2 gap-4"><div class="flex flex-col"><label class="text-sm font-medium text-gray-700 mb-1">Products</label><input type="text" id="modal-supp-products" placeholder="e.g. Clothing, Shoes" class="px-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none"></div>' +
             '<div class="flex flex-col"><label class="text-sm font-medium text-gray-700 mb-1">Status</label><select id="modal-supp-status" class="px-4 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-rose-500 focus:outline-none bg-white"><option value="active">Active</option><option value="inactive">Inactive</option></select></div></div>' +
             '</div>' +
-            '<div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50"><button class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius: 8px;" onclick="closeModal(\'modal-supplier\')">Cancel</button><button class="px-5 py-2.5 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors font-medium shadow-sm border-none cursor-pointer" style="border-radius: 8px;" onclick="saveSupplier()">Save Supplier</button></div>' +
+            '<div class="px-6 py-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50/50"><button class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius: 8px;" onclick="closeModal(\'modal-supplier\')">Cancel</button><button class="px-5 py-2.5 btn-pink rounded-lg transition-colors font-medium shadow-sm border-none cursor-pointer" style="border-radius: 8px;" onclick="saveSupplier()">Save Supplier</button></div>' +
             '</div>';
         document.body.appendChild(suppModal);
     }
