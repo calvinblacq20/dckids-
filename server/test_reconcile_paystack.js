@@ -513,12 +513,26 @@ async function runTests() {
     const symlinkTarget = path.join(symlinkOutput.root, 'protected.json');
     const symlinkReport = path.join(symlinkOutput.root, 'report-link.json');
     fs.writeFileSync(symlinkTarget, 'protected symlink target');
-    fs.symlinkSync(symlinkTarget, symlinkReport, 'file');
-    const symlinkResult = executeCli(symlinkOutput.guardedDbPath, symlinkOutput.guardedInputPath, symlinkReport);
-    await check('symlink report output is rejected without changing its target', () => {
-        assert.notStrictEqual(symlinkResult.status, 0);
-        assert.strictEqual(fs.readFileSync(symlinkTarget, 'utf8'), 'protected symlink target');
-    });
+    // Windows refuses symlinks without Developer Mode or an elevated shell. The
+    // guard this covers is worth testing where it can be, but an EPERM here used
+    // to abort the whole run, taking every later file with it — including the
+    // smoke tests. Skip the one case instead; CI runs on Linux and still has it.
+    let symlinked = true;
+    try {
+        fs.symlinkSync(symlinkTarget, symlinkReport, 'file');
+    } catch (error) {
+        if (!['EPERM', 'EACCES', 'ENOSYS'].includes(error.code)) throw error;
+        symlinked = false;
+        console.log('  SKIP  symlink report output is rejected without changing its target' +
+            ` — this OS will not create a symlink (${error.code})`);
+    }
+    if (symlinked) {
+        const symlinkResult = executeCli(symlinkOutput.guardedDbPath, symlinkOutput.guardedInputPath, symlinkReport);
+        await check('symlink report output is rejected without changing its target', () => {
+            assert.notStrictEqual(symlinkResult.status, 0);
+            assert.strictEqual(fs.readFileSync(symlinkTarget, 'utf8'), 'protected symlink target');
+        });
+    }
 
     const hardlink = await createPathGuardFixture('hardlink');
     const hardlinkReport = path.join(hardlink.root, 'database-hardlink.db');

@@ -873,6 +873,72 @@ async function run() {
         !/script-src[^;]*\*/.test(adminCsp) && !/script-src[^;]*\*/.test(storeCsp),
         `admin: ${adminCsp} | store: ${storeCsp}`);
 
+
+    // ---- WhatsApp updates -------------------------------------------------
+    // admin.js runs in a browser, so the pure helpers are lifted out and run
+    // in a vm here. They decide what a customer is told and which number the
+    // message opens against, which is worth pinning down.
+    const vm = require('vm');
+    // adminSource is already read above.
+    const waStart = adminSource.indexOf('function normalizeGhPhone');
+    const waEnd = adminSource.indexOf('function openWhatsAppUpdate');
+    check('admin.js still carries the WhatsApp helpers', waStart !== -1 && waEnd > waStart);
+
+    const wa = { formatNumber: (n) => Number(n).toFixed(2) };
+    vm.createContext(wa);
+    vm.runInContext(adminSource.slice(waStart, waEnd), wa);
+
+    // A Ghanaian number is written several ways; wa.me only accepts one.
+    const phoneForms = ['0241234567', '024 123 4567', '+233 24 123 4567', '233241234567', '241234567'];
+    check('every written form of a Ghana number normalizes to one international number',
+        phoneForms.every(form => wa.normalizeGhPhone(form) === '233241234567'));
+    check('a number that cannot be dialled normalizes to null',
+        ['12345', '', null, undefined, 'not a phone'].every(bad => wa.normalizeGhPhone(bad) === null));
+    check('the WhatsApp link carries the international number and the encoded text',
+        wa.whatsappLink('0241234567', 'Hi there') === 'https://wa.me/233241234567?text=Hi%20there');
+    check('a local number is never handed to wa.me as written',
+        !wa.whatsappLink('0241234567', 'x').includes('wa.me/024'));
+
+    // What is still owed drives whether the message mentions money at all.
+    check('the balance is the total less what has been paid',
+        wa.orderBalanceDue({ total: 450, amount_paid: 100 }) === 350);
+    check('an overpaid or settled order owes nothing rather than a negative',
+        wa.orderBalanceDue({ total: 100, amount_paid: 250 }) === 0);
+
+    const owing = { customer: 'Akua Mensah', order_number: 'ORD-10001', total: 450, amount_paid: 100 };
+    const settled = { customer: 'Akua Mensah', order_number: 'ORD-10001', total: 450, amount_paid: 450 };
+    check('a message about an unpaid order states the balance',
+        wa.buildOrderMessage(Object.assign({}, owing, { status: 'awaiting_payment' })).includes('350'));
+    check('a message about a settled order does not mention a balance',
+        !wa.buildOrderMessage(Object.assign({}, settled, { status: 'shipped' })).includes('Balance'));
+    check('a delivered order is never asked for money',
+        !wa.buildOrderMessage(Object.assign({}, owing, { status: 'delivered' })).includes('Balance'));
+    check('the message opens with the customer first name',
+        wa.buildOrderMessage(Object.assign({}, owing, { status: 'paid' })).startsWith('Hi Akua,'));
+    check('a customer with no name on the order is still greeted',
+        wa.buildOrderMessage({ status: 'paid', order_number: 'X', total: 0 }).startsWith('Hi there,'));
+    check('every order status writes its own message',
+        new Set(['pending', 'pending_deposit', 'awaiting_payment', 'paid', 'processing', 'shipped', 'delivered', 'cancelled']
+            .map(status => wa.buildOrderMessage(Object.assign({}, owing, { status })))).size === 8);
+    check('an unknown status still produces a message rather than undefined',
+        typeof wa.buildOrderMessage(Object.assign({}, owing, { status: 'something_new' })) === 'string');
+    check('every message is signed with the shop name',
+        ['pending', 'paid', 'delivered', 'cancelled']
+            .every(status => wa.buildOrderMessage(Object.assign({}, owing, { status })).endsWith('DC Kids Brand')));
+
+    // The launch screen's layers have to exist, or it plays to an empty black screen.
+    const splashLayers = ['dc', 'mark', 'tagline'];
+    check('every launch screen layer is on disk',
+        splashLayers.every(name => fs.existsSync(path.join(__dirname, '..', 'brand', `splash-${name}.webp`))));
+    const adminHtmlForSplash = fs.readFileSync(path.join(__dirname, '..', 'admin.html'), 'utf8');
+    check('the admin references each launch screen layer',
+        splashLayers.every(name => adminHtmlForSplash.includes(`brand/splash-${name}.webp`)));
+    const swForSplash = fs.readFileSync(path.join(__dirname, '..', 'service-worker.js'), 'utf8');
+    check('the service worker precaches the launch screen, so a return visit paints it at once',
+        splashLayers.every(name => swForSplash.includes(`/brand/splash-${name}.webp`)));
+    check('motion is resolved before first paint, not left to the stylesheet alone',
+        adminHtmlForSplash.includes('data-motion') && adminHtmlForSplash.includes('dck-splash-seen'));
+
     console.log(`\n${passed} passed, ${failed} failed`);
     cleanupDb();
     process.exit(failed ? 1 : 0);
