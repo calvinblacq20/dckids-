@@ -3217,3 +3217,48 @@ body.is-authed #admin-header { display: none; }
   border: 0.8px solid var(--ink-12); border-radius: var(--r-pill);
   background: var(--surface); color: var(--ink); font: inherit; font-size: 13px;
 }
+
+/* =============================================================
+   52. Motion
+   The mode is resolved before first paint into <html data-motion>,
+   so CSS and JS read the same answer and cannot disagree. The
+   curves are CSS equivalents of the reference's springs: `settle`
+   carries no bounce, `small` a little.
+   ============================================================= */
+:root {
+  --ease-small: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-settle: cubic-bezier(0.44, 0, 0.56, 1);
+}
+
+/* A screen arrives rather than appearing: switchTab replays this on the tab
+   it has just shown. The class was already being applied and had no rule
+   behind it, so nothing moved. */
+[data-motion="full"] .m-reveal { animation: m-reveal 0.42s var(--ease-small) both; }
+[data-motion="calm"] .m-reveal { animation: m-fade 0.3s ease both; }
+@keyframes m-reveal { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes m-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* The cards inside a screen follow it in, each a beat behind the last. Six is
+   enough for what is above the fold; the rest are already in place by the time
+   they are scrolled to. */
+[data-motion="full"] .m-reveal > .adm-card:nth-child(-n + 6),
+[data-motion="full"] .m-reveal > * > .adm-card:nth-child(-n + 6) {
+  animation: m-reveal 0.42s var(--ease-small) both;
+}
+[data-motion="full"] .m-reveal > .adm-card:nth-child(1), [data-motion="full"] .m-reveal > * > .adm-card:nth-child(1) { animation-delay: 0.04s; }
+[data-motion="full"] .m-reveal > .adm-card:nth-child(2), [data-motion="full"] .m-reveal > * > .adm-card:nth-child(2) { animation-delay: 0.08s; }
+[data-motion="full"] .m-reveal > .adm-card:nth-child(3), [data-motion="full"] .m-reveal > * > .adm-card:nth-child(3) { animation-delay: 0.12s; }
+[data-motion="full"] .m-reveal > .adm-card:nth-child(4), [data-motion="full"] .m-reveal > * > .adm-card:nth-child(4) { animation-delay: 0.16s; }
+[data-motion="full"] .m-reveal > .adm-card:nth-child(5), [data-motion="full"] .m-reveal > * > .adm-card:nth-child(5) { animation-delay: 0.2s; }
+[data-motion="full"] .m-reveal > .adm-card:nth-child(6), [data-motion="full"] .m-reveal > * > .adm-card:nth-child(6) { animation-delay: 0.24s; }
+
+/* Dialogs rise into place instead of snapping on. */
+[data-motion="full"] .modal-overlay.active > .modal-content,
+[data-motion="full"] [role="dialog"][style*="flex"] > div:first-child {
+  animation: m-dialog 0.32s var(--ease-small) both;
+}
+@keyframes m-dialog { from { opacity: 0; transform: translateY(12px) scale(0.985); } to { opacity: 1; transform: none; } }
+@media (max-width: 599.98px) {
+  /* On a phone the dialog is a sheet, so it comes up from the edge it sits on. */
+  @keyframes m-dialog { from { opacity: 0; transform: translateY(22px); } to { opacity: 1; transform: none; } }
+}

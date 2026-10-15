@@ -9,7 +9,7 @@
    - Images + fonts: cache-first.
    - Bumping VERSION wipes old caches on activate.
 */
-const VERSION = 'dckids-v271';
+const VERSION = 'dckids-v275';
 const STATIC_CACHE = 'dckids-static-' + VERSION;
 const RUNTIME_CACHE = 'dckids-runtime-' + VERSION;
 
@@ -46,6 +46,10 @@ const APP_SHELL = [
   '/firebase-auth.js',
   '/manifest.json',
   '/icon.png',
+  // The launch screen's layers, so it paints at once on a return visit.
+  '/brand/splash-dc.webp',
+  '/brand/splash-mark.webp',
+  '/brand/splash-tagline.webp',
   '/images/placeholder.svg',
   '/images/category-fallbacks/newborn.webp',
   '/images/category-fallbacks/clothing.webp',

@@ -10356,16 +10356,16 @@ function downloadProductCsvTemplate() {
       window.switchTab = function (tabId) {
         window._origSwitchTab(tabId);
         setActive(tabId);
-        // Modern mobile: replay a subtle slide-up reveal on the newly shown tab.
+        // Replay the slide-up reveal on the screen just shown. It used to be held
+        // back to narrow windows; the motion reads the same on a desktop, and the
+        // mode in <html data-motion> is what decides whether it runs at all.
         try {
-          if (window.innerWidth <= 1024) {
-            var el = document.getElementById(tabId) ||
-                     document.querySelector('[data-tab-content="' + tabId + '"]');
-            if (el) {
-              el.classList.remove('m-reveal');
-              void el.offsetWidth; // force reflow so the animation restarts
-              el.classList.add('m-reveal');
-            }
+          var el = document.getElementById(tabId) ||
+                   document.querySelector('[data-tab-content="' + tabId + '"]');
+          if (el) {
+            el.classList.remove('m-reveal');
+            void el.offsetWidth; // force reflow so the animation restarts
+            el.classList.add('m-reveal');
           }
         } catch (e) {}
       };

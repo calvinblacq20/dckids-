@@ -1,7 +1,30 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-motion="off">
 <head>
   <meta charset="UTF-8">
+  <script>
+    /* Motion is resolved once, before first paint, into <html data-motion="full|calm|off">.
+       Every device gets full motion whatever its reduced-motion setting, since iOS turns that
+       on in Low Power Mode; ?motion=full|calm|off overrides it for testing. CSS and JS both
+       read this attribute, so they cannot disagree. */
+    (function () {
+      var mode = "full";
+      try {
+        var pick = function (query) {
+          var match = /(?:^|[?&])motion=(full|calm|off)(?:&|$)/.exec(query);
+          return match ? match[1] : null;
+        };
+        var hash = location.hash;
+        var forced = pick(location.search) || (hash.indexOf("?") > -1 ? pick(hash.slice(hash.indexOf("?"))) : null);
+        if (forced) mode = forced;
+      } catch (error) { mode = "full"; }
+      document.documentElement.setAttribute("data-motion", mode);
+      /* The launch screen shows once per browser session. */
+      try {
+        if (sessionStorage.getItem("dck-splash-seen") === "1") document.documentElement.setAttribute("data-splash", "off");
+      } catch (error) { /* storage blocked: show it */ }
+    })();
+  </script>
   <script>
     // Silent error logger (no blocking alerts in production).
     window.onerror = function(message, source, lineno, colno) {
@@ -19,7 +42,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=91">
+  <link rel="stylesheet" href="admin-bridge.css?v=93">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -282,8 +305,78 @@
     }
     .login-info:not(:empty) { display: block; }
   </style>
+  <style>
+    /* Launch screen (#splash): strictly black and white, the logo in white.
+       Inline so it paints before the stylesheets and the script arrive. Once its images are
+       in (.is-ready) the lockup builds itself: DC rises, the mark wipes on, the tagline
+       follows, and a bar fills underneath. The script below the markup takes it down. */
+    #splash { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; background: #000; transition: opacity .45s cubic-bezier(.44,0,.56,1), transform .45s cubic-bezier(.44,0,.56,1); }
+    #splash.is-leaving { opacity: 0; transform: scale(1.04); pointer-events: none; }
+    [data-splash="off"] #splash { display: none; }
+    .splash-logo { position: relative; width: min(52vw, 230px); aspect-ratio: 543 / 689; }
+    .splash-logo img { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
+    #splash.is-ready .splash-logo img { opacity: 1; }
+    .splash-bar { position: absolute; left: 50%; bottom: calc(56px + env(safe-area-inset-bottom, 0px)); width: 120px; height: 3px; margin-left: -60px; border-radius: 3px; background: rgba(255,255,255,.14); overflow: hidden; }
+    .splash-bar i { display: block; height: 100%; background: #fff; transform: scaleX(0); transform-origin: left; }
+    #splash.is-ready .splash-bar i { animation: splash-fill 2.4s cubic-bezier(.44,0,.56,1) forwards; }
+    [data-motion="full"] #splash.is-ready .splash-dc { animation: splash-rise .6s .1s cubic-bezier(.22,1,.36,1) both; }
+    [data-motion="full"] #splash.is-ready .splash-mark { animation: splash-wipe .8s .45s cubic-bezier(.65,0,.35,1) both; }
+    [data-motion="full"] #splash.is-ready .splash-tagline { animation: splash-rise .5s 1.15s cubic-bezier(.22,1,.36,1) both; }
+    [data-motion="calm"] #splash.is-ready .splash-logo { animation: splash-fade .5s ease both; }
+    [data-motion="calm"] #splash.is-ready .splash-bar i { animation-duration: 1s; }
+    [data-motion="calm"] #splash.is-leaving { transform: none; }
+    [data-motion="off"] .splash-bar { display: none; }
+    @keyframes splash-wipe { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+    @keyframes splash-rise { from { opacity: 0; transform: translateY(6%); } to { opacity: 1; transform: none; } }
+    @keyframes splash-fade { from { opacity: 0; } }
+    @keyframes splash-fill { to { transform: scaleX(1); } }
+  </style>
 </head>
 <body>
+  <div id="splash" role="status" aria-label="Loading DC Kids Brand">
+    <div class="splash-logo">
+      <img class="splash-dc" src="brand/splash-dc.webp" alt="" width="543" height="689" fetchpriority="high">
+      <img class="splash-mark" src="brand/splash-mark.webp" alt="" width="543" height="689" fetchpriority="high">
+      <img class="splash-tagline" src="brand/splash-tagline.webp" alt="" width="543" height="689" fetchpriority="high">
+    </div>
+    <div class="splash-bar" aria-hidden="true"><i></i></div>
+  </div>
+  <script>
+    /* Start the entrance once the logo's images are in, so a slow connection does not play it
+       to an empty screen; after two seconds it starts regardless. The hold is measured from
+       that moment rather than from page load. */
+    (function () {
+      var splash = document.getElementById("splash");
+      if (!splash || document.documentElement.getAttribute("data-splash") === "off") {
+        if (splash) splash.remove();
+        return;
+      }
+      var HOLD = { full: 2400, calm: 1200, off: 0 };
+      var EXIT = 450;
+      var mode = document.documentElement.getAttribute("data-motion") || "full";
+      var images = splash.getElementsByTagName("img");
+      var waiting = images.length;
+      var started = false;
+
+      function leave() {
+        splash.classList.add("is-leaving");
+        try { sessionStorage.setItem("dck-splash-seen", "1"); } catch (error) { /* private mode: it shows again */ }
+        setTimeout(function () { splash.remove(); }, mode === "off" ? 0 : EXIT);
+      }
+      function start() {
+        if (started) return;
+        started = true;
+        splash.classList.add("is-ready");
+        setTimeout(leave, HOLD[mode] != null ? HOLD[mode] : HOLD.full);
+      }
+      function loaded() { if (--waiting === 0) start(); }
+      for (var i = 0; i < images.length; i++) {
+        if (images[i].complete) loaded();
+        else images[i].onload = images[i].onerror = loaded;
+      }
+      setTimeout(start, 2000);
+    })();
+  </script>
 
   <!-- ======================== LOGIN CONTAINER ======================== -->
   <div id="login-container" class="login-container">
@@ -6482,7 +6575,7 @@
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
   <script src="admin-demo.js?v=15"></script>
-  <script src="admin.js?v=172"></script>
+  <script src="admin.js?v=173"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
