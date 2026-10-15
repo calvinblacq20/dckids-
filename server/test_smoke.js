@@ -782,6 +782,65 @@ async function run() {
     });
     check('malformed JSON returns 400', r.status === 400, `status ${r.status}`);
 
+    // An unclosed <div> in admin.html once nested every modal declared after
+    // the receipt inside a display:none container, so they could be opened
+    // but never seen. Nothing caught it, because each modal's own display
+    // property still read "flex". Balance is the cheap proxy for that.
+    const adminHtml = fs.readFileSync(path.join(__dirname, '..', 'admin.html'), 'utf8');
+    const divOpens = (adminHtml.match(/<div[\s>]/g) || []).length;
+    const divCloses = (adminHtml.match(/<\/div>/g) || []).length;
+    check('admin.html closes every div it opens', divOpens === divCloses,
+        `${divOpens} opened, ${divCloses} closed`);
+
+    // --- Order source ---
+    // The dashboard ranks these, so the column has to hold one of a known set
+    // rather than whatever the caller typed.
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Source Known', customer_phone: '0249000101',
+        order_type: 'retail', items: [{ id: 1, quantity: 1, size: sizeLabel }],
+        source: 'Instagram'
+    }));
+    const knownSource = (await r.json()).order_number;
+
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Source Junk', customer_phone: '0249000102',
+        order_type: 'retail', items: [{ id: 1, quantity: 1, size: sizeLabel }],
+        source: 'carrier pigeon'
+    }));
+    check('an unrecognised source does not block the sale', r.status === 200, `status ${r.status}`);
+    const junkSource = (await r.json()).order_number;
+
+    const sourceRows = await (await fetch(`${BASE}/api/orders`, { headers: auth })).json();
+    const findSource = (number) => (sourceRows.find((o) => o.order_number === number) || {}).source;
+    check('a recognised source is stored, lowercased', findSource(knownSource) === 'instagram', String(findSource(knownSource)));
+    // A guest order carrying nonsense still came through the storefront, so the
+    // fallback is right. What must never happen is the nonsense being stored.
+    const allowedSources = ['instagram', 'whatsapp', 'tiktok', 'facebook', 'referral', 'walk-in', 'storefront'];
+    check('an unrecognised source never reaches the column',
+        allowedSources.indexOf(findSource(junkSource)) !== -1, String(findSource(junkSource)));
+    check('an order placed without a source is recorded as the storefront',
+        findSource(order.order_number) === 'storefront', String(findSource(order.order_number)));
+
+    // --- Payments ---
+    // Takings are not order totals: an order can be worth money nobody paid,
+    // so this endpoint reads the payments table and must stay authenticated.
+    r = await fetch(`${BASE}/api/admin/payments`);
+    check('payments require a signed-in admin', r.status === 401 || r.status === 403, `status ${r.status}`);
+
+    r = await fetch(`${BASE}/api/admin/payments?period=30`, { headers: auth });
+    check('payments endpoint answers for a period', r.status === 200, `status ${r.status}`);
+    const payBody = await r.json();
+    check('payments reply carries rows, a summary and a method split',
+        Array.isArray(payBody.payments) && !!payBody.summary && Array.isArray(payBody.by_method),
+        Object.keys(payBody).join(','));
+    check('the summary average agrees with its own total and count',
+        payBody.summary.count === 0
+            ? payBody.summary.average === 0
+            : Math.abs(payBody.summary.average - (payBody.summary.received / payBody.summary.count)) < 0.01,
+        JSON.stringify(payBody.summary));
+    check('still-owed counts the unpaid open orders', Number(payBody.summary.still_owed) >= 0,
+        String(payBody.summary.still_owed));
+
     // --- Content-Security-Policy ---
     // The admin's "Continue with Google" button only renders once
     // GOOGLE_CLIENT_ID is set, so a policy missing the Google Identity origins

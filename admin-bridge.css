@@ -172,6 +172,10 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 .modal-footer {
   display: flex; align-items: center; justify-content: flex-end; gap: 10px;
   padding: 16px 24px 20px; border: 0;
+  /* Without wrapping, flex-end throws the surplus buttons out of the LEFT
+     edge, off screen and unreachable — a footer with three buttons simply
+     lost one on a phone. Wrapping keeps them all inside. */
+  flex-wrap: wrap;
 }
 .modal-close { position: absolute; top: 16px; right: 16px; }
 
@@ -234,6 +238,26 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 .notifications-panel.open, .notification-panel.open, .notification-dropdown.open,
 .header-dropdown.open, .dropdown-menu.open, .search-results.open,
 .admin-search-results.open, .analytics-date-menu.open, .drp-menu.open { display: block; }
+
+/* At <=1024 the JS moves the account menu to <body> so a hidden bar cannot
+   clip it, and tags it --mobile. That class was styled by the retired
+   admin.css and has had no rules since the rebuild: as a body child the
+   "top: calc(100% + 8px)" above resolves against the viewport, so the menu
+   opened at roughly y=706 on a 698px-tall screen — just under the fold, with
+   nothing on screen to show for the tap. The notification dropdown sets the
+   same geometry inline when it relocates; this matches it. */
+.admin-user-menu.admin-user-menu--mobile {
+  position: fixed;
+  top: 14px;
+  left: 12px;
+  right: 12px;
+  bottom: auto;
+  width: auto;
+  max-width: none;
+  max-height: calc(100dvh - 110px);
+  overflow-y: auto;
+  z-index: 1300;
+}
 
 .notification-wrapper, .user-profile-wrapper, .analytics-date-picker,
 .header-search, .global-search { position: relative; }
@@ -313,7 +337,7 @@ img { max-width: 100%; }
   --glass:         rgba(255, 255, 255, 0.8);
 }
 
-body, .dashboard-container { background: var(--ground); }
+body, .dashboard-container { background: var(--page); }
 
 /* ---------- Sidebar: white surface on the ground, hairline edge ---------- */
 .admin-sidebar {
@@ -444,23 +468,25 @@ body, .dashboard-container { background: var(--ground); }
   .admin-sidebar .sidebar-brand span { display: none; }
 }
 
-/* The earlier layers set the hero with an ID selector (#tab-dashboard
-   .dash-hero), which outranks a class. Match that specificity so the one dark
-   card per screen reads as ink, the way the reference alert card does. */
+/* The hero is a surface, not the dark card. It used to be ink, sitting
+   directly under a top bar that repeated its bell and account button; with
+   that bar gone from the dashboard the hero carries those actions alone, and
+   a white card puts them on the same ground as everything beneath it.
+
+   These selectors keep their ID specificity because earlier layers set the
+   hero that way, and a plain class rule here would silently lose to them. */
 #tab-dashboard .dash-hero,
 #dashboard-container .dash-hero {
-  background: var(--ink);
+  background: var(--surface);
   background-image: none;
-  border: 0;
-  color: #fff;
+  border: 0.8px solid var(--ink-06);
+  color: var(--ink);
 }
-#tab-dashboard .dash-hero .dash-hero__snap { background: rgba(255,255,255,0.08); }
-#tab-dashboard .dash-hero .dash-hero__snap-div { background: rgba(255,255,255,0.14); }
-#tab-dashboard .dash-hero__title,
+#tab-dashboard .dash-hero .dash-hero__snap { background: var(--ink-06); }
+#tab-dashboard .dash-hero .dash-hero__snap-div { background: var(--ink-12); }
+#tab-dashboard .dash-hero__title { color: var(--ink); }
 #tab-dashboard .dash-hero__lede,
-#tab-dashboard .dash-hero__eyebrow { color: #fff; }
-#tab-dashboard .dash-hero__lede,
-#tab-dashboard .dash-hero__eyebrow { color: var(--white-75); }
+#tab-dashboard .dash-hero__eyebrow { color: var(--ink-50); }
 
 /* KPI cards: flat, label-first, number large and tabular — the reference
    KPI tab shape rather than an icon badge card. */
@@ -548,9 +574,25 @@ body, .dashboard-container { background: var(--ground); }
 .rank-table .rank { width: 32px; color: var(--ink-75); font-variant-numeric: tabular-nums; }
 .rank-table .rank-name { color: var(--ink); }
 .rank-table .rank-num { width: 56px; text-align: right; color: var(--ink-75); font-variant-numeric: tabular-nums; }
-.rank-table .rank-share { width: 160px; position: relative; text-align: right; padding-left: 16px; }
-.rank-table .rank-share i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); height: 6px; background: var(--slate, #58718a); border-radius: var(--radius-full); opacity: .5; }
-.rank-table .rank-share span { position: relative; font-variant-numeric: tabular-nums; color: var(--ink); }
+/* The bar lives in its own track rather than being stretched across the whole
+   cell: at a high share it used to run underneath the percentage. */
+.rank-table .rank-share {
+  width: 190px; padding-left: 16px;
+  display: flex; align-items: center; justify-content: flex-end; gap: 10px;
+}
+.rank-track {
+  flex: none; width: 110px; height: 6px;
+  border-radius: var(--r-pill); background: var(--ink-06); overflow: hidden;
+}
+.rank-track i { display: block; height: 100%; background: var(--ink-25); border-radius: inherit; }
+.rank-table .rank-share b {
+  flex: none; min-width: 38px; text-align: right;
+  font-weight: 400; font-variant-numeric: tabular-nums; color: var(--ink);
+}
+@media (max-width: 599.98px) {
+  .rank-table .rank-share { width: 120px; padding-left: 8px; gap: 8px; }
+  .rank-track { width: 52px; }
+}
 
 @media (max-width: 809.98px) {
   .adm-title { font-size: 28px; }
@@ -731,7 +773,11 @@ body, .dashboard-container { background: var(--ground); }
 #tab-products .table-responsive,
 #tab-inventory .table-responsive {
   background: var(--surface); border: 1px solid var(--ink-06);
-  border-radius: var(--radius-lg); overflow: hidden;
+  border-radius: var(--radius-lg);
+  /* Rounded corners need the rows clipped, but `overflow: hidden` here also
+     swallowed the last column on a laptop — nine columns do not fit 1024px
+     and there was no way to reach them. Clip vertically, scroll sideways. */
+  overflow-x: auto; overflow-y: hidden;
 }
 #tab-products table thead th,
 #tab-inventory table thead th {
@@ -845,7 +891,7 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
 .dash-hero__bell, .dash-hero__user {
   position: relative; display: grid; place-items: center;
   width: 36px; height: 36px; border: 0; border-radius: var(--r-pill);
-  background: rgba(255,255,255,.1); color: #fff; cursor: pointer;
+  background: var(--ground); color: var(--ink); cursor: pointer;
 }
 .dash-hero__bell-badge {
   position: absolute; top: -2px; right: -2px;
@@ -853,13 +899,13 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
   display: grid; place-items: center; border-radius: var(--r-pill);
   background: var(--lime); color: var(--ink); font-size: 11px; font-weight: 500;
 }
-.dash-hero__divider { width: 1px; height: 20px; background: rgba(255,255,255,.2); }
+.dash-hero__divider { width: 1px; height: 20px; background: var(--ink-12); }
 .dash-hero__avatar { display: grid; place-items: center; width: 32px; height: 32px; border-radius: var(--r-pill); background: var(--lime); color: var(--ink); font-size: 13px; font-weight: 500; }
-.dash-hero__eyebrow { font-size: 13px; color: var(--white-75); }
-.dash-hero__title { font-size: 32px; line-height: 1.1; font-weight: 500; letter-spacing: -.02em; margin: 4px 0 2px; color: #fff; }
-.dash-hero__lede { font-size: 14px; color: var(--white-75); margin: 0; }
-.dash-hero__date { text-align: right; color: var(--white-75); font-size: 13px; }
-.dash-hero__date strong { display: block; color: #fff; font-size: 15px; font-weight: 500; }
+.dash-hero__eyebrow { font-size: 13px; color: var(--ink-50); }
+.dash-hero__title { font-size: 32px; line-height: 1.1; font-weight: 500; letter-spacing: -.02em; margin: 4px 0 2px; color: var(--ink); }
+.dash-hero__lede { font-size: 14px; color: var(--ink-50); margin: 0; }
+.dash-hero__date { text-align: right; color: var(--ink-50); font-size: 13px; }
+.dash-hero__date strong { display: block; color: var(--ink); font-size: 15px; font-weight: 500; }
 
 .dashboard-livebar {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
@@ -991,10 +1037,10 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
 .dash-hero__search input, .dash-hero__search-input {
   width: 100%; height: 44px; padding: 0 44px;
   border: 0; border-radius: var(--r-pill);
-  background: rgba(255,255,255,.12); color: #fff; font-size: 14px; font-family: inherit;
+  background: var(--ground); color: var(--ink); font-size: 14px; font-family: inherit;
 }
-.dash-hero__search input::placeholder { color: rgba(255,255,255,.6); }
-.dash-hero__search input:focus { outline: 2px solid rgba(255,255,255,.5); outline-offset: 0; }
+.dash-hero__search input::placeholder { color: var(--ink-50); }
+.dash-hero__search input:focus { outline: 2px solid var(--ink-25); outline-offset: 0; }
 .dash-hero__search-filter {
   position: absolute; right: 6px; display: grid; place-items: center;
   width: 32px; height: 32px; border: 0; border-radius: var(--r-pill);
@@ -1343,11 +1389,11 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
 /* =============================================================
    16. Dashboard hero, live bar, quick actions, stat grids
    ============================================================= */
-.dash-hero__greet { font-size: 13px; color: var(--white-75); }
-.dash-hero__msg { font-size: 14px; color: var(--white-75); margin: 2px 0 0; }
+.dash-hero__greet { font-size: 13px; color: var(--ink-50); }
+.dash-hero__msg { font-size: 14px; color: var(--ink-50); margin: 2px 0 0; }
 .dash-hero__aside { margin-left: auto; text-align: right; flex: none; }
-.dash-hero__date-day { display: block; font-size: 15px; font-weight: 500; color: #fff; }
-.dash-hero__date-full { display: block; font-size: 12px; color: var(--white-75); }
+.dash-hero__date-day { display: block; font-size: 15px; font-weight: 500; color: var(--ink); }
+.dash-hero__date-full { display: block; font-size: 12px; color: var(--ink-50); }
 .dash-hero__filter { margin-top: 10px; }
 .dash-hero__search-results {
   position: absolute; left: 24px; right: 24px; top: calc(100% - 12px); z-index: var(--z-dropdown);
@@ -1542,7 +1588,9 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
   display: grid; place-items: center; width: 52px; height: 52px; flex: none;
   border-radius: var(--r-pill); background: var(--lime); color: var(--ink); font-size: 17px; font-weight: 500;
 }
-.settings-account-card__meta { min-width: 0; flex: 1; }
+/* Two inline spans ran together as one sentence — the name belongs above
+   the role, not beside it. */
+.settings-account-card__meta { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 2px; }
 .settings-account-card__name { font-size: 16px; font-weight: 500; color: var(--ink); }
 .settings-account-card__sub { font-size: 13px; color: var(--ink-50); }
 .settings-account-card__logout { flex: none; }
@@ -1836,7 +1884,10 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
    container collapses every cell, so only style the div form of it. */
 div.order-item-row { display: flex; align-items: center; gap: 8px; }
 .order-product-select { flex: 1; min-width: 0; }
-.order-qty-input { width: 84px; flex: none; text-align: center; }
+/* Scoped to the row because the shared `input[type="number"]` rule above is
+   more specific than a lone class, and its width:100% made the quantity box
+   fill the row and shove the remove button off the screen. */
+.order-item-row .order-qty-input { width: 84px; flex: none; text-align: center; }
 .add-order-item-btn {
   display: inline-flex; align-items: center; gap: 6px; align-self: flex-start;
   padding: 8px 12px; border: 1px dashed var(--ink-12); border-radius: var(--r-pill);
@@ -2087,6 +2138,11 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 /* Clear the bar so the last card is never trapped underneath it. */
 @media (max-width: 809.98px) {
   .admin-main.adm-main { padding-bottom: calc(84px + var(--safe-bottom)); }
+  /* Showcase mode floats its banner above that bar, so the page has to end
+     clear of both — otherwise the last row sits under the banner with no
+     scroll left to free it. !important only because the inline rule in
+     admin.html this overrides is itself !important. */
+  body.is-demo .admin-main.adm-main { padding-bottom: calc(150px + var(--safe-bottom)) !important; }
 }
 @media (min-width: 810px) {
   .mobile-bottom-nav { display: none; }
@@ -2708,9 +2764,14 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
   margin-top: 0;
   margin-inline: 0;
 }
+/* The image badge is absolute against its thumbnail, so the thumbnail has
+   to be the containing block — static, it anchored to the whole hero and
+   dropped the badge onto the chips below. */
+.detail-hero__media { position: relative; }
 /* .detail-body is pulled up 24px for the same reason — to lap its rounded
-   corners over the bottom of that photo. */
-.detail-sheet .detail-body { margin-top: 0; }
+   corners over the bottom of that photo. The inline bleed goes too: the sheet
+   has no gutter to bleed into, so -16px simply hung the body off the left. */
+.detail-sheet .detail-body { margin-top: 0; margin-inline: 0; }
 
 /* =============================================================
    43. Receipt
@@ -2869,6 +2930,30 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 .detail-chip--muted { color: var(--ink-50); }
 .detail-hero__badge { color: var(--label-lime); }
 
+/* Each `.is-*` / state modifier sets its fill one notch more specific than
+   the bare class stripped above, so every variant has to be named for the
+   fill to actually come off. The tone it carried moves onto the word. */
+.badge.is-good, .badge.is-wait, .badge.is-danger,
+.status-pill.active, .status-pill.paid, .status-pill.delivered,
+.status-pill.completed, .status-pill.dispatched, .status-pill.preorder,
+.status-pill.pending, .status-pill.pending_deposit, .status-pill.processing,
+.status-pill.payment_review, .status-pill.awaiting_payment,
+.status-pill.cancelled, .status-pill.payment_failed,
+.status-pill.in-stock, .status-pill.low-stock, .status-pill.out-of-stock,
+.supplier-status-pill.is-active {
+  background: none;
+  border-radius: 0;
+}
+/* States the block above strips that section 44 had not yet given a tone. */
+.status-pill.pending_deposit, .status-pill.payment_review,
+.status-pill.awaiting_payment { color: var(--warning-ink); }
+.status-pill.payment_failed { color: var(--danger); }
+.supplier-status-pill.is-active { color: var(--open); }
+
+/* Column names in the import help were tinted pills too. Same rule: the
+   tone goes on the word, and the mono face already marks it as a token. */
+.code-token { font-family: var(--mono); font-size: 12px; color: var(--ink); background: none; padding: 0; border-radius: 0; }
+
 /* A row of bare labels needs its own spacing back. */
 .detail-chips { gap: 10px; }
 .res-card__meta { gap: 10px; }
@@ -2942,3 +3027,166 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 }
 
 @media print { .demo-banner { display: none; } }
+
+/* =============================================================
+   47. Dashboard hero: the bar it replaced, and the button it inherited
+   The hero used to sit directly under a top bar carrying the same bell and
+   the same account button — the actions appeared twice, a few pixels apart.
+   The hero is a surface now (its colours are corrected where they are
+   defined, further up, not overridden here), and on the dashboard the bar
+   goes, since the hero already carries what it offered.
+
+   The bar is untouched on every other tab, where it is the only place those
+   actions exist — which is why this is scoped to the dashboard rather than
+   removed outright. The menu button the bar owned moves into the hero, so
+   the markup there gained one.
+   ============================================================= */
+.dash-hero button.dash-hero__menu {
+  width: 40px;
+  height: 40px;
+  background: var(--ground);
+  color: var(--ink);
+}
+
+/* The bar goes on every tab, not just the dashboard: it repeated the page
+   name each tab already prints as its title. Its three controls move into the
+   open tab's head — see placeAdminControls in admin.js. #admin-header
+   outranks the class rules that show it. */
+body.is-authed #admin-header { display: none; }
+
+.adm-head-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.adm-head-controls .sidebar-toggle { background: var(--ground); }
+.adm-head__actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+/* =============================================================
+   48. Dashboard layout: the work, and the rail beside it
+   The reference puts everything needing a decision today in a column to the
+   right of the work itself, so the counts are readable without leaving the
+   page. The rail only earns its width once there is room for it — below
+   1200px it stacks under the content rather than squeezing both.
+   ============================================================= */
+.dash-layout { display: block; }
+.dash-main { min-width: 0; }
+
+.dash-rail { display: flex; flex-direction: column; gap: 14px; margin-top: 18px; min-width: 0; }
+.dash-rail__card { align-self: stretch; }
+.dash-rail__cta { padding: 20px; }
+.dash-rail__cta-title { font-size: 19px; line-height: 1.25; font-weight: 500; letter-spacing: -.01em; margin: 0 0 8px; }
+.dash-rail__cta-copy { font-size: 13px; line-height: 1.5; margin: 0 0 16px; color: var(--white-75); }
+
+.res-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.res-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 9px 0; border-bottom: 0.8px solid var(--ink-06); font-size: 13px;
+}
+.res-row:last-child { border-bottom: 0; }
+.res-row__name { display: flex; flex-direction: column; gap: 2px; min-width: 0; color: var(--ink); }
+.res-row__name em { font-style: normal; font-size: 11px; color: var(--ink-50); font-family: var(--mono); }
+.res-row__value { flex: none; font-size: 13px; color: var(--ink-75); font-variant-numeric: tabular-nums; }
+
+@media (min-width: 1200px) {
+  .dash-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    align-items: start;
+    gap: 20px;
+  }
+  .dash-rail { margin-top: 0; position: sticky; top: 18px; }
+}
+
+/* =============================================================
+   49. Stage filter
+   Every stage visible with its count, several selectable at once — the
+   reference's shape. The count is the whole table's, not the filtered
+   view's, so ticking a stage never rewrites the numbers used to choose it.
+   ============================================================= */
+.patd-stages { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.patd-stages .patd-group__label { padding: 0; }
+.patd-stage {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 8px; margin-inline: -8px;
+  border-radius: var(--r-8); cursor: pointer; font-size: 13px; color: var(--ink-75);
+}
+.patd-stage:hover { background: var(--ground); color: var(--ink); }
+.patd-stage input { width: 16px; height: 16px; flex: none; accent-color: var(--ink); cursor: pointer; }
+.patd-stage__name { flex: 1; min-width: 0; }
+.patd-stage__count { flex: none; font-size: 12px; font-weight: 500; color: var(--ink-50); font-variant-numeric: tabular-nums; }
+.patd-stage:has(input:checked) { color: var(--ink); }
+.patd-stage:has(input:checked) .patd-stage__count { color: var(--ink); }
+
+/* =============================================================
+   50. Loyalty leaderboard
+   A ranked board, not a list: the position is the point when the question is
+   who to thank, who to discount and who to ask for a referral.
+   ============================================================= */
+.rail-row--ranked { display: flex; align-items: center; gap: 10px; }
+.rail-row__rank {
+  flex: none; display: grid; place-items: center;
+  width: 20px; height: 20px; border-radius: var(--r-pill);
+  background: var(--ground); color: var(--ink);
+  font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums;
+}
+.rail-row--ranked:nth-child(1) .rail-row__rank { background: var(--lime); }
+.rail-row--ranked .rail-row__name { display: flex; flex-direction: column; gap: 1px; min-width: 0; text-align: left; }
+.rail-row--ranked .rail-row__name em { font-style: normal; font-size: 11px; color: var(--ink-50); }
+.rail-row--ranked .rail-row__val { margin-left: auto; }
+
+/* =============================================================
+   51. Payments
+   The received figure carries the page, so it gets the room. Method share
+   reads as one bar plus a legend rather than a chart: there are rarely more
+   than four methods, and the proportion is the whole point.
+   ============================================================= */
+.pay-split { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+@media (min-width: 900px) { .pay-split { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+
+.pay-received .counter-num { font-size: 44px; line-height: 1.05; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.pay-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 18px; margin-top: 20px; }
+.pay-fact { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pay-fact span { font-size: 12px; color: var(--ink-50); }
+.pay-fact b { font-size: 15px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.pay-bar { display: flex; height: 10px; border-radius: var(--r-pill); overflow: hidden; background: var(--ground); margin-bottom: 16px; }
+.pay-bar__seg { display: block; height: 100%; }
+.pay-bar__seg--0 { background: var(--lime); }
+.pay-bar__seg--1 { background: var(--label-lilac, #8b7cc8); }
+.pay-bar__seg--2 { background: var(--label-sky, #6ba8d8); }
+.pay-bar__seg--3 { background: var(--ink-25); }
+
+.pay-methods { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.pay-method { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.pay-method__dot { flex: none; width: 10px; height: 10px; border-radius: 50%; }
+.pay-method__name { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; color: var(--ink); }
+.pay-method__name em { font-style: normal; font-size: 11px; color: var(--ink-50); }
+.pay-method__amt { flex: none; color: var(--ink-75); font-variant-numeric: tabular-nums; }
+.pay-method__pct { flex: none; width: 40px; text-align: right; color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.pay-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 14px; }
+.pay-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+/* A reference number reads as text, and a phone has no hover to reveal that
+   it is a link, so the receipt gets a named button of its own. */
+.pay-receipt {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 11px;
+  border: 0.8px solid var(--ink-12); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink);
+  font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer;
+}
+.pay-receipt:hover { background: var(--ground); border-color: var(--ink-25); }
+.pay-receipt svg { flex: none; color: var(--ink-50); }
+.pay-pill {
+  border: 0.8px solid var(--ink-12); background: var(--surface); color: var(--ink-75);
+  padding: 7px 14px; border-radius: var(--r-pill); font: inherit; font-size: 13px; cursor: pointer;
+}
+.pay-pill:hover { background: var(--ground); }
+.pay-pill.is-on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.pay-search { margin-left: auto; flex: 1 1 220px; max-width: 320px; }
+.pay-search input {
+  width: 100%; height: 40px; padding: 0 14px;
+  border: 0.8px solid var(--ink-12); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink); font: inherit; font-size: 13px;
+}

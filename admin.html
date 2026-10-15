@@ -19,7 +19,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=66">
+  <link rel="stylesheet" href="admin-bridge.css?v=88">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -50,7 +50,7 @@
   </style>
   <!-- Locally compiled Tailwind utilities; preflight stays disabled so it cannot reset the admin design system. -->
   <link rel="stylesheet" href="tailwind-admin.css?v=1">
-  <link rel="stylesheet" href="admin-system.css?v=9">
+  <link rel="stylesheet" href="admin-system.css?v=10">
   <style>
     /* ── Force light mode on the login page regardless of OS/browser dark preference.
        Dark mode is an admin-dashboard-only preference; the login screen is always light. ── */
@@ -531,6 +531,11 @@
           
           <!-- 7. Sales Analytics -->
           <div class="adm-group">Money</div>
+
+            <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-payments"><span class="adm-nav-hl" aria-hidden="true"></span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              <span class="adm-nav-label">Payments</span>
+            </a>
           
             <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-analytics"><span class="adm-nav-hl" aria-hidden="true"></span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
@@ -722,6 +727,9 @@
         <!-- ==================== MOBILE GREETING HERO ==================== -->
         <div class="dash-hero" id="dashHero">
           <div class="dash-hero__row">
+            <button type="button" id="dash-hero-menu" class="sidebar-toggle dash-hero__menu" aria-label="Open menu">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
             <div class="dash-hero__logo">
               <img src="icon.png" alt="DC Kids" onerror="this.style.display='none'">
               <span class="dash-hero__logo-dot" aria-hidden="true"></span>
@@ -797,6 +805,8 @@
 
         <!-- Stat Widgets -->
         <!-- Page header: title + status line, as the reference top bar does. -->
+        <div class="dash-layout">
+          <div class="dash-main">
         <div class="adm-head">
           <div class="adm-head__titles">
             <h1 class="adm-title">Dashboard</h1>
@@ -888,13 +898,16 @@
 
           <!-- Ranked table: rank, name, count, share with an inline bar. -->
           <section class="adm-card" id="dash-top-products">
-            <div class="adm-card-head"><h2>Top products</h2><span class="adm-meta" id="dash-top-range">Last 30 days</span></div>
+            <div class="adm-card-head"><h2>Top sellers</h2><span class="adm-meta" id="dash-top-range">Last 30 days</span></div>
             <div class="adm-card-body">
-              <table class="rank-table"><tbody id="dash-top-products-body"></tbody></table>
+              <table class="rank-table">
+                <thead><tr><th>#</th><th>Item</th><th>Orders</th><th>Share</th></tr></thead>
+                <tbody id="dash-top-products-body"></tbody>
+              </table>
               <p class="empty-line" id="dash-top-empty" hidden>No sales in this period.</p>
             </div>
             <div class="adm-card-foot">
-              <span class="adm-meta">By revenue</span>
+              <span class="adm-meta">By units sold</span>
               <button type="button" class="link-arrow" data-dashboard-target="tab-products">See all &rarr;</button>
             </div>
           </section>
@@ -958,6 +971,96 @@
               </tbody>
             </table>
           </div>
+        </div>
+
+        <!-- Who is worth rewarding. The leaderboard on Clients answers this in
+             detail; the dashboard carries the same five so loyalty is visible
+             without leaving the page. -->
+        <section class="adm-card" id="dash-top-buyers">
+          <div class="adm-card-head">
+            <h2>Top buyers</h2>
+            <span class="adm-meta">By spend</span>
+          </div>
+          <div class="adm-card-body">
+            <table class="rank-table">
+              <thead><tr><th>#</th><th>Client</th><th>Orders</th><th>Share</th></tr></thead>
+              <tbody id="dash-top-buyers-body"></tbody>
+            </table>
+            <p class="empty-line" id="dash-buyers-empty" hidden>No spend recorded yet.</p>
+          </div>
+          <div class="adm-card-foot">
+            <span class="adm-meta">Share of takings</span>
+            <button type="button" class="link-arrow" data-dashboard-target="tab-customers">See all &rarr;</button>
+          </div>
+        </section>
+
+        <!-- The reference ranks where orders came from. DC Kids sells the same
+             catalogue three ways, and which way a customer buys decides the
+             price, the stock hold and the deposit — so that is the split worth
+             ranking here. -->
+        <section class="adm-card" id="dash-order-mix">
+          <div class="adm-card-head">
+            <h2>Where orders came from</h2>
+            <span class="adm-meta" id="dash-mix-range">Last 30 days</span>
+          </div>
+          <div class="adm-card-body">
+            <table class="rank-table">
+              <thead>
+                <tr><th>#</th><th>Source</th><th>Orders</th><th>Share</th></tr>
+              </thead>
+              <tbody id="dash-order-mix-body"></tbody>
+            </table>
+            <p class="empty-line" id="dash-mix-empty" hidden>No orders carry a source yet.</p>
+          </div>
+        </section>
+
+          </div>
+
+          <!-- The rail the reference keeps beside the work: what needs a
+               decision today, each with the count and the way in. -->
+          <aside class="dash-rail" aria-label="Needs your attention">
+            <section class="adm-card adm-dark dash-rail__cta" id="dash-rail-cta" hidden>
+              <h2 class="dash-rail__cta-title" id="dash-rail-cta-title">&nbsp;</h2>
+              <p class="dash-rail__cta-copy" id="dash-rail-cta-copy">&nbsp;</p>
+              <button type="button" class="adm-cta" data-dashboard-target="tab-orders">
+                <span>Review orders</span>
+                <i class="adm-cta__arrow" aria-hidden="true">&rarr;</i>
+              </button>
+            </section>
+
+            <section class="adm-card dash-rail__card">
+              <div class="adm-card-head">
+                <h2>Running low</h2>
+                <span class="chip-count" id="dash-rail-low-count">0</span>
+              </div>
+              <div class="adm-card-body">
+                <ul class="res-list" id="dash-rail-low"></ul>
+                <p class="empty-line" id="dash-rail-low-empty" hidden>Nothing is running low.</p>
+              </div>
+            </section>
+
+            <section class="adm-card dash-rail__card">
+              <div class="adm-card-head">
+                <h2>Ready to send</h2>
+                <span class="chip-count" id="dash-rail-ready-count">0</span>
+              </div>
+              <div class="adm-card-body">
+                <ul class="res-list" id="dash-rail-ready"></ul>
+                <p class="empty-line" id="dash-rail-ready-empty" hidden>Nothing is waiting to go out.</p>
+              </div>
+            </section>
+
+            <section class="adm-card dash-rail__card">
+              <div class="adm-card-head">
+                <h2>Pre-orders awaiting deposit</h2>
+                <span class="chip-count" id="dash-rail-deposit-count">0</span>
+              </div>
+              <div class="adm-card-body">
+                <ul class="res-list" id="dash-rail-deposit"></ul>
+                <p class="empty-line" id="dash-rail-deposit-empty" hidden>No pre-orders are waiting.</p>
+              </div>
+            </section>
+          </aside>
         </div>
       </section>
 
@@ -4006,20 +4109,19 @@
                 <span class="patd-filters__title">Filters</span>
                 <button type="button" class="link-arrow" id="orders-clear-filters" hidden>Clear all</button>
               </div>
-              <div class="patd-group">
-                <span class="patd-group__label">Status</span>
-                <select id="order-status-filter" class="patd-select" aria-label="Filter orders by status">
-                  <option value="">All status</option>
-                  <option value="attention">Requires attention</option>
-                  <option value="pending">Pending</option>
-                  <option value="awaiting_payment">Awaiting payment</option>
-                  <option value="payment_review">Payment review</option>
-                  <option value="paid">Paid</option>
-                  <option value="processing">Processing</option>
-                  <option value="delivered">Delivered</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
+              <!-- Stage, as the reference reads it: every stage listed with its
+                   count, several selectable at once. A dropdown could only ever
+                   answer one stage at a time and hid the counts behind it. The
+                   finished stages start unticked so the list opens on live work. -->
+              <fieldset class="patd-group patd-stages">
+                <legend class="patd-group__label">Stage</legend>
+                <label class="patd-stage"><input type="checkbox" class="order-stage" value="new" checked><span class="patd-stage__name">New request</span><b class="patd-stage__count" id="stage-count-new">0</b></label>
+                <label class="patd-stage"><input type="checkbox" class="order-stage" value="payment" checked><span class="patd-stage__name">Awaiting payment</span><b class="patd-stage__count" id="stage-count-payment">0</b></label>
+                <label class="patd-stage"><input type="checkbox" class="order-stage" value="packing" checked><span class="patd-stage__name">Packing</span><b class="patd-stage__count" id="stage-count-packing">0</b></label>
+                <label class="patd-stage"><input type="checkbox" class="order-stage" value="sending" checked><span class="patd-stage__name">On the way</span><b class="patd-stage__count" id="stage-count-sending">0</b></label>
+                <label class="patd-stage"><input type="checkbox" class="order-stage" value="done"><span class="patd-stage__name">Delivered</span><b class="patd-stage__count" id="stage-count-done">0</b></label>
+                <label class="patd-stage"><input type="checkbox" class="order-stage" value="cancelled"><span class="patd-stage__name">Cancelled</span><b class="patd-stage__count" id="stage-count-cancelled">0</b></label>
+              </fieldset>
               <div class="patd-group">
                 <span class="patd-group__label">Type</span>
                 <select id="order-type-filter" class="patd-select" aria-label="Filter orders by type">
@@ -4029,10 +4131,7 @@
                   <option value="preorder">China pre-order</option>
                 </select>
               </div>
-              <div class="patd-group">
-                <span class="patd-group__label">Counts</span>
-                <div class="patd-counts" id="orders-filter-counts"></div>
-              </div>
+
             </aside>
 
             <!-- Results -->
@@ -4055,6 +4154,17 @@
 
             <!-- Right rail: one short list, no promo. -->
             <aside class="patd-rail" aria-label="Order summary">
+              <!-- The reference leads its rail with the money still outstanding
+                   and the one action that moves it. -->
+              <section class="adm-card adm-dark dash-rail__cta" id="orders-owed-cta" hidden>
+                <h2 class="dash-rail__cta-title" id="orders-owed-title">&nbsp;</h2>
+                <p class="dash-rail__cta-copy" id="orders-owed-copy">&nbsp;</p>
+                <button type="button" class="adm-cta" id="orders-owed-action">
+                  <span>Send reminders</span>
+                  <i class="adm-cta__arrow" aria-hidden="true">&rarr;</i>
+                </button>
+              </section>
+
               <section class="adm-card">
                 <div class="adm-card-head"><h2>Needs payment</h2></div>
                 <div class="adm-card-body">
@@ -4073,7 +4183,6 @@
               <span class="adm-status"><i class="adm-dot"></i><span id="customers-status-line">Loading customers&hellip;</span></span>
             </div>
             <div class="adm-head__actions">
-              <button type="button" class="adm-ghost" onclick="syncCustomersToServer && syncCustomersToServer()">Sync</button>
               <button type="button" class="adm-cta" id="add-customer-btn" onclick="openAddCustomerModal()">
                 <span>Add customer</span><i aria-hidden="true">&rarr;</i>
               </button>
@@ -4111,6 +4220,19 @@
                 </select>
               </div>
               <div class="patd-group">
+                <span class="patd-group__label">Found us through</span>
+                <select id="cust-source-filter" class="patd-select" aria-label="Filter by how the customer found the shop">
+                  <option value="">Any channel</option>
+                  <option value="instagram">Instagram</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="tiktok">TikTok</option>
+                  <option value="facebook">Facebook</option>
+                  <option value="referral">Referral</option>
+                  <option value="walk-in">Walk-in</option>
+                  <option value="storefront">Online store</option>
+                </select>
+              </div>
+              <div class="patd-group">
                 <span class="patd-group__label">Spend</span>
                 <select id="cust-spend-filter" class="patd-select" aria-label="Filter by spend">
                   <option value="">Any spend</option>
@@ -4145,8 +4267,21 @@
             </div>
 
             <aside class="patd-rail" aria-label="Customer summary">
+              <!-- What the reference leads its client rail with: who owes, and
+                   how much, so the chase is one glance away. -->
               <section class="adm-card">
-                <div class="adm-card-head"><h2>Top spenders</h2></div>
+                <div class="adm-card-head">
+                  <h2>Owes the shop</h2>
+                  <span class="chip-count" id="customers-owed-count">0</span>
+                </div>
+                <div class="adm-card-body">
+                  <div class="rail-list" id="customers-owed-list"></div>
+                  <p class="empty-line" id="customers-owed-empty" hidden>Nobody owes anything.</p>
+                </div>
+              </section>
+
+              <section class="adm-card">
+                <div class="adm-card-head"><h2>Loyalty leaderboard</h2></div>
                 <div class="adm-card-body">
                   <div class="rail-list" id="customers-rail-list"></div>
                   <p class="empty-line" id="customers-rail-empty" hidden>No spend recorded yet.</p>
@@ -4341,6 +4476,84 @@
             </aside>
           </div>
         </section>
+
+      <!-- ==================== TAB: PAYMENTS ==================== -->
+      <section id="tab-payments" class="tab-view" role="tabpanel" aria-label="Payments">
+        <div class="adm-head">
+          <div class="adm-head__titles">
+            <h1 class="adm-title">Payments</h1>
+            <span class="adm-status"><i class="adm-dot"></i><span id="payments-status-line">&nbsp;</span></span>
+          </div>
+          <div class="adm-head__actions">
+            <label class="sr-only" for="payments-period">Period</label>
+            <select id="payments-period" class="adm-period">
+              <option value="7">Last 7 days</option>
+              <option value="30" selected>Last 30 days</option>
+              <option value="90">Last 90 days</option>
+              <option value="365">Last 12 months</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pay-split">
+          <!-- What arrived, against what arrived before it, and what is still
+               outstanding — the three figures that say whether a quiet month
+               is a slow month or an unpaid one. -->
+          <section class="adm-card pay-received">
+            <div class="adm-card-head">
+              <h2>Received</h2>
+              <span class="delta" id="pay-delta">&mdash;</span>
+            </div>
+            <div class="adm-card-body">
+              <div class="counter-num" id="pay-received">&mdash;</div>
+              <div class="pay-facts">
+                <div class="pay-fact"><span>Previous period</span><b id="pay-previous">&mdash;</b></div>
+                <div class="pay-fact"><span>Still owed on open orders</span><b id="pay-owed">&mdash;</b></div>
+                <div class="pay-fact"><span>Payments</span><b id="pay-count">&mdash;</b></div>
+                <div class="pay-fact"><span>Average payment</span><b id="pay-average">&mdash;</b></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="adm-card">
+            <div class="adm-card-head"><h2>By method</h2></div>
+            <div class="adm-card-body">
+              <div class="pay-bar" id="pay-method-bar" aria-hidden="true"></div>
+              <ul class="pay-methods" id="pay-method-list"></ul>
+              <p class="empty-line" id="pay-method-empty" hidden>No payments in this period.</p>
+            </div>
+          </section>
+        </div>
+
+        <div class="pay-toolbar">
+          <div class="pay-pills" id="pay-method-filters" role="group" aria-label="Filter by method">
+            <button type="button" class="pay-pill is-on" data-method="">All</button>
+            <button type="button" class="pay-pill" data-method="Mobile Money">MoMo</button>
+            <button type="button" class="pay-pill" data-method="Cash">Cash</button>
+            <button type="button" class="pay-pill" data-method="Bank Transfer">Bank</button>
+            <button type="button" class="pay-pill" data-method="Card">Card</button>
+          </div>
+          <label class="pay-search">
+            <span class="sr-only">Search payments</span>
+            <input type="search" id="pay-search" placeholder="Client, reference or order number" aria-label="Search payments">
+          </label>
+        </div>
+
+        <section class="adm-card">
+          <div class="adm-table-wrap">
+            <table class="adm-table">
+              <thead>
+                <tr>
+                  <th>Date</th><th>Reference</th><th>Client</th><th>Order</th>
+                  <th>Method</th><th>Type</th><th class="is-num">Amount</th><th>Receipt</th>
+                </tr>
+              </thead>
+              <tbody id="payments-tbody"></tbody>
+            </table>
+          </div>
+          <p class="empty-line" id="payments-empty" hidden>No payments match this view.</p>
+        </section>
+      </section>
 
         <section id="tab-analytics" class="tab-view analytics-dashboard" role="tabpanel" aria-label="Sales Analytics">
         <div class="analytics-shell">
@@ -4838,7 +5051,7 @@
         <div class="adm-head">
             <div class="adm-head__titles">
               <h1 class="adm-title">Settings</h1>
-              <span class="adm-status"><i class="adm-dot"></i><span id="settings-status-line">&nbsp;</span></span>
+
             </div>
             <div class="adm-head__actions">
             </div>
@@ -5157,11 +5370,11 @@
       </div>
       <div class="modal-body">
         <p style="font-size:13px;color:#666;margin:0 0 12px;">
-          Upload a CSV with these column headers (first row): <code style="background:#FFF1F4;color:#fc4c7a;padding:2px 6px;border-radius:5px;font-size:12px;">name, price, stock, cat, size, badge, img, fulfillment_type, sku, description</code>.
-          <code style="background:#FFF1F4;color:#fc4c7a;padding:2px 6px;border-radius:5px;font-size:12px;">name</code> and
-          <code style="background:#FFF1F4;color:#fc4c7a;padding:2px 6px;border-radius:5px;font-size:12px;">price</code> are required.
-          <code style="background:#FFF1F4;color:#fc4c7a;padding:2px 6px;border-radius:5px;font-size:12px;">fulfillment_type</code> is optional — leave blank or "in_stock" for normal items, "preorder" for China pre-orders.
-          <code style="background:#FFF1F4;color:#fc4c7a;padding:2px 6px;border-radius:5px;font-size:12px;">sku</code> is optional too — leave it blank to auto-assign one, or set your own.
+          Upload a CSV with these column headers (first row): <code class="code-token">name, price, stock, cat, size, badge, img, fulfillment_type, sku, description</code>.
+          <code class="code-token">name</code> and
+          <code class="code-token">price</code> are required.
+          <code class="code-token">fulfillment_type</code> is optional — leave blank or "in_stock" for normal items, "preorder" for China pre-orders.
+          <code class="code-token">sku</code> is optional too — leave it blank to auto-assign one, or set your own.
         </p>
         <div style="margin-bottom:14px;">
           <button type="button" class="btn btn-outline-small" onclick="downloadProductCsvTemplate()" style="font-size:12px;">Download template CSV</button>
@@ -5628,12 +5841,17 @@
         </div>
         <div class="modal-footer" style="gap:8px; display: flex; justify-content: flex-end; padding: var(--space-4) var(--space-6); border-top: 1px solid var(--border);">
         <button class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" style="border-radius: 8px;" type="button" onclick="closeModal('modal-order-receipt')">Close</button>
+        <button id="adminReceiptShareBtn" class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" type="button" onclick="shareAdminReceipt()" style="border-radius: 8px; display:flex;align-items:center;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Share
+        </button>
         <button id="adminReceiptPrintBtn" class="px-5 py-2.5 border border-solid border-gray-300 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors font-medium bg-white shadow-sm cursor-pointer" type="button" onclick="printAdminReceipt()" style="border-radius: 8px; display:flex;align-items:center;gap:6px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
           Print
         </button>
       </div>
     </div>
+  </div>
   </div>
   <style>
     @media print {
@@ -5828,7 +6046,7 @@
         </div>
       </div>
 
-      <form id="supplier-form" class="supplier-form" novalidate>
+      <form id="supplier-form" class="supplier-form" onsubmit="return false;" novalidate>
         <input type="hidden" id="modal-supp-id">
         <input type="hidden" id="modal-supp-logo">
 
@@ -6118,7 +6336,7 @@
             <div class="detail-chips">
               <span id="pd-cat-chip" class="detail-chip detail-chip--muted">category</span>
               <span id="pd-status-chip" class="detail-chip detail-chip--status">In Stock</span>
-              <span id="pd-fulfillment-chip" class="detail-chip" style="display:none;background:var(--purple-light);color:var(--purple);">China Pre-Order</span>
+              <span id="pd-fulfillment-chip" class="detail-chip" style="display:none;color:var(--label-lilac);">China Pre-Order</span>
             </div>
           </div>
         </div>
@@ -6263,8 +6481,8 @@
   <script src="image-resolver.js?v=1"></script>
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
-  <script src="admin-demo.js?v=7"></script>
-  <script src="admin.js?v=150"></script>
+  <script src="admin-demo.js?v=15"></script>
+  <script src="admin.js?v=169"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
@@ -6413,6 +6631,25 @@
             <div class="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
               <h3 class="text-base font-bold text-gray-900 mb-4" style="margin-top:0;">Order Settings</h3>
               
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-2" for="new-order-source">How did they reach us?</label>
+                <div class="relative">
+                  <select id="new-order-source" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-gray-900 shadow-sm bg-white cursor-pointer">
+                    <option value="">Not recorded</option>
+                    <option value="instagram">Instagram</option>
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="tiktok">TikTok</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="referral">Referral</option>
+                    <option value="walk-in">Walk-in</option>
+                    <option value="storefront">Online store</option>
+                  </select>
+                  <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Order Type</label>
                 <div class="relative">

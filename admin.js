@@ -192,6 +192,8 @@ function normalizeAdminCustomer(customer) {
         joinDate: row.created_at || row.joinDate || '',
         lastOrderAt: row.last_order_at || '',
         totalSpent: Number(row.total_spent || row.totalSpent || 0),
+        owed: Number(row.amount_owed || row.owed || 0),
+        source: String(row.source || '').toLowerCase(),
         orderCount: Number(row.order_count || row.orderCount || 0),
         status: row.status === 'inactive' ? 'inactive' : 'active'
     };
@@ -692,6 +694,60 @@ var navTargetMap = {
     'tab-admins': 'Manage Staff'
 };
 
+/* The top bar is gone. It carried the page name, which every tab already
+   prints as its own title — "Inventory" sat directly above "Inventory" — and
+   it carried the menu, notifications and account buttons, which the dashboard
+   hero already repeats.
+
+   Rather than delete those three, they move into whichever tab is open, so
+   there is one header per screen instead of two. The real elements are moved,
+   not copied: their dropdowns and click handlers are bound to these nodes, and
+   rebuilding them would leave the menus wired to elements no longer on the
+   page. The dashboard is the exception — its hero carries its own set, so the
+   cluster hides there instead. */
+function placeAdminControls(targetId) {
+    var cluster = document.getElementById('admin-head-controls');
+    if (!cluster) {
+        var notif = document.querySelector('.notification-wrapper');
+        var account = document.querySelector('.user-profile-wrapper');
+        if (!notif || !account) return;
+        cluster = document.createElement('div');
+        cluster.id = 'admin-head-controls';
+        cluster.className = 'adm-head-controls';
+        cluster.appendChild(notif);
+        cluster.appendChild(account);
+        // Park it in the document straight away: these are the only copies of
+        // the two controls, and leaving the cluster detached would take their
+        // dropdowns with it.
+        document.body.appendChild(cluster);
+    }
+
+    var hero = document.querySelector('#tab-dashboard .dash-hero__actions');
+    if (targetId === 'tab-dashboard' && hero) {
+        // One set, on the dashboard, in the hero. The hero ships its own bell
+        // and avatar, but those are decoration — the real controls, with the
+        // dropdown and the account menu bound to them, are these. Hide the
+        // pair the markup carries so the hero shows one of each.
+        ['dashHeroBell', 'dashHeroUser'].forEach(function (id) {
+            var el = document.getElementById(id);
+            if (el) el.style.display = 'none';
+        });
+        var divider = document.querySelector('#tab-dashboard .dash-hero__divider');
+        if (divider) divider.style.display = 'none';
+        if (cluster.parentElement !== hero) hero.appendChild(cluster);
+        cluster.style.display = '';
+        return;
+    }
+
+    // Every other tab prints its own title and its own actions. Repeating the
+    // bell and the account button under each one was the duplication again in
+    // a new place, so they stay on the dashboard. The cluster keeps its place
+    // in <body> while hidden, because hiding an ancestor of the dropdowns is
+    // what made them unopenable before.
+    if (cluster.parentElement !== document.body) document.body.appendChild(cluster);
+    cluster.style.display = 'none';
+}
+
 function switchTab(targetId) {
     // Hide all tabs
     var tabs = document.querySelectorAll('.tab-view');
@@ -713,6 +769,10 @@ function switchTab(targetId) {
         target.style.display = '';
         target.classList.add('active');
     }
+
+    placeAdminControls(targetId);
+
+    if (targetId === 'tab-payments') { initPaymentPills(); loadPayments(); }
 
     // Set active on matching nav item
     var matchingNav = document.querySelector('.sidebar-link[data-tab="' + targetId + '"]');
@@ -1660,6 +1720,14 @@ function renderInventoryTable() {
     var products = getFilteredInventory();
     var sorted = sortInventory(products);
     var totalItems = sorted.length;
+
+    var invStatus = document.getElementById('inventory-status-line');
+    if (invStatus) {
+        var invAll = (typeof globalProducts !== 'undefined' && Array.isArray(globalProducts)) ? globalProducts.length : totalItems;
+        var invLow = sorted.filter(function (p) { var n = Number(p.stock || 0); return n > 0 && n <= 5; }).length;
+        var invOut = sorted.filter(function (p) { return Number(p.stock || 0) <= 0; }).length;
+        invStatus.textContent = totalItems + ' of ' + invAll + ' items \u00b7 ' + invLow + ' low \u00b7 ' + invOut + ' out of stock';
+    }
     var start = (invCurrentPage - 1) * INV_PER_PAGE;
     var paged = sorted.slice(start, start + INV_PER_PAGE);
 
@@ -2507,18 +2575,45 @@ function renderOrdersTable() {
     // Heading carries the count, as the reference results column does.
     var countEl = document.getElementById('orders-result-count');
     if (countEl) countEl.textContent = totalItems + (totalItems === 1 ? ' order' : ' orders');
+    // The reference counts what is still live and what is brand new, rather
+    // than the size of the table — those are the two numbers worth knowing
+    // before reading a single row.
+    var CLOSED_STAGES = ['completed', 'delivered', 'cancelled'];
+    var NEW_REQUEST_STAGES = ['pending', 'pending_deposit', 'awaiting_payment'];
+    var openOrders = all.filter(function (o) {
+        return CLOSED_STAGES.indexOf(String(o.status || '').toLowerCase()) === -1;
+    });
+    var freshOrders = all.filter(function (o) {
+        return NEW_REQUEST_STAGES.indexOf(String(o.status || '').toLowerCase()) !== -1;
+    });
     var statusLine = document.getElementById('orders-status-line');
-    if (statusLine) statusLine.textContent = all.length + ' total \u00b7 showing ' + totalItems;
-
-    // Filter counts, so the owner can see where the work is without clicking.
-    var counts = document.getElementById('orders-filter-counts');
-    if (counts) {
-        var byStatus = {};
-        all.forEach(function (o) { var k = String(o.status || 'pending').toLowerCase(); byStatus[k] = (byStatus[k] || 0) + 1; });
-        counts.innerHTML = Object.keys(byStatus).sort().map(function (k) {
-            return '<div class="patd-count-row"><span>' + escapeHtml(k.replace(/_/g, ' ')) + '</span><b>' + byStatus[k] + '</b></div>';
-        }).join('');
+    if (statusLine) {
+        statusLine.textContent =
+            openOrders.length + (openOrders.length === 1 ? ' open order' : ' open orders') +
+            ' \u00b7 ' +
+            freshOrders.length + (freshOrders.length === 1 ? ' new request' : ' new requests');
     }
+
+    // The money still outstanding, and the one action that moves it.
+    var owedTotal = freshOrders.reduce(function (sum, o) { return sum + (Number(o.total) || 0); }, 0);
+    var owedCta = document.getElementById('orders-owed-cta');
+    if (owedCta) {
+        owedCta.hidden = freshOrders.length === 0;
+        var owedTitle = document.getElementById('orders-owed-title');
+        var owedCopy = document.getElementById('orders-owed-copy');
+        if (owedTitle) {
+            owedTitle.textContent = freshOrders.length +
+                (freshOrders.length === 1 ? ' order still owes ' : ' orders still owe ') + dashMoney(owedTotal);
+        }
+        if (owedCopy) {
+            owedCopy.textContent = 'Message each customer on WhatsApp before the stock is held any longer.';
+        }
+    }
+
+    // Counts sit beside the stage they belong to, and count the whole table
+    // rather than the filtered view — otherwise ticking a stage would rewrite
+    // the very numbers used to decide what to tick.
+    renderStageCounts(all);
 
     renderOrdersRail(all);
 
@@ -2539,8 +2634,9 @@ function renderOrdersTable() {
             if (b) b.textContent = 'GHS ' + formatNumber(owed) + ' outstanding. Confirm each one so the customer hears back.';
             var cta = document.getElementById('orders-alert-cta');
             if (cta) cta.onclick = function () {
-                var sel = document.getElementById('order-status-filter');
-                if (sel) { sel.value = 'awaiting_payment'; orderCurrentPage = 1; renderOrdersTable(); }
+                setOrderStages(['payment']);
+                orderCurrentPage = 1;
+                renderOrdersTable();
             };
         }
     }
@@ -2619,10 +2715,17 @@ function openOrderDetail(orderId) {
         if (fc && fc.phone) phone = fc.phone;
     }
 
-    var dateStr = o.date || o.created_at || '—';
-    try {
-        if (o.created_at) dateStr = new Date(o.created_at).toLocaleString('en-GB', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
-    } catch (e) {}
+    // Format whichever of the two the order carries. Formatting only the one
+    // and falling back to the other raw printed an ISO timestamp at the top of
+    // the sheet whenever an order had a date but no created_at.
+    var rawDate = o.created_at || o.date || null;
+    var dateStr = '—';
+    if (rawDate) {
+        var parsedDate = new Date(rawDate);
+        dateStr = isNaN(parsedDate.getTime())
+            ? String(rawDate)
+            : parsedDate.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
 
     var status = o.status || 'pending';
     var statusCap = status.charAt(0).toUpperCase() + status.slice(1);
@@ -2694,13 +2797,56 @@ function closeOrderDetail() {
     document.body.style.overflow = '';
 }
 
+/* The stages the orders list is grouped by. Several raw statuses read as one
+   stage to the person working the list — an order that is paid and one that is
+   being packed are both "in hand" — so the filter groups them rather than
+   making the owner know the difference. */
+var ORDER_STAGES = [
+    { key: 'new',       statuses: ['pending', 'pending_deposit'] },
+    { key: 'payment',   statuses: ['awaiting_payment', 'payment_review'] },
+    { key: 'packing',   statuses: ['paid', 'processing'] },
+    { key: 'sending',   statuses: ['shipped', 'dispatched'] },
+    { key: 'done',      statuses: ['delivered', 'completed'] },
+    { key: 'cancelled', statuses: ['cancelled'] }
+];
+
+function orderStageKey(order) {
+    var status = String((order && order.status) || '').toLowerCase();
+    for (var i = 0; i < ORDER_STAGES.length; i++) {
+        if (ORDER_STAGES[i].statuses.indexOf(status) !== -1) return ORDER_STAGES[i].key;
+    }
+    return 'new';
+}
+
+function selectedOrderStages() {
+    var boxes = document.querySelectorAll('.order-stage');
+    if (!boxes.length) return null;           // markup absent: do not filter
+    var on = [];
+    boxes.forEach(function (b) { if (b.checked) on.push(b.value); });
+    return on;
+}
+
+function setOrderStages(keys) {
+    document.querySelectorAll('.order-stage').forEach(function (b) {
+        b.checked = keys.indexOf(b.value) !== -1;
+    });
+}
+
+function renderStageCounts(all) {
+    var rows = Array.isArray(all) ? all : [];
+    ORDER_STAGES.forEach(function (stage) {
+        var el = document.getElementById('stage-count-' + stage.key);
+        if (!el) return;
+        el.textContent = rows.filter(function (o) { return orderStageKey(o) === stage.key; }).length;
+    });
+}
+
 function getFilteredOrders() {
     var searchEl = document.getElementById('order-search');
-    var statusEl = document.getElementById('order-status-filter');
     var typeEl = document.getElementById('order-type-filter');
     var query = searchEl ? searchEl.value.toLowerCase() : '';
-    var status = statusEl ? statusEl.value : 'all';
     var type = typeEl ? typeEl.value : '';
+    var stages = selectedOrderStages();
 
     return getOrders().filter(function(o) {
         var phone = o.phone || '';
@@ -2715,11 +2861,9 @@ function getFilteredOrders() {
             o.id.toLowerCase().indexOf(query) >= 0 || 
             o.customer.toLowerCase().indexOf(query) >= 0 ||
             phone.toLowerCase().indexOf(query) >= 0;
-        var normalizedStatus = String(o.status || '').toLowerCase();
-        var matchesStatus = status === 'all' || status === '' || normalizedStatus === status;
-        if (status === 'attention') {
-            matchesStatus = ['pending', 'pending_deposit', 'awaiting_payment', 'payment_review'].indexOf(normalizedStatus) >= 0;
-        }
+        // No stage ticked means the owner has filtered everything out, and an
+        // empty list is the honest answer to that — not the whole table back.
+        var matchesStatus = stages === null || stages.indexOf(orderStageKey(o)) !== -1;
         var otype = (o.order_type || o.type || 'retail').toLowerCase();
         var matchesType = !type || otype === type;
         return matchesSearch && matchesStatus && matchesType;
@@ -3252,19 +3396,52 @@ function sortCustomersList(list) {
 }
 
 function renderCustomersRail(all) {
+    // A ranked board rather than a plain list: the position is the point when
+    // the question is who to thank, who to discount and who to ask for a
+    // referral. Spend first, orders as the tie-break, so somebody who buys
+    // often is not pushed under a single large order.
     var list = document.getElementById('customers-rail-list');
     var empty = document.getElementById('customers-rail-empty');
-    if (!list) return;
-    var top = all.filter(function (c) { return Number(c.totalSpent || 0) > 0; })
-        .sort(function (a, b) { return Number(b.totalSpent || 0) - Number(a.totalSpent || 0); })
-        .slice(0, 5);
-    if (!top.length) { list.innerHTML = ''; if (empty) empty.hidden = false; return; }
-    if (empty) empty.hidden = true;
-    list.innerHTML = top.map(function (c) {
+    if (list) {
+        var top = all.filter(function (c) { return Number(c.totalSpent || 0) > 0; })
+            .sort(function (a, b) {
+                var bySpend = Number(b.totalSpent || 0) - Number(a.totalSpent || 0);
+                return bySpend !== 0 ? bySpend : Number(b.orderCount || 0) - Number(a.orderCount || 0);
+            })
+            .slice(0, 5);
+        if (!top.length) {
+            list.innerHTML = '';
+            if (empty) empty.hidden = false;
+        } else {
+            if (empty) empty.hidden = true;
+            list.innerHTML = top.map(function (c, i) {
+                return '<button type="button" class="rail-row rail-row--ranked" onclick="openCustomerDetail(\'' + c.id + '\')">' +
+                    '<span class="rail-row__rank">' + (i + 1) + '</span>' +
+                    '<span class="rail-row__name">' + escapeHtml(c.name || 'Unnamed') +
+                    '<em>' + (c.orderCount || 0) + (Number(c.orderCount) === 1 ? ' order' : ' orders') + '</em></span>' +
+                    '<span class="rail-row__val">GHS ' + formatNumber(c.totalSpent || 0) + '</span>' +
+                    '</button>';
+            }).join('');
+        }
+    }
+
+    var owedList = document.getElementById('customers-owed-list');
+    var owedEmpty = document.getElementById('customers-owed-empty');
+    var owedCount = document.getElementById('customers-owed-count');
+    var owing = all.filter(function (c) { return Number(c.owed || 0) > 0; })
+        .sort(function (a, b) { return Number(b.owed || 0) - Number(a.owed || 0); });
+    if (owedCount) owedCount.textContent = owing.length;
+    if (!owedList) return;
+    if (!owing.length) {
+        owedList.innerHTML = '';
+        if (owedEmpty) owedEmpty.hidden = false;
+        return;
+    }
+    if (owedEmpty) owedEmpty.hidden = true;
+    owedList.innerHTML = owing.slice(0, 6).map(function (c) {
         return '<button type="button" class="rail-row" onclick="openCustomerDetail(\'' + c.id + '\')">' +
             '<span class="rail-row__name">' + escapeHtml(c.name || 'Unnamed') + '</span>' +
-            '<span class="rail-row__meta">' + (c.orderCount || 0) + (Number(c.orderCount) === 1 ? ' order' : ' orders') + '</span>' +
-            '<span class="rail-row__val">GHS ' + formatNumber(c.totalSpent || 0) + '</span>' +
+            '<span class="rail-row__val">GHS ' + formatNumber(c.owed || 0) + '</span>' +
             '</button>';
     }).join('');
 }
@@ -3290,8 +3467,15 @@ function renderCustomersTable() {
 
     var withAccount = all.filter(function (c) { return c.registered; }).length;
     var ordered = all.filter(function (c) { return Number(c.orderCount || 0) > 0; }).length;
+    var owingAll = all.filter(function (c) { return Number(c.owed || 0) > 0; });
+    var owedSum = owingAll.reduce(function (sum, c) { return sum + Number(c.owed || 0); }, 0);
     var statusLine = document.getElementById('customers-status-line');
-    if (statusLine) statusLine.textContent = all.length + ' total \u00b7 ' + ordered + ' have ordered \u00b7 ' + withAccount + ' with an account';
+    if (statusLine) {
+        // The reference leads on who they are and what is outstanding, which is
+        // the pair that decides whether anyone needs chasing today.
+        statusLine.textContent = all.length + (all.length === 1 ? ' client' : ' clients') +
+            ' \u00b7 ' + owingAll.length + ' owe GHS ' + formatNumber(owedSum);
+    }
 
     var counts = document.getElementById('customers-filter-counts');
     if (counts) {
@@ -3372,7 +3556,11 @@ function getFilteredCustomers() {
         var spend = spendEl ? spendEl.value : '';
         var matchesSpend = !spend || (spend === 'has' ? Number(c.orderCount || 0) > 0 : Number(c.orderCount || 0) === 0);
 
-        return matchesSearch && matchesGroup && matchesAccount && matchesSpend;
+        var sourceEl = document.getElementById('cust-source-filter');
+        var source = sourceEl ? sourceEl.value : '';
+        var matchesSource = !source || String(c.source || '') === source;
+
+        return matchesSearch && matchesGroup && matchesAccount && matchesSpend && matchesSource;
     });
 }
 
@@ -4962,6 +5150,13 @@ function loadReports(filterType) {
     var previousRevenue = previousOrders.filter(isRevenueEligibleOrder).reduce(function(sum, o) { return sum + (o.total || 0); }, 0);
 
     var currentOrdersCount = currentOrders.length;
+
+    var repStatus = document.getElementById('reports-status-line');
+    if (repStatus) {
+        repStatus.textContent = currentOrdersCount === 1
+            ? '1 order in this period'
+            : currentOrdersCount + ' orders in this period';
+    }
     var previousOrdersCount = previousOrders.length;
 
     var currentCustMap = {};
@@ -6186,6 +6381,17 @@ function renderReviewsTable() {
 
     var reviews = getFilteredReviews();
     var totalItems = reviews.length;
+
+    var revStatus = document.getElementById('reviews-status-line');
+    if (revStatus) {
+        if (!totalItems) {
+            revStatus.textContent = 'No reviews yet';
+        } else {
+            var revAvg = reviews.reduce(function (sum, r) { return sum + (Number(r.rating) || 0); }, 0) / totalItems;
+            var revLow = reviews.filter(function (r) { return (Number(r.rating) || 0) <= 2; }).length;
+            revStatus.textContent = totalItems + ' reviews \u00b7 ' + revAvg.toFixed(1) + ' average \u00b7 ' + revLow + ' needing attention';
+        }
+    }
     var start = (reviewCurrentPage - 1) * REVIEW_PER_PAGE;
     var paged = reviews.slice(start, start + REVIEW_PER_PAGE);
 
@@ -7470,10 +7676,17 @@ function setupEventListeners() {
         if (sidebarOverlay) sidebarOverlay.classList.remove('active');
     }
 
-    if (mobileSidebarToggle && adminSidebar) {
-        mobileSidebarToggle.addEventListener('click', function(e) {
-            e.stopPropagation();
-            adminSidebar.classList.contains('open') ? closeMobileSidebar() : openMobileSidebar();
+    // The dashboard hides the top bar, because its hero already carries the
+    // same notifications and account actions. The hero therefore has its own
+    // menu button, and both open the one sidebar.
+    var sidebarToggles = [mobileSidebarToggle, document.getElementById('dash-hero-menu')].filter(Boolean);
+
+    if (sidebarToggles.length && adminSidebar) {
+        sidebarToggles.forEach(function (toggle) {
+            toggle.addEventListener('click', function(e) {
+                e.stopPropagation();
+                adminSidebar.classList.contains('open') ? closeMobileSidebar() : openMobileSidebar();
+            });
         });
 
         // Overlay tap closes sidebar
@@ -7484,7 +7697,8 @@ function setupEventListeners() {
         // Close sidebar when clicking outside on mobile
         document.addEventListener('click', function(e) {
             if (window.innerWidth <= 1024) {
-                if (!adminSidebar.contains(e.target) && !mobileSidebarToggle.contains(e.target)) {
+                var onToggle = sidebarToggles.some(function (t) { return t.contains(e.target); });
+                if (!adminSidebar.contains(e.target) && !onToggle) {
                     closeMobileSidebar();
                 }
             }
@@ -7578,12 +7792,9 @@ function setupEventListeners() {
                     }
                 }
                 if (target === 'tab-orders' && filter === 'attention') {
-                    var orderFilter = document.getElementById('order-status-filter');
-                    if (orderFilter) {
-                        orderFilter.value = 'attention';
-                        orderCurrentPage = 1;
-                        orderFilter.dispatchEvent(new Event('change', { bubbles: true }));
-                    }
+                    setOrderStages(['new', 'payment']);
+                    orderCurrentPage = 1;
+                    renderOrdersTable();
                 }
             }, 80);
         }
@@ -7728,12 +7939,15 @@ function setupEventListeners() {
         if (e.target.id === 'cust-search') { custCurrentPage = 1; renderCustomersTable(); }
         if (e.target.id === 'prod-search') { prodCurrentPage = 1; renderProductsGrid(); }
         if (e.target.id === 'review-search') { reviewCurrentPage = 1; renderReviewsTable(); }
+        if (e.target.id === 'pay-search') renderPayments();
     });
     document.addEventListener('change', function(e) {
-        if (e.target.id === 'order-status-filter') { orderCurrentPage = 1; renderOrdersTable(); }
+        if (e.target.classList && e.target.classList.contains('order-stage')) { orderCurrentPage = 1; renderOrdersTable(); }
         if (e.target.id === 'order-type-filter') { orderCurrentPage = 1; renderOrdersTable(); }
         if (e.target.id === 'order-date-filter') { orderCurrentPage = 1; renderOrdersTable(); }
         if (e.target.id === 'cust-group-filter') { custCurrentPage = 1; renderCustomersTable(); }
+        if (e.target.id === 'cust-source-filter') { custCurrentPage = 1; renderCustomersTable(); }
+        if (e.target.id === 'payments-period') loadPayments();
         if (e.target.id === 'prod-cat-filter' || e.target.id === 'prod-status-filter' || e.target.id === 'prod-fulfillment-filter' || e.target.id === 'prod-image-filter' || e.target.id === 'prod-sort') { prodCurrentPage = 1; renderProductsGrid(); }
     });
 
@@ -8756,6 +8970,10 @@ async function submitCreateOrder() {
         items: items,
         idempotency_key: newOrderIdemKey
     };
+    // The channel the staff member picked on the form. Left off entirely when
+    // not recorded, so the server stores null rather than an empty string.
+    var sourceEl = document.getElementById('new-order-source');
+    if (sourceEl && sourceEl.value) payload.source = sourceEl.value;
     if (discountPercent > 0) payload.discount_percent = discountPercent;
     if (customer.email) payload.customer_email = customer.email;
     if (city) payload.delivery_area = city;
@@ -9148,6 +9366,11 @@ function loadAdmins() {
         document.getElementById('staff-total-count').textContent = total;
         document.getElementById('staff-manager-count').textContent = managers;
         document.getElementById('staff-member-count').textContent = staff;
+
+        var staffStatus = document.getElementById('admins-status-line');
+        if (staffStatus) {
+            staffStatus.textContent = total + ' accounts \u00b7 ' + managers + ' managers \u00b7 ' + staff + ' staff';
+        }
     })
     .catch(function(err) {
         if (tbody) {
@@ -9976,6 +10199,7 @@ function downloadProductCsvTemplate() {
     { tab: 'tab-customers', label: 'Customers',       icon: ICON.customers },
     { tab: 'tab-products',  label: 'Products',        icon: ICON.products },
     { tab: 'tab-suppliers', label: 'Suppliers',       icon: ICON.suppliers },
+    { tab: 'tab-payments',  label: 'Payments',        icon: ICON.reports },
     { tab: 'tab-analytics', label: 'Sales Analytics', icon: ICON.analytics },
     { tab: 'tab-reports',   label: 'Reports',         icon: ICON.reports },
     { tab: 'tab-settings',  label: 'Settings',        icon: ICON.settings }
@@ -11073,22 +11297,416 @@ function renderTopProducts(list) {
     var body = document.getElementById('dash-top-products-body');
     var empty = document.getElementById('dash-top-empty');
     if (!body) return;
-    var rows = Array.isArray(list) ? list.slice(0, 5) : [];
+    var rows = Array.isArray(list) ? list.slice() : [];
+
+    // Ranked by units sold, not by revenue: "top seller" is the thing that
+    // leaves the shelf most often, and one expensive coat would otherwise
+    // outrank a line that sells every week.
+    rows.sort(function (a, b) { return Number(b.quantity || 0) - Number(a.quantity || 0); });
+    rows = rows.slice(0, 5);
+
     if (!rows.length) {
         body.innerHTML = '';
         if (empty) empty.hidden = false;
         return;
     }
     if (empty) empty.hidden = true;
-    var max = Math.max.apply(null, rows.map(function (r) { return Number(r.revenue || r.total || 0); })) || 1;
+
+    var total = rows.reduce(function (sum, r) { return sum + Number(r.quantity || 0); }, 0) || 1;
+    var max = Number(rows[0].quantity || 0) || 1;
     body.innerHTML = rows.map(function (r, i) {
-        var value = Number(r.revenue || r.total || 0);
-        var share = Math.round((value / max) * 100);
+        var units = Number(r.quantity || 0);
+        var share = Math.round((units / total) * 100);
+        var bar = Math.round((units / max) * 100);
         return '<tr>' +
             '<td class="rank">' + (i + 1) + '</td>' +
             '<td class="rank-name">' + escapeHtml(r.name || r.product_name || 'Unnamed') + '</td>' +
-            '<td class="rank-num">' + (r.quantity != null ? r.quantity : '') + '</td>' +
-            '<td class="rank-share"><i style="width:' + share + '%"></i><span>' + dashMoney(value) + '</span></td>' +
+            '<td class="rank-num">' + units + '</td>' +
+            '<td class="rank-share"><span class="rank-track"><i style="width:' + bar + '%"></i></span><b>' + share + '%</b></td>' +
+            '</tr>';
+    }).join('');
+}
+
+/* The same board for people rather than products. Built from the orders the
+   dashboard already holds, so it agrees with the figures above it. */
+/* Share hands the receipt to whatever the device already uses — on a phone
+   that is the share sheet, on a desktop the clipboard. The receipt is a
+   document the customer asks for over WhatsApp, so copying its text is the
+   useful fallback rather than an error. */
+function shareAdminReceipt() {
+    var card = document.getElementById('adminReceiptCard');
+    if (!card) return;
+    var title = 'DC Kids Brand receipt';
+    var text = card.innerText.replace(/\n{3,}/g, '\n\n').trim();
+
+    if (navigator.share) {
+        navigator.share({ title: title, text: text }).catch(function () { /* dismissed */ });
+        return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () {
+            showToast('Receipt copied — paste it to the customer', 'success');
+        }).catch(function () {
+            showToast('Could not copy the receipt', 'error');
+        });
+        return;
+    }
+    showToast('Sharing is not available on this device', 'warning');
+}
+
+function renderTopBuyers() {
+    var body = document.getElementById('dash-top-buyers-body');
+    var empty = document.getElementById('dash-buyers-empty');
+    if (!body) return;
+
+    var EARNING = ['paid', 'processing', 'shipped', 'dispatched', 'delivered', 'completed'];
+    var byBuyer = {};
+    (Array.isArray(window.adminOrders) ? window.adminOrders : []).forEach(function (o) {
+        if (EARNING.indexOf(String(o.status || '').toLowerCase()) === -1) return;
+        var name = String(o.customer || '').trim() || 'Walk-in customer';
+        if (!byBuyer[name]) byBuyer[name] = { name: name, orders: 0, spend: 0 };
+        byBuyer[name].orders += 1;
+        byBuyer[name].spend += Number(o.total || 0);
+    });
+
+    var rows = Object.keys(byBuyer).map(function (k) { return byBuyer[k]; })
+        .sort(function (a, b) {
+            var bySpend = b.spend - a.spend;
+            return bySpend !== 0 ? bySpend : b.orders - a.orders;
+        });
+    var total = rows.reduce(function (sum, r) { return sum + r.spend; }, 0) || 1;
+    rows = rows.slice(0, 5);
+
+    if (!rows.length) {
+        body.innerHTML = '';
+        if (empty) empty.hidden = false;
+        return;
+    }
+    if (empty) empty.hidden = true;
+
+    var max = rows[0].spend || 1;
+    body.innerHTML = rows.map(function (r, i) {
+        var share = Math.round((r.spend / total) * 100);
+        var bar = Math.round((r.spend / max) * 100);
+        return '<tr>' +
+            '<td class="rank">' + (i + 1) + '</td>' +
+            '<td class="rank-name">' + escapeHtml(r.name) + '</td>' +
+            '<td class="rank-num">' + r.orders + '</td>' +
+            '<td class="rank-share"><span class="rank-track"><i style="width:' + bar + '%"></i></span><b>' + share + '%</b></td>' +
+            '</tr>';
+    }).join('');
+}
+
+/* ============================================================
+   DASHBOARD RAIL AND ORDER MIX
+   The reference keeps a rail beside the work: each thing needing a decision
+   today, with its count and the way in. These are the DC Kids readings of it —
+   stock that is about to run out, orders packed and waiting to go, and
+   pre-orders still short of their deposit.
+   ============================================================ */
+var RAIL_AWAITING_PAYMENT = ['pending', 'awaiting_payment', 'payment_review'];
+var RAIL_READY_TO_SEND = ['paid', 'processing'];
+
+function dashRailOrders(statuses) {
+    var all = Array.isArray(window.adminOrders) ? window.adminOrders : [];
+    return all.filter(function (o) {
+        return statuses.indexOf(String(o.status || '').toLowerCase()) !== -1;
+    });
+}
+
+function fillRailList(listId, emptyId, countId, rows, build) {
+    var list = document.getElementById(listId);
+    var empty = document.getElementById(emptyId);
+    var count = document.getElementById(countId);
+    if (count) count.textContent = rows.length;
+    if (!list) return;
+    if (!rows.length) {
+        list.innerHTML = '';
+        if (empty) empty.hidden = false;
+        return;
+    }
+    if (empty) empty.hidden = true;
+    list.innerHTML = rows.slice(0, 4).map(build).join('');
+}
+
+/* ============================================================
+   PAYMENTS
+   What arrived, as opposed to what the orders are worth. One order can be
+   settled in parts and an order can be worth money nobody has paid, so this
+   reads the payments table rather than totting up order totals.
+   ============================================================ */
+var paymentsData = { payments: [], summary: null, by_method: [] };
+var paymentsMethodFilter = '';
+
+var PAYMENT_METHOD_SHORT = {
+    'Mobile Money': 'MoMo',
+    'Bank Transfer': 'Bank',
+    'Cash on Delivery': 'Cash'
+};
+
+function paymentsPeriod() {
+    var el = document.getElementById('payments-period');
+    return el ? el.value : '30';
+}
+
+function loadPayments() {
+    var token = localStorage.getItem('adminToken');
+    if (!token) return;
+    fetch(API_URL + '/admin/payments?period=' + encodeURIComponent(paymentsPeriod()), {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function (res) {
+        if (res.status === 401 || res.status === 403) { handleSessionExpiry(); return null; }
+        if (!res.ok) throw new Error('Payments unavailable');
+        return res.json();
+    })
+    .then(function (data) {
+        if (!data) return;
+        paymentsData = {
+            payments: Array.isArray(data.payments) ? data.payments : [],
+            summary: data.summary || null,
+            by_method: Array.isArray(data.by_method) ? data.by_method : []
+        };
+        renderPayments();
+    })
+    .catch(function (err) {
+        console.warn('Payments unavailable:', err && err.message ? err.message : err);
+        paymentsData = { payments: [], summary: null, by_method: [] };
+        renderPayments();
+    });
+}
+
+function initPaymentPills() {
+    var host = document.getElementById('pay-method-filters');
+    if (!host || host.dataset.bound) return;
+    host.dataset.bound = '1';
+    host.addEventListener('click', function (e) {
+        var pill = e.target.closest('.pay-pill');
+        if (!pill) return;
+        paymentsMethodFilter = pill.getAttribute('data-method') || '';
+        host.querySelectorAll('.pay-pill').forEach(function (b) {
+            b.classList.toggle('is-on', b === pill);
+        });
+        renderPayments();
+    });
+}
+
+function filteredPayments() {
+    var searchEl = document.getElementById('pay-search');
+    var q = searchEl ? searchEl.value.trim().toLowerCase() : '';
+    return paymentsData.payments.filter(function (p) {
+        var matchesMethod = !paymentsMethodFilter || p.method === paymentsMethodFilter;
+        if (!q) return matchesMethod;
+        var hay = [p.customer_name, p.order_number, p.reference].join(' ').toLowerCase();
+        return matchesMethod && hay.indexOf(q) !== -1;
+    });
+}
+
+function renderPayments() {
+    var summary = paymentsData.summary || { received: 0, count: 0, average: 0, previous: 0, still_owed: 0 };
+
+    var periodLabel = { '7': 'Last 7 days', '30': 'Last 30 days', '90': 'Last 90 days', '365': 'Last 12 months' }[paymentsPeriod()] || 'Last 30 days';
+    var line = document.getElementById('payments-status-line');
+    if (line) {
+        line.textContent = periodLabel + ' \u00b7 ' + summary.count +
+            (summary.count === 1 ? ' payment' : ' payments');
+    }
+
+    var set = function (id, text) { var el = document.getElementById(id); if (el) el.textContent = text; };
+    set('pay-received', 'GHS ' + formatNumber(summary.received));
+    set('pay-previous', 'GHS ' + formatNumber(summary.previous));
+    set('pay-owed', 'GHS ' + formatNumber(summary.still_owed));
+    set('pay-count', String(summary.count));
+    set('pay-average', 'GHS ' + formatNumber(summary.average));
+
+    // Against nothing, a change has no meaning — so the first period shows a
+    // dash rather than an invented percentage.
+    var delta = document.getElementById('pay-delta');
+    if (delta) {
+        if (!summary.previous) {
+            delta.textContent = '\u2014';
+            delta.className = 'delta is-neutral';
+        } else {
+            var pct = Math.round(((summary.received - summary.previous) / summary.previous) * 100);
+            delta.textContent = (pct >= 0 ? '\u2191 ' : '\u2193 ') + Math.abs(pct) + '%';
+            delta.className = 'delta ' + (pct >= 0 ? 'is-up' : 'is-down');
+        }
+    }
+
+    var bar = document.getElementById('pay-method-bar');
+    var list = document.getElementById('pay-method-list');
+    var methodEmpty = document.getElementById('pay-method-empty');
+    var methods = paymentsData.by_method;
+    var methodTotal = methods.reduce(function (sum, m) { return sum + Number(m.amount || 0); }, 0);
+    if (list) {
+        if (!methods.length) {
+            list.innerHTML = '';
+            if (bar) bar.innerHTML = '';
+            if (methodEmpty) methodEmpty.hidden = false;
+        } else {
+            if (methodEmpty) methodEmpty.hidden = true;
+            if (bar) {
+                bar.innerHTML = methods.map(function (m, i) {
+                    var pct = methodTotal ? (Number(m.amount || 0) / methodTotal) * 100 : 0;
+                    return '<i class="pay-bar__seg pay-bar__seg--' + (i % 4) + '" style="width:' + pct + '%"></i>';
+                }).join('');
+            }
+            list.innerHTML = methods.map(function (m, i) {
+                var pct = methodTotal ? Math.round((Number(m.amount || 0) / methodTotal) * 100) : 0;
+                return '<li class="pay-method">' +
+                    '<span class="pay-method__dot pay-bar__seg--' + (i % 4) + '"></span>' +
+                    '<span class="pay-method__name">' + escapeHtml(m.method) +
+                    '<em>' + m.count + (m.count === 1 ? ' payment' : ' payments') + '</em></span>' +
+                    '<span class="pay-method__amt">GHS ' + formatNumber(m.amount) + '</span>' +
+                    '<span class="pay-method__pct">' + pct + '%</span>' +
+                    '</li>';
+            }).join('');
+        }
+    }
+
+    var rows = filteredPayments();
+    var body = document.getElementById('payments-tbody');
+    var empty = document.getElementById('payments-empty');
+    if (!body) return;
+    if (!rows.length) {
+        body.innerHTML = '';
+        if (empty) empty.hidden = false;
+        return;
+    }
+    if (empty) empty.hidden = true;
+    body.innerHTML = rows.map(function (p) {
+        var when = p.paid_at ? new Date(p.paid_at) : null;
+        var date = when
+            ? when.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) +
+              ', ' + when.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            : '\u2014';
+        // The receipt is reached from its payment, which is the only place the
+        // reference number is already in front of you. It gets a named button
+        // rather than hiding the action on the reference text, which reads as
+        // data and has no hover to reveal itself on a phone.
+        var ref = escapeHtml(p.reference || '\u2014');
+        var receiptCell = p.order_number
+            ? '<button type="button" class="pay-receipt" onclick="openOrderReceipt(\'' + escapeHtml(p.order_number) + '\')">' +
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+                'Receipt</button>'
+            : '\u2014';
+        return '<tr>' +
+            '<td data-label="Date">' + escapeHtml(date) + '</td>' +
+            '<td data-label="Reference" class="tabular">' + ref + '</td>' +
+            '<td data-label="Client">' + escapeHtml(p.customer_name || '\u2014') + '</td>' +
+            '<td data-label="Order" class="tabular">' + escapeHtml(p.order_number || '\u2014') + '</td>' +
+            '<td data-label="Method">' + escapeHtml(PAYMENT_METHOD_SHORT[p.method] || p.method) + '</td>' +
+            '<td data-label="Type">' + escapeHtml(p.kind || '\u2014') + '</td>' +
+            '<td data-label="Amount" class="is-num tabular">GHS ' + formatNumber(p.amount) + '</td>' +
+            '<td data-label="Receipt">' + receiptCell + '</td>' +
+            '</tr>';
+    }).join('');
+}
+
+function renderDashboardRail(products) {
+    var safe = Array.isArray(products) ? products : [];
+
+    // The one dark card: what is waiting on money, which is the decision that
+    // unblocks everything behind it.
+    var awaiting = dashRailOrders(RAIL_AWAITING_PAYMENT);
+    var owed = awaiting.reduce(function (sum, o) { return sum + (Number(o.total) || 0); }, 0);
+    var cta = document.getElementById('dash-rail-cta');
+    if (cta) {
+        cta.hidden = awaiting.length === 0;
+        var title = document.getElementById('dash-rail-cta-title');
+        var copy = document.getElementById('dash-rail-cta-copy');
+        if (title) {
+            title.textContent = awaiting.length === 1
+                ? '1 order is waiting on payment'
+                : awaiting.length + ' orders are waiting on payment';
+        }
+        if (copy) {
+            copy.textContent = owed > 0
+                ? 'Together they hold ' + dashMoney(owed) + '. Confirm payment and the stock moves with them.'
+                : 'Confirm payment and the stock moves with them.';
+        }
+    }
+
+    var low = safe.filter(function (p) { var n = Number(p.stock || 0); return n > 0 && n <= 5; })
+        .sort(function (a, b) { return Number(a.stock || 0) - Number(b.stock || 0); });
+    fillRailList('dash-rail-low', 'dash-rail-low-empty', 'dash-rail-low-count', low, function (p) {
+        var left = Number(p.stock || 0);
+        return '<li class="res-row">' +
+            '<span class="res-row__name">' + escapeHtml(p.name || 'Unnamed') + '</span>' +
+            '<span class="res-row__value">' + left + ' left</span>' +
+            '</li>';
+    });
+
+    var ready = dashRailOrders(RAIL_READY_TO_SEND);
+    fillRailList('dash-rail-ready', 'dash-rail-ready-empty', 'dash-rail-ready-count', ready, function (o) {
+        return '<li class="res-row">' +
+            '<span class="res-row__name">' + escapeHtml(o.customer || 'Customer') +
+            '<em>' + escapeHtml(o.id || '') + '</em></span>' +
+            '<span class="res-row__value">' + dashMoney(Number(o.total) || 0) + '</span>' +
+            '</li>';
+    });
+
+    var deposit = dashRailOrders(['pending_deposit']);
+    fillRailList('dash-rail-deposit', 'dash-rail-deposit-empty', 'dash-rail-deposit-count', deposit, function (o) {
+        return '<li class="res-row">' +
+            '<span class="res-row__name">' + escapeHtml(o.customer || 'Customer') +
+            '<em>' + escapeHtml(o.id || '') + '</em></span>' +
+            '<span class="res-row__value">' + dashMoney(Number(o.total) || 0) + '</span>' +
+            '</li>';
+    });
+}
+
+/* The reference ranks where orders came from, and now so can this: orders
+   carry a channel from a closed list, so the rows are counted rather than
+   guessed. Orders predating the column have none and are left out of the
+   ranking instead of being bundled into a wrong row. */
+var ORDER_SOURCE_LABELS = {
+    instagram: 'Instagram',
+    whatsapp: 'WhatsApp',
+    tiktok: 'TikTok',
+    facebook: 'Facebook',
+    referral: 'Referral',
+    'walk-in': 'Walk-in',
+    storefront: 'Online store'
+};
+
+function renderOrderMix() {
+    var body = document.getElementById('dash-order-mix-body');
+    var empty = document.getElementById('dash-mix-empty');
+    if (!body) return;
+
+    var all = (Array.isArray(window.adminOrders) ? window.adminOrders : [])
+        .filter(function (o) { return String(o.status || '').toLowerCase() !== 'cancelled'; });
+
+    var counts = {};
+    var known = 0;
+    all.forEach(function (o) {
+        var key = String(o.source || '').toLowerCase();
+        if (!ORDER_SOURCE_LABELS[key]) return;
+        counts[key] = (counts[key] || 0) + 1;
+        known++;
+    });
+
+    var rows = Object.keys(counts)
+        .map(function (k) { return { label: ORDER_SOURCE_LABELS[k], count: counts[k] }; })
+        .sort(function (a, b) { return b.count - a.count; });
+
+    if (!rows.length) {
+        body.innerHTML = '';
+        if (empty) empty.hidden = false;
+        return;
+    }
+    if (empty) empty.hidden = true;
+
+    var max = rows[0].count || 1;
+    body.innerHTML = rows.map(function (r, i) {
+        var share = Math.round((r.count / known) * 100);
+        var bar = Math.round((r.count / max) * 100);
+        return '<tr>' +
+            '<td class="rank">' + (i + 1) + '</td>' +
+            '<td class="rank-name">' + r.label + '</td>' +
+            '<td class="rank-num">' + r.count + '</td>' +
+            '<td class="rank-share"><span class="rank-track"><i style="width:' + bar + '%"></i></span><b>' + share + '%</b></td>' +
             '</tr>';
     }).join('');
 }
@@ -11104,6 +11722,10 @@ function renderDashboardPatterns(analytics, products) {
     set('val-period-revenue', dashMoney(k.totalRevenue));
     set('val-total-orders', String(k.totalOrders != null ? k.totalOrders : 0));
     set('val-avg-order', dashMoney(k.avgOrderValue));
+    renderDashboardRail(safe);
+    renderOrderMix();
+    renderTopBuyers();
+
     renderDelta(document.getElementById('delta-revenue'), g.totalRevenue, true);
     renderDelta(document.getElementById('delta-orders'), g.totalOrders, true);
     renderDelta(document.getElementById('delta-avg'), g.avgOrderValue, true);

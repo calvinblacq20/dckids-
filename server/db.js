@@ -208,7 +208,12 @@ function migrateAdminOperationsSchema(done) {
         ['notes', 'notes TEXT'],
         ['status', "status TEXT DEFAULT 'active'"],
         ['customer_account_id', 'customer_account_id INTEGER'],
-        ['updated_at', 'updated_at DATETIME DEFAULT CURRENT_TIMESTAMP']
+        ['updated_at', 'updated_at DATETIME DEFAULT CURRENT_TIMESTAMP'],
+        // How this customer first reached the shop. Kept on the customer as
+        // well as the order because the two answer different questions: the
+        // order says which channel carried that sale, the customer says which
+        // channel won them in the first place.
+        ['source', 'source TEXT']
     ];
 
     db.all('PRAGMA table_info(customers)', [], (columnsErr, columns) => {
@@ -781,6 +786,15 @@ const db = new sqlite3.Database(dbPath, (err) => {
                     db.run("ALTER TABLE orders ADD COLUMN discount_percent REAL DEFAULT 0", (er) => {
                         if (er) console.error("Migration (discount_percent) failed:", er.message);
                         else console.log("Migration: added orders.discount_percent");
+                    });
+                }
+                // Which channel the order arrived through. Without it the
+                // only honest answer to "where do orders come from" is a
+                // guess, and a guess is not worth a dashboard card.
+                if (names.indexOf('source') === -1) {
+                    db.run("ALTER TABLE orders ADD COLUMN source TEXT", (er) => {
+                        if (er) console.error("Migration (source) failed:", er.message);
+                        else console.log("Migration: added orders.source");
                     });
                 }
                 db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL");
