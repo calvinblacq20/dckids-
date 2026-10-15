@@ -2262,9 +2262,15 @@ input:focus-visible {
      different rhythm from the thing beside it. */
   --ease: cubic-bezier(0.44, 0, 0.56, 1);
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --shop-ink: #111113;
-  --shop-mute: #6b6b70;
-  --shop-line: rgba(17, 17, 19, 0.1);
+  /* The editorial layer sits on the DC Kids palette, not a neutral
+     black-and-white: deep green carries the headings, ivory the page,
+     and the blush stays for accents. */
+  --shop-ink: var(--green-primary);      /* #0F4C3A */
+  --shop-body: var(--charcoal);          /* #1A1A1A */
+  --shop-mute: var(--charcoal-light);    /* #6B7280 */
+  --shop-line: rgba(15, 76, 58, 0.12);
+  --shop-page: var(--bg-ivory);          /* #FAFAF8 */
+  --shop-tint: var(--blush-light);       /* #FFF0F0 */
 }
 
 .ed-display,
@@ -2327,6 +2333,6 @@ input:focus-visible {
 /* A cover image drifts against the scroll, which is what gives an
    editorial page its depth. The frame clips; the picture is taller
    than the frame so it has somewhere to travel. */
-.ed-cover { position: relative; overflow: hidden; border-radius: 18px; background: #f2f2f4; }
+.ed-cover { position: relative; overflow: hidden; border-radius: 18px; background: var(--sage); }
 .ed-cover > img { width: 100%; height: 100%; object-fit: cover; display: block; }
 [data-motion="full"] .ed-cover > img { will-change: transform; }

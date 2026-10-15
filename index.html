@@ -1,7 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-motion="off">
 <head>
   <meta charset="UTF-8">
+  <script>
+    /* Motion is resolved once, before first paint, into <html data-motion="full|calm|off">,
+       so the stylesheet and the script read the same answer and cannot disagree.
+       ?motion=calm trims it to fades; ?motion=off removes it. */
+    (function () {
+      var mode = "full";
+      try {
+        var match = /(?:^|[?&])motion=(full|calm|off)(?:&|$)/.exec(location.search);
+        if (match) mode = match[1];
+      } catch (error) { mode = "full"; }
+      document.documentElement.setAttribute("data-motion", mode);
+
+      /* A reveal hides its section until the observer in app.js reaches it. If that
+         script never arrives the page would stay blank, so the class doing the hiding
+         is dropped unless the observer has registered itself. */
+      document.documentElement.classList.add("reveals-on");
+      setTimeout(function () {
+        if (!window.scanReveals) document.documentElement.classList.remove("reveals-on");
+      }, 3000);
+    })();
+  </script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>DC Kids Brand — Merging Style with Comfort | Newborn Essentials (0-12 yrs)</title>
   <meta name="description" content="DC Kids Brand — Ghana's favourite kids' fashion &amp; baby essentials store. Newborn to 12 years. Wholesale &amp; retail. Nationwide delivery. China pre-orders.">
@@ -263,7 +284,7 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="styles.css?v=139">
+  <link rel="stylesheet" href="styles.css?v=142">
 
   <!-- Structured data: Organization + WebSite (SEO + Google rich results) -->
   <script type="application/ld+json">
@@ -916,7 +937,7 @@
   <script src="gradient.js?v=3"></script>
   <script src="image-resolver.js?v=1"></script>
   <script type="module" src="firebase-auth.js?v=2"></script>
-  <script src="app.js?v=27"></script>
+  <script src="app.js?v=29"></script>
 
   <!-- ===== CHECKOUT MODAL ===== -->
   <div id="checkoutModal" style="display:none;position:fixed;inset:0;z-index:3000;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);">

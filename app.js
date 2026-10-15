@@ -2011,3 +2011,68 @@ window.addEventListener('load', () => {
   });
 })();
 
+
+/* ============================================================
+   SCROLL REVEALS AND COVER DRIFT
+   Sections rise in as they are reached and cover images drift
+   against the scroll. The mode comes from <html data-motion>,
+   resolved before first paint; "off" leaves everything alone.
+   ============================================================ */
+(function () {
+    var mode = document.documentElement.getAttribute('data-motion') || 'full';
+    var relaxed = mode === 'off' || typeof IntersectionObserver === 'undefined';
+
+    var observer = relaxed ? null : new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add('is-in');
+            observer.unobserve(entry.target);   // a reveal plays once
+        });
+    }, { rootMargin: '0px 0px -10% 0px', threshold: 0.05 });
+
+    // Sections render after this runs, so the scan stays callable. Anything
+    // already revealed is skipped, which makes it safe to call often.
+    window.scanReveals = function () {
+        var targets = document.querySelectorAll('[data-reveal]:not(.is-in)');
+        for (var i = 0; i < targets.length; i++) {
+            if (relaxed) targets[i].classList.add('is-in');
+            else observer.observe(targets[i]);
+        }
+    };
+    window.scanReveals();
+
+    if (mode !== 'full') return;
+
+    /* The drift. Read on scroll, written on a frame, so the layout is never
+       measured and painted in the same breath. */
+    var covers = [];
+    var ticking = false;
+
+    function measure() {
+        covers = [].slice.call(document.querySelectorAll('.ed-cover > img')).map(function (img) {
+            return { img: img, frame: img.parentElement };
+        });
+    }
+    function paint() {
+        ticking = false;
+        var h = window.innerHeight;
+        for (var i = 0; i < covers.length; i++) {
+            var box = covers[i].frame.getBoundingClientRect();
+            if (box.bottom < -200 || box.top > h + 200) continue;
+            // -1 when the frame is below the fold, 1 when it is above it.
+            var progress = (box.top + box.height / 2 - h / 2) / (h / 2 + box.height / 2);
+            covers[i].img.style.transform = 'translate3d(0,' + (progress * 6).toFixed(2) + '%,0) scale(1.12)';
+        }
+    }
+    function onScroll() {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(paint);
+    }
+
+    measure();
+    paint();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', function () { measure(); onScroll(); }, { passive: true });
+    window.rescanCovers = function () { measure(); onScroll(); };
+})();
