@@ -19,7 +19,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=86">
+  <link rel="stylesheet" href="admin-bridge.css?v=88">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -5370,11 +5370,11 @@
       </div>
       <div class="modal-body">
         <p style="font-size:13px;color:#666;margin:0 0 12px;">
-          Upload a CSV with these column headers (first row): <code style="background:#FFF1F4;color:#fc4c7a;padding:2px 6px;border-radius:5px;font-size:12px;">name, price, stock, cat, size, badge, img, fulfillment_type, sku, description</code>.
-          <code style="background:#FFF1F4;color:#fc4c7a;padding:2px 6px;border-radius:5px;font-size:12px;">name</code> and
-          <code style="background:#FFF1F4;color:#fc4c7a;padding:2px 6px;border-radius:5px;font-size:12px;">price</code> are required.
-          <code style="background:#FFF1F4;color:#fc4c7a;padding:2px 6px;border-radius:5px;font-size:12px;">fulfillment_type</code> is optional — leave blank or "in_stock" for normal items, "preorder" for China pre-orders.
-          <code style="background:#FFF1F4;color:#fc4c7a;padding:2px 6px;border-radius:5px;font-size:12px;">sku</code> is optional too — leave it blank to auto-assign one, or set your own.
+          Upload a CSV with these column headers (first row): <code class="code-token">name, price, stock, cat, size, badge, img, fulfillment_type, sku, description</code>.
+          <code class="code-token">name</code> and
+          <code class="code-token">price</code> are required.
+          <code class="code-token">fulfillment_type</code> is optional — leave blank or "in_stock" for normal items, "preorder" for China pre-orders.
+          <code class="code-token">sku</code> is optional too — leave it blank to auto-assign one, or set your own.
         </p>
         <div style="margin-bottom:14px;">
           <button type="button" class="btn btn-outline-small" onclick="downloadProductCsvTemplate()" style="font-size:12px;">Download template CSV</button>
@@ -6336,7 +6336,7 @@
             <div class="detail-chips">
               <span id="pd-cat-chip" class="detail-chip detail-chip--muted">category</span>
               <span id="pd-status-chip" class="detail-chip detail-chip--status">In Stock</span>
-              <span id="pd-fulfillment-chip" class="detail-chip" style="display:none;background:var(--purple-light);color:var(--purple);">China Pre-Order</span>
+              <span id="pd-fulfillment-chip" class="detail-chip" style="display:none;color:var(--label-lilac);">China Pre-Order</span>
             </div>
           </div>
         </div>

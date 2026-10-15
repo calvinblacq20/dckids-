@@ -2764,6 +2764,10 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
   margin-top: 0;
   margin-inline: 0;
 }
+/* The image badge is absolute against its thumbnail, so the thumbnail has
+   to be the containing block — static, it anchored to the whole hero and
+   dropped the badge onto the chips below. */
+.detail-hero__media { position: relative; }
 /* .detail-body is pulled up 24px for the same reason — to lap its rounded
    corners over the bottom of that photo. The inline bleed goes too: the sheet
    has no gutter to bleed into, so -16px simply hung the body off the left. */
@@ -2945,6 +2949,10 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 .status-pill.awaiting_payment { color: var(--warning-ink); }
 .status-pill.payment_failed { color: var(--danger); }
 .supplier-status-pill.is-active { color: var(--open); }
+
+/* Column names in the import help were tinted pills too. Same rule: the
+   tone goes on the word, and the mono face already marks it as a token. */
+.code-token { font-family: var(--mono); font-size: 12px; color: var(--ink); background: none; padding: 0; border-radius: 0; }
 
 /* A row of bare labels needs its own spacing back. */
 .detail-chips { gap: 10px; }
