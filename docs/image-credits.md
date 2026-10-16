@@ -21,3 +21,4 @@ where a file came from matters when one needs replacing.
 | `images/editorial/editorial-layette.webp` | Editorial band | [Mediamodifier](https://unsplash.com/@mediamodifier) | [photo](https://unsplash.com/photos/white-crew-neck-t-shirt-VoXqvbLAPjM) | Unsplash License |
 | `images/editorial/cover-rail-a.webp` | Category cover | [jackson kondili](https://unsplash.com/@jax969) | [photo](https://unsplash.com/photos/baby-clothes-hanging-on-a-rack-with-shoes-below-shoes-x5VhI538fII) | Unsplash License |
 | `images/editorial/cover-rail-b.webp` | Category cover | [jackson kondili](https://unsplash.com/@jax969) | [photo](https://unsplash.com/photos/baby-clothes-hanging-on-a-rack-5juo633uIEc) | Unsplash License |
+| `images/editorial/cover-booties.webp` | Category cover | [Madhuri Mohite](https://unsplash.com/@madhurimohite) | [photo](https://unsplash.com/photos/red-and-white-polka-dot-flip-flops-on-white-textile-kWJm2a6DbAw) | Unsplash License |
