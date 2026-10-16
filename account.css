@@ -155,6 +155,7 @@
 .account-order__items { padding: 4px 0 18px 16px; border-bottom: 1px solid var(--line); border-left: 2px solid var(--sage); }
 .account-order__item { display: flex; justify-content: space-between; gap: 16px; padding: 8px 0 8px 14px; font-size: 14px; color: var(--ink-soft); }
 .account-order__item strong { font-weight: 400; color: var(--ink); white-space: nowrap; }
+.account-receipt-btn { margin: 10px 0 0 14px; padding: 0 0 2px; font: inherit; font-size: 15px; color: var(--green); background: none; border: 0; border-bottom: 1px solid currentColor; cursor: pointer; }
 
 /* addresses */
 .account-address-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--line); }

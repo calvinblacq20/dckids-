@@ -26,6 +26,7 @@ let storeMode = localStorage.getItem('storeMode') || 'retail';
 let cart = [];
 let checkoutIdemKey = null;
 let checkoutIdemMethod = null;
+let lastReceipt = null;
 let revealObserver = null;
 let pdpFromNav = false;
 let paystackEnabled = false;
@@ -379,7 +380,7 @@ function renderCart() {
           '</div>' +
           '<div class="citem__price">GH₵ ' + gh(unitPrice(p, i.size) * i.qty) + '</div>' +
         '</div>';
-    }).join('') + (hasPre ? '<p class="cart__hint">Includes pre-order items — we\'ll share deposit details on WhatsApp.</p>' : '');
+    }).join('') + (hasPre ? '<p class="cart__hint">Includes China pre-order items. These are paid in full before we order them.</p>' : '');
   }
   $('cart-subtotal').textContent = 'GH₵ ' + gh(cartSubtotal());
   $('cart-total-2').textContent = 'GH₵ ' + gh(cartSubtotal());
@@ -553,7 +554,7 @@ function updatePdp() {
 
   let stock = '';
   if (isSoldOut(p)) stock = 'Sold out';
-  else if (isPreorder(p)) stock = 'China pre-order · 70% deposit · arrives in 3–4 weeks';
+  else if (isPreorder(p)) stock = 'China pre-order · paid in full up front · arrives in 3–4 weeks';
   else if (typeof p.stock === 'number' && p.stock <= 5) stock = 'Only ' + p.stock + ' left';
   else if (typeof p.stock === 'number') stock = p.stock + ' in stock';
   if (isWholesale() && !isSoldOut(p)) stock += (stock ? ' · ' : '') + 'Minimum ' + moq() + ' pieces';
@@ -703,7 +704,15 @@ async function submitOrder(e) {
 
   const hasPre = cart.some((i) => { const p = byId.get(i.id); return p && isPreorder(p); });
   const orderType = hasPre ? 'preorder' : (isWholesale() ? 'wholesale' : 'retail');
+  // Pre-orders placed from the shop are the DC Kids picks, or bulk when bought at wholesale;
+  // personal pre-orders are custom requests that start on WhatsApp.
+  const preorderKind = hasPre ? (isWholesale() ? 'bulk' : 'shop') : null;
   const lines = cart.map((i) => { const p = byId.get(i.id); return { name: p.name, size: i.size, qty: i.qty, price: unitPrice(p, i.size) }; });
+  const where = [address.line1, address.line2, address.city, address.region].filter(Boolean).join(', ');
+  const receipt = {
+    orderType: orderType, preorderKind: preorderKind, customerName: name, phone: phone, email: email,
+    address: where, items: lines, shopPhone: waNumber(), createdAt: new Date().toISOString()
+  };
 
   // A failed Paystack start must not be replayed as the WhatsApp order, so each method keeps its own key.
   if (!checkoutIdemKey || checkoutIdemMethod !== method) { checkoutIdemKey = newIdemKey(); checkoutIdemMethod = method; }
@@ -712,6 +721,7 @@ async function submitOrder(e) {
     customer_phone: phone,
     customer_email: email,
     order_type: orderType,
+    preorder_kind: preorderKind,
     delivery_area: address.city,
     delivery_address: address,
     notes: notes,
@@ -735,11 +745,16 @@ async function submitOrder(e) {
         toast(data.error || 'We could not start the payment. Please try again.');
         return false;
       }
-      // Remembered so the cart can drop what was paid for once we're back (see reconcilePaystack).
+      // Remembered so the cart can drop what was paid for once we're back (see reconcilePaystack),
+      // and so payment-result.html can show the receipt.
       try {
         localStorage.setItem(PAYSTACK_PENDING_KEY, JSON.stringify({
           reference: data.reference, order_number: data.order_number, created_at: new Date().toISOString(),
-          items: cart.map((i) => ({ id: i.id, size: i.size, qty: i.qty }))
+          items: cart.map((i) => ({ id: i.id, size: i.size, qty: i.qty })),
+          receipt: Object.assign({}, receipt, {
+            orderNumber: data.order_number, paymentMethod: 'Paystack',
+            total: Math.round(lines.reduce((sum, l) => sum + l.price * l.qty, 0) * 100) / 100
+          })
         }));
       } catch (err) { /* storage blocked: the cart just keeps the items */ }
       window.location.assign(data.authorization_url);
@@ -753,7 +768,6 @@ async function submitOrder(e) {
       return false;
     }
 
-    const where = [address.line1, address.line2, address.city, address.region].filter(Boolean).join(', ');
     let msg = 'Hello DC Kids! I\'d like to confirm my order.\n\n';
     msg += '*Order Ref:* ' + data.order_number + '\n';
     msg += '*Name:* ' + name + '\n';
@@ -763,9 +777,13 @@ async function submitOrder(e) {
     msg += '\n*Total:* GH₵ ' + gh(data.total_amount) + '\n';
     if (notes) msg += '*Notes:* ' + notes + '\n';
     msg += '\n' + (orderType === 'preorder'
-      ? 'This includes China Pre-Order items. Please let me know the required deposit and next steps.'
+      ? 'This includes China pre-order items. Please send the payment details so I can pay in full before you order.'
       : 'Please let me know how to proceed with payment and delivery. Thank you!');
 
+    lastReceipt = Object.assign({}, receipt, {
+      orderNumber: data.order_number, total: data.total_amount, paymentMethod: 'WhatsApp',
+      status: data.status || (orderType === 'preorder' ? 'awaiting_payment' : 'pending') // a replayed retry carries no status
+    });
     checkoutIdemKey = null;
     cart = [];
     saveCart();
@@ -782,6 +800,10 @@ async function submitOrder(e) {
     btn.textContent = label;
   }
   return false;
+}
+
+function openLastReceipt() {
+  if (lastReceipt && window.DCReceipt) window.DCReceipt.open(lastReceipt);
 }
 
 // Back from Paystack: once the payment is confirmed, take the paid-for items out of the cart.
@@ -870,7 +892,11 @@ function initHeroSlides() {
   const slides = Array.prototype.slice.call(document.querySelectorAll('.hero__slide'));
   const pauseBtn = $('hero-pause');
   if (slides.length < 2) { if (pauseBtn) pauseBtn.hidden = true; return; }
-  const ensureSrc = (img) => { if (img && !img.getAttribute('src') && img.dataset.src) img.src = img.dataset.src; };
+  const ensureSrc = (img) => {
+    if (!img || img.getAttribute('src') || !img.dataset.src) return;
+    if (img.dataset.srcset) img.srcset = img.dataset.srcset; // set first so the browser picks the right size
+    img.src = img.dataset.src;
+  };
 
   let idx = 0;
   let timer = null;

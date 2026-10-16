@@ -50,6 +50,17 @@
 .care-faqs details p { margin: 0; padding: 0 0 18px; }
 .care-section .care-note { margin-top: 18px; padding: 16px 18px; background: var(--sage-soft); border-left: 2px solid var(--green); }
 
+/* ----------------------------------------------------- privacy + terms ---- */
+.legal { max-width: 720px; }
+.legal__updated { margin: 14px 0 0; font-size: 14px; color: var(--muted); }
+.legal h2 { margin: 40px 0 12px; padding-top: 22px; border-top: 1px solid var(--line); font-weight: 400; font-size: 24px; scroll-margin-top: calc(var(--nav-h) + 12px); }
+.legal p, .legal li { color: var(--ink-soft); font-size: 16px; line-height: 1.75; }
+.legal p { margin: 0 0 14px; }
+.legal ul { margin: 0 0 14px; padding-left: 20px; }
+.legal li + li { margin-top: 8px; }
+.legal strong { font-weight: 500; color: var(--ink); }
+.legal a { color: var(--green); border-bottom: 1px solid currentColor; }
+
 /* ------------------------------------------------------- order tracking --- */
 .tk-card { max-width: 640px; }
 .tk-card .field input[aria-invalid="true"] { border-color: #B42318; }

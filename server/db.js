@@ -749,6 +749,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
             delivery_region TEXT,
             delivery_landmark TEXT,
             customer_account_id INTEGER,
+            preorder_kind TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (customer_account_id) REFERENCES customer_accounts (id)
@@ -795,6 +796,15 @@ const db = new sqlite3.Database(dbPath, (err) => {
                     db.run("ALTER TABLE orders ADD COLUMN source TEXT", (er) => {
                         if (er) console.error("Migration (source) failed:", er.message);
                         else console.log("Migration: added orders.source");
+                    });
+                }
+                // China pre-orders come in three kinds: bulk (resellers),
+                // personal (sourced for one family) and shop (the DC Kids
+                // picks listed in the store). NULL for every other order.
+                if (names.indexOf('preorder_kind') === -1) {
+                    db.run("ALTER TABLE orders ADD COLUMN preorder_kind TEXT", (er) => {
+                        if (er) console.error("Migration (preorder_kind) failed:", er.message);
+                        else console.log("Migration: added orders.preorder_kind");
                     });
                 }
                 db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL");

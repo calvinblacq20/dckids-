@@ -17,7 +17,18 @@
   const status = document.getElementById('paymentResultStatus');
   const referenceValue = document.getElementById('paymentResultReference');
   const retryButton = document.getElementById('paymentRetryButton');
+  const receiptButton = document.getElementById('paymentReceiptButton');
   const supportLink = document.getElementById('paymentSupportLink');
+
+  // Checkout saved the receipt details with the pending payment; once paid, show it.
+  function offerReceipt(data) {
+    if (!receiptButton || !window.DCReceipt || !pending || pending.reference !== reference || !pending.receipt) return;
+    const receipt = Object.assign({}, pending.receipt, {
+      orderNumber: (data && data.order_number) || pending.receipt.orderNumber, status: 'paid', paymentMethod: 'Paystack'
+    });
+    receiptButton.hidden = false;
+    receiptButton.onclick = () => window.DCReceipt.open(receipt);
+  }
 
   function removePurchasedItems(items) {
     let cart = [];
@@ -83,6 +94,7 @@
         if (pending && pending.reference === reference) removePurchasedItems(pending.items || []);
         localStorage.removeItem(PENDING_KEY);
         showState('paid', 'Payment confirmed', 'Thank you. Your order is paid and has been sent to DC Kids for fulfilment.', data);
+        offerReceipt(data);
         return;
       }
       if (['failed', 'review'].includes(data.payment_status) || ['payment_failed', 'payment_review'].includes(data.order_status)) {

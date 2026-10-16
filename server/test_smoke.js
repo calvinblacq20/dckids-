@@ -264,6 +264,12 @@ async function run() {
         !storefrontSource.includes('<a href="#" class="hover:text-white transition-colors">') &&
         !storefrontSource.includes('+233 59 123 4567') &&
         storefrontSource.includes('tel:+233549193805'));
+    check('customers can open a receipt after checkout, after paying, when tracking and in their account',
+        storefrontSource.includes('src="receipt.js') && appSource.includes('function openLastReceipt') &&
+        ['track.html', 'account.html', 'payment-result.html'].every((page) =>
+            fs.readFileSync(path.join(__dirname, '..', page), 'utf8').includes('src="receipt.js')));
+    check('the storefront no longer asks for a pre-order deposit',
+        !/deposit/i.test(storefrontSource) && !/deposit/i.test(appSource));
     check('customer-care page covers linked support sections',
         ['id="faqs"', 'id="shipping"', 'id="returns"', 'id="size-guide"', 'id="about"'].every((section) => supportPageSource.includes(section)));
 
@@ -734,6 +740,53 @@ async function run() {
         order_type: 'wholesale', items: [{ id: 1, quantity: moq - 1, size: sizeLabel }]
     }));
     check('wholesale below MOQ rejected', r.status === 400, `status ${r.status}`);
+
+    // ---- China pre-orders: paid in full up front, three kinds ----
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Pre Buyer', customer_phone: '0243333333',
+        order_type: 'preorder', items: [{ id: 1, quantity: 1, size: sizeLabel }]
+    }));
+    const preOrder = await r.json();
+    const preRow = await dbGet('SELECT id, status, preorder_kind FROM orders WHERE order_number = ?', [preOrder.order_number]);
+    check('pre-orders start awaiting full payment, not a deposit',
+        r.status === 200 && preOrder.status === 'awaiting_payment' && preRow.status === 'awaiting_payment', `got ${preOrder.status}`);
+    check('a shop pre-order without a kind is a DC Kids pick', preRow.preorder_kind === 'shop', `got ${preRow.preorder_kind}`);
+
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Pre Reseller', customer_phone: '0243333334',
+        order_type: 'preorder', preorder_kind: 'bulk', items: [{ id: 1, quantity: moq, size: sizeLabel }]
+    }));
+    const bulkPre = await r.json();
+    check(`a bulk pre-order is priced as wholesale (${unitWs} x ${moq})`,
+        r.status === 200 && close(bulkPre.total_amount, unitWs * moq), `got ${bulkPre.total_amount}`);
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Pre Reseller', customer_phone: '0243333334',
+        order_type: 'preorder', preorder_kind: 'bulk', items: [{ id: 1, quantity: moq - 1, size: sizeLabel }]
+    }));
+    check('a bulk pre-order below the MOQ is rejected', r.status === 400, `status ${r.status}`);
+
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Retail Kind', customer_phone: '0243333335',
+        order_type: 'retail', preorder_kind: 'bulk', items: [{ id: 1, quantity: 1, size: sizeLabel }]
+    }));
+    const retailWithKind = await r.json();
+    const retailKindRow = await dbGet('SELECT id, preorder_kind FROM orders WHERE order_number = ?', [retailWithKind.order_number]);
+    check('a pre-order kind sent on a retail order is ignored', retailKindRow.preorder_kind === null, `got ${retailKindRow.preorder_kind}`);
+
+    r = await fetch(`${BASE}/api/orders/track`, json('POST', { order_number: preOrder.order_number, phone: '0243333333' }));
+    const trackedPre = await r.json();
+    check('tracking returns the payment method and kind the receipt shows',
+        r.status === 200 && trackedPre.payment_method === 'WhatsApp' && trackedPre.preorder_kind === 'shop');
+
+    r = await fetch(`${BASE}/api/orders/${preRow.id}/preorder-kind`, json('PATCH', { preorder_kind: 'personal' }));
+    check('tagging a pre-order kind needs a staff sign-in', r.status === 401 || r.status === 403, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/orders/${preRow.id}/preorder-kind`, json('PATCH', { preorder_kind: 'gift' }, auth));
+    check('an unknown pre-order kind is rejected', r.status === 400, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/orders/${retailKindRow.id}/preorder-kind`, json('PATCH', { preorder_kind: 'personal' }, auth));
+    check('only pre-orders can be given a pre-order kind', r.status === 400, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/orders/${preRow.id}/preorder-kind`, json('PATCH', { preorder_kind: 'personal' }, auth));
+    check('staff can tag a pre-order as personal',
+        r.status === 200 && (await dbGet('SELECT preorder_kind FROM orders WHERE id = ?', [preRow.id])).preorder_kind === 'personal');
 
     // ---- checkout validation ----
     const badOrders = [

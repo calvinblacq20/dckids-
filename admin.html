@@ -42,7 +42,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=96">
+  <link rel="stylesheet" href="admin-bridge.css?v=97">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -864,7 +864,7 @@
 
             <section class="adm-card dash-rail__card">
               <div class="adm-card-head">
-                <h2>Pre-orders awaiting deposit</h2>
+                <h2>Pre-orders awaiting payment</h2>
                 <span class="chip-count" id="dash-rail-deposit-count">0</span>
               </div>
               <div class="adm-card-body">
@@ -3940,7 +3940,10 @@
                   <option value="">All types</option>
                   <option value="retail">Retail</option>
                   <option value="wholesale">Wholesale</option>
-                  <option value="preorder">China pre-order</option>
+                  <option value="preorder">China pre-order (all)</option>
+                  <option value="preorder:bulk">Pre-order · Bulk</option>
+                  <option value="preorder:personal">Pre-order · Personal</option>
+                  <option value="preorder:shop">Pre-order · DC Kids pick</option>
                 </select>
               </div>
 
@@ -6142,6 +6145,14 @@
 
         <div class="detail-card">
           <div class="detail-row"><span class="detail-row__label">Status</span><span id="od-status" class="detail-row__value">Pending</span></div>
+          <div class="detail-row" id="od-kind-row" hidden>
+            <label class="detail-row__label" for="od-kind">Pre-order kind</label>
+            <select id="od-kind" class="patd-select od-kind-select">
+              <option value="shop">DC Kids pick</option>
+              <option value="bulk">Bulk (reseller)</option>
+              <option value="personal">Personal</option>
+            </select>
+          </div>
           <div class="detail-row"><span class="detail-row__label">Notes</span><span id="od-notes" class="detail-row__value">—</span></div>
         </div>
 
@@ -6323,7 +6334,7 @@
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
   <script src="admin-demo.js?v=15"></script>
-  <script src="admin.js?v=174"></script>
+  <script src="admin.js?v=175"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

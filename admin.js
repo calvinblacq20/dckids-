@@ -103,6 +103,7 @@ function fetchOrdersFromServer(callback) {
                     type: o.order_type,
                     date: o.created_at,
                     order_type: o.order_type,
+                    preorderKind: o.preorder_kind || '',
                     delivery_area: o.delivery_area || '',
                     delivery_address: [o.delivery_address_line1, o.delivery_address_line2, o.delivery_city, o.delivery_region, o.delivery_landmark].filter(Boolean).join(', '),
                     notes: o.notes || '',
@@ -2746,6 +2747,14 @@ function openOrderDetail(orderId) {
         set('od-discount', discPct > 0 ? discPct + '% off' : '');
     }
     set('od-status', statusCap);
+    var kindRow = document.getElementById('od-kind-row');
+    var kindSelect = document.getElementById('od-kind');
+    var isPreorder = String(o.order_type || o.type || '').toLowerCase() === 'preorder';
+    if (kindRow) kindRow.hidden = !isPreorder;
+    if (kindSelect && isPreorder) {
+        kindSelect.value = o.preorderKind || 'shop';
+        kindSelect.onchange = function () { setPreorderKind(o, kindSelect.value); };
+    }
     set('od-notes', [
         o.delivery_address ? 'Delivery: ' + o.delivery_address : '',
         o.paymentReference ? 'Payment: ' + o.paymentReference : '',
@@ -2798,6 +2807,37 @@ function closeOrderDetail() {
     var m = document.getElementById('modal-order-detail');
     if (m) { m.style.display = 'none'; m.classList.remove('active'); }
     document.body.style.overflow = '';
+}
+
+/* China pre-orders come in three kinds. Shop orders default to "shop" (the
+   DC Kids picks); personal ones start on WhatsApp, so staff tag them here. */
+var PREORDER_KIND_LABELS = { shop: 'DC Kids pick', bulk: 'Bulk', personal: 'Personal' };
+
+function orderTypeLabel(order) {
+    var type = String(order.order_type || order.type || 'retail').toLowerCase();
+    if (type !== 'preorder') return type;
+    return 'Pre-order · ' + (PREORDER_KIND_LABELS[order.preorderKind] || PREORDER_KIND_LABELS.shop);
+}
+
+function setPreorderKind(order, kind) {
+    if (!order || !order.db_id) return;
+    fetch(API_URL + '/orders/' + order.db_id + '/preorder-kind', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') },
+        body: JSON.stringify({ preorder_kind: kind })
+    })
+    .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+    .then(function (r) {
+        if (!r.ok) throw new Error(r.data.error || 'Could not update the pre-order kind');
+        order.preorderKind = kind;
+        showToast('Tagged as ' + PREORDER_KIND_LABELS[kind] + ' pre-order', 'success');
+        if (typeof renderOrdersTable === 'function') renderOrdersTable();
+    })
+    .catch(function (err) {
+        showToast(err.message === 'Failed to fetch' ? 'Server unavailable. Try again.' : err.message, 'error');
+        var select = document.getElementById('od-kind');
+        if (select) select.value = order.preorderKind || 'shop';
+    });
 }
 
 /* The stages the orders list is grouped by. Several raw statuses read as one
@@ -2868,7 +2908,9 @@ function getFilteredOrders() {
         // empty list is the honest answer to that — not the whole table back.
         var matchesStatus = stages === null || stages.indexOf(orderStageKey(o)) !== -1;
         var otype = (o.order_type || o.type || 'retail').toLowerCase();
-        var matchesType = !type || otype === type;
+        // "preorder:bulk" narrows China pre-orders to one kind.
+        var typeParts = type.split(':');
+        var matchesType = !type || (otype === typeParts[0] && (!typeParts[1] || (o.preorderKind || 'shop') === typeParts[1]));
         return matchesSearch && matchesStatus && matchesType;
     });
 }
@@ -2921,8 +2963,8 @@ function waMoney(amount) {
     return 'GHS ' + formatNumber(Number(amount || 0));
 }
 
-/* What is still owed on an order. Pre-orders take a deposit, so the balance
-   is what the customer has not paid yet, not the whole total. */
+/* What is still owed on an order: the total less anything already recorded
+   as paid (older pre-orders were taken on a deposit). */
 function orderBalanceDue(order) {
     var total = Number(order.total || 0);
     var paid = Number(order.amount_paid != null ? order.amount_paid : (order.deposit_paid || 0));
@@ -2940,14 +2982,19 @@ function buildOrderMessage(order) {
     var balance = orderBalanceDue(order);
     var owing = balance > 0 ? ' Balance: ' + waMoney(balance) + ', payable by MoMo or on delivery.' : '';
     var status = String(order.status || '').toLowerCase();
+    var preorderPaymentMessage = hi + ' ' + what + ' is a China pre-order, so we place it with the supplier once it is paid in full. Send ' +
+        waMoney(balance || order.total) + ' by MoMo and we will order it straight away.' + waSign();
 
     switch (status) {
         case 'pending':
             return hi + ' thank you for your order! We have ' + what + ' and are confirming the items now. Total: ' + waMoney(order.total) + '.' + waSign();
+        // China pre-orders are paid in full before anything is ordered from the
+        // supplier. pending_deposit is how pre-orders were recorded before that.
         case 'pending_deposit':
-            return hi + ' ' + what + ' is a China pre-order, so it starts once the deposit is in. Send the deposit by MoMo and we will place it with the supplier straight away.' + (balance > 0 ? ' Outstanding: ' + waMoney(balance) + '.' : '') + waSign();
+            return preorderPaymentMessage;
         case 'awaiting_payment':
         case 'payment_review':
+            if (String(order.order_type || order.type || '').toLowerCase() === 'preorder') return preorderPaymentMessage;
             return hi + ' ' + what + ' is held for you and waiting on payment.' + owing + ' Send it by MoMo and we will get it moving.' + waSign();
         case 'paid':
             return hi + ' we have received your payment for ' + what + ' — thank you. We are packing it now.' + waSign();
@@ -3046,7 +3093,7 @@ function openOrderReceipt(orderId) {
     set('adminReceiptDate', when ? when.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
     set('adminReceiptOrderNum', order.order_number || order.id);
     set('adminReceiptDateTime', when ? when.toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
-    set('adminReceiptType', order.order_type || order.type || 'retail');
+    set('adminReceiptType', orderTypeLabel(order));
     set('adminReceiptMethod', (order.payments && order.payments[0] && order.payments[0].payment_method) || order.payment_method || 'WhatsApp');
     set('adminReceiptPhone', order.phone || order.customer_phone || '—');
     set('adminReceiptCustomer', order.customer || '—');
@@ -11560,7 +11607,7 @@ function renderTopBuyers() {
    The reference keeps a rail beside the work: each thing needing a decision
    today, with its count and the way in. These are the DC Kids readings of it —
    stock that is about to run out, orders packed and waiting to go, and
-   pre-orders still short of their deposit.
+   China pre-orders not yet paid in full.
    ============================================================ */
 var RAIL_AWAITING_PAYMENT = ['pending', 'awaiting_payment', 'payment_review'];
 var RAIL_READY_TO_SEND = ['paid', 'processing'];
@@ -11804,11 +11851,14 @@ function renderDashboardRail(products) {
             '</li>';
     });
 
-    var deposit = dashRailOrders(['pending_deposit']);
-    fillRailList('dash-rail-deposit', 'dash-rail-deposit-empty', 'dash-rail-deposit-count', deposit, function (o) {
+    // pending_deposit is kept for pre-orders taken before payment moved to 100% up front.
+    var unpaidPreorders = dashRailOrders(['awaiting_payment', 'payment_review', 'pending_deposit']).filter(function (o) {
+        return String(o.order_type || o.type || '').toLowerCase() === 'preorder';
+    });
+    fillRailList('dash-rail-deposit', 'dash-rail-deposit-empty', 'dash-rail-deposit-count', unpaidPreorders, function (o) {
         return '<li class="res-row">' +
             '<span class="res-row__name">' + escapeHtml(o.customer || 'Customer') +
-            '<em>' + escapeHtml(o.id || '') + '</em></span>' +
+            '<em>' + escapeHtml((o.id || '') + ' · ' + (PREORDER_KIND_LABELS[o.preorderKind] || PREORDER_KIND_LABELS.shop)) + '</em></span>' +
             '<span class="res-row__value">' + dashMoney(Number(o.total) || 0) + '</span>' +
             '</li>';
     });

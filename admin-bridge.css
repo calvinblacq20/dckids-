@@ -189,6 +189,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 .detail-row__ic { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--r-12); background: var(--ground); color: var(--ink-75); }
 .detail-row__label { flex: 1; color: var(--ink-75); font-size: 14px; }
 .detail-row__value { font-size: 14px; color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; }
+/* pre-order kind picker on the order sheet sits where a value would */
+.detail-row .od-kind-select { width: auto; min-width: 170px; flex: none; }
 
 /* ---------- Pagination, toasts, misc ---------- */
 .pagination { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 16px 0; }

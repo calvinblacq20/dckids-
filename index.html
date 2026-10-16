@@ -32,8 +32,8 @@
   <link rel="icon" href="icon.png" type="image/png">
 
   <link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="images/promo_store1.jpg" as="image">
-  <link rel="stylesheet" href="store.css?v=11">
+  <link rel="preload" as="image" type="image/webp" href="images/hero_shop_1.webp" imagesrcset="images/hero_shop_1-720.webp 720w, images/hero_shop_1.webp 1179w" imagesizes="100vw">
+  <link rel="stylesheet" href="store.css?v=12">
 
   <!-- Structured data: Organization + WebSite (SEO + Google rich results) -->
   <script type="application/ld+json">
@@ -124,12 +124,8 @@
     <!-- Full-bleed cover that stays pinned while the page slides up over it -->
     <section class="hero" id="hero" aria-label="DC Kids Brand">
       <div class="hero__slides" id="hero-slides">
-        <img class="hero__slide is-active" src="images/promo_store1.jpg" alt="The DC Kids store — the owner serving a family at the counter" fetchpriority="high">
-        <img class="hero__slide hero__slide--portrait" data-src="images/promo_store2.jpg" alt="The DC Kids owner in a DC Kids cap and tee, helping a customer" decoding="async">
-        <img class="hero__slide" data-src="images/promo_store3.jpg" alt="Showing a customer the footwear collection" decoding="async">
-        <img class="hero__slide" data-src="images/promo_store4.jpg" alt="Helping a mother choose a dress, baby walkers on display" decoding="async">
-        <img class="hero__slide" data-src="images/promo_store5.jpg" alt="The DC Kids owner welcoming shoppers at the store door" decoding="async">
-        <img class="hero__slide" data-src="images/promo_store6.jpg" alt="Welcome to the DC Kids store — families shopping, logo in the window" decoding="async">
+        <img class="hero__slide hero__slide--shop is-active" src="images/hero_shop_1.webp" srcset="images/hero_shop_1-720.webp 720w, images/hero_shop_1.webp 1179w" sizes="100vw" width="1179" height="2096" alt="The DC Kids owner showing a mother and her baby the clothing wall in the store" fetchpriority="high">
+        <img class="hero__slide hero__slide--owner" data-src="images/hero_shop_2.webp" data-srcset="images/hero_shop_2-720.webp 720w, images/hero_shop_2.webp 1179w" sizes="100vw" width="1179" height="2096" alt="The DC Kids owner in a DC Kids Brand tee, holding baby shoes in the store" decoding="async">
       </div>
       <div class="hero__shade" aria-hidden="true"></div>
       <div class="hero__content container" id="hero-content">
@@ -188,25 +184,38 @@
             <div class="section__label">China sourcing</div>
             <h2 class="section__ghost">China <span class="nowrap">Pre-Orders</span></h2>
           </div>
-          <p class="pre__intro">Pieces sourced on the ground in China and shipped to us in Kasoa. Order now, collect when the shipment lands. Message us on WhatsApp for the current closing date.</p>
+          <p class="pre__intro">Pieces sourced on the ground in China and shipped to us in Kasoa. Every pre-order is paid in full before we order. Message us on WhatsApp for the current closing date.</p>
+        </div>
+
+        <div class="pre__kinds reveal-stagger" aria-label="Three ways to pre-order">
+          <article class="pre__kind">
+            <p class="pre__kind-label">DC Kids picks</p>
+            <h3>What we bring in</h3>
+            <p>Pieces we choose and import ourselves, listed below. Add them to your cart and check out.</p>
+            <a class="link-underline" href="#preorder-grid">See this window's picks</a>
+          </article>
+          <article class="pre__kind">
+            <p class="pre__kind-label">Personal</p>
+            <h3>For your family</h3>
+            <p>Seen something you want that isn't listed? Send us a photo or link and we'll source it for you.</p>
+            <a class="link-underline js-wa-link" href="#" data-msg="Hi DC Kids! I'd like a personal China pre-order. Here is what I'm looking for:">Start a personal order</a>
+          </article>
+          <article class="pre__kind">
+            <p class="pre__kind-label">Bulk</p>
+            <h3>For resellers</h3>
+            <p>Order in wholesale quantities at wholesale prices, for your own shop or market stall.</p>
+            <a class="link-underline js-wa-link" href="#" data-msg="Hi DC Kids! I'd like to place a bulk China pre-order for resale.">Start a bulk order</a>
+          </article>
         </div>
 
         <ol class="pre__steps reveal-stagger" aria-label="How pre-orders work">
-          <li><span class="pre__num">01</span><b>Choose your items</b><span>Add pre-order pieces to your cart and check out — we pick it up on WhatsApp.</span></li>
-          <li><span class="pre__num">02</span><b>Pay a 70% deposit</b><span>We confirm your total and collect a 70% deposit.</span></li>
-          <li><span class="pre__num">03</span><b>Arrives in 3–4 weeks</b><span>Your items ship direct from China.</span></li>
-          <li><span class="pre__num">04</span><b>Pay the balance</b><span>The remaining 30% on pickup or before delivery.</span></li>
+          <li><span class="pre__num">01</span><b>Choose</b><span>Pick from the list below, or send us what you want on WhatsApp.</span></li>
+          <li><span class="pre__num">02</span><b>Pay in full</b><span>100% up front by Paystack or MoMo. We only order once it's paid.</span></li>
+          <li><span class="pre__num">03</span><b>We order from China</b><span>Your items ship direct and land in 3–4 weeks.</span></li>
+          <li><span class="pre__num">04</span><b>Collect or delivery</b><span>Pick up in Kasoa or we deliver. Nothing more to pay for the items.</span></li>
         </ol>
 
         <div class="product-grid" id="preorder-grid" aria-live="polite"></div>
-
-        <div class="pre__custom reveal">
-          <div>
-            <h3>Want something not listed here?</h3>
-            <p>Send us a photo or link and we'll source it direct from China for you.</p>
-          </div>
-          <a class="btn btn--wa js-wa-link" href="#" data-msg="Hi DC Kids! I want to start a custom China pre-order.">Start a Custom Pre-Order</a>
-        </div>
       </div>
     </section>
 
@@ -391,7 +400,8 @@
       </div>
       <div class="cart__foot">
         <a class="btn btn--wa" id="done-wa" href="#" target="_blank" rel="noopener">Send on WhatsApp</a>
-        <button class="btn" type="button" style="margin-top:10px" onclick="closeCart()">Continue shopping</button>
+        <button class="btn btn--dark" type="button" onclick="openLastReceipt()">View receipt</button>
+        <button class="btn" type="button" onclick="closeCart()">Continue shopping</button>
       </div>
     </div>
   </aside>
@@ -447,9 +457,10 @@
   </button>
 
   <script src="image-resolver.js?v=1"></script>
+  <script src="receipt.js?v=1"></script>
   <!-- async: customer sign-in must never hold up the first paint of the shop -->
   <script type="module" async src="firebase-auth.js?v=2"></script>
-  <script src="app.js?v=31"></script>
+  <script src="app.js?v=32"></script>
   <script>
     if ('serviceWorker' in navigator) {
       // When an updated worker takes control, reload once so the page runs the

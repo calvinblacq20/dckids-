@@ -165,7 +165,8 @@ function orderRow(order, compact = false) {
   </div>`;
   if (compact) return row;
   const items = (order.items || []).map((item) => `<div class="account-order__item"><span>${escapeHtml(item.quantity)} × ${escapeHtml(item.product_name)}</span><strong>${escapeHtml(money(item.quantity * item.price_at_time))}</strong></div>`).join('');
-  return `<details class="account-order"><summary>${row}</summary><div class="account-order__items">${items || '<div class="account-empty">Item details are unavailable for this order.</div>'}</div></details>`;
+  return `<details class="account-order"><summary>${row}</summary><div class="account-order__items">${items || '<div class="account-empty">Item details are unavailable for this order.</div>'}` +
+    `<button class="account-receipt-btn" type="button" data-receipt="${escapeHtml(order.id)}">View receipt</button></div></details>`;
 }
 
 function renderOrders() {
@@ -421,6 +422,20 @@ $('addressesList').addEventListener('click', async (event) => {
   if (button.dataset.action === 'delete-address' && window.confirm(`Delete the ${address.label || 'saved'} address?`)) {
     await deleteAddress(address);
   }
+});
+
+$('ordersList').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-receipt]');
+  if (!button || !window.DCReceipt) return;
+  const order = data.orders.find((item) => String(item.id) === button.dataset.receipt);
+  if (!order) return;
+  window.DCReceipt.open({
+    orderNumber: order.order_number, total: order.total_amount, status: order.status, createdAt: order.created_at,
+    orderType: order.order_type, preorderKind: order.preorder_kind, paymentMethod: order.payment_method,
+    customerName: order.customer_name, phone: order.customer_phone, email: order.customer_email,
+    address: [order.delivery_address_line1, order.delivery_address_line2, order.delivery_city, order.delivery_region].filter(Boolean).join(', '),
+    items: (order.items || []).map((item) => ({ name: item.product_name, qty: item.quantity, price: item.price_at_time }))
+  });
 });
 
 $('wishlistList').addEventListener('click', async (event) => {

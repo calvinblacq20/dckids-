@@ -1467,6 +1467,16 @@ app.delete('/api/users/:id', authenticateToken, requireManager, (req, res) => {
     });
 });
 
+// China pre-orders come in three kinds: bulk (resellers — priced as wholesale),
+// personal (sourced for one family; staff set it) and shop (the DC Kids picks
+// listed in the store). Every pre-order is paid in full before it is placed.
+const PREORDER_KINDS = ['bulk', 'personal', 'shop'];
+function normalizePreorderKind(orderType, kind) {
+    if (orderType !== 'preorder') return null;
+    const value = String(kind || '').toLowerCase();
+    return PREORDER_KINDS.includes(value) ? value : 'shop';
+}
+
 // Helper for backend price calculation
 function getPriceModifier(sizeLabel) {
     if (!sizeLabel) return 0;
@@ -1481,6 +1491,7 @@ function getPriceModifier(sizeLabel) {
 // Create new order (Storefront)
 app.post('/api/orders', optionalCustomer, (req, res) => {
     const { customer_name, customer_phone, customer_email, order_type, items, payment_method, delivery_area, delivery_address, notes } = req.body;
+    const preorderKind = normalizePreorderKind(order_type, req.body.preorder_kind);
     // A counter discount, in percent. Only staff may set one: a shopper
     // could otherwise post their own and the total is computed here.
     const rawDiscount = Number(req.body.discount_percent);
@@ -1515,7 +1526,7 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
             return res.status(400).json({ error: 'Invalid product id in order' });
         }
     }
-    const isWholesale = (order_type === 'wholesale');
+    const isWholesale = (order_type === 'wholesale') || preorderKind === 'bulk';
     // Quantities are PIECES for both modes (wholesale just enforces an MOQ
     // floor below, once settings are loaded). Wholesale gets a higher cap
     // since 10× MOQ is a normal bulk purchase.
@@ -1640,7 +1651,8 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                 // each unit price, so it cannot be lost to rounding per item.
                 if (discountPercent > 0) total_amount = total_amount * (1 - discountPercent / 100);
                 total_amount = Math.round(total_amount * 100) / 100;
-                const initialStatus = order_type === 'preorder' ? 'pending_deposit' : 'pending';
+                // Pre-orders are paid in full before DC Kids orders from China.
+                const initialStatus = order_type === 'preorder' ? 'awaiting_payment' : 'pending';
                 // A temporary unique placeholder satisfies the UNIQUE NOT NULL
                 // column until we know the row id; the real order number is then
                 // derived from that id, so two orders can never collide. (The old
@@ -1650,10 +1662,11 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                 db.run(
                     `INSERT INTO orders (order_number, customer_name, customer_phone, customer_email, order_type, total_amount, status,
                         delivery_area, delivery_address_line1, delivery_address_line2, delivery_city, delivery_region, delivery_landmark,
-                        notes, customer_account_id, idempotency_key, discount_percent, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                        notes, customer_account_id, idempotency_key, discount_percent, source, preorder_kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [tempNumber, customer_name, customer_phone, authoritativeEmail || null, order_type, total_amount, initialStatus,
                         delivery_area || address.city || null, address.line1 || null, address.line2 || null, address.city || null,
-                        address.region || null, address.landmark || null, notes || null, req.customer ? req.customer.cid : null, idemKey, discountPercent, orderSource],
+                        address.region || null, address.landmark || null, notes || null, req.customer ? req.customer.cid : null, idemKey, discountPercent, orderSource,
+                        preorderKind],
                     function(err) {
                         if (err) {
                             // Two identical retries raced: the first won the unique
@@ -1694,7 +1707,7 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
 
                         db.run(
                             `INSERT INTO payments (order_id, payment_method, amount, status) VALUES (?, ?, ?, ?)`,
-                            [order_id, payment_method || 'WhatsApp', total_amount, initialStatus === 'pending' ? 'pending' : 'pending_deposit']
+                            [order_id, payment_method || 'WhatsApp', total_amount, 'pending']
                         );
 
                         // Fire-and-forget WhatsApp alert to the shop owner (graceful)
@@ -1709,7 +1722,7 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                             }
                         } catch (e) { /* never fail an order on notification error */ }
 
-                        res.json({ success: true, order_number, total_amount });
+                        res.json({ success: true, order_number, total_amount, status: initialStatus });
                     }
                 );
             })
@@ -1735,7 +1748,8 @@ function normalizePaystackCheckout(body, customer) {
     if (!Array.isArray(items) || items.length === 0) throw paymentError('Order must contain items');
     if (items.length > 50) throw paymentError('Too many items in one order (max 50)');
     const orderType = String(source.order_type || 'retail').toLowerCase();
-    const isWholesale = orderType === 'wholesale';
+    const preorderKind = normalizePreorderKind(orderType, source.preorder_kind);
+    const isWholesale = orderType === 'wholesale' || preorderKind === 'bulk';
     const quantityCap = isWholesale ? 1000 : 100;
     items.forEach((item) => {
         if (!Number.isInteger(Number(item.id)) || Number(item.id) < 1) throw paymentError('Invalid product id in order');
@@ -1774,7 +1788,7 @@ function normalizePaystackCheckout(body, customer) {
     });
     if (notes.length > 1000) throw paymentError('Notes are too long (max 1000 characters)');
 
-    return { items, orderType, isWholesale, customerName, customerPhone, customerEmail, address: normalizedAddress, notes };
+    return { items, orderType, preorderKind, isWholesale, customerName, customerPhone, customerEmail, address: normalizedAddress, notes };
 }
 
 async function pricePaystackCheckout(checkout) {
@@ -1832,12 +1846,12 @@ async function createPaystackOrder(checkout, priced, customer) {
         const inserted = await dbRunAsync(
             `INSERT INTO orders (order_number, customer_name, customer_phone, customer_email, order_type, total_amount, status,
                 delivery_area, delivery_address_line1, delivery_address_line2, delivery_city, delivery_region,
-                delivery_landmark, notes, customer_account_id, source)
-             VALUES (?, ?, ?, ?, ?, ?, 'awaiting_payment', ?, ?, ?, ?, ?, ?, ?, ?, 'storefront')`,
+                delivery_landmark, notes, customer_account_id, source, preorder_kind)
+             VALUES (?, ?, ?, ?, ?, ?, 'awaiting_payment', ?, ?, ?, ?, ?, ?, ?, ?, 'storefront', ?)`,
             [temporaryNumber, checkout.customerName, checkout.customerPhone, checkout.customerEmail, checkout.orderType,
                 priced.totalAmount, checkout.address.city, checkout.address.line1, checkout.address.line2 || null,
                 checkout.address.city, checkout.address.region, checkout.address.landmark || null, checkout.notes || null,
-                customer ? customer.cid : null]
+                customer ? customer.cid : null, checkout.preorderKind]
         );
         const orderId = inserted.lastID;
         const orderNumber = `ORD-${10000 + orderId}`;
@@ -2355,6 +2369,23 @@ app.get('/api/orders/:id/item-preview', authenticateToken, (req, res) => {
             });
         });
     });
+});
+
+// Tag a pre-order as bulk / personal / shop (Admin). Personal pre-orders start
+// as WhatsApp requests, so staff set the kind after the fact.
+app.patch('/api/orders/:id/preorder-kind', authenticateToken, async (req, res) => {
+    const kind = String((req.body && req.body.preorder_kind) || '').toLowerCase();
+    if (!PREORDER_KINDS.includes(kind)) {
+        return res.status(400).json({ error: 'Invalid pre-order kind. Allowed: ' + PREORDER_KINDS.join(', ') });
+    }
+    try {
+        const order = await dbGetAsync('SELECT id, order_type, preorder_kind FROM orders WHERE id = ?', [req.params.id]);
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+        if (order.order_type !== 'preorder') return res.status(400).json({ error: 'Only pre-orders have a pre-order kind' });
+        await dbRunAsync('UPDATE orders SET preorder_kind = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [kind, order.id]);
+        logAdminAction(req, 'update_preorder_kind', 'order', order.id, `Tagged pre-order #${order.id} as ${kind}`, { from: order.preorder_kind, to: kind });
+        res.json({ success: true, preorder_kind: kind });
+    } catch (err) { serverError(res, err); }
 });
 
 // Update order status (Admin)
@@ -3111,7 +3142,7 @@ app.get('/api/customer/orders', authenticateCustomer, async (req, res) => {
             if (!byId.has(row.id)) {
                 byId.set(row.id, {
                     id: row.id, order_number: row.order_number, customer_name: row.customer_name,
-                    customer_phone: row.customer_phone, order_type: row.order_type,
+                    customer_phone: row.customer_phone, order_type: row.order_type, preorder_kind: row.preorder_kind || null,
                     total_amount: Number(row.total_amount || 0), status: row.status || 'pending',
                     customer_email: row.customer_email, delivery_area: row.delivery_area,
                     delivery_address_line1: row.delivery_address_line1, delivery_address_line2: row.delivery_address_line2,
@@ -3209,15 +3240,21 @@ app.post('/api/orders/track', trackLimiter, (req, res) => {
 
         db.all(`SELECT * FROM order_items WHERE order_id = ?`, [order.id], (err, items) => {
             if (err) return serverError(res, err);
-            res.json({
-                order_number: order.order_number,
-                status: order.status,
-                order_type: order.order_type,
-                total_amount: order.total_amount,
-                created_at: order.created_at,
-                updated_at: order.updated_at,
-                customer_name: order.customer_name,
-                items: items || []
+            // The receipt names how the order is being paid.
+            db.get(`SELECT payment_method FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1`, [order.id], (perr, payment) => {
+                if (perr) return serverError(res, perr);
+                res.json({
+                    order_number: order.order_number,
+                    status: order.status,
+                    order_type: order.order_type,
+                    preorder_kind: order.preorder_kind || null,
+                    total_amount: order.total_amount,
+                    created_at: order.created_at,
+                    updated_at: order.updated_at,
+                    customer_name: order.customer_name,
+                    payment_method: (payment && payment.payment_method) || null,
+                    items: items || []
+                });
             });
         });
     });
