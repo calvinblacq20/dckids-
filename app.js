@@ -10,6 +10,13 @@ const WHOLESALE_MAX_QTY = 1000;
 const CART_KEY = 'dcKidsCart';
 const CUSTOMER_KEY = 'dcKidsCustomer';
 const PAYSTACK_PENDING_KEY = 'dcKidsPendingPaystackCheckout';
+// Static hosting (the Vercel deploy) has no /api, so the admin's settings never
+// arrive. Keep the pre-order announcement up there instead of showing nothing.
+// Same text as DEFAULT_STORE_BANNER in server/server.js.
+const STATIC_SETTINGS = {
+  banner_enabled: 1,
+  banner_text: 'China Pre-Orders are open! Message us on WhatsApp for the current closing date.'
+};
 
 const CAT_LABELS = {
   newborn: 'Newborn', clothing: 'Clothing', shoes: 'Shoes', footwear: 'Shoes',
@@ -1129,10 +1136,12 @@ async function init() {
   $('preorder-grid').innerHTML = skeletonHTML(3);
   $('product-grid').innerHTML = skeletonHTML(6);
 
+  siteConfig = STATIC_SETTINGS;
   try {
     const res = await fetch('/api/settings', { cache: 'no-store' });
-    if (res.ok) siteConfig = (await res.json()) || {};
-  } catch (e) { /* defaults are fine */ }
+    // A static host answers with a 404 page (or index.html), never JSON.
+    if (res.ok && (res.headers.get('content-type') || '').includes('application/json')) siteConfig = (await res.json()) || {};
+  } catch (e) { /* offline or no API: keep the static announcement */ }
   try {
     const res = await fetch('/api/payments/paystack/config', { cache: 'no-store' });
     if (res.ok) paystackEnabled = (await res.json()).enabled === true;

@@ -268,6 +268,10 @@ async function run() {
         storefrontSource.includes('src="receipt.js') && appSource.includes('function openLastReceipt') &&
         ['track.html', 'account.html', 'payment-result.html'].every((page) =>
             fs.readFileSync(path.join(__dirname, '..', page), 'utf8').includes('src="receipt.js')));
+    const serverSourceForBanner = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
+    const defaultBanner = (serverSourceForBanner.match(/const DEFAULT_STORE_BANNER = '([^']+)'/) || [])[1];
+    check('a static deploy (no API) still shows the default pre-order announcement',
+        !!defaultBanner && appSource.includes("banner_text: '" + defaultBanner + "'") && appSource.includes('siteConfig = STATIC_SETTINGS'));
     check('the storefront no longer asks for a pre-order deposit',
         !/deposit/i.test(storefrontSource) && !/deposit/i.test(appSource));
     check('customer-care page covers linked support sections',
