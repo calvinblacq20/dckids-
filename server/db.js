@@ -144,6 +144,18 @@ function migrateCustomerAuthSchema(done) {
     });
 }
 
+// SQLite's ALTER TABLE ADD COLUMN rejects non-constant defaults such as
+// CURRENT_TIMESTAMP, so older databases get updated_at without a default and
+// are stamped here; fresh ones get the default from CREATE TABLE. Runs on every
+// boot so an interrupted migration heals itself, and is a no-op once no NULLs remain.
+function backfillUpdatedAt(table, migration, done) {
+    db.run(`UPDATE ${table} SET updated_at = CURRENT_TIMESTAMP WHERE updated_at IS NULL`, function (err) {
+        if (err) console.error(`${migration} (${table}.updated_at backfill) failed:`, err.message);
+        else if (this.changes) console.log(`Migration: backfilled ${table}.updated_at on ${this.changes} row(s)`);
+        done();
+    });
+}
+
 // Paystack/direct-checkout migration. Keep this additive so existing WhatsApp
 // orders and analytics rows remain intact on long-lived production databases.
 function migrateCommerceSchema(done) {
@@ -183,9 +195,9 @@ function migrateCommerceSchema(done) {
         ['channel', 'channel TEXT'],
         ['gateway_response', 'gateway_response TEXT'],
         ['paid_at', 'paid_at DATETIME'],
-        ['updated_at', 'updated_at DATETIME DEFAULT CURRENT_TIMESTAMP'],
+        ['updated_at', 'updated_at DATETIME'], // no default: see backfillUpdatedAt
         ['owner_notified_at', 'owner_notified_at DATETIME']
-    ], () => {
+    ], () => backfillUpdatedAt('payments', 'Commerce migration', () => {
         db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_provider_reference ON payments (provider_reference)', (referenceErr) => {
             if (referenceErr) console.error('Commerce migration (payment reference index) failed:', referenceErr.message);
             db.run('CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_provider_transaction ON payments (provider_transaction_id)', (transactionErr) => {
@@ -193,7 +205,7 @@ function migrateCommerceSchema(done) {
                 done();
             });
         });
-    }));
+    })));
 }
 
 // Shared admin operations migration. Customer records, suppliers, and the
@@ -208,7 +220,7 @@ function migrateAdminOperationsSchema(done) {
         ['notes', 'notes TEXT'],
         ['status', "status TEXT DEFAULT 'active'"],
         ['customer_account_id', 'customer_account_id INTEGER'],
-        ['updated_at', 'updated_at DATETIME DEFAULT CURRENT_TIMESTAMP'],
+        ['updated_at', 'updated_at DATETIME'], // no default: see backfillUpdatedAt
         // How this customer first reached the shop. Kept on the customer as
         // well as the order because the two answer different questions: the
         // order says which channel carried that sale, the customer says which
@@ -225,7 +237,7 @@ function migrateAdminOperationsSchema(done) {
         const pending = customerColumns.filter(([name]) => !existing.has(name));
         const addNext = () => {
             const next = pending.shift();
-            if (!next) return createAdminTables();
+            if (!next) return backfillUpdatedAt('customers', 'Admin operations migration', createAdminTables);
             db.run(`ALTER TABLE customers ADD COLUMN ${next[1]}`, (alterErr) => {
                 if (alterErr) console.error(`Admin operations migration (customers.${next[0]}) failed:`, alterErr.message);
                 else console.log(`Migration: added customers.${next[0]}`);
