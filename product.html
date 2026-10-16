@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0F4C3A">
   <meta name="description" content="View product details, sizes, availability and customer reviews at DC Kids Brand.">
   <meta name="robots" content="index, follow">
@@ -10,51 +10,39 @@
   <link rel="canonical" href="https://dckids-production.up.railway.app/product.html">
   <link rel="icon" href="icon.png" type="image/png">
   <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=1">
-  <link rel="stylesheet" href="styles.css?v=140">
-  <link rel="stylesheet" href="product.css?v=4">
+  <link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="store.css?v=11">
+  <link rel="stylesheet" href="product.css?v=5">
 </head>
 <body class="product-page">
   <a class="product-skip-link" href="#productMain">Skip to product details</a>
 
-  <header class="product-header">
-    <div class="product-header__inner">
-      <a class="product-brand" href="/index.html" aria-label="DC Kids Brand home">
-        <img src="icon.png" alt="DC Kids Brand">
-      </a>
-      <a class="product-back-link" href="/index.html#shop">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/><path d="M9 12h10"/></svg>
-        <span>Back to shop</span>
-      </a>
-      <nav class="product-header__nav" aria-label="Product page navigation">
-        <a href="/account.html" aria-label="My account">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
-          <span>Account</span>
-        </a>
-        <button id="headerWishlist" type="button" aria-label="Save this item">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21.2l7.8-7.8a5.5 5.5 0 0 0 1-6.8Z"/></svg>
-          <span>Wishlist</span>
-        </button>
-        <button id="productCartButton" class="product-cart-button" type="button" aria-label="Open cart" aria-controls="productCartDrawer" aria-expanded="false">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h15l-1.5 9h-12Z"/><path d="M6 7 5 3H2"/><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/></svg>
-          <span class="product-cart-button__label">Cart</span>
-          <span id="productCartCount" class="product-cart-count" hidden>0</span>
-        </button>
-      </nav>
-    </div>
+  <header class="nav scrolled nav--page">
+    <a class="nav__logo" href="/" aria-label="DC Kids home"><img class="nav__mark" src="images/logo-mark.webp" alt="" width="159" height="144"><span>DC Kids</span></a>
+    <nav class="nav__right" aria-label="Product page navigation">
+      <a class="nav__text-link nav__text-link--wide" href="/#shop">Shop</a>
+      <a class="nav__text-link nav__text-link--wide" href="/account.html">Account</a>
+      <button id="headerWishlist" class="nav__text-link product-nav-save" type="button" aria-label="Save this item">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21.2l7.8-7.8a5.5 5.5 0 0 0 1-6.8Z"/></svg>
+        <span class="product-nav-save__label">Save</span>
+      </button>
+      <button id="productCartButton" class="nav__text-link" type="button" aria-label="Open cart" aria-controls="productCartDrawer" aria-expanded="false">
+        Cart <b id="productCartCount" class="product-cart-count" hidden>0</b>
+      </button>
+    </nav>
   </header>
 
-  <main id="productMain">
+  <main id="productMain" class="product-main">
     <section id="productLoading" class="product-state" aria-live="polite">
       <span class="product-spinner" aria-hidden="true"></span>
       <p>Loading product details…</p>
     </section>
 
-    <section id="productError" class="product-state product-state--error" hidden>
-      <div class="product-state__icon" aria-hidden="true">!</div>
-      <h1>We couldn’t find that item</h1>
+    <section id="productError" class="product-state" hidden>
+      <p class="section__label">Shop</p>
+      <h1>We couldn't find that item</h1>
       <p id="productErrorText">The product may no longer be available.</p>
-      <a class="product-primary-link" href="/index.html#shop">Browse all products</a>
+      <a class="btn btn--dark" href="/#shop">Browse all products</a>
     </section>
 
     <div id="productContent" hidden>
@@ -79,65 +67,50 @@
 
           <div id="productSizeBlock" class="product-option-block">
             <div class="product-option-heading">
-              <span>Choose size</span>
+              <span>Size</span>
               <span id="selectedSizeText"></span>
             </div>
             <div id="productSizes" class="product-sizes" role="group" aria-label="Choose size"></div>
           </div>
 
-          <div class="product-option-block product-option-block--quantity">
-            <label for="productQuantity">Quantity</label>
+          <div class="product-option-block">
+            <div class="product-option-heading"><label for="productQuantity">Quantity</label></div>
             <div class="product-quantity">
               <button id="quantityMinus" type="button" aria-label="Decrease quantity">−</button>
               <input id="productQuantity" type="number" inputmode="numeric" value="1" min="1" step="1" aria-label="Quantity">
               <button id="quantityPlus" type="button" aria-label="Increase quantity">+</button>
             </div>
-            <small id="quantityHint"></small>
+            <small id="quantityHint" class="product-quantity-hint"></small>
           </div>
 
-          <button id="productAddToCart" class="product-action product-action--primary" type="button">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 7h15l-1.5 9h-12Z"/><path d="M6 7 5 3H2"/><path d="M12 9v5M9.5 11.5h5"/></svg>
-            <span>Add to cart</span>
-          </button>
-          <a id="productWhatsApp" class="product-action product-action--secondary" href="#" target="_blank" rel="noopener">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11.7a8.5 8.5 0 0 1-12.6 7.5L3 20.5l1.3-4.7a8.5 8.5 0 1 1 16.2-4.1Z"/><path d="M8.2 7.8c.3-.3.6-.2.8.2l.8 1.8c.1.3 0 .5-.2.7l-.6.7c.8 1.5 2 2.6 3.5 3.3l.7-.8c.2-.2.4-.3.7-.1l1.8.8c.4.2.5.5.3.8-.5 1-1.4 1.5-2.5 1.4-3.7-.5-6.7-3.5-7.1-7.1-.1-.8.3-1.4.8-1.7Z"/></svg>
-            Enquire on WhatsApp
-          </a>
+          <button id="productAddToCart" class="btn btn--dark product-add" type="button"><span>Add to cart</span></button>
+          <a id="productWhatsApp" class="btn product-ask" href="#" target="_blank" rel="noopener">Enquire on WhatsApp</a>
           <button id="productSave" class="product-save" type="button" aria-pressed="false">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21.2l7.8-7.8a5.5 5.5 0 0 0 1-6.8Z"/></svg>
             <span>Save item</span>
           </button>
 
           <ul class="product-assurances" aria-label="Order information">
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/><circle cx="12" cy="12" r="10"/></svg><span id="assuranceStock">Availability confirmed at checkout</span></li>
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v10H3zM14 9h4l3 3v4h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg><span>Delivery is arranged separately</span></li>
-            <li><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg><span>WhatsApp checkout remains available</span></li>
+            <li><span id="assuranceStock">Availability confirmed at checkout</span></li>
+            <li><span>Delivery is arranged separately</span></li>
+            <li><span>Pay with Paystack or order on WhatsApp</span></li>
           </ul>
         </div>
       </section>
 
       <section class="product-information" aria-label="Product information">
         <article class="product-info-row">
-          <div class="product-info-row__heading">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12l2 5-8 13L4 8Z"/><path d="M4 8h16M9 3l3 5 3-5"/></svg>
-            <h2>Product description</h2>
-          </div>
+          <h2>Description</h2>
           <p id="productDescription"></p>
         </article>
 
         <article class="product-info-row">
-          <div class="product-info-row__heading">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 13.6 11 23l-9-9V4h10Z"/><circle cx="7.5" cy="9.5" r="1.5"/></svg>
-            <h2>Product details</h2>
-          </div>
+          <h2>Details</h2>
           <dl id="productDetails" class="product-detail-list"></dl>
         </article>
 
-        <article id="productReviews" class="product-info-row product-reviews-section">
-          <div class="product-info-row__heading">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 3 6.2 6.8 1-4.9 4.8 1.2 6.8L12 17.6l-6.1 3.2 1.2-6.8-4.9-4.8 6.8-1Z"/></svg>
-            <h2>Customer reviews</h2>
-          </div>
+        <article id="productReviews" class="product-info-row">
+          <h2>Reviews</h2>
           <div class="product-reviews">
             <div class="product-review-summary">
               <strong id="reviewAverage">—</strong>
@@ -159,15 +132,18 @@
                     <button type="button" data-rating="5" aria-label="5 stars">☆</button>
                   </div>
                 </div>
-                <label for="reviewAuthor">Your name</label>
-                <input id="reviewAuthor" name="author_name" type="text" autocomplete="name" maxlength="80" required>
-                <label for="reviewTitle">Review title <span>(optional)</span></label>
-                <input id="reviewTitle" name="title" type="text" maxlength="120">
-                <label for="reviewBody">Your review</label>
-                <textarea id="reviewBody" name="body" rows="4" minlength="4" maxlength="2000" required></textarea>
+                <label class="field"><span>Your name</span>
+                  <input id="reviewAuthor" name="author_name" type="text" autocomplete="name" maxlength="80" required>
+                </label>
+                <label class="field"><span>Review title <em>(optional)</em></span>
+                  <input id="reviewTitle" name="title" type="text" maxlength="120">
+                </label>
+                <label class="field"><span>Your review</span>
+                  <textarea id="reviewBody" name="body" rows="4" minlength="4" maxlength="2000" required></textarea>
+                </label>
                 <div class="product-review-form__actions">
                   <button id="cancelReviewButton" class="product-text-button" type="button">Cancel</button>
-                  <button class="product-review-submit" type="submit">Submit review</button>
+                  <button class="btn btn--dark product-review-submit" type="submit">Submit review</button>
                 </div>
                 <p id="reviewFormMessage" class="product-form-message" role="status" aria-live="polite"></p>
               </form>
@@ -179,34 +155,16 @@
       <section class="product-related" aria-labelledby="relatedHeading">
         <div class="product-related__header">
           <h2 id="relatedHeading">You may also like</h2>
-          <a href="/index.html#shop">View all</a>
+          <a class="link-underline" href="/#shop">View all</a>
         </div>
         <div id="relatedProducts" class="product-related__rail"></div>
       </section>
     </div>
   </main>
 
-  <footer class="product-footer">
-    <div class="product-footer__inner">
-      <div class="product-footer__brand">
-        <img src="icon.png" alt="DC Kids Brand">
-        <p>Merging style with comfort for children from newborn to 12 years.</p>
-      </div>
-      <div>
-        <h2>Shop</h2>
-        <a href="/index.html#shop">All products</a>
-        <a href="/account.html">My account</a>
-        <a href="/track.html">Track an order</a>
-      </div>
-      <div>
-        <h2>Customer care</h2>
-        <a href="/support.html#about">About DC Kids</a>
-        <a href="/support.html#faqs">FAQs &amp; sizing</a>
-        <a href="https://wa.me/233549193805" target="_blank" rel="noopener">Contact us on WhatsApp</a>
-        <a href="/privacy.html">Privacy</a>
-      </div>
-    </div>
-    <p class="product-footer__legal">© <span id="footerYear"></span> DC Kids Brand. All rights reserved.</p>
+  <footer class="page-footer">
+    <span>&copy; <span id="footerYear"></span> DC Kids Brand</span>
+    <span><a href="/support.html#faqs">Help</a> &middot; <a href="/track.html">Track order</a> &middot; <a href="/privacy.html">Privacy</a></span>
   </footer>
 
   <div id="productMobileBuybar" class="product-mobile-buybar" aria-label="Quick add to cart" hidden>
@@ -214,27 +172,28 @@
       <small>Selected total</small>
       <strong id="productMobilePrice" aria-live="polite">GH₵ 0.00</strong>
     </div>
-    <button id="productMobileAdd" type="button">Add to cart</button>
+    <button id="productMobileAdd" class="btn btn--dark" type="button">Add to cart</button>
   </div>
 
   <div id="productCartOverlay" class="product-cart-overlay" hidden></div>
   <aside id="productCartDrawer" class="product-cart-drawer" aria-labelledby="productCartTitle" aria-hidden="true">
     <div class="product-cart-drawer__header">
       <h2 id="productCartTitle">Your cart</h2>
-      <button id="closeProductCart" type="button" aria-label="Close cart">×</button>
+      <button id="closeProductCart" type="button" aria-label="Close cart">&times;</button>
     </div>
     <div id="productCartItems" class="product-cart-items"></div>
     <div class="product-cart-drawer__footer">
-      <div><span>Subtotal</span><strong id="productCartSubtotal">GH₵ 0.00</strong></div>
-      <a id="productCheckoutLink" class="product-action product-action--primary" href="/index.html?openCart=1">Open cart &amp; checkout</a>
-      <p>WhatsApp checkout and direct Paystack payment are available in the main shop.</p>
+      <div class="product-cart-subtotal"><span>Subtotal</span><strong id="productCartSubtotal">GH₵ 0.00</strong></div>
+      <a id="productCheckoutLink" class="btn btn--dark" href="/?openCart=1">Go to checkout</a>
+      <p>Pay with Paystack or order on WhatsApp at checkout.</p>
     </div>
   </aside>
 
   <div id="productToast" class="product-toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="image-resolver.js"></script>
+  <script src="image-resolver.js?v=1"></script>
+  <!-- not async: product.js reads window.DCKidsAuth at start-up for the wishlist -->
   <script type="module" src="firebase-auth.js?v=2"></script>
-  <script src="product.js?v=2" defer></script>
+  <script src="product.js?v=3" defer></script>
 </body>
 </html>

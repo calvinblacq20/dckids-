@@ -1,0 +1,134 @@
+/* ============================================================================
+   DC Kids — customer care, order tracking and payment result pages.
+   Builds on store.css (tokens, Jost, nav, footer, buttons, fields). Class
+   names starting tk- / payment-result- are the ones the page scripts set.
+   ============================================================================ */
+
+.page { min-height: 100vh; display: flex; flex-direction: column; }
+.page main { flex: 1 0 auto; }
+.page-main { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: calc(var(--nav-h) + clamp(32px, 6vw, 80px)) var(--gutter) clamp(56px, 8vw, 110px); }
+.page-main--narrow { max-width: 760px; }
+
+.page-head { margin-bottom: clamp(30px, 5vw, 56px); }
+.page-head .section__label { margin-bottom: 14px; }
+.page-head h1 { margin: 0; font-weight: 300; font-size: clamp(40px, 6.4vw, 84px); line-height: 1.02; letter-spacing: -0.02em; }
+.page-head p { max-width: 58ch; margin: 18px 0 0; color: var(--ink-soft); font-size: 17px; }
+.page-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.page-actions .btn { width: auto; }
+
+.page-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: clamp(20px, 3vw, 36px); }
+.page-chips a {
+  flex: 0 0 auto; padding: 9px 16px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg);
+  color: var(--ink-soft); font-size: 14px; transition: border-color .25s var(--ease), color .25s var(--ease);
+}
+.page-chips a:hover { border-color: var(--green); color: var(--green); }
+
+/* -------------------------------------------------------- customer care --- */
+.care-section {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: clamp(20px, 5vw, 72px);
+  padding: clamp(30px, 4vw, 52px) 0; border-top: 1px solid var(--line);
+  scroll-margin-top: calc(var(--nav-h) + 12px);
+}
+.care-section h2 { margin: 0; font-weight: 300; font-size: clamp(28px, 3vw, 40px); line-height: 1.1; }
+.care-section p, .care-section li { color: var(--ink-soft); font-size: 16px; line-height: 1.7; }
+.care-section p { margin: 0 0 14px; }
+.care-section ul, .care-section ol { margin: 0; padding-left: 20px; }
+.care-section li + li { margin-top: 8px; }
+.care-section a { color: var(--green); border-bottom: 1px solid currentColor; }
+.care-section strong { font-weight: 500; color: var(--ink); }
+
+.care-faqs { border-top: 1px solid var(--line); }
+.care-faqs details { border-bottom: 1px solid var(--line); }
+.care-faqs summary {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  min-height: 60px; padding: 14px 0; font-size: 17px; color: var(--ink); cursor: pointer; list-style: none;
+}
+.care-faqs summary::-webkit-details-marker { display: none; }
+.care-faqs summary::after { content: '+'; flex: 0 0 auto; font-size: 22px; font-weight: 300; color: var(--green); transition: transform .3s var(--ease); }
+.care-faqs details[open] summary::after { transform: rotate(45deg); }
+.care-faqs summary:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+.care-faqs details p { margin: 0; padding: 0 0 18px; }
+.care-section .care-note { margin-top: 18px; padding: 16px 18px; background: var(--sage-soft); border-left: 2px solid var(--green); }
+
+/* ------------------------------------------------------- order tracking --- */
+.tk-card { max-width: 640px; }
+.tk-card .field input[aria-invalid="true"] { border-color: #B42318; }
+.tk-alert { margin: 0 0 22px; padding: 16px 18px; background: var(--blush-soft); border-left: 2px solid #B42318; }
+.tk-alert:focus { outline: none; }
+.tk-alert h2 { margin: 0 0 4px; font-weight: 400; font-size: 18px; color: #7F1D1D; }
+.tk-alert p { margin: 0; font-size: 15px; color: #7F1D1D; }
+.tk-alert__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.tk-alert__actions .btn { width: auto; padding: 11px 18px; }
+
+.tk-result:focus { outline: none; }
+.tk-result__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-bottom: 20px; border-bottom: 1px solid var(--line); }
+.tk-result__order-label { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--label); }
+.tk-result__order { margin-top: 6px; font-weight: 300; font-size: clamp(28px, 4vw, 40px); line-height: 1.1; overflow-wrap: anywhere; }
+.tk-status-pill { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; white-space: nowrap; }
+.tk-status-pill::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.tk-status-pending { color: #9A6B00; }
+.tk-status-processing { color: var(--sage-dark); }
+.tk-status-delivered { color: var(--green); }
+.tk-status-cancelled { color: #B42318; }
+
+.tk-steps { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); margin: 28px 0; padding: 0; }
+.tk-step { position: relative; display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 2px solid var(--line); }
+.tk-step__dot { font-size: 13px; color: var(--muted); letter-spacing: .06em; }
+.tk-step__label { font-size: 15px; color: var(--muted); }
+.tk-step--done { border-top-color: var(--sage-dark); }
+.tk-step--done .tk-step__dot, .tk-step--done .tk-step__label { color: var(--ink-soft); }
+.tk-step--current { border-top-color: var(--green); }
+.tk-step--current .tk-step__dot, .tk-step--current .tk-step__label { color: var(--green); }
+
+.tk-meta-row { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.tk-meta { padding: 14px 16px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); min-width: 0; }
+.tk-meta__label { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--label); }
+.tk-meta__value { margin-top: 4px; font-size: 15px; overflow-wrap: anywhere; }
+#tk-r-type { text-transform: capitalize; }
+
+.tk-items { margin-top: 30px; }
+.tk-items__title { margin: 0 0 6px; font-weight: 400; font-size: 20px; }
+.tk-item { display: flex; justify-content: space-between; gap: 18px; padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 15px; }
+.tk-item__name { overflow-wrap: anywhere; }
+.tk-item__qty, .tk-empty { margin-top: 2px; font-size: 14px; color: var(--muted); }
+.tk-empty { padding: 14px 0; }
+.tk-item__price { flex: 0 0 auto; }
+.tk-total { display: flex; justify-content: space-between; padding-top: 16px; font-size: 17px; color: var(--green); }
+.tk-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.tk-actions .btn { width: auto; }
+
+/* ------------------------------------------------------- payment result --- */
+.payment-result-card { max-width: 620px; }
+.payment-result-card:focus { outline: none; }
+.payment-result-icon {
+  width: 64px; height: 64px; margin-bottom: 24px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--sage-soft); color: var(--green);
+}
+.payment-result-icon svg { width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+[data-payment-state="failed"] .payment-result-icon { background: var(--blush-soft); color: #B42318; }
+[data-payment-state="pending"] .payment-result-icon { color: #9A6B00; background: #FBF5E6; }
+.payment-result-spinner { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--green); animation: page-spin .9s linear infinite; }
+@keyframes page-spin { to { transform: rotate(360deg); } }
+.payment-result-card h1 { margin: 0; font-weight: 300; font-size: clamp(36px, 5.4vw, 64px); line-height: 1.04; letter-spacing: -0.02em; }
+.payment-result-card #paymentResultMessage { max-width: 52ch; margin: 16px 0 0; color: var(--ink-soft); font-size: 17px; }
+.payment-result-details { margin: 28px 0 0; border-top: 1px solid var(--line); }
+.payment-result-details > div { display: flex; justify-content: space-between; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.payment-result-details dt { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--label); }
+.payment-result-details dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+#paymentResultStatus { text-transform: capitalize; }
+.payment-result-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+.payment-result-actions .btn { width: auto; }
+.payment-result-delivery { margin: 22px 0 0; font-size: 14px; color: var(--muted); }
+
+/* ----------------------------------------------------------- responsive --- */
+@media (max-width: 760px) {
+  .care-section { grid-template-columns: 1fr; gap: 14px; }
+  .page-actions .btn, .tk-actions .btn, .payment-result-actions .btn { width: 100%; }
+  .tk-steps { grid-template-columns: repeat(2, 1fr); row-gap: 18px; column-gap: 14px; }
+  .tk-meta-row { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .payment-result-spinner { animation-duration: 2.4s; }
+  .care-faqs summary::after { transition: none; }
+}

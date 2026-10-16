@@ -18,10 +18,17 @@ single thing to deploy and no CORS issues in normal use.
 
 ```
 DCKids/
-├── index.html          Storefront (catalogue, cart, checkout, tracking)
+├── index.html          Storefront (catalogue, search, cart, checkout)
 ├── app.js              Storefront logic
-├── styles.css          Storefront styles
+├── store.css           Shared look: tokens, Jost, nav, buttons, storefront
+├── product.html/.js/.css  Full product page (reviews, related items)
+├── account.html/.js/.css  Customer account (sign-in, orders, addresses)
+├── auth.css            Sign-in screens (customer + staff)
+├── pages.css           Customer care, order tracking, payment result
 ├── track.html          Order tracking page
+├── support.html        Customer care / FAQs
+├── payment-result.html Paystack return page
+├── fonts/              Self-hosted Jost (SIL OFL)
 ├── admin.html          Admin panel (single-page)
 ├── admin.js            Admin logic
 ├── admin-system.css    Admin design system (tokens + components)

@@ -10,15 +10,6 @@
 .account-page.is-auth .account-nav,
 .account-page.is-auth .account-footer { display: none; }
 
-/* ---------------------------------------------------------------- nav ---- */
-.account-nav { grid-template-columns: 1fr auto; }
-.account-nav__link {
-  display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px;
-  font: inherit; font-size: 15px; color: var(--ink); background: none; border: 0; cursor: pointer;
-  transition: color .3s var(--ease);
-}
-.account-nav__link:hover { color: var(--green); }
-
 /* ------------------------------------------------------ loading + errors -- */
 .account-loading {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
@@ -209,14 +200,6 @@
 .account-dialog__heading h2 { margin: 0; font-weight: 300; font-size: 30px; }
 .account-dialog__heading button { min-height: 44px; padding: 0 4px; font: inherit; font-size: 15px; color: var(--ink); background: none; border: 0; cursor: pointer; }
 
-/* ------------------------------------------------------------- footer --- */
-.account-footer {
-  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
-  padding: 26px var(--gutter); border-top: 1px solid var(--line); font-size: 13px; color: var(--muted);
-}
-.account-footer a { color: var(--ink-soft); }
-.account-footer a:hover { color: var(--green); }
-
 /* --------------------------------------------------------- responsive --- */
 @media (max-width: 900px) {
   .account-shell { grid-template-columns: 1fr; gap: 26px; }
@@ -228,7 +211,6 @@
   .account-profile-card { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
-  .account-nav__link--wide { display: none; }
   .account-row { grid-template-columns: minmax(0, 1fr) auto 16px; row-gap: 4px; }
   .account-row > :nth-child(2) { grid-column: 1; grid-row: 2; }
   .account-row > :nth-child(3) { grid-column: 2; grid-row: 1; }

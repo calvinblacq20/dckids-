@@ -98,28 +98,28 @@
     return managed ? managed.map((size) => String(size.label)) : parseSize(product.size);
   }
 
+  // Must stay identical to getPriceModifier in server/server.js — the server
+  // computes the order total, so any drift shows the shopper a wrong price.
   function getPriceModifier(sizeLabel) {
     const size = String(sizeLabel || '').trim();
     if (/^(0-3M|3-6M|6-9M|9-12M|12-18M|0M|3M|6M|9M|12M|14|15|16|17|18|19|20|21)$/i.test(size)) return 0;
     if (/^(18M|24M|1Y|2Y|22|23|24|25|26|27)$/i.test(size)) return 5;
-    if (/^(3Y|4Y|28|29|30|31|32|33|34)$/i.test(size)) return 10;
-    if (/^(5Y|6Y|7Y|35|36)$/i.test(size)) return 15;
-    if (/^(8Y|9Y|10Y|11Y|12Y)$/i.test(size)) return 20;
+    if (/^(3Y|4Y|5Y|28|29|30|31|32)$/i.test(size)) return 10;
+    if (/^(6Y|7Y|8Y|33|34|35|36)$/i.test(size)) return 15;
     return 0;
   }
 
+  // Server order: wholesale discount on the base (or managed size) price, then the legacy size modifier.
   function unitPrice(product, sizeLabel) {
     const managed = getManagedSizes(product);
+    const discount = state.mode === 'wholesale' ? Number(state.settings.wholesale_discount || 0) : 0;
     let price;
     if (managed) {
       const match = managed.find((size) => String(size.label) === String(sizeLabel)) || managed[0];
-      price = match && match.price != null ? Number(match.price) : Number(product.price || 0);
+      price = (match && match.price != null ? Number(match.price) : Number(product.price || 0)) * (1 - discount / 100);
     } else {
       price = Number(product.price || 0);
-      if (price) price += getPriceModifier(sizeLabel);
-    }
-    if (state.mode === 'wholesale' && Number(state.settings.wholesale_discount || 0) > 0) {
-      price *= 1 - (Number(state.settings.wholesale_discount) / 100);
+      if (price) price = price * (1 - discount / 100) + getPriceModifier(sizeLabel);
     }
     return Math.round(price * 100) / 100;
   }

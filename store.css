@@ -123,6 +123,22 @@ button { font-family: inherit; cursor: pointer; }
 .nav__logo { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; justify-self: start; }
 .nav__mark { height: 40px; width: auto; flex: 0 0 auto; }
 
+/* inner pages (product, account, track, support…): solid bar, logo left, text links right */
+.nav--page { grid-template-columns: 1fr auto; }
+.nav__text-link {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 0 4px;
+  font: inherit; font-size: 15px; color: var(--ink); background: none; border: 0; cursor: pointer; white-space: nowrap;
+  transition: color .3s var(--ease);
+}
+.nav__text-link:hover { color: var(--green); }
+.nav__text-link svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.page-footer {
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+  padding: 26px var(--gutter); border-top: 1px solid var(--line); font-size: 13px; color: var(--muted);
+}
+.page-footer a { color: var(--ink-soft); }
+.page-footer a:hover { color: var(--green); }
+
 /* mobile menu overlay */
 .m-menu {
   position: fixed; inset: 0; z-index: 96; background: var(--bg);
@@ -554,6 +570,7 @@ section[id] { scroll-margin-top: var(--nav-h); }
   .nav__search svg { width: 20px; height: 20px; }
   .nav__search-label { display: none; }
   .nav__account { display: none; } /* lives in the menu on phones */
+  .nav__text-link--wide { display: none; }
 
   .search__bar { gap: 12px; }
   .search__grid { grid-template-columns: repeat(2, 1fr); }

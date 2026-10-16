@@ -8,180 +8,50 @@
   <meta name="theme-color" content="#0F4C3A">
   <link rel="icon" href="icon.png" type="image/png">
   <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=1">
-  <link rel="stylesheet" href="styles.css?v=140">
-  <style>
-    html {
-      background: linear-gradient(rgba(30, 30, 35, 0.45), rgba(30, 30, 35, 0.45)), url('images/IMG_8409.PNG') no-repeat center center fixed;
-      background-size: cover;
-    }
-    body {
-      background: transparent;
-      font-family: 'Inter', sans-serif;
-      color: #1A1A1A;
-      margin: 0;
-      min-height: 100vh;
-    }
-    .tk-header { background: #fff; border-bottom: 1px solid #EEE; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
-    .tk-header__brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: #0F4C3A; text-decoration: none; font-size: 16px; }
-    .tk-header__brand img { height: 42px; width: auto; object-fit: contain; }
-    .tk-header__links a { text-decoration: none; color: #777; font-size: 14px; margin-left: 18px; font-weight: 500; }
-    .tk-header__links a:hover { color: #0F4C3A; }
-
-    .tk-shell { max-width: 640px; margin: 60px auto; padding: 0 20px; }
-    .tk-card { background: #fff; border: 1px solid #EEE; border-radius: 18px; padding: 28px; box-shadow: 0 6px 24px rgba(0,0,0,0.04); }
-    .tk-title { font-size: 24px; font-weight: 700; color: #0F4C3A; margin: 0 0 6px; font-family: 'Playfair Display', serif; }
-    .tk-sub { font-size: 13px; color: #777; margin: 0 0 22px; }
-    .tk-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-    .tk-field label { font-size: 12px; font-weight: 600; color: #444; text-transform: uppercase; letter-spacing: 0.4px; }
-    .tk-field input { padding: 12px 14px; border: 1px solid #DDD; border-radius: 10px; font-size: 14px; font-family: inherit; outline: none; }
-    .tk-field input:focus { border-color: #0F4C3A; box-shadow: 0 0 0 3px rgba(15,76,58,0.12); }
-    .tk-btn { width: 100%; padding: 13px; border: none; border-radius: 12px; background: #0F4C3A; color: #fff; font-weight: 600; cursor: pointer; font-family: inherit; font-size: 14px; transition: transform 0.1s; }
-    .tk-btn:hover { transform: translateY(-1px); }
-    .tk-error { background: #FEE; color: #B91C1C; padding: 10px 12px; border-radius: 10px; font-size: 13px; margin-bottom: 12px; display: none; }
-
-    /* result */
-    .tk-result { display: none; margin-top: 8px; }
-    .tk-result__head { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid #EEE; }
-    .tk-status-pill { padding: 4px 12px; border-radius: 14px; font-size: 12px; font-weight: 700; }
-    .tk-status-pending     { background: #FEF3C7; color: #D97706; }
-    .tk-status-processing  { background: #DBEAFE; color: #1D4ED8; }
-    .tk-status-delivered   { background: #DCFCE7; color: #16A34A; }
-    .tk-status-cancelled   { background: #FEE; color: #DC2626; }
-    .tk-meta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
-    .tk-meta { padding: 12px 14px; border: 1px solid #EEE; border-radius: 12px; }
-    .tk-meta__label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.4px; }
-    .tk-meta__value { font-size: 14px; font-weight: 600; color: #222; margin-top: 4px; }
-
-    .tk-steps { display: flex; justify-content: space-between; margin: 24px 0; position: relative; }
-    .tk-steps::before { content: ''; position: absolute; top: 14px; left: 12px; right: 12px; height: 2px; background: #EEE; z-index: 0; }
-    .tk-step { display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; z-index: 1; flex: 1; }
-    .tk-step__dot { width: 28px; height: 28px; border-radius: 50%; background: #fff; border: 2px solid #DDD; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #888; font-weight: 700; transition: all 0.2s; }
-    .tk-step__label { font-size: 11px; color: #888; text-align: center; font-weight: 500; }
-    .tk-step--done .tk-step__dot { background: #5E9C7E; border-color: #5E9C7E; color: #fff; }
-    .tk-step--done .tk-step__label { color: #0F4C3A; font-weight: 700; }
-    .tk-step--current .tk-step__dot { background: #0F4C3A; border-color: #0F4C3A; color: #fff; }
-    .tk-step--current .tk-step__label { color: #0F4C3A; font-weight: 700; }
-
-    .tk-items { margin-top: 18px; }
-    .tk-items__title { font-size: 13px; font-weight: 700; margin: 0 0 10px; color: #222; }
-    .tk-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #F4F4F4; font-size: 13px; }
-    .tk-item:last-child { border-bottom: none; }
-    .tk-item__name { color: #444; }
-    .tk-item__qty { color: #888; font-size: 12px; }
-    .tk-item__price { font-weight: 600; color: #222; }
-    .tk-total { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 14px; border-top: 2px solid #EEE; font-weight: 700; font-size: 15px; color: #0F4C3A; }
-
-    .tk-actions { display: flex; gap: 10px; margin-top: 22px; }
-    .tk-btn--outline { background: #fff; border: 1px solid #DDD; color: #444; }
-
-    /* Persistent recovery, semantic state, and warm atelier continuity. */
-    html { background: #FAFAF8; color-scheme: light; }
-    body.tk-page { min-height: 100vh; background: #FAFAF8; color: #1A1A1A; }
-    .tk-page [hidden] { display: none !important; }
-    .tk-page *, .tk-page *::before, .tk-page *::after { box-sizing: border-box; }
-    .tk-page button:focus-visible, .tk-page a:focus-visible, .tk-page input:focus-visible { outline: 3px solid rgba(94,156,126,.34); outline-offset: 2px; }
-    .tk-header { min-height: 82px; padding: calc(8px + env(safe-area-inset-top, 0px)) clamp(16px,4vw,32px) 8px; border-color: #DFE6E2; background: rgba(250,250,248,.96); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-    .tk-header__brand { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; }
-    .tk-header__brand img { height: 58px; }
-    .tk-header__links a { min-height: 44px; padding-inline: 10px; display: inline-flex; align-items: center; color: #0F4C3A; font-weight: 700; }
-    .tk-shell { width: min(100% - 32px, 640px); max-width: none; margin: clamp(28px,6vw,64px) auto; padding: 0; }
-    .tk-card { padding: clamp(22px,5vw,36px); border-color: #DFE6E2; border-radius: 16px; box-shadow: none; }
-    .tk-title { margin-bottom: 8px; font-size: clamp(30px,6vw,42px); font-weight: 600; line-height: 1.1; letter-spacing: -.02em; }
-    .tk-sub { max-width: 58ch; color: #5F6B66; font-size: 15px; line-height: 1.6; }
-    .tk-field { gap: 7px; margin-bottom: 16px; }
-    .tk-field label { color: #303936; font-size: 13px; font-weight: 700; text-transform: none; letter-spacing: 0; }
-    .tk-field input { min-height: 50px; border: 1.5px solid #C9D4CE; background: #fff; color: #1A1A1A; font-size: 16px; }
-    .tk-field input:focus { border-color: #5E9C7E; box-shadow: 0 0 0 3px rgba(94,156,126,.14); }
-    .tk-field input[aria-invalid="true"] { border-color: #B91C1C; }
-    .tk-btn { min-height: 48px; padding: 12px 16px; border: 1px solid #0F4C3A; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; text-align: center; text-decoration: none; transition: background-color .18s ease, transform .18s ease; }
-    .tk-btn:hover { background: #176449; }
-    .tk-btn:disabled { opacity: .58; cursor: wait; transform: none; }
-    .tk-btn--outline { border-color: #B9CBC2; background: #fff; color: #0F4C3A; }
-    .tk-btn--outline:hover { background: #F5F8F6; }
-    .tk-alert { margin: 0 0 20px; padding: 16px; border: 1px solid #E9A9B8; border-radius: 12px; display: grid; grid-template-columns: auto 1fr; gap: 12px; background: #FFF0F0; color: #7F1D1D; }
-    .tk-alert__icon { width: 28px; height: 28px; color: #B91C1C; }
-    .tk-alert__icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .tk-alert h2 { margin: 0; color: #7F1D1D; font-size: 16px; line-height: 1.3; }
-    .tk-alert p { margin: 5px 0 0; color: #7F1D1D; font-size: 14px; line-height: 1.5; }
-    .tk-alert__actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
-    .tk-alert__actions .tk-btn { min-height: 44px; width: auto; }
-    .tk-result { display: block; }
-    .tk-result:focus { outline: none; }
-    .tk-result__head { border-color: #DFE6E2; }
-    .tk-result__order-label { color: #5F6B66; font-size: 12px; font-weight: 700; }
-    .tk-result__order { margin-top: 4px; color: #1A1A1A; font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
-    .tk-status-pill { padding: 6px 12px; border-radius: 999px; text-transform: capitalize; }
-    .tk-status-pending { background: #FEF3C7; color: #92400E; }
-    .tk-status-processing { background: #DBEAFE; color: #1E3A8A; }
-    .tk-status-delivered { background: #DCFCE7; color: #166534; }
-    .tk-status-cancelled { background: #FEE2E2; color: #991B1B; }
-    .tk-meta { min-width: 0; border-color: #DFE6E2; }
-    .tk-meta__label { color: #5F6B66; font-size: 12px; font-weight: 700; text-transform: none; }
-    .tk-meta__value { color: #1A1A1A; overflow-wrap: anywhere; }
-    .tk-steps { padding: 0; list-style: none; }
-    .tk-steps::before { background: #DFE6E2; }
-    .tk-step__dot { width: 30px; height: 30px; border-color: #A8B5AF; color: #4B5752; }
-    .tk-step__label { color: #5F6B66; font-size: 12px; font-weight: 600; }
-    .tk-status-delivered, .tk-status-processing, .tk-status-pending, .tk-status-cancelled { font-weight: 700; }
-    .tk-items__title { color: #1A1A1A; font-size: 15px; }
-    .tk-item { gap: 18px; border-color: #E7ECE9; font-size: 14px; }
-    .tk-item__name { color: #303936; overflow-wrap: anywhere; }
-    .tk-item__qty, .tk-empty { color: #5F6B66; font-size: 13px; }
-    .tk-item__price { flex: 0 0 auto; color: #1A1A1A; }
-    .tk-total { border-color: #DFE6E2; font-size: 16px; }
-    .tk-actions { margin-top: 24px; }
-    @media (max-width: 520px) {
-      .tk-shell { width: min(100% - 24px, 640px); margin-block: 20px; }
-      .tk-card { padding: 22px 18px; }
-      .tk-meta-row { grid-template-columns: 1fr; gap: 8px; }
-      .tk-actions { flex-direction: column; }
-      .tk-step__label { font-size: 11px; }
-      .tk-alert { grid-template-columns: 1fr; }
-    }
-    @media (prefers-reduced-motion: reduce) { .tk-page * { scroll-behavior: auto !important; transition: none !important; } }
-  </style>
+  <link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="store.css?v=11">
+  <link rel="stylesheet" href="pages.css?v=1">
 </head>
-<body class="tk-page">
-  <header class="tk-header">
-    <a href="/" class="tk-header__brand"><img src="icon.png" alt="DC Kids Brand"></a>
-    <nav class="tk-header__links">
-      <a href="/">Shop</a>
+<body class="page tk-page">
+  <header class="nav scrolled nav--page">
+    <a class="nav__logo" href="/" aria-label="DC Kids home"><img class="nav__mark" src="images/logo-mark.webp" alt="" width="159" height="144"><span>DC Kids</span></a>
+    <nav class="nav__right" aria-label="Tracking page navigation">
+      <a class="nav__text-link" href="/#shop">Shop</a>
+      <a class="nav__text-link nav__text-link--wide" href="/support.html">Help</a>
+      <a class="nav__text-link" href="/account.html">Account</a>
     </nav>
   </header>
 
-  <main class="tk-shell">
+  <main class="page-main page-main--narrow">
     <section class="tk-card">
       <div id="tk-lookup">
-        <h1 class="tk-title">Track your order</h1>
-        <p class="tk-sub" id="tk-form-help">Enter your order reference and the phone number you used at checkout. We only compare the last four phone digits.</p>
+        <div class="page-head">
+          <p class="section__label">Orders</p>
+          <h1>Track your order</h1>
+          <p id="tk-form-help">Enter your order reference and the phone number you used at checkout. We only compare the last four phone digits.</p>
+        </div>
         <section id="tk-error" class="tk-alert" role="alert" aria-live="assertive" aria-atomic="true" tabindex="-1" hidden>
-          <div class="tk-alert__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 8v5M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg></div>
-          <div>
-            <h2 id="tk-error-title">We couldn't find that order</h2>
-            <p id="tk-error-message">Check the reference and phone number, then try again.</p>
-            <div class="tk-alert__actions">
-              <button id="tk-retry" type="button" class="tk-btn">Try again</button>
-              <a id="tk-error-support" class="tk-btn tk-btn--outline" href="https://wa.me/233549193805" target="_blank" rel="noopener">Contact support</a>
-            </div>
+          <h2 id="tk-error-title">We couldn't find that order</h2>
+          <p id="tk-error-message">Check the reference and phone number, then try again.</p>
+          <div class="tk-alert__actions">
+            <button id="tk-retry" type="button" class="btn btn--dark">Try again</button>
+            <a id="tk-error-support" class="btn" href="https://wa.me/233549193805" target="_blank" rel="noopener">Contact support</a>
           </div>
         </section>
         <form id="tk-form" aria-describedby="tk-form-help">
-          <div class="tk-field">
-            <label for="tk-order">Order reference</label>
+          <label class="field"><span>Order reference</span>
             <input type="text" id="tk-order" name="order" placeholder="ORD-1042" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" required>
-          </div>
-          <div class="tk-field">
-            <label for="tk-phone">Phone number</label>
+          </label>
+          <label class="field"><span>Phone number</span>
             <input type="tel" id="tk-phone" name="phone" placeholder="0549193805" maxlength="30" autocomplete="tel" inputmode="tel" required>
-          </div>
-          <button type="submit" class="tk-btn" id="tk-submit">Track order</button>
+          </label>
+          <button type="submit" class="btn btn--dark" id="tk-submit">Track order</button>
         </form>
       </div>
 
       <section id="tk-result" class="tk-result" role="region" aria-live="polite" aria-labelledby="tk-r-ref" tabindex="-1" hidden>
         <div class="tk-result__head">
-          <div style="flex:1;min-width:0;">
+          <div>
             <div class="tk-result__order-label">Order</div>
             <div id="tk-r-ref" class="tk-result__order">—</div>
           </div>
@@ -189,10 +59,10 @@
         </div>
 
         <ol class="tk-steps" aria-label="Order progress">
-          <li class="tk-step" data-step="placed"><div class="tk-step__dot" aria-hidden="true">1</div><div class="tk-step__label">Placed</div></li>
-          <li class="tk-step" data-step="processing"><div class="tk-step__dot" aria-hidden="true">2</div><div class="tk-step__label">Processing</div></li>
-          <li class="tk-step" data-step="dispatched"><div class="tk-step__dot" aria-hidden="true">3</div><div class="tk-step__label">Dispatched</div></li>
-          <li class="tk-step" data-step="delivered"><div class="tk-step__dot" aria-hidden="true">4</div><div class="tk-step__label">Delivered</div></li>
+          <li class="tk-step" data-step="placed"><div class="tk-step__dot" aria-hidden="true">01</div><div class="tk-step__label">Placed</div></li>
+          <li class="tk-step" data-step="processing"><div class="tk-step__dot" aria-hidden="true">02</div><div class="tk-step__label">Processing</div></li>
+          <li class="tk-step" data-step="dispatched"><div class="tk-step__dot" aria-hidden="true">03</div><div class="tk-step__label">Dispatched</div></li>
+          <li class="tk-step" data-step="delivered"><div class="tk-step__dot" aria-hidden="true">04</div><div class="tk-step__label">Delivered</div></li>
         </ol>
 
         <div class="tk-meta-row">
@@ -205,16 +75,21 @@
         <div class="tk-items">
           <h3 class="tk-items__title">Items</h3>
           <div id="tk-r-items"></div>
-          <div class="tk-total"><span>Total</span><span id="tk-r-total">GHS 0</span></div>
+          <div class="tk-total"><span>Total</span><span id="tk-r-total">GH₵ 0.00</span></div>
         </div>
 
         <div class="tk-actions">
-          <button type="button" class="tk-btn tk-btn--outline" onclick="tkBack()">Track another order</button>
-          <a id="tk-whatsapp" class="tk-btn" href="#">Message us on WhatsApp</a>
+          <button type="button" class="btn" onclick="tkBack()">Track another order</button>
+          <a id="tk-whatsapp" class="btn btn--wa" href="#">Message us on WhatsApp</a>
         </div>
       </section>
     </section>
   </main>
+
+  <footer class="page-footer">
+    <span>&copy; DC Kids Brand</span>
+    <span><a href="/support.html#faqs">Help</a> &middot; <a href="/privacy.html">Privacy</a> &middot; <a href="/terms.html">Terms</a></span>
+  </footer>
 
   <script>
     (function () {
@@ -254,7 +129,7 @@
         form.setAttribute('aria-busy', String(busy));
       }
 
-      function fmtMoney(value) { return 'GHS ' + (Number(value) || 0).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+      function fmtMoney(value) { return 'GH₵ ' + (Number(value) || 0).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
       function fmtDate(value) {
         const date = new Date(value);
         return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('en-GH');

@@ -203,15 +203,15 @@ async function run() {
         storefrontSource.includes('id="co-error" role="alert"') && storefrontSource.includes('onclick="showCartView(\'items\')"'));
     check('Paystack validation returns customers to their missing details',
         appSource.includes('$(firstBad[0]).focus()') && appSource.includes('Enter a valid email address to pay with Paystack.'));
-    const sharedStylesSource = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
     const storeStylesSource = fs.readFileSync(path.join(__dirname, '..', 'store.css'), 'utf8');
     const accountStylesSource = fs.readFileSync(path.join(__dirname, '..', 'account.css'), 'utf8');
     check('install prompt remains below drawers and checkout overlays',
         storeStylesSource.includes('.pwa-fab { position: fixed; left: 16px; bottom: 18px; z-index: 85;') &&
         /\.nav \{\s+position: fixed; top: 0; left: 0; right: 0; z-index: 90;/.test(storeStylesSource));
-    check('mobile drawer accounts for dynamic viewport and safe-area height',
-        sharedStylesSource.includes('height: calc(100dvh - 64px);') &&
-        sharedStylesSource.includes('env(safe-area-inset-bottom, 0px)'));
+    check('cart drawers fill the viewport and clear the phone safe area',
+        /\.cart \{\s+position: fixed; top: 0; right: 0; bottom: 0;/.test(storeStylesSource) &&
+        storeStylesSource.includes('.cart__foot { padding: 22px 26px calc(22px + env(safe-area-inset-bottom));') &&
+        fs.readFileSync(path.join(__dirname, '..', 'product.css'), 'utf8').includes('calc(12px + env(safe-area-inset-bottom))'));
     check('mobile account tabs expose overflow and active light-theme contrast',
         accountStylesSource.includes('.account-tabs { position: static; flex-direction: row; overflow-x: auto;') &&
         accountStylesSource.includes('.account-tab.is-active { color: var(--ink);') &&
