@@ -9,7 +9,7 @@
    - Images + fonts: cache-first.
    - Bumping VERSION wipes old caches on activate.
 */
-const VERSION = 'dckids-v278';
+const VERSION = 'dckids-v279';
 const STATIC_CACHE = 'dckids-static-' + VERSION;
 const RUNTIME_CACHE = 'dckids-runtime-' + VERSION;
 
@@ -23,9 +23,15 @@ const APP_SHELL = [
   '/product.html',
   '/support.html',
   '/payment-result.html',
+  '/store.css',
+  '/auth.css',
+  '/account.css',
+  '/fonts/jost-latin.woff2',
+  '/fonts/jost-italic-latin.woff2',
+  '/images/logo-mark.webp',
+  '/images/promo_store1.jpg',
   '/styles.css',
   '/product.css',
-  '/tailwind-storefront.css',
   '/tailwind-admin.css',
   '/admin-bridge.css',
   '/admin-system.css',

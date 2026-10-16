@@ -7,27 +7,18 @@
   <meta name="description" content="Manage your DC Kids Brand profile, orders, delivery addresses, wishlist, and reviews.">
   <title>My Account — DC Kids Brand</title>
   <link rel="icon" href="icon.png" type="image/png">
-  <link rel="stylesheet" href="vendor/fonts/fonts.css?v=1">
-  <link rel="stylesheet" href="styles.css?v=139">
+  <link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="store.css?v=10">
+  <link rel="stylesheet" href="auth.css?v=2">
+  <link rel="stylesheet" href="account.css?v=1">
 </head>
 <body class="account-page">
-  <header class="account-header">
-    <a class="account-brand" href="/index.html" aria-label="DC Kids Brand home">
-      <img src="icon.png" alt="DC Kids Brand">
-    </a>
-    <nav class="account-header__nav" aria-label="Account page navigation">
-      <a href="/index.html">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
-        Shop
-      </a>
-      <a href="/track.html">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>
-        Track order
-      </a>
-      <button id="accountSignOut" class="account-header__signout" type="button" hidden>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/></svg>
-        Sign out
-      </button>
+  <header class="nav scrolled account-nav">
+    <a class="nav__logo" href="/" aria-label="DC Kids home"><img class="nav__mark" src="images/logo-mark.webp" alt="" width="159" height="144"><span>DC Kids</span></a>
+    <nav class="nav__right" aria-label="Account page navigation">
+      <a class="account-nav__link" href="/">Shop</a>
+      <a class="account-nav__link account-nav__link--wide" href="/track.html">Track order</a>
+      <button id="accountSignOut" class="account-nav__link" type="button" hidden>Sign out</button>
     </nav>
   </header>
 
@@ -35,13 +26,10 @@
     <section id="accountLoading" class="account-loading" role="status" aria-live="polite" aria-atomic="true">
       <span class="account-spinner" aria-hidden="true"></span>
       <p>Loading your secure account…</p>
-      <small>Account details require a connection and are never shown from offline cache.</small>
+      <small>Account details need a connection and are never shown from an offline copy.</small>
     </section>
 
     <section id="accountRecovery" class="account-recovery" role="alert" aria-live="assertive" aria-atomic="true" tabindex="-1" hidden>
-      <div class="account-recovery__icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M12 8v5M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>
-      </div>
       <div class="account-recovery__copy">
         <h2 id="accountRecoveryTitle">We couldn't load your account</h2>
         <p id="accountRecoveryMessage">Check your connection and try again. Your account information has not been changed.</p>
@@ -52,109 +40,113 @@
       </div>
     </section>
 
-    <section id="accountAuth" class="account-auth" hidden>
-      <div class="account-auth__intro">
-        <h1>Welcome to<br>your account</h1>
-        <p>Save favourites, manage delivery details and follow your orders.</p>
-        <svg class="account-auth__smile" viewBox="0 0 620 390" aria-hidden="true">
-          <path d="M38 70c64 166 256 227 432 92 57-44 101-37 113-7 12 31-34 77-76 101-178 101-403 21-471-134-19-43-16-75 2-52Z"/>
-          <path d="M28 190c97 126 300 173 476 52 43-29 79-23 88 3 10 28-21 59-62 85-193 120-430 52-522-76-27-37-8-87 20-64Z"/>
-        </svg>
-      </div>
+    <!-- Signed out: the same split sign-in screen as the staff portal -->
+    <section id="accountAuth" class="auth" hidden>
+      <aside class="auth__photo auth__photo--account">
+        <a class="auth__brand" href="/" aria-label="DC Kids store"><img src="images/logo-mark.webp" alt="" width="159" height="144"><span>DC Kids</span></a>
+        <div>
+          <p class="auth__eyebrow">Your account</p>
+          <p class="auth__photo-title">Favourites, addresses and orders, kept together.</p>
+        </div>
+      </aside>
 
-      <div class="account-auth__panel">
-        <div id="authMessage" class="account-notice" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+      <div class="auth__panel">
+        <div class="auth__card">
+          <div class="auth__top">
+            <p class="auth__label">My account</p>
+            <a class="auth__back" href="/">&larr; Back to store</a>
+          </div>
 
-        <div id="authSignIn" class="account-auth-view">
-          <img class="account-auth__logo" src="icon.png" alt="DC Kids Brand">
-          <button id="googleSignIn" class="account-google-btn" type="button">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.23-.2-1.77H12v3.41h5.52a4.75 4.75 0 0 1-2.05 3.02l-.02.11 2.98 2.31.21.02c1.95-1.8 3.07-4.45 3.07-7.1Z"/><path fill="#34A853" d="M12 22c2.7 0 4.97-.89 6.63-2.42l-3.17-2.45c-.85.58-1.98.98-3.46.98-2.6 0-4.81-1.76-5.6-4.19l-.1.01-3.1 2.4-.04.1A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.4 13.92A6.1 6.1 0 0 1 6.07 12c0-.67.12-1.32.32-1.92l-.01-.13-3.14-2.44-.1.05A10 10 0 0 0 2 12c0 1.6.38 3.12 1.06 4.45l3.34-2.53Z"/><path fill="#EA4335" d="M12 5.89c1.88 0 3.15.81 3.88 1.48l2.82-2.75A9.6 9.6 0 0 0 12 2a10 10 0 0 0-8.85 5.56l3.24 2.52C7.2 7.65 9.4 5.9 12 5.9Z"/></svg>
-            Continue with Google
-          </button>
-          <div class="account-or"><span>or</span></div>
-          <form id="signInForm" class="account-form" novalidate>
-            <label for="signInEmail">Email address</label>
-            <input id="signInEmail" name="email" type="email" autocomplete="email" required>
-            <div class="account-form__label-row">
-              <label for="signInPassword">Password</label>
-              <button class="account-text-btn" type="button" data-auth-view="reset">Forgot password?</button>
+          <div id="authMessage" class="auth__note auth__note--err account-notice" role="status" aria-live="polite" aria-atomic="true" hidden></div>
+
+          <div id="authSignIn" class="account-auth-view">
+            <h1 class="auth__title">Sign in</h1>
+            <p class="auth__lede">Save favourites, manage delivery details and follow your orders.</p>
+            <button id="googleSignIn" class="auth__btn auth__btn--ghost account-google" type="button">Continue with Google</button>
+            <div class="auth__or"><span>or</span></div>
+            <form id="signInForm" novalidate>
+              <label class="auth__field"><span>Email address</span>
+                <input id="signInEmail" name="email" type="email" autocomplete="email" required>
+              </label>
+              <label class="auth__field"><span>Password</span>
+                <input id="signInPassword" name="password" type="password" autocomplete="current-password" minlength="8" required>
+              </label>
+              <div class="account-forgot"><button class="auth__link" type="button" data-auth-view="reset">Forgot password?</button></div>
+              <button class="auth__btn" type="submit">Sign in</button>
+            </form>
+            <p class="auth__switch">New to DC Kids? <button class="account-switch-btn" type="button" data-auth-view="register">Create an account</button></p>
+          </div>
+
+          <div id="authRegister" class="account-auth-view" hidden>
+            <h2 class="auth__title">Create account</h2>
+            <p class="auth__lede">Keep your orders and delivery details together.</p>
+            <form id="registerForm" novalidate>
+              <label class="auth__field"><span>Full name</span>
+                <input id="registerName" name="name" type="text" autocomplete="name" minlength="2" maxlength="100" required>
+              </label>
+              <label class="auth__field"><span>Phone / WhatsApp <em>(optional)</em></span>
+                <input id="registerPhone" name="phone" type="tel" autocomplete="tel" maxlength="30">
+              </label>
+              <label class="auth__field"><span>Email address</span>
+                <input id="registerEmail" name="email" type="email" autocomplete="email" required>
+              </label>
+              <label class="auth__field"><span>Password</span>
+                <input id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="8" aria-describedby="passwordHint" required>
+              </label>
+              <p id="passwordHint" class="auth__hint">Use at least 8 characters.</p>
+              <label class="auth__field"><span>Confirm password</span>
+                <input id="registerConfirm" name="confirm" type="password" autocomplete="new-password" minlength="8" required>
+              </label>
+              <button class="auth__btn" type="submit">Create account</button>
+            </form>
+            <p class="auth__switch">Already have an account? <button class="account-switch-btn" type="button" data-auth-view="signin">Sign in</button></p>
+          </div>
+
+          <div id="authReset" class="account-auth-view" hidden>
+            <h2 class="auth__title">Reset password</h2>
+            <p class="auth__lede">We'll send a secure reset link to your email.</p>
+            <form id="resetForm" novalidate>
+              <label class="auth__field"><span>Email address</span>
+                <input id="resetEmail" name="email" type="email" autocomplete="email" required>
+              </label>
+              <button class="auth__btn" type="submit">Send reset link</button>
+            </form>
+            <p class="auth__switch">Remembered it? <button class="account-switch-btn" type="button" data-auth-view="signin">Back to sign in</button></p>
+          </div>
+
+          <div id="authVerify" class="account-auth-view" hidden>
+            <h2 class="auth__title">Check your email</h2>
+            <p class="auth__lede">We sent a verification link to <strong id="verificationEmail"></strong>. Open it, then come back here.</p>
+            <a class="auth__btn" href="mailto:">Open email app</a>
+            <button id="checkVerification" class="auth__btn auth__btn--ghost" type="button">I've verified my email</button>
+            <div class="auth__links">
+              <button id="resendVerification" class="auth__link" type="button">Resend verification email</button>
+              <button id="verifySignOut" class="auth__link" type="button">Use another account</button>
             </div>
-            <input id="signInPassword" name="password" type="password" autocomplete="current-password" minlength="8" required>
-            <button class="account-primary-btn" type="submit">Sign in</button>
-          </form>
-          <p class="account-auth__switch">New to DC Kids? <button class="account-text-btn" type="button" data-auth-view="register">Create account</button></p>
-        </div>
-
-        <div id="authRegister" class="account-auth-view" hidden>
-          <button class="account-back-btn" type="button" data-auth-view="signin" aria-label="Back to sign in">←</button>
-          <h2>Create your account</h2>
-          <p>Keep your orders and delivery details together.</p>
-          <form id="registerForm" class="account-form" novalidate>
-            <label for="registerName">Full name</label>
-            <input id="registerName" name="name" type="text" autocomplete="name" minlength="2" maxlength="100" required>
-            <label for="registerPhone">Phone / WhatsApp <span>(optional)</span></label>
-            <input id="registerPhone" name="phone" type="tel" autocomplete="tel" maxlength="30">
-            <label for="registerEmail">Email address</label>
-            <input id="registerEmail" name="email" type="email" autocomplete="email" required>
-            <label for="registerPassword">Password</label>
-            <input id="registerPassword" name="password" type="password" autocomplete="new-password" minlength="8" aria-describedby="passwordHint" required>
-            <small id="passwordHint">Use at least 8 characters.</small>
-            <label for="registerConfirm">Confirm password</label>
-            <input id="registerConfirm" name="confirm" type="password" autocomplete="new-password" minlength="8" required>
-            <button class="account-primary-btn" type="submit">Create account</button>
-          </form>
-        </div>
-
-        <div id="authReset" class="account-auth-view" hidden>
-          <button class="account-back-btn" type="button" data-auth-view="signin" aria-label="Back to sign in">←</button>
-          <div class="account-state-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 7l8 6 8-6"/></svg>
           </div>
-          <h2>Reset your password</h2>
-          <p>We’ll send a secure reset link to your email.</p>
-          <form id="resetForm" class="account-form" novalidate>
-            <label for="resetEmail">Email address</label>
-            <input id="resetEmail" name="email" type="email" autocomplete="email" required>
-            <button class="account-primary-btn" type="submit">Send reset link</button>
-          </form>
-        </div>
 
-        <div id="authVerify" class="account-auth-view account-auth-view--center" hidden>
-          <div class="account-state-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 7l8 6 8-6"/></svg>
-          </div>
-          <h2>Check your email</h2>
-          <p>We sent a verification link to <strong id="verificationEmail"></strong>.</p>
-          <a class="account-primary-btn" href="mailto:">Open email app</a>
-          <button id="checkVerification" class="account-secondary-btn" type="button">I’ve verified my email</button>
-          <button id="resendVerification" class="account-text-btn" type="button">Resend verification email</button>
-          <button id="verifySignOut" class="account-text-btn account-text-btn--muted" type="button">Use another account</button>
+          <p class="auth__legal">
+            By continuing you agree to our
+            <a href="/terms.html">Terms of Service</a> and
+            <a href="/privacy.html">Privacy Policy</a>.
+          </p>
         </div>
       </div>
     </section>
 
+    <!-- Signed in -->
     <section id="accountDashboard" class="account-dashboard" hidden>
       <div class="account-dashboard__heading">
-        <h1>My account</h1>
-        <p>Welcome back, <span id="welcomeName">there</span></p>
+        <p class="section__label">My account</p>
+        <h1>Welcome back, <span id="welcomeName">there</span></h1>
       </div>
       <div class="account-shell">
-        <nav class="account-tabs" aria-label="Account sections" role="tablist">
-          <button id="tab-profile" class="account-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="panel-profile" tabindex="0" data-tab="profile">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile
-          </button>
-          <button id="tab-orders" class="account-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-orders" tabindex="-1" data-tab="orders">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4ZM3 6h18"/></svg>Orders
-          </button>
-          <button id="tab-addresses" class="account-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-addresses" tabindex="-1" data-tab="addresses">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>Addresses
-          </button>
-          <button id="tab-wishlist" class="account-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-wishlist" tabindex="-1" data-tab="wishlist">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg>Wishlist
-          </button>
-          <button id="tab-reviews" class="account-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-reviews" tabindex="-1" data-tab="reviews">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 3 6 7 .9-5 4.8 1.2 6.8L12 17.3l-6.2 3.2L7 13.7 2 8.9 9 8Z"/></svg>My reviews
-          </button>
+        <nav class="account-tabs no-bar" aria-label="Account sections" role="tablist">
+          <button id="tab-profile" class="account-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="panel-profile" tabindex="0" data-tab="profile">Profile</button>
+          <button id="tab-orders" class="account-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-orders" tabindex="-1" data-tab="orders">Orders</button>
+          <button id="tab-addresses" class="account-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-addresses" tabindex="-1" data-tab="addresses">Addresses</button>
+          <button id="tab-wishlist" class="account-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-wishlist" tabindex="-1" data-tab="wishlist">Wishlist</button>
+          <button id="tab-reviews" class="account-tab" type="button" role="tab" aria-selected="false" aria-controls="panel-reviews" tabindex="-1" data-tab="reviews">My reviews</button>
         </nav>
 
         <div class="account-content">
@@ -171,14 +163,14 @@
                 <input id="profileName" name="name" type="text" autocomplete="name" minlength="2" maxlength="100" required>
                 <label for="profileEmail">Email address</label>
                 <input id="profileEmail" name="email" type="email" readonly aria-describedby="emailReadonlyHint">
-                <small id="emailReadonlyHint">Your verified sign-in email cannot be changed here.</small>
+                <small id="emailReadonlyHint">Your verified sign-in email can't be changed here.</small>
                 <label for="profilePhone">Phone number</label>
                 <input id="profilePhone" name="phone" type="tel" autocomplete="tel" maxlength="30">
                 <button class="account-primary-btn account-primary-btn--fit" type="submit">Save profile</button>
               </form>
             </div>
             <div class="account-preview-section">
-              <div class="account-section-heading"><h2>Recent orders</h2><button type="button" data-open-tab="orders">View all orders →</button></div>
+              <div class="account-section-heading"><h2>Recent orders</h2><button type="button" data-open-tab="orders">View all orders</button></div>
               <div id="recentOrders" class="account-list"></div>
             </div>
           </section>
@@ -194,12 +186,12 @@
           </section>
 
           <section id="panel-wishlist" class="account-panel" role="tabpanel" aria-labelledby="tab-wishlist" hidden>
-            <div class="account-section-heading"><div><h2>Wishlist</h2><p>Your saved favourites from every signed-in device.</p></div><a href="/index.html">Continue shopping →</a></div>
+            <div class="account-section-heading"><div><h2>Wishlist</h2><p>Your saved favourites from every signed-in device.</p></div><a href="/#shop">Continue shopping</a></div>
             <div id="wishlistList" class="account-product-list"></div>
           </section>
 
           <section id="panel-reviews" class="account-panel" role="tabpanel" aria-labelledby="tab-reviews" hidden>
-            <div class="account-section-heading"><div><h2>My reviews</h2><p>Reviews you have shared with other parents.</p></div></div>
+            <div class="account-section-heading"><div><h2>My reviews</h2><p>Reviews you've shared with other parents.</p></div></div>
             <div id="reviewsList" class="account-list"></div>
           </section>
         </div>
@@ -211,9 +203,9 @@
     <form id="addressForm" method="dialog" class="account-form">
       <div class="account-dialog__heading">
         <h2 id="addressDialogTitle">Add address</h2>
-        <button id="closeAddressDialog" type="button" aria-label="Close address form"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+        <button id="closeAddressDialog" type="button" aria-label="Close address form">Close</button>
       </div>
-      <div id="addressMessage" class="account-notice" role="alert" aria-live="assertive" aria-atomic="true" hidden></div>
+      <div id="addressMessage" class="auth__note auth__note--err" role="alert" aria-live="assertive" aria-atomic="true" hidden></div>
       <input id="addressId" type="hidden">
       <label for="addressLabel">Label</label>
       <input id="addressLabel" type="text" maxlength="40" placeholder="Home or Work" required>
@@ -223,7 +215,7 @@
       <input id="addressPhone" type="tel" maxlength="30" autocomplete="tel">
       <label for="addressLine1">Address line</label>
       <input id="addressLine1" type="text" maxlength="200" autocomplete="address-line1" required>
-      <label for="addressLine2">Additional details <span>(optional)</span></label>
+      <label for="addressLine2">Additional details <em>(optional)</em></label>
       <input id="addressLine2" type="text" maxlength="200" autocomplete="address-line2">
       <div class="account-form__grid">
         <div><label for="addressCity">Town / city</label><input id="addressCity" type="text" maxlength="100" autocomplete="address-level2"></div>
@@ -234,7 +226,10 @@
     </form>
   </dialog>
 
-  <footer class="account-footer"><a href="/privacy.html">Privacy</a><span aria-hidden="true"></span><a href="/terms.html">Terms</a></footer>
-  <script type="module" src="account.js?v=3"></script>
+  <footer class="account-footer">
+    <span>&copy; DC Kids Brand</span>
+    <span><a href="/support.html#faqs">Help</a> &middot; <a href="/privacy.html">Privacy</a> &middot; <a href="/terms.html">Terms</a></span>
+  </footer>
+  <script type="module" src="account.js?v=4"></script>
 </body>
 </html>

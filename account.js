@@ -233,6 +233,8 @@ function openTab(tab) {
 }
 
 function renderAuthState(state) {
+  // Signed out shows the full-screen sign-in; the page nav and footer only frame the dashboard.
+  document.body.classList.toggle('is-auth', !state.loading && !state.customer);
   setVisible('accountLoading', state.loading);
   setVisible('accountAuth', !state.loading && !state.customer);
   setVisible('accountDashboard', !state.loading && !!state.customer);

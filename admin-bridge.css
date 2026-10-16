@@ -2041,47 +2041,8 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 .mbn-sheet__logout { width: 100%; margin-top: 10px; justify-content: center; color: var(--danger); }
 
 /* =============================================================
-   29. Sign-up screen
+   29. Sign-in + sign-up screens — styled in auth.css
    ============================================================= */
-.signup-container { min-height: 100dvh; display: grid; place-items: center; padding: 24px 16px; background: var(--ground); }
-.signup-shell {
-  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
-  width: min(960px, 100%); overflow: hidden;
-  background: var(--surface); border-radius: var(--r-40); box-shadow: var(--sh-float);
-}
-.signup-hero { display: flex; flex-direction: column; gap: 20px; padding: 32px; background: var(--ink); color: #fff; }
-.signup-hero__logo img { height: 34px; width: auto; object-fit: contain; }
-.signup-hero__content { display: flex; flex-direction: column; gap: 8px; }
-.signup-hero__title { margin: 0; font-size: 28px; line-height: 1.12; font-weight: 500; letter-spacing: -.02em; }
-.signup-hero__lede { margin: 0; font-size: 14px; color: var(--white-75); }
-.signup-hero__features { display: flex; flex-direction: column; gap: 12px; margin-top: auto; }
-.signup-hero__feature { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--white-75); }
-.signup-hero__ficon { display: grid; place-items: center; width: 30px; height: 30px; flex: none; border-radius: var(--r-10); background: rgba(255,255,255,.1); color: #fff; }
-.signup-hero__secure { font-size: 12px; color: var(--white-50); }
-
-.signup-panel { display: grid; place-items: center; padding: 32px 28px; }
-.signup-card { width: 100%; display: flex; flex-direction: column; gap: 14px; }
-.signup-switch { font-size: 13px; color: var(--ink-50); text-align: center; }
-.signup-title { margin: 0; font-size: 22px; font-weight: 500; letter-spacing: -.01em; }
-.signup-subtitle { margin: 2px 0 0; font-size: 13px; color: var(--ink-50); }
-.signup-form { display: flex; flex-direction: column; gap: 12px; }
-.signup-input-wrap { position: relative; display: flex; align-items: center; }
-.signup-input-wrap input { width: 100%; height: 42px; padding: 0 12px 0 38px; border: 0.8px solid var(--ink-12); border-radius: var(--r-12); background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
-.signup-input-wrap input:focus { outline: none; border-color: var(--ink-25); }
-.signup-input-icon { position: absolute; left: 12px; color: var(--ink-50); pointer-events: none; }
-.signup-optional { font-size: 11px; color: var(--ink-50); }
-.signup-passwordless-note { font-size: 12px; color: var(--ink-50); }
-.signup-error { font-size: 13px; color: var(--danger); }
-.signup-error:empty { display: none; }
-.signup-btn { width: 100%; height: 44px; justify-content: center; border: 0; border-radius: var(--r-pill); background: var(--ink); color: #fff; font: inherit; font-size: 14px; cursor: pointer; }
-.signup-btn:hover { background: var(--charcoal); }
-.signup-btn:disabled { opacity: .5; cursor: default; }
-.signup-secure-note { font-size: 11px; color: var(--ink-50); text-align: center; }
-
-@media (max-width: 859.98px) {
-  .signup-shell { grid-template-columns: minmax(0, 1fr); }
-  .signup-hero { display: none; }
-}
 
 /* =============================================================
    30. Bulk image drop zone and empty states
@@ -2890,8 +2851,7 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 .supplier-logo-upload__icon,
 .confirm-icon,
 .mbn-sheet__icon,
-.dashboard-recovery-alert__icon,
-.signup-hero__ficon {
+.dashboard-recovery-alert__icon {
   background: none;
   box-shadow: none;
   width: auto;

@@ -200,19 +200,22 @@ async function run() {
     check('Google redirect fallback still restores Firebase auth state',
         customerAuthSource.indexOf('onIdTokenChanged(auth') < customerAuthSource.indexOf('getRedirectResult(auth)'));
     check('checkout includes visible validation feedback and back navigation',
-        storefrontSource.includes('checkoutValidationError') && storefrontSource.includes('checkoutBackBtn'));
+        storefrontSource.includes('id="co-error" role="alert"') && storefrontSource.includes('onclick="showCartView(\'items\')"'));
     check('Paystack validation returns customers to their missing details',
-        appSource.includes('showValidationError') && appSource.includes('Enter a valid email address to pay with Paystack.'));
+        appSource.includes('$(firstBad[0]).focus()') && appSource.includes('Enter a valid email address to pay with Paystack.'));
     const sharedStylesSource = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8');
+    const storeStylesSource = fs.readFileSync(path.join(__dirname, '..', 'store.css'), 'utf8');
+    const accountStylesSource = fs.readFileSync(path.join(__dirname, '..', 'account.css'), 'utf8');
     check('install prompt remains below drawers and checkout overlays',
-        storefrontSource.includes('.pwa-fab { position: fixed; left: 16px; bottom: 18px; z-index: 850;'));
+        storeStylesSource.includes('.pwa-fab { position: fixed; left: 16px; bottom: 18px; z-index: 85;') &&
+        /\.nav \{\s+position: fixed; top: 0; left: 0; right: 0; z-index: 90;/.test(storeStylesSource));
     check('mobile drawer accounts for dynamic viewport and safe-area height',
         sharedStylesSource.includes('height: calc(100dvh - 64px);') &&
         sharedStylesSource.includes('env(safe-area-inset-bottom, 0px)'));
     check('mobile account tabs expose overflow and active light-theme contrast',
-        sharedStylesSource.includes('scrollbar-color: #6aa789 transparent;') &&
-        sharedStylesSource.includes('.account-tab.is-active { border-color: var(--account-green); }') &&
-        !sharedStylesSource.includes('@media (prefers-color-scheme: dark)'));
+        accountStylesSource.includes('.account-tabs { position: static; flex-direction: row; overflow-x: auto;') &&
+        accountStylesSource.includes('.account-tab.is-active { color: var(--ink);') &&
+        !accountStylesSource.includes('prefers-color-scheme: dark'));
     check('pre-order banner avoids stale dated messaging',
         storefrontSource.includes('Message us on WhatsApp for the current closing date.') &&
         !storefrontSource.includes('Orders close May 18th') &&
