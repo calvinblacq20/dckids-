@@ -30,7 +30,7 @@ Status as of 2026-07-11 (pre-deploy). ✅ verified · ⚠️ partial/needs actio
 - [x] Migrations: additive-only (`CREATE TABLE IF NOT EXISTS` + guarded `ALTER TABLE ADD COLUMN`); existing DBs upgrade in place — fresh-clone boot test-proven
 
 ## Operations
-- [ ] Error tracking/alerts: Telegram alerts cover new orders only — ❌ no error alerting; at minimum pipe server logs somewhere readable and check them
+- [ ] Error tracking/alerts: device order alerts (Web Push) cover new and paid orders only — ❌ no error alerting; at minimum pipe server logs somewhere readable and check them
 - [ ] Dependency-update reminder — ❌ set a monthly reminder to run `npm audit` + `npm update`
 - [x] Smoke tests: `npm test` — 43 end-to-end checks on a throwaway DB, all green (2026-07-11)
 

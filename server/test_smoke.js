@@ -28,6 +28,8 @@ process.env.PAYSTACK_AKUA_WEBHOOK_URL = 'https://akua.example.test/api/payments/
 process.env.PAYSTACK_LEGACY_WEBHOOK_URL = 'https://legacy.example.test/paystack';
 process.env.SHOP_NOTIFY_EMAIL = 'shop@test.com';
 process.env.JWT_SECRET = 'smoke-jwt-secret-used-only-by-tests';
+process.env.VAPID_PUBLIC_KEY = '';           // push sends go through an injected recorder
+process.env.VAPID_PRIVATE_KEY = '';
 
 let passed = 0;
 let failed = 0;
@@ -518,6 +520,35 @@ async function run() {
         r.status === 200 && Number(pendingAnalytics.kpis.totalRevenue || 0) === 0,
         `got ${pendingAnalytics.kpis && pendingAnalytics.kpis.totalRevenue}`);
 
+    // ---- order alerts on staff devices (Web Push) ----
+    // The network send is swapped for a recorder; everything else is the real path.
+    const pushed = [];
+    const waitForPush = async (match) => {
+        for (let i = 0; i < 40 && !pushed.some(match); i++) await new Promise((done) => setTimeout(done, 50));
+        return pushed.some(match);
+    };
+    app.set('webPushSender', async (subscription, payload) => { pushed.push({ endpoint: subscription.endpoint, message: JSON.parse(payload) }); });
+    const device = { endpoint: 'https://fcm.googleapis.com/fcm/send/smoke-device', keys: { p256dh: 'BSmokePublicKey', auth: 'smokeAuthSecret' } };
+    r = await fetch(`${BASE}/api/push/config`);
+    check('order-alert settings need a staff sign-in', r.status === 401, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/push/config`, { headers: auth });
+    check('order alerts report off until VAPID keys are set', r.status === 200 && (await r.json()).enabled === false);
+    r = await fetch(`${BASE}/api/push/subscribe`, json('POST', device));
+    check('subscribing a device to order alerts needs a staff sign-in', r.status === 401, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/push/subscribe`, json('POST', Object.assign({}, device, { endpoint: 'https://collector.example.com/push' }), auth));
+    check('only browser push services are accepted as alert endpoints', r.status === 400, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/push/subscribe`, json('POST', device, auth));
+    check('staff can subscribe a device to order alerts', r.status === 200, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/push/test`, json('POST', {}, auth));
+    const testAlert = await r.json();
+    check('a test alert reaches the subscribed device', r.status === 200 && testAlert.sent === 1 && pushed.some((p) => p.message.tag === 'dckids-test'));
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Alert Buyer', customer_phone: '0246666666', order_type: 'retail', items: [{ id: 1, quantity: 1, size: sizeLabel }]
+    }));
+    const alertOrder = await r.json();
+    check('a new order alerts subscribed staff devices',
+        await waitForPush((p) => p.message.title === 'New order · ' + alertOrder.order_number && p.message.body.includes('Alert Buyer')));
+
     // ---- Paystack direct checkout and shared webhook router ----
     r = await fetch(`${BASE}/api/payments/paystack/config`);
     const publicPaystackConfig = await r.json();
@@ -573,6 +604,24 @@ async function run() {
     r = await postPaystackWebhook(successEvent);
     check('duplicate Paystack webhook is idempotent', r.status === 200 && (await dbGet('SELECT stock FROM products WHERE id = 1')).stock === stockAfterPayment);
     check('owner receives one itemized paid-order email', ownerPaymentEmails === 1, `got ${ownerPaymentEmails}`);
+    await waitForPush((p) => p.message.title === 'Paid online · ' + paidOrder.order_number);
+    check('an order paid online alerts staff once, however often Paystack confirms it',
+        pushed.filter((p) => p.message.title === 'Paid online · ' + paidOrder.order_number).length === 1);
+
+    const laptop = Object.assign({}, device, { endpoint: 'https://updates.push.services.mozilla.com/wpush/v2/smoke-laptop' });
+    await fetch(`${BASE}/api/push/subscribe`, json('POST', laptop, auth));
+    r = await fetch(`${BASE}/api/push/unsubscribe`, json('POST', { endpoint: laptop.endpoint }, auth));
+    check('turning alerts off removes only that device',
+        r.status === 200 && (await dbGet('SELECT COUNT(*) AS count FROM push_subscriptions')).count === 1);
+    app.set('webPushSender', async () => {
+        const gone = new Error('push subscription has unsubscribed or expired');
+        gone.statusCode = 410;
+        throw gone;
+    });
+    await fetch(`${BASE}/api/push/test`, json('POST', {}, auth));
+    check('a device the browser dropped is removed from order alerts',
+        (await dbGet('SELECT COUNT(*) AS count FROM push_subscriptions')).count === 0);
+    app.set('webPushSender', undefined);
     r = await fetch(`${BASE}/api/payments/paystack/status/${paidOrder.reference}`);
     const paidStatus = await r.json();
     check('payment status endpoint returns no PII', r.status === 200 && paidStatus.payment_status === 'paid' && !paidStatus.customer_email && !paidStatus.items);

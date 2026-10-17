@@ -45,7 +45,7 @@ remains, ranked by risk. **No code was changed during this audit.**
   store actually works, linked in the footer and sitemap (stale preorder.html entry removed).
 - **M3 · MEDIUM — Backups are manual.** `backup_db.js` works (verified today) but nothing
   schedules it; schedule daily on the host + do one restore drill per quarter.
-- **M4 · MEDIUM — No error alerting.** Telegram alerts cover new orders only; server
+- **M4 · MEDIUM — No error alerting.** Order alerts cover new orders only; server
   errors go to console. Minimum: persist logs on the host and check on a cadence; better:
   a free error tracker.
 - **M5 · LOW — Unbounded default fetches.** `/api/products` and `/api/orders` return the

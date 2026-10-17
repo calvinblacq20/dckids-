@@ -7,13 +7,13 @@ UID:dckids-monthly-maintenance@dckidsbrand.com
 DTSTART;VALUE=DATE:20260801
 RRULE:FREQ=MONTHLY;BYMONTHDAY=1
 SUMMARY:DC Kids — monthly maintenance
-DESCRIPTION:From server/: npm audit + npm update (then npm test — 47 checks must pass). Review server logs / Telegram error alerts for recurring issues. Push any fixes.
+DESCRIPTION:From server/: npm audit + npm update (then npm test — 47 checks must pass). Review server logs for recurring issues. Push any fixes.
 END:VEVENT
 BEGIN:VEVENT
 UID:dckids-quarterly-maintenance@dckidsbrand.com
 DTSTART;VALUE=DATE:20261001
 RRULE:FREQ=MONTHLY;INTERVAL=3;BYMONTHDAY=1
 SUMMARY:DC Kids — quarterly drill
-DESCRIPTION:1) Backup RESTORE drill per docs/RUNBOOK.md (restore latest backup to a scratch file and open it). 2) Rotate keys: RESEND_API_KEY\, JWT_SECRET\, Telegram bot token. 3) Re-run the ship checklist security section. 4) Review the playbook itself.
+DESCRIPTION:1) Backup RESTORE drill per docs/RUNBOOK.md (restore latest backup to a scratch file and open it). 2) Rotate keys: RESEND_API_KEY\, JWT_SECRET (not the VAPID pair: replacing it ends every device's order alerts). 3) Re-run the ship checklist security section. 4) Review the playbook itself.
 END:VEVENT
 END:VCALENDAR

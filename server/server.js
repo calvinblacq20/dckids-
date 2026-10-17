@@ -1727,17 +1727,7 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                             [order_id, payment_method || 'WhatsApp', total_amount, 'pending']
                         );
 
-                        // Fire-and-forget WhatsApp alert to the shop owner (graceful)
-                        try {
-                            const notify = app.get('sendOwnerWhatsAppAlert');
-                            if (typeof notify === 'function') {
-                                notify({
-                                    order_number, customer_name, customer_phone,
-                                    order_type, total_amount, delivery_area,
-                                    notes, items: processedItems
-                                });
-                            }
-                        } catch (e) { /* never fail an order on notification error */ }
+                        notifyStaffOfOrder({ order_number, customer_name, order_type, total_amount }, false);
 
                         res.json({ success: true, order_number, total_amount, status: initialStatus });
                     }
@@ -2036,6 +2026,8 @@ async function processPaystackSuccess(data) {
     }
     const result = await markOrderPaid(payment.order_id, payment.id, data);
     await sendPaidOrderOwnerEmail(payment.order_id, payment.id);
+    // Only on the first confirmation: Paystack retries webhooks and status checks repeat.
+    if (result.becamePaid) notifyStaffOfPaidOrder(payment.order_id);
     return { status: 'paid', becamePaid: result.becamePaid };
 }
 
@@ -3457,70 +3449,126 @@ app.put('/api/users/:id', authenticateToken, requireManager, (req, res) => {
 });
 
 // ===========================================================================
-//   TELEGRAM ORDER ALERT — DC Kids Brand (free, instant)
-//   Add to server/.env:
-//     TELEGRAM_BOT_TOKEN=your_bot_token
-//     TELEGRAM_CHAT_ID=id1,id2,...   (one or more, comma-separated)
-//   Each destination can be a personal chat id (send /start to the bot, then
-//   check getUpdates) OR a channel/group id (add the bot as an admin). To add a
-//   new owner, just append their id — every destination receives the alert.
+//   ORDER ALERTS ON STAFF DEVICES (Web Push)
+//   Staff turn these on in the installed admin app (Settings → Order alerts);
+//   the phone then shows a notification for every new order and every order
+//   paid online, whether the app is open or not. Needs a VAPID key pair in
+//   server/.env; generate it once and keep it, as replacing it ends every
+//   subscription.
+//     npx web-push generate-vapid-keys
+//     VAPID_PUBLIC_KEY=...
+//     VAPID_PRIVATE_KEY=...
+//     VAPID_SUBJECT=mailto:owner@example.com
 // ===========================================================================
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
-const TELEGRAM_CHAT_IDS  = (process.env.TELEGRAM_CHAT_ID || '')
-    .split(',').map(s => s.trim()).filter(Boolean);
-
-function sendOwnerWhatsAppAlert(order) {
-    const now       = new Date();
-    const time      = now.toLocaleString('en-GH', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
-    const type      = (order.order_type || 'retail').charAt(0).toUpperCase() + (order.order_type || 'retail').slice(1);
-    const area      = order.delivery_area ? `\n📍 *Area:* ${order.delivery_area}` : '';
-    const itemLines = (order.items || [])
-        .map(i => `  • ${i.quantity}× ${i.product_name} — GHS ${Number(i.price_at_time).toFixed(2)}`)
-        .join('\n');
-
-    // DC Kids branded Telegram message — bold headings, emojis, full detail
-    const msg =
-`🛍️ *NEW ORDER — DC Kids Brand*
-━━━━━━━━━━━━━━━━━━━━
-📦 *Order:* ${order.order_number}
-👤 *Customer:* ${order.customer_name || 'Guest'}
-📱 *Phone:* ${order.customer_phone || '—'}${area}
-🏷️ *Type:* ${type}
-💰 *Total:* GHS ${Number(order.total_amount).toFixed(2)}
-━━━━━━━━━━━━━━━━━━━━
-🛒 *Items:*
-${itemLines || '  (no items)'}
-━━━━━━━━━━━━━━━━━━━━
-⏰ ${time}`;
-
-    if (!TELEGRAM_BOT_TOKEN || TELEGRAM_CHAT_IDS.length === 0) {
-        console.log(`\n[DC Kids Order Alert] ${order.order_number} — GHS ${order.total_amount} from ${order.customer_name || 'Guest'} (${order.customer_phone || 'no phone'})`);
-        console.log(`[DC Kids Order Alert] Add TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID to server/.env to receive Telegram alerts.\n`);
-        return;
+const webpush = require('web-push');
+const VAPID_PUBLIC_KEY = String(process.env.VAPID_PUBLIC_KEY || '').trim();
+const VAPID_PRIVATE_KEY = String(process.env.VAPID_PRIVATE_KEY || '').trim();
+const VAPID_SUBJECT = String(process.env.VAPID_SUBJECT || 'mailto:info@dckidsbrand.com').trim();
+let pushConfigured = false;
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+    try {
+        webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+        pushConfigured = true;
+    } catch (err) {
+        console.error('[Order alerts] VAPID keys were rejected, push alerts are off:', err.message);
     }
-
-    const https = require('https');
-    // Send to every configured destination (owners and/or a shared channel).
-    TELEGRAM_CHAT_IDS.forEach(chatId => {
-        const payload = JSON.stringify({ chat_id: chatId, text: msg, parse_mode: 'Markdown' });
-        const options = {
-            hostname: 'api.telegram.org',
-            path:     `/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-            method:   'POST',
-            headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(payload) }
-        };
-        const req = https.request(options, (res) => {
-            res.on('data', () => {});
-            res.on('end', () => console.log(`[DC Kids Order Alert] Telegram sent for ${order.order_number} to ${chatId} — status ${res.statusCode}`));
-        });
-        req.on('error', err => console.warn(`[DC Kids Order Alert] Telegram failed for ${order.order_number} to ${chatId}: ${err.message}`));
-        req.write(payload);
-        req.end();
-    });
 }
 
-// Expose so the order POST handler (above) can call it without restructuring.
-app.set('sendOwnerWhatsAppAlert', sendOwnerWhatsAppAlert);
+// Subscriptions are only ever sent to the browsers' own push services, so a
+// stored endpoint can never turn the server into a client for any other URL.
+const PUSH_SERVICE_HOST = /(^|\.)(fcm\.googleapis\.com|push\.services\.mozilla\.com|push\.apple\.com|notify\.windows\.com)$/i;
+
+// Tests replace the network call with app.set('webPushSender', fn).
+function sendPushMessage(subscription, payload) {
+    const injected = app.get('webPushSender');
+    if (typeof injected === 'function') return injected(subscription, payload);
+    return webpush.sendNotification(subscription, payload, { TTL: 24 * 60 * 60, urgency: 'high' });
+}
+const pushAvailable = () => pushConfigured || typeof app.get('webPushSender') === 'function';
+
+// Sends to every subscribed device, or just one staff member's when userId is given.
+async function pushToStaff(message, userId) {
+    if (!pushAvailable()) return 0;
+    const rows = userId
+        ? await dbAllAsync('SELECT * FROM push_subscriptions WHERE user_id = ?', [userId])
+        : await dbAllAsync('SELECT * FROM push_subscriptions');
+    const payload = JSON.stringify(message);
+    let sent = 0;
+    await Promise.all(rows.map(async (row) => {
+        try {
+            await sendPushMessage({ endpoint: row.endpoint, keys: { p256dh: row.p256dh, auth: row.auth } }, payload);
+            sent++;
+        } catch (err) {
+            // 404 / 410: the browser dropped this subscription (app removed or
+            // permission withdrawn), so stop sending to it.
+            if (err && (err.statusCode === 404 || err.statusCode === 410)) {
+                await dbRunAsync('DELETE FROM push_subscriptions WHERE id = ?', [row.id]).catch(() => {});
+            } else {
+                console.warn('[Order alerts] push failed:', err && err.message);
+            }
+        }
+    }));
+    return sent;
+}
+
+function notifyStaffOfOrder(order, paidOnline) {
+    const type = order.order_type === 'preorder' ? 'China pre-order' : order.order_type === 'wholesale' ? 'Wholesale' : 'Retail';
+    pushToStaff({
+        title: (paidOnline ? 'Paid online · ' : 'New order · ') + order.order_number,
+        body: [order.customer_name || 'Guest', 'GH₵ ' + Number(order.total_amount || 0).toFixed(2), type].join(' · '),
+        url: '/admin.html',
+        tag: 'order-' + order.order_number
+    }).catch((err) => console.warn('[Order alerts]', err.message));
+}
+
+function notifyStaffOfPaidOrder(orderId) {
+    dbGetAsync('SELECT order_number, customer_name, order_type, total_amount FROM orders WHERE id = ?', [orderId])
+        .then((order) => { if (order) notifyStaffOfOrder(order, true); })
+        .catch((err) => console.warn('[Order alerts]', err.message));
+}
+
+app.get('/api/push/config', authenticateToken, (req, res) => {
+    res.json({ enabled: pushConfigured, publicKey: pushConfigured ? VAPID_PUBLIC_KEY : '' });
+});
+
+app.post('/api/push/subscribe', authenticateToken, async (req, res) => {
+    const body = req.body || {};
+    const keys = body.keys || {};
+    let host = '';
+    try { host = new URL(String(body.endpoint || '')).hostname; } catch (e) { /* not a URL */ }
+    const valid = String(body.endpoint || '').startsWith('https://') && String(body.endpoint).length <= 1000 &&
+        PUSH_SERVICE_HOST.test(host) &&
+        typeof keys.p256dh === 'string' && keys.p256dh.length > 0 && keys.p256dh.length <= 200 &&
+        typeof keys.auth === 'string' && keys.auth.length > 0 && keys.auth.length <= 100;
+    if (!valid) return res.status(400).json({ error: 'That is not a valid push subscription' });
+    try {
+        await dbRunAsync(
+            `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth) VALUES (?, ?, ?, ?)
+             ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id, p256dh = excluded.p256dh, auth = excluded.auth`,
+            [req.user.id, body.endpoint, keys.p256dh, keys.auth]
+        );
+        res.json({ success: true });
+    } catch (err) { serverError(res, err); }
+});
+
+app.post('/api/push/unsubscribe', authenticateToken, async (req, res) => {
+    try {
+        await dbRunAsync('DELETE FROM push_subscriptions WHERE endpoint = ? AND user_id = ?', [String((req.body && req.body.endpoint) || ''), req.user.id]);
+        res.json({ success: true });
+    } catch (err) { serverError(res, err); }
+});
+
+app.post('/api/push/test', authenticateToken, async (req, res) => {
+    try {
+        const sent = await pushToStaff({
+            title: 'Order alerts are on',
+            body: 'New and paid orders will show here, even with the app closed.',
+            url: '/admin.html',
+            tag: 'dckids-test'
+        }, req.user.id);
+        res.json({ success: true, sent });
+    } catch (err) { serverError(res, err); }
+});
 
 // ===========================================================================
 //   BULK PRODUCT ACTIONS (admin)

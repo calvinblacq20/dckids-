@@ -26,7 +26,8 @@
     "express": "^5.2.1",
     "firebase-admin": "13.10.0",
     "jsonwebtoken": "^9.0.3",
-    "sqlite3": "^6.0.1"
+    "sqlite3": "^6.0.1",
+    "web-push": "3.6.7"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

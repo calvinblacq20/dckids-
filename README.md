@@ -70,7 +70,7 @@ or domain without configuration.
   global size presets, image upload, bulk CSV import
 - Owner-managed **categories** (add / rename / delete, reflected on the storefront)
 - Inventory, orders, customers, suppliers, analytics, reports
-- New-order notifications in the bell (live poll) + optional **Telegram** alerts
+- New-order notifications in the bell (live poll) + order alerts on staff phones and computers (Web Push, turned on per device in Settings)
 - Settings: store config, WhatsApp number, wholesale rules, banner, password change
 
 ---
@@ -109,7 +109,7 @@ Set these in `server/.env` (see `DEPLOYMENT.md` for the full table):
 | `ALLOWED_ORIGINS` | Comma-separated origins allowed by CORS in production. |
 | `ADMIN_PASSWORD` | First-boot admin password (else a random one is printed once). |
 | `PORT` | Listening port (default 3000; most hosts inject this). |
-| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Optional order alerts. `TELEGRAM_CHAT_ID` accepts multiple comma-separated chat/channel IDs. |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Optional order alerts as device notifications from the installed admin app (`npx web-push generate-vapid-keys`). |
 | `SHOP_NOTIFY_EMAIL`, `SMTP_*` | Optional transactional email. |
 | `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_APP_ID` | Public Firebase web-app configuration for customer authentication. |
 | `GOOGLE_APPLICATION_CREDENTIALS`, `FIREBASE_SERVICE_ACCOUNT_JSON` | External service-account path or sealed JSON value when the host does not provide Application Default Credentials. |

@@ -655,7 +655,10 @@ function _startIdleTracking() {
 }
 function _stopIdleTimer() { if (_idleTimer) { clearTimeout(_idleTimer); _idleTimer = null; } }
 
-function logout() {
+function logout(isSignOut) {
+    // A deliberate sign-out also ends order alerts here, so a shared phone stops
+    // showing customer names. Idle and expiry sign-outs leave them running.
+    if (isSignOut === true) stopPushAlertsOnDevice();
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminRole');
     currentRole = '';
@@ -6883,7 +6886,7 @@ function adminMenuGoto(target) {
             }, 120);
             break;
         case 'logout':
-            if (typeof logout === 'function') logout();
+            if (typeof logout === 'function') logout(true);
             break;
     }
 }
@@ -6903,6 +6906,7 @@ document.addEventListener('keydown', function(e) {
 function loadSettingsTab() {
     var settings = getSettings();
     loadRecoveryCodeStatus();
+    refreshPushAlerts();
 
     // Refresh the Storefront Configuration card from the server every time the
     // Settings tab opens — otherwise it keeps the values loaded at initial login
@@ -7013,6 +7017,119 @@ async function loadRecoveryCodeStatus() {
         status.textContent = error.message || 'Could not load recovery-code status.';
         status.setAttribute('data-tone', 'danger');
         if (count) count.textContent = 'Unavailable';
+    }
+}
+
+/* ============================================================
+   ORDER ALERTS ON THIS DEVICE (Web Push)
+   The installed admin app asks the phone for permission, subscribes through
+   the browser's push service and hands the subscription to the server, which
+   then pushes every new and paid order.
+   ============================================================ */
+var pushPublicKey = '';
+
+function setPushStatus(text) {
+    var el = document.getElementById('push-alerts-status');
+    if (el) el.textContent = text;
+}
+
+function pushHeaders() {
+    return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') };
+}
+
+// The VAPID public key arrives as URL-safe base64; subscribe() wants raw bytes.
+function urlBase64ToUint8Array(base64) {
+    var padded = (base64 + '='.repeat((4 - base64.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/');
+    var raw = atob(padded);
+    var bytes = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    return bytes;
+}
+
+async function refreshPushAlerts() {
+    var toggle = document.getElementById('push-alerts-toggle');
+    var test = document.getElementById('push-alerts-test');
+    if (!toggle || !localStorage.getItem('adminToken')) return;
+    toggle.disabled = true;
+    test.style.display = 'none';
+    var standalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+        // iPhones only allow web notifications for apps added to the Home Screen.
+        setPushStatus(/iphone|ipad|ipod/i.test(navigator.userAgent) && !standalone
+            ? 'On iPhone, add the admin to your Home Screen first (Share, then Add to Home Screen), open it from there and turn alerts on.'
+            : 'This browser cannot show notifications. Use Chrome on Android, or the installed app.');
+        return;
+    }
+    try {
+        var res = await fetch(API_URL + '/push/config', { headers: pushHeaders() });
+        var cfg = res.ok ? await res.json() : {};
+        if (!cfg.enabled) { setPushStatus('Order alerts are not set up on the server yet.'); return; }
+        pushPublicKey = cfg.publicKey;
+        if (Notification.permission === 'denied') {
+            setPushStatus('Notifications are blocked for this site. Allow them in your phone or browser settings, then come back here.');
+            return;
+        }
+        var registration = await navigator.serviceWorker.ready;
+        var subscription = await registration.pushManager.getSubscription();
+        toggle.disabled = false;
+        toggle.dataset.on = subscription ? '1' : '';
+        toggle.textContent = subscription ? 'Turn off alerts' : 'Turn on alerts';
+        test.style.display = subscription ? '' : 'none';
+        setPushStatus(subscription ? 'On for this device. New and paid orders will notify you.' : 'Off on this device.');
+    } catch (err) {
+        setPushStatus('Could not check order alerts right now. Check your connection and try again.');
+    }
+}
+
+async function togglePushAlerts() {
+    var toggle = document.getElementById('push-alerts-toggle');
+    toggle.disabled = true;
+    try {
+        var registration = await navigator.serviceWorker.ready;
+        var existing = await registration.pushManager.getSubscription();
+        if (toggle.dataset.on && existing) {
+            await fetch(API_URL + '/push/unsubscribe', { method: 'POST', headers: pushHeaders(), body: JSON.stringify({ endpoint: existing.endpoint }) });
+            await existing.unsubscribe();
+            showToast('Order alerts turned off on this device', 'success');
+            return;
+        }
+        var permission = await Notification.requestPermission();
+        if (permission !== 'granted') { showToast('Allow notifications to get order alerts', 'warning'); return; }
+        var subscription = existing || await registration.pushManager.subscribe({
+            userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(pushPublicKey)
+        });
+        var res = await fetch(API_URL + '/push/subscribe', { method: 'POST', headers: pushHeaders(), body: JSON.stringify(subscription.toJSON()) });
+        if (!res.ok) throw new Error((await res.json().catch(function () { return {}; })).error || 'Could not save this device');
+        showToast('Order alerts are on for this device', 'success');
+    } catch (err) {
+        showToast(err.message === 'Failed to fetch' ? 'Server unavailable. Try again.' : (err.message || 'Could not change order alerts'), 'error');
+    } finally {
+        refreshPushAlerts();
+    }
+}
+
+// Reads the token synchronously: logout() clears it right after calling this.
+function stopPushAlertsOnDevice() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    var headers = pushHeaders();
+    navigator.serviceWorker.getRegistration().then(function (registration) {
+        return registration && registration.pushManager.getSubscription();
+    }).then(function (subscription) {
+        if (!subscription) return;
+        fetch(API_URL + '/push/unsubscribe', { method: 'POST', headers: headers, body: JSON.stringify({ endpoint: subscription.endpoint }) })
+            .catch(function (err) { console.warn('[Order alerts] server unsubscribe failed:', err.message); });
+        return subscription.unsubscribe();
+    }).catch(function (err) { console.warn('[Order alerts] could not turn off on sign-out:', err.message); });
+}
+
+async function sendTestPushAlert() {
+    try {
+        var res = await fetch(API_URL + '/push/test', { method: 'POST', headers: pushHeaders() });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not send a test alert');
+        showToast(data.sent ? 'Test sent. It should appear in a moment.' : 'This device is not subscribed yet', data.sent ? 'success' : 'warning');
+    } catch (err) {
+        showToast(err.message === 'Failed to fetch' ? 'Server unavailable. Try again.' : err.message, 'error');
     }
 }
 

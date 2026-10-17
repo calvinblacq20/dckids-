@@ -101,9 +101,7 @@ function buildConfig(env = process.env, options = {}) {
         resendApiKey,
         resendFrom,
         googleClientId: String(env.GOOGLE_CLIENT_ID || '').trim(),
-        customerAccountsEnabled: String(env.CUSTOMER_ACCOUNTS_ENABLED || '').toLowerCase() === 'true',
-        telegramBotToken: String(env.TELEGRAM_BOT_TOKEN || '').trim(),
-        telegramChatIds: Object.freeze(splitList(env.TELEGRAM_CHAT_ID))
+        customerAccountsEnabled: String(env.CUSTOMER_ACCOUNTS_ENABLED || '').toLowerCase() === 'true'
     });
 }
 

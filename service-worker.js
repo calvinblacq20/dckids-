@@ -9,7 +9,7 @@
    - Images + fonts: cache-first.
    - Bumping VERSION wipes old caches on activate.
 */
-const VERSION = 'dckids-v284';
+const VERSION = 'dckids-v285';
 const STATIC_CACHE = 'dckids-static-' + VERSION;
 const RUNTIME_CACHE = 'dckids-runtime-' + VERSION;
 
@@ -209,4 +209,31 @@ self.addEventListener('fetch', (event) => {
       }).catch(() => isImage ? imageFallback() : cachedOr(req, null, accept));
     })
   );
+});
+
+// Order alerts for staff who turned them on in the admin app. The server sends
+// { title, body, url, tag }; the same tag replaces rather than stacks.
+self.addEventListener('push', (event) => {
+  let message = {};
+  try { message = event.data ? event.data.json() : {}; }
+  catch (e) { message = { body: event.data ? event.data.text() : '' }; }
+  event.waitUntil(self.registration.showNotification(message.title || 'DC Kids Brand', {
+    body: message.body || 'You have a new update.',
+    icon: '/icon.png',
+    badge: '/icon.png',
+    tag: message.tag || 'dckids-order',
+    renotify: true,
+    data: { url: message.url || '/admin.html' }
+  }));
+});
+
+// Tapping an alert brings the open admin forward, or opens it.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || '/admin.html', self.location.origin).href;
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+    const admin = windows.find((w) => new URL(w.url).pathname.startsWith('/admin'));
+    if (admin) return admin.focus();
+    return self.clients.openWindow(target);
+  }));
 });

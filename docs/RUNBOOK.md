@@ -49,4 +49,4 @@ Then restart the server. Never `reset --hard` on shared branches.
 
 ## Deploy-day env vars (server refuses to boot without the critical ones)
 `NODE_ENV=production`, `JWT_SECRET`, `RESEND_API_KEY`, `OWNER_EMAIL`, `ALLOWED_ORIGINS`,
-optional: `RESEND_FROM`, `GOOGLE_CLIENT_ID`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `APP_URL`, `PORT`.
+optional: `RESEND_FROM`, `GOOGLE_CLIENT_ID`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, `APP_URL`, `PORT`.

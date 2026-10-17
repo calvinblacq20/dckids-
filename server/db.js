@@ -715,6 +715,20 @@ const db = new sqlite3.Database(dbPath, (err) => {
             );
         });
 
+        // Devices that asked for order alerts (Web Push). One row per browser
+        // install; a staff member can have several (phone + laptop). The keys
+        // are the browser's public encryption keys, not secrets of ours.
+        db.run(`CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            endpoint TEXT NOT NULL UNIQUE,
+            p256dh TEXT NOT NULL,
+            auth TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`, (err) => {
+            if (err) console.error('Error creating push_subscriptions table', err);
+        });
+
         // Create suppliers table
         db.run(`CREATE TABLE IF NOT EXISTS suppliers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
