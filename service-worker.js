@@ -9,7 +9,7 @@
    - Images + fonts: cache-first.
    - Bumping VERSION wipes old caches on activate.
 */
-const VERSION = 'dckids-v283';
+const VERSION = 'dckids-v284';
 const STATIC_CACHE = 'dckids-static-' + VERSION;
 const RUNTIME_CACHE = 'dckids-runtime-' + VERSION;
 
@@ -140,7 +140,8 @@ self.addEventListener('fetch', (event) => {
 
   // Live store config must NEVER be served from cache — always go to network so
   // admin changes (banner, discount, WhatsApp) reach shoppers immediately.
-  const isLiveConfig = url.pathname === '/api/settings' || url.pathname === '/api/products' || /^\/api\/products\/\d+$/.test(url.pathname);
+  // settings.json is the static deploy's copy of /api/settings: just as live.
+  const isLiveConfig = url.pathname === '/api/settings' || url.pathname === '/settings.json' || url.pathname === '/api/products' || /^\/api\/products\/\d+$/.test(url.pathname);
   if (isLiveConfig) {
     event.respondWith(fetch(req).catch(() => cachedOr(req, null, accept)));
     return;

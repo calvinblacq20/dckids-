@@ -33,7 +33,7 @@
 
   <link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" as="image" type="image/webp" href="images/hero_shop_1.webp" imagesrcset="images/hero_shop_1-720.webp 720w, images/hero_shop_1.webp 1179w" imagesizes="100vw">
-  <link rel="stylesheet" href="store.css?v=12">
+  <link rel="stylesheet" href="store.css?v=13">
 
   <!-- Structured data: Organization + WebSite (SEO + Google rich results) -->
   <script type="application/ld+json">
@@ -184,7 +184,7 @@
             <div class="section__label">China sourcing</div>
             <h2 class="section__ghost">China <span class="nowrap">Pre-Orders</span></h2>
           </div>
-          <p class="pre__intro">Pieces sourced on the ground in China and shipped to us in Kasoa. Every pre-order is paid in full before we order. Message us on WhatsApp for the current closing date.</p>
+          <p class="pre__intro">Pieces sourced on the ground in China and shipped to us in Kasoa. Every pre-order is paid in full before we order. <span id="pre-window">Message us on WhatsApp for the current closing date.</span></p>
         </div>
 
         <div class="pre__kinds reveal-stagger" aria-label="Three ways to pre-order">
@@ -442,7 +442,10 @@
   <!-- ============================= PROMO ============================= -->
   <div class="promo" id="promo" role="region" aria-label="Store announcement">
     <div class="promo__in">
-      <p id="promo-text">Shop new arrivals for the little ones.</p>
+      <div class="promo__copy">
+        <p id="promo-text">Shop new arrivals for the little ones.</p>
+        <p class="promo__dates" id="promo-dates" hidden></p>
+      </div>
       <a class="btn" href="#shop" onclick="hidePromo()">Shop now</a>
     </div>
     <button class="promo__x" type="button" onclick="hidePromo()" aria-label="Dismiss">&times;</button>
@@ -460,7 +463,7 @@
   <script src="receipt.js?v=1"></script>
   <!-- async: customer sign-in must never hold up the first paint of the shop -->
   <script type="module" async src="firebase-auth.js?v=2"></script>
-  <script src="app.js?v=33"></script>
+  <script src="app.js?v=34"></script>
   <script>
     if ('serviceWorker' in navigator) {
       // When an updated worker takes control, reload once so the page runs the

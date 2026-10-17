@@ -10,13 +10,6 @@ const WHOLESALE_MAX_QTY = 1000;
 const CART_KEY = 'dcKidsCart';
 const CUSTOMER_KEY = 'dcKidsCustomer';
 const PAYSTACK_PENDING_KEY = 'dcKidsPendingPaystackCheckout';
-// Static hosting (the Vercel deploy) has no /api, so the admin's settings never
-// arrive. Keep the pre-order announcement up there instead of showing nothing.
-// Same text as DEFAULT_STORE_BANNER in server/server.js.
-const STATIC_SETTINGS = {
-  banner_enabled: 1,
-  banner_text: 'China Pre-Orders are open! Message us on WhatsApp for the current closing date.'
-};
 
 const CAT_LABELS = {
   newborn: 'Newborn', clothing: 'Clothing', shoes: 'Shoes', footwear: 'Shoes',
@@ -963,13 +956,42 @@ function toast(message) {
   setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 2800);
 }
 
+// Run dates are whole calendar days in the shopper's time zone (Ghana is UTC+0).
+function todayIso() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function formatDay(iso, withYear) {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', withYear ? { day: 'numeric', month: 'short', year: 'numeric' } : { day: 'numeric', month: 'short' });
+}
+// "17 Oct – 31 Oct 2026"; the year is written once unless the window crosses into a new one.
+function runDates(starts, ends) {
+  if (starts && ends) return formatDay(starts, starts.slice(0, 4) !== ends.slice(0, 4)) + ' – ' + formatDay(ends, true);
+  if (ends) return 'Until ' + formatDay(ends, true);
+  if (starts) return 'From ' + formatDay(starts, true);
+  return '';
+}
+
 function initPromo() {
   const text = siteConfig.banner_enabled ? String(siteConfig.banner_text || '').trim() : '';
   if (!text) return;
-  try { if (sessionStorage.getItem('promoDismissed') === text) return; } catch (e) { /* storage blocked */ }
+  const starts = siteConfig.banner_starts || '';
+  const ends = siteConfig.banner_ends || '';
+  const today = todayIso();
+  // Outside its run dates the announcement stays down, so a closed window is never advertised.
+  if ((starts && today < starts) || (ends && today > ends)) return;
+  const dates = runDates(starts, ends);
+  const isPreorder = /pre-?order/i.test(text);
+  if (isPreorder && dates) $('pre-window').textContent = 'This window runs ' + dates + '.';
+  // Dismissal is per announcement and window, so a new window shows again.
+  const key = text + '|' + dates;
+  $('promo').dataset.key = key;
+  try { if (sessionStorage.getItem('promoDismissed') === key) return; } catch (e) { /* storage blocked */ }
   $('promo-text').textContent = text;
+  $('promo-dates').textContent = dates;
+  $('promo-dates').hidden = !dates;
   // A pre-order announcement should land on the pre-orders, not the general shop.
-  if (/pre-?order/i.test(text)) {
+  if (isPreorder) {
     const cta = $('promo').querySelector('.btn');
     if (cta) { cta.href = '#preorders'; cta.textContent = 'View pre-orders'; }
   }
@@ -977,7 +999,7 @@ function initPromo() {
 }
 function hidePromo() {
   $('promo').classList.remove('show');
-  try { sessionStorage.setItem('promoDismissed', $('promo-text').textContent); } catch (e) { /* storage blocked */ }
+  try { sessionStorage.setItem('promoDismissed', $('promo').dataset.key || ''); } catch (e) { /* storage blocked */ }
 }
 
 function joinNewsletter(e) {
@@ -1110,6 +1132,20 @@ function normalizeProducts(list) {
   }).filter((p) => p.id && p.name);
 }
 
+// The admin's settings come from the API. The static deploy (Vercel) has no
+// server, so it reads the same public fields from settings.json instead —
+// otherwise it would lose the announcement and the retail/wholesale switch.
+async function loadSettings() {
+  for (const url of ['/api/settings', '/settings.json']) {
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      // A static host answers /api/settings with a 404 page (or index.html), never JSON.
+      if (res.ok && (res.headers.get('content-type') || '').includes('application/json')) return (await res.json()) || {};
+    } catch (e) { /* unreachable: try the next source */ }
+  }
+  return {};
+}
+
 async function loadCatalogue() {
   try {
     const res = await fetch('/api/products');
@@ -1136,12 +1172,7 @@ async function init() {
   $('preorder-grid').innerHTML = skeletonHTML(3);
   $('product-grid').innerHTML = skeletonHTML(6);
 
-  siteConfig = STATIC_SETTINGS;
-  try {
-    const res = await fetch('/api/settings', { cache: 'no-store' });
-    // A static host answers with a 404 page (or index.html), never JSON.
-    if (res.ok && (res.headers.get('content-type') || '').includes('application/json')) siteConfig = (await res.json()) || {};
-  } catch (e) { /* offline or no API: keep the static announcement */ }
+  siteConfig = await loadSettings();
   try {
     const res = await fetch('/api/payments/paystack/config', { cache: 'no-store' });
     if (res.ok) paystackEnabled = (await res.json()).enabled === true;

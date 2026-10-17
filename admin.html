@@ -4964,6 +4964,13 @@
     </label>
     <label for="config-banner-text" class="sr-only">Banner Text</label>
     <input type="text" id="config-banner-text" class="form-input" placeholder="Banner message..." aria-label="Banner message">
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;">
+      <label style="display:flex; flex-direction:column; gap:6px;"><span class="form-label" style="margin:0;">Runs from</span>
+        <input type="date" id="config-banner-starts" class="form-input"></label>
+      <label style="display:flex; flex-direction:column; gap:6px;"><span class="form-label" style="margin:0;">Runs until</span>
+        <input type="date" id="config-banner-ends" class="form-input"></label>
+    </div>
+    <p class="form-hint">The shop shows these dates on the announcement and stops showing it after the last day. Leave them empty for an announcement with no dates.</p>
   </div>
   <div class="settings-form-actions">
     <button id="save-store-config-btn" class="btn btn-primary settings-action-btn" type="submit">Save Store Settings</button>
@@ -6334,7 +6341,7 @@
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
   <script src="admin-demo.js?v=15"></script>
-  <script src="admin.js?v=175"></script>
+  <script src="admin.js?v=176"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

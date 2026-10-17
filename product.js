@@ -152,7 +152,8 @@
 
   async function loadProduct(productId) {
     const [settings, detail, catalogue, reviews] = await Promise.all([
-      getJson('/api/settings', {}),
+      // The static deploy has no API; settings.json carries the same public fields.
+      getJson('/api/settings', null).then((live) => live || getJson('/settings.json', {})),
       getJson(`/api/products/${productId}`, null),
       getJson('/api/products', null),
       getJson(`/api/products/${productId}/reviews`, { summary: { count: 0, average: 0 }, reviews: [] })

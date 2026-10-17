@@ -7768,6 +7768,10 @@ function loadStoreConfig() {
             if(discountInput) discountInput.value = data.wholesale_discount || '';
             if(bannerEnabledInput) bannerEnabledInput.checked = !!data.banner_enabled;
             if(bannerTextInput) bannerTextInput.value = data.banner_text || '';
+            const bannerStartsInput = document.getElementById('config-banner-starts');
+            const bannerEndsInput = document.getElementById('config-banner-ends');
+            if(bannerStartsInput) bannerStartsInput.value = data.banner_starts || '';
+            if(bannerEndsInput) bannerEndsInput.value = data.banner_ends || '';
         })
         .catch(err => console.warn("Store config API unavailable, using local data:", err && err.message ? err.message : err));
 }
@@ -7783,7 +7787,9 @@ function saveStoreConfig(e) {
         wholesale_moq: parseInt(document.getElementById('config-moq').value) || 10,
         wholesale_discount: parseInt(document.getElementById('config-discount').value) || 0,
         banner_enabled: document.getElementById('config-banner-enabled').checked,
-        banner_text: document.getElementById('config-banner-text').value
+        banner_text: document.getElementById('config-banner-text').value,
+        banner_starts: document.getElementById('config-banner-starts').value,
+        banner_ends: document.getElementById('config-banner-ends').value
     };
 
     fetch(API_URL + '/settings', {

@@ -675,7 +675,21 @@ const db = new sqlite3.Database(dbPath, (err) => {
             banner_text TEXT
         )`, (err) => {
             if (err) console.error("Error creating store_settings table", err);
-            
+
+            // The announcement runs between two dates (YYYY-MM-DD, both optional):
+            // the storefront shows them on the bar and stops showing it after the end.
+            db.all('PRAGMA table_info(store_settings)', (e, cols) => {
+                if (e || !cols) return;
+                const names = cols.map(c => c.name);
+                ['banner_starts', 'banner_ends'].forEach((column) => {
+                    if (names.indexOf(column) !== -1) return;
+                    db.run(`ALTER TABLE store_settings ADD COLUMN ${column} TEXT`, (er) => {
+                        if (er) console.error(`Migration (store_settings.${column}) failed:`, er.message);
+                        else console.log(`Migration: added store_settings.${column}`);
+                    });
+                });
+            });
+
             // Seed the initial defaults (safely ignores if row 1 already exists)
             db.run(`INSERT OR IGNORE INTO store_settings
                 (id, whatsapp_number, wholesale_enabled, wholesale_moq, wholesale_discount, banner_enabled, banner_text) 

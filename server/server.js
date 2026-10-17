@@ -948,11 +948,28 @@ app.get('/api/me', authenticateToken, (req, res) => {
 // Update store settings (Manager only)
 app.put('/api/settings', authenticateToken, requireManager, (req, res) => {
     const { whatsapp_number, wholesale_enabled, wholesale_moq, wholesale_discount, banner_enabled, banner_text } = req.body;
+    // Announcement dates are optional calendar days; an empty field clears one.
+    const bannerDate = (value) => {
+        const text = String(value || '').trim();
+        if (!text) return null;
+        const parsed = new Date(text + 'T00:00:00Z');
+        return /^\d{4}-\d{2}-\d{2}$/.test(text) && !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === text ? text : undefined;
+    };
+    const bannerStarts = bannerDate(req.body.banner_starts);
+    const bannerEnds = bannerDate(req.body.banner_ends);
+    if (bannerStarts === undefined || bannerEnds === undefined) {
+        return res.status(400).json({ error: 'Announcement dates must be real dates (YYYY-MM-DD)' });
+    }
+    if (bannerStarts && bannerEnds && bannerEnds < bannerStarts) {
+        return res.status(400).json({ error: 'The announcement cannot end before it starts' });
+    }
     db.run(
-        `UPDATE store_settings 
-         SET whatsapp_number = ?, wholesale_enabled = ?, wholesale_moq = ?, wholesale_discount = ?, banner_enabled = ?, banner_text = ? 
+        `UPDATE store_settings
+         SET whatsapp_number = ?, wholesale_enabled = ?, wholesale_moq = ?, wholesale_discount = ?, banner_enabled = ?, banner_text = ?,
+             banner_starts = ?, banner_ends = ?
          WHERE id = 1`,
-        [whatsapp_number, wholesale_enabled ? 1 : 0, wholesale_moq, wholesale_discount, banner_enabled ? 1 : 0, banner_text],
+        [whatsapp_number, wholesale_enabled ? 1 : 0, wholesale_moq, wholesale_discount, banner_enabled ? 1 : 0, banner_text,
+            bannerStarts, bannerEnds],
         function(err) {
             if (err) return serverError(res, err);
             logAdminAction(req, 'update', 'settings', 'store', 'Updated storefront settings', {

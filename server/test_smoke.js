@@ -268,10 +268,17 @@ async function run() {
         storefrontSource.includes('src="receipt.js') && appSource.includes('function openLastReceipt') &&
         ['track.html', 'account.html', 'payment-result.html'].every((page) =>
             fs.readFileSync(path.join(__dirname, '..', page), 'utf8').includes('src="receipt.js')));
-    const serverSourceForBanner = fs.readFileSync(path.join(__dirname, 'server.js'), 'utf8');
-    const defaultBanner = (serverSourceForBanner.match(/const DEFAULT_STORE_BANNER = '([^']+)'/) || [])[1];
-    check('a static deploy (no API) still shows the default pre-order announcement',
-        !!defaultBanner && appSource.includes("banner_text: '" + defaultBanner + "'") && appSource.includes('siteConfig = STATIC_SETTINGS'));
+    // Vercel serves the site without the API; settings.json stands in for /api/settings.
+    const staticSettings = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'settings.json'), 'utf8'));
+    const isDay = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value || '');
+    check('a static deploy falls back to settings.json for the announcement and wholesale switch',
+        appSource.includes("['/api/settings', '/settings.json']") &&
+        staticSettings.wholesale_enabled === 1 && staticSettings.wholesale_moq > 0 && staticSettings.banner_enabled === 1 &&
+        !!String(staticSettings.banner_text || '').trim());
+    check('settings.json run dates are real days in order',
+        isDay(staticSettings.banner_starts) && isDay(staticSettings.banner_ends) && staticSettings.banner_starts <= staticSettings.banner_ends);
+    check('the service worker never serves a stale settings.json',
+        fs.readFileSync(path.join(__dirname, '..', 'service-worker.js'), 'utf8').includes("url.pathname === '/settings.json'"));
     check('the storefront no longer asks for a pre-order deposit',
         !/deposit/i.test(storefrontSource) && !/deposit/i.test(appSource));
     check('customer-care page covers linked support sections',
@@ -729,6 +736,17 @@ async function run() {
         settings.banner_text === 'China Pre-Orders are open! Message us on WhatsApp for the current closing date.');
     const moq = settings.wholesale_moq;
     const disc = settings.wholesale_discount;
+
+    // ---- announcement run dates ----
+    const settingsWith = (dates) => json('PUT', Object.assign({}, settings, dates), auth);
+    r = await fetch(`${BASE}/api/settings`, settingsWith({ banner_starts: '2026-02-30', banner_ends: '' }));
+    check('an announcement date that is not a real day is rejected', r.status === 400, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/settings`, settingsWith({ banner_starts: '2026-10-31', banner_ends: '2026-10-17' }));
+    check('an announcement cannot end before it starts', r.status === 400, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/settings`, settingsWith({ banner_starts: '2026-10-17', banner_ends: '2026-10-31' }));
+    const datedSettings = await (await fetch(`${BASE}/api/settings`)).json();
+    check('announcement run dates are saved and served to the storefront',
+        r.status === 200 && datedSettings.banner_starts === '2026-10-17' && datedSettings.banner_ends === '2026-10-31');
     const unitWs = Math.round(unitRetail * (1 - disc / 100) * 100) / 100;
 
     r = await fetch(`${BASE}/api/orders`, json('POST', {
