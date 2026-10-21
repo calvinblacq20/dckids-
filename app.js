@@ -10,6 +10,10 @@ const WHOLESALE_MAX_QTY = 1000;
 const CART_KEY = 'dcKidsCart';
 const CUSTOMER_KEY = 'dcKidsCustomer';
 const PAYSTACK_PENDING_KEY = 'dcKidsPendingPaystackCheckout';
+const WELCOME_KEY = 'dcKidsWelcome';                 // { phone, percent } once joined
+const WELCOME_SNOOZE_KEY = 'dcKidsWelcomeSnoozed';   // when "No thanks" was pressed
+const WELCOME_SNOOZE_MS = 14 * 24 * 60 * 60 * 1000;
+const WELCOME_DELAY_MS = 12000;
 
 const CAT_LABELS = {
   newborn: 'Newborn', clothing: 'Clothing', shoes: 'Shoes', footwear: 'Shoes',
@@ -130,6 +134,20 @@ function priceLabel(p) {
   const per = isWholesale() ? ' / pc' : '';
   return (span.max - span.min > 0.005 ? 'GH₵ ' + gh(span.min) + ' – ' + gh(span.max) : 'GH₵ ' + gh(span.min)) + per;
 }
+// A sale needs a real was-price above today's price. Wholesale has its own
+// pricing, so the retail sale is not shown there.
+function salePercent(p) {
+  const was = Number(p.compare_at_price);
+  const now = Number(p.price);
+  if (isWholesale() || !(now > 0) || !(was > now)) return 0;
+  return Math.round((1 - now / was) * 100);
+}
+// What a price was before the sale: the same proportion above it.
+function wasPrice(p, amount) { return Math.round(amount * Number(p.compare_at_price) / Number(p.price) * 100) / 100; }
+function salePriceHTML(p, amount, prefix) {
+  return '<span class="price-now">' + prefix + 'GH₵ ' + gh(amount) + '</span>' +
+    '<s class="price-was"><span class="sr-only">was </span>GH₵ ' + gh(wasPrice(p, amount)) + '</s>';
+}
 function isSoldOut(p) { return p.stock === 0; }
 function isPreorder(p) { return p.fulfillment_type === 'preorder'; }
 function maxQtyFor(p) {
@@ -138,14 +156,25 @@ function maxQtyFor(p) {
 }
 
 /* ============================================================ rendering */
-function badgeHTML(p) {
-  if (isSoldOut(p)) return '<span class="card__soldout">Sold out</span>';
+function statusBadge(p) {
   const b = String(p.badge || '').trim();
   const key = b.toLowerCase();
   if (isPreorder(p) || key === 'china' || key === 'preorder') return '<span class="card__badge">Pre-order</span>';
   if (b) return '<span class="card__badge">' + esc(key === 'hot' ? 'Hot' : key === 'new' ? 'New' : b) + '</span>';
   if (typeof p.stock === 'number' && p.stock > 0 && p.stock <= 5) return '<span class="card__badge card__badge--soft">Only ' + p.stock + ' left</span>';
   return '';
+}
+function badgeHTML(p) {
+  if (isSoldOut(p)) return '<span class="card__soldout">Sold out</span>';
+  const off = salePercent(p);
+  const badges = (off ? '<span class="card__badge card__badge--sale">' + off + '% off</span>' : '') + statusBadge(p);
+  return badges ? '<span class="card__badges">' + badges + '</span>' : '';
+}
+
+function cardPriceHTML(p) {
+  const span = salePercent(p) ? priceSpan(p) : null;
+  if (!span) return '<span class="card__price">' + esc(priceLabel(p)) + '</span>';
+  return '<span class="card__price card__price--sale">' + salePriceHTML(p, span.min, span.max - span.min > 0.005 ? 'From ' : '') + '</span>';
 }
 
 function cardHTML(p, i, life) {
@@ -157,7 +186,7 @@ function cardHTML(p, i, life) {
       '</span>' +
       '<span class="card__body">' +
         '<span class="card__name">' + esc(p.name) + '</span>' +
-        '<span class="card__price">' + esc(priceLabel(p)) + '</span>' +
+        cardPriceHTML(p) +
       '</span>' +
     '</a>';
 }
@@ -383,7 +412,7 @@ function renderCart() {
     }).join('') + (hasPre ? '<p class="cart__hint">Includes China pre-order items. These are paid in full before we order them.</p>' : '');
   }
   $('cart-subtotal').textContent = 'GH₵ ' + gh(cartSubtotal());
-  $('cart-total-2').textContent = 'GH₵ ' + gh(cartSubtotal());
+  renderCheckoutTotal();
   $('checkout-btn').disabled = !cart.length;
 }
 
@@ -548,9 +577,15 @@ function updatePdp() {
   const p = byId.get(pdp.id);
   if (!p) return;
   const priced = hasPrice(p);
-  $('pdp-price').textContent = priced
-    ? 'GH₵ ' + gh(unitPrice(p, pdp.size)) + (isWholesale() ? ' / pc' : '')
-    : (isPreorder(p) ? 'Price on request' : '');
+  const off = priced ? salePercent(p) : 0;
+  $('pdp-price').classList.toggle('is-sale', !!off);
+  if (off) {
+    $('pdp-price').innerHTML = salePriceHTML(p, unitPrice(p, pdp.size), '') + '<span class="price-off">' + off + '% off</span>';
+  } else {
+    $('pdp-price').textContent = priced
+      ? 'GH₵ ' + gh(unitPrice(p, pdp.size)) + (isWholesale() ? ' / pc' : '')
+      : (isPreorder(p) ? 'Price on request' : '');
+  }
 
   let stock = '';
   if (isSoldOut(p)) stock = 'Sold out';
@@ -667,7 +702,9 @@ function startCheckout() {
   $('co-hint').textContent = paystackEnabled
     ? 'Pay online with Paystack, or finish your order on WhatsApp.'
     : 'Your order completes on WhatsApp. We\'ll confirm delivery and payment there.';
-  $('cart-total-2').textContent = 'GH₵ ' + gh(cartSubtotal());
+  const joined = readWelcome();
+  fillIfEmpty('co-phone', joined && joined.phone);
+  renderCheckoutTotal();
   openCart('details');
   setTimeout(() => $(!$('co-name').value ? 'co-name' : !$('co-phone').value ? 'co-phone' : 'co-name').focus(), 450);
 }
@@ -752,11 +789,12 @@ async function submitOrder(e) {
           reference: data.reference, order_number: data.order_number, created_at: new Date().toISOString(),
           items: cart.map((i) => ({ id: i.id, size: i.size, qty: i.qty })),
           receipt: Object.assign({}, receipt, {
-            orderNumber: data.order_number, paymentMethod: 'Paystack',
-            total: Math.round(lines.reduce((sum, l) => sum + l.price * l.qty, 0) * 100) / 100
+            orderNumber: data.order_number, paymentMethod: 'Paystack', discountPercent: data.welcome_discount || 0,
+            total: data.total_amount != null ? data.total_amount : Math.round(lines.reduce((sum, l) => sum + l.price * l.qty, 0) * 100) / 100
           })
         }));
       } catch (err) { /* storage blocked: the cart just keeps the items */ }
+      if (data.welcome_discount) markWelcomeUsed();
       window.location.assign(data.authorization_url);
       return false;
     }
@@ -774,14 +812,16 @@ async function submitOrder(e) {
     if (where) msg += '*Delivery:* ' + where + (address.landmark ? ' (' + address.landmark + ')' : '') + '\n';
     msg += '\n*Items:*\n';
     lines.forEach((it) => { msg += '• ' + it.qty + ' × ' + it.name + ' (' + it.size + ') — GH₵ ' + gh(it.price * it.qty) + '\n'; });
+    if (data.welcome_discount) msg += '\n*Welcome offer:* ' + data.welcome_discount + '% off';
     msg += '\n*Total:* GH₵ ' + gh(data.total_amount) + '\n';
     if (notes) msg += '*Notes:* ' + notes + '\n';
     msg += '\n' + (orderType === 'preorder'
       ? 'This includes China pre-order items. Please send the payment details so I can pay in full before you order.'
       : 'Please let me know how to proceed with payment and delivery. Thank you!');
 
+    if (data.welcome_discount) markWelcomeUsed();
     lastReceipt = Object.assign({}, receipt, {
-      orderNumber: data.order_number, total: data.total_amount, paymentMethod: 'WhatsApp',
+      orderNumber: data.order_number, total: data.total_amount, paymentMethod: 'WhatsApp', discountPercent: data.welcome_discount || 0,
       status: data.status || (orderType === 'preorder' ? 'awaiting_payment' : 'pending') // a replayed retry carries no status
     });
     checkoutIdemKey = null;
@@ -1005,8 +1045,133 @@ function hidePromo() {
 function joinNewsletter(e) {
   e.preventDefault();
   const num = $('news-phone').value.trim();
+  // With the live server, the footer joins the same list as the pop-up (and its consent box).
+  if (welcomeOfferPercent()) {
+    $('welcome-phone').value = num;
+    openWelcome();
+    $('news-phone').value = '';
+    return false;
+  }
   window.open(waLink('Hello DC Kids! Please add me to your updates list' + (num ? ' — my number is ' + num : '') + '.'), '_blank', 'noopener');
   $('news-phone').value = '';
+  return false;
+}
+
+/* ================================================== WhatsApp list + welcome */
+// Only the live server's settings carry the offer; the static deploy's
+// settings.json does not, since there is nowhere to save a sign-up there.
+function welcomeOfferPercent() {
+  return Number(siteConfig.welcome_enabled) ? Math.max(0, Number(siteConfig.welcome_percent) || 0) : 0;
+}
+function readWelcome() {
+  try { return JSON.parse(localStorage.getItem(WELCOME_KEY) || 'null'); } catch (e) { return null; }
+}
+// Mirrors the server's toWhatsAppDigits, so 024… and +233 24… count as one number.
+function phoneKey(raw) {
+  const text = String(raw || '').trim();
+  let digits = text.replace(/\D/g, '');
+  if (text.startsWith('00')) digits = digits.slice(2);
+  if (/^0\d{9}$/.test(digits)) digits = '233' + digits.slice(1);
+  if (/^[25]\d{8}$/.test(digits)) digits = '233' + digits;
+  return digits;
+}
+// The welcome % this checkout will most likely get. The server has the final
+// say (it knows whether the number already used it); this only previews it.
+function expectedWelcomePercent() {
+  const joined = readWelcome();
+  if (!joined || !(joined.percent > 0) || isWholesale()) return 0;
+  return phoneKey($('co-phone').value) === phoneKey(joined.phone) ? joined.percent : 0;
+}
+function markWelcomeUsed() {
+  const joined = readWelcome();
+  if (!joined) return;
+  try { localStorage.setItem(WELCOME_KEY, JSON.stringify({ phone: joined.phone, percent: 0 })); } catch (e) { /* storage blocked */ }
+}
+function renderCheckoutTotal() {
+  const subtotal = cartSubtotal();
+  const percent = expectedWelcomePercent();
+  const off = Math.round(subtotal * percent) / 100;
+  $('co-welcome').hidden = !percent;
+  $('co-welcome-pct').textContent = percent;
+  $('co-welcome-amt').textContent = '−GH₵ ' + gh(off);
+  $('cart-total-2').textContent = 'GH₵ ' + gh(subtotal - off);
+}
+
+function openWelcome() {
+  const dialog = $('welcome');
+  if (dialog.open || typeof dialog.showModal !== 'function') return;
+  $('welcome-pct').textContent = welcomeOfferPercent() + '% off';
+  $('welcome-error').hidden = true;
+  dialog.showModal();
+  if (!$('welcome-phone').value) $('welcome-phone').focus();
+}
+function closeWelcome() {
+  const dialog = $('welcome');
+  if (!dialog.open) return;
+  dialog.close();
+  if (!readWelcome()) {
+    try { localStorage.setItem(WELCOME_SNOOZE_KEY, String(Date.now())); } catch (e) { /* storage blocked: it may show again */ }
+  }
+}
+function initWelcome() {
+  const dialog = $('welcome');
+  if (!welcomeOfferPercent() || typeof dialog.showModal !== 'function' || readWelcome()) return;
+  // Escape and the backdrop close it the same way the buttons do.
+  dialog.addEventListener('cancel', (e) => { e.preventDefault(); closeWelcome(); });
+  dialog.addEventListener('click', (e) => { if (e.target === dialog) closeWelcome(); });
+  let snoozedAt = 0;
+  try { snoozedAt = Number(localStorage.getItem(WELCOME_SNOOZE_KEY)) || 0; } catch (e) { /* storage blocked */ }
+  if (Date.now() - snoozedAt < WELCOME_SNOOZE_MS) return;
+  // Let the shopper look around first, and never cover a cart, product or search they have open.
+  const tryOpen = () => {
+    const busy = ['cart', 'pdp', 'm-menu', 'search'].some((id) => $(id).classList.contains('open')) || document.querySelector('dialog[open]');
+    if (busy) setTimeout(tryOpen, 5000);
+    else if (!readWelcome()) openWelcome();
+  };
+  setTimeout(tryOpen, WELCOME_DELAY_MS);
+}
+async function joinWelcome(e) {
+  e.preventDefault();
+  const phone = $('welcome-phone').value.trim();
+  const problem = phone.replace(/\D/g, '').length < 9
+    ? 'Enter your WhatsApp number, e.g. 024 123 4567.'
+    : (!$('welcome-consent').checked ? 'Tick the box so we may message you on WhatsApp.' : '');
+  $('welcome-error').textContent = problem;
+  $('welcome-error').hidden = !problem;
+  if (problem) { $(phone.replace(/\D/g, '').length < 9 ? 'welcome-phone' : 'welcome-consent').focus(); return false; }
+
+  const btn = $('welcome-submit');
+  btn.disabled = true;
+  btn.textContent = 'Joining…';
+  try {
+    const res = await fetch('/api/whatsapp-signups', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: phone, consent: true })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) {
+      $('welcome-error').textContent = data.error || 'We could not add you right now. Please try again.';
+      $('welcome-error').hidden = false;
+      return false;
+    }
+    const percent = data.eligible ? Number(data.percent) || 0 : 0;
+    try { localStorage.setItem(WELCOME_KEY, JSON.stringify({ phone: phone, percent: percent })); } catch (err) { /* storage blocked */ }
+    if (!$('co-phone').value) $('co-phone').value = phone;
+    $('welcome-kicker').textContent = 'You\'re on the list';
+    $('welcome-title').textContent = percent ? 'Your ' + percent + '% is waiting' : 'Thanks for joining';
+    $('welcome-text').textContent = percent
+      ? 'Check out with ' + phone + ' and ' + percent + '% comes off your first order.'
+      : 'This number has already had its welcome discount, but you\'ll still hear about new arrivals first.';
+    $('welcome-form').hidden = true;
+    $('welcome-skip').hidden = true;
+    $('welcome-shop').hidden = false;
+    $('welcome-shop').focus();
+  } catch (err) {
+    $('welcome-error').textContent = 'Connection problem. Please try again.';
+    $('welcome-error').hidden = false;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Get my discount';
+  }
   return false;
 }
 
@@ -1088,6 +1253,7 @@ function wireEvents() {
   searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') viewAllResults(); });
   wireCollectionsPeek();
 
+  $('co-phone').addEventListener('input', renderCheckoutTotal);
   $('co-saved').addEventListener('change', (e) => {
     const picked = savedAddresses.find((a) => String(a.id) === e.target.value);
     if (picked) fillAddress(picked);
@@ -1184,6 +1350,7 @@ async function init() {
   updateModeBar();
   applyWaLinks();
   initPromo();
+  initWelcome();
 
   products = await loadCatalogue();
   byId = new Map(products.map((p) => [p.id, p]));

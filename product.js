@@ -227,7 +227,13 @@
     const addLabel = addButton.querySelector('span');
     const mobilePrice = byId('productMobilePrice');
     const mobileAdd = byId('productMobileAdd');
-    if (price > 0) {
+    // A retail sale needs a real was-price above today's price (the same rule as the shop grid).
+    const base = Number(product.price);
+    const was = Number(product.compare_at_price);
+    const saleOff = state.mode !== 'wholesale' && base > 0 && was > base ? Math.round((1 - base / was) * 100) : 0;
+    if (price > 0 && saleOff) {
+      priceElement.innerHTML = `<span class="price-now">${money(price)}</span> <s class="price-was"><span class="sr-only">was </span>${money(price * was / base)}</s><span class="price-off">${saleOff}% off</span>`;
+    } else if (price > 0) {
       priceElement.innerHTML = state.mode === 'wholesale'
         ? `${money(total)}<small>${quantity} pieces at ${money(price)} each · wholesale</small>`
         : money(price);

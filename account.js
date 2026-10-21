@@ -430,8 +430,8 @@ $('ordersList').addEventListener('click', (event) => {
   const order = data.orders.find((item) => String(item.id) === button.dataset.receipt);
   if (!order) return;
   window.DCReceipt.open({
-    orderNumber: order.order_number, total: order.total_amount, status: order.status, createdAt: order.created_at,
-    orderType: order.order_type, preorderKind: order.preorder_kind, paymentMethod: order.payment_method,
+    orderNumber: order.order_number, total: order.total_amount, discountPercent: order.discount_percent,
+    status: order.status, createdAt: order.created_at, orderType: order.order_type, preorderKind: order.preorder_kind, paymentMethod: order.payment_method,
     customerName: order.customer_name, phone: order.customer_phone, email: order.customer_email,
     address: [order.delivery_address_line1, order.delivery_address_line2, order.delivery_city, order.delivery_region].filter(Boolean).join(', '),
     items: (order.items || []).map((item) => ({ name: item.product_name, qty: item.quantity, price: item.price_at_time }))

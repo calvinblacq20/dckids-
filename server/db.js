@@ -516,6 +516,16 @@ const db = new sqlite3.Database(dbPath, (err) => {
                         else console.log("Migration: added products.sizes");
                     });
                 }
+
+                // Migration: the real price a product sold for before it went on
+                // sale. Display only: the storefront shows "% OFF" and the old
+                // price crossed out, while orders are still charged `price`.
+                if (names.indexOf('compare_at_price') === -1) {
+                    db.run("ALTER TABLE products ADD COLUMN compare_at_price REAL", (er) => {
+                        if (er) console.error("Migration (products.compare_at_price) failed:", er.message);
+                        else console.log("Migration: added products.compare_at_price");
+                    });
+                }
             });
 
             // Seed products if empty. Prefer the live catalogue snapshot
@@ -688,6 +698,14 @@ const db = new sqlite3.Database(dbPath, (err) => {
                         else console.log(`Migration: added store_settings.${column}`);
                     });
                 });
+                // The WhatsApp-list welcome offer: a % off a sign-up's first order.
+                [['welcome_enabled', 'INTEGER NOT NULL DEFAULT 1'], ['welcome_percent', 'REAL NOT NULL DEFAULT 10']].forEach(([column, type]) => {
+                    if (names.indexOf(column) !== -1) return;
+                    db.run(`ALTER TABLE store_settings ADD COLUMN ${column} ${type}`, (er) => {
+                        if (er) console.error(`Migration (store_settings.${column}) failed:`, er.message);
+                        else console.log(`Migration: added store_settings.${column}`);
+                    });
+                });
             });
 
             // Seed the initial defaults (safely ignores if row 1 already exists)
@@ -727,6 +745,20 @@ const db = new sqlite3.Database(dbPath, (err) => {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`, (err) => {
             if (err) console.error('Error creating push_subscriptions table', err);
+        });
+
+        // Shoppers who joined the WhatsApp list from the storefront pop-up, with
+        // their consent time. phone is digits only, country code first
+        // (233241234567). The welcome discount is claimed by setting
+        // redeemed_at in one conditional UPDATE, so two orders cannot both use it.
+        db.run(`CREATE TABLE IF NOT EXISTS whatsapp_signups (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            phone TEXT NOT NULL UNIQUE,
+            consented_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            redeemed_at DATETIME,
+            redeemed_order_id INTEGER
+        )`, (err) => {
+            if (err) console.error('Error creating whatsapp_signups table', err);
         });
 
         // Create suppliers table

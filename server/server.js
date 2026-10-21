@@ -522,6 +522,8 @@ const registerLimiter = makeAttemptLimiter(5, 60 * 60 * 1000, 'Too many registra
 const trackLimiter    = makeAttemptLimiter(30, 15 * 60 * 1000, 'Too many tracking lookups. Try again shortly.');
 const reviewLimiter   = makeAttemptLimiter(10, 60 * 60 * 1000, 'Too many reviews submitted. Try again later.');
 const recoveryManageLimiter = makeAttemptLimiter(5, 60 * 60 * 1000, 'Too many recovery-code changes. Try again later.');
+// Phones on one mobile network often share an address, so this is looser than sign-in.
+const signupLimiter   = makeAttemptLimiter(20, 60 * 60 * 1000, 'Too many sign-ups from this network. Try again later.');
 
 // JWT Middleware
 const authenticateToken = (req, res, next) => {
@@ -929,7 +931,9 @@ app.get('/api/settings', (req, res) => {
                 wholesale_moq: 10,
                 wholesale_discount: 20,
                 banner_enabled: 1,
-                banner_text: DEFAULT_STORE_BANNER
+                banner_text: DEFAULT_STORE_BANNER,
+                welcome_enabled: 1,
+                welcome_percent: 10
             });
         }
         const settings = { ...row };
@@ -963,13 +967,20 @@ app.put('/api/settings', authenticateToken, requireManager, (req, res) => {
     if (bannerStarts && bannerEnds && bannerEnds < bannerStarts) {
         return res.status(400).json({ error: 'The announcement cannot end before it starts' });
     }
+    // The welcome offer fields are optional so an older admin page keeps them as they are.
+    const welcomePercent = req.body.welcome_percent === undefined ? null : Number(req.body.welcome_percent);
+    if (welcomePercent !== null && !(welcomePercent >= 1 && welcomePercent <= 50)) {
+        return res.status(400).json({ error: 'The welcome offer must be between 1% and 50%' });
+    }
+    const welcomeEnabled = req.body.welcome_enabled === undefined ? null : (req.body.welcome_enabled ? 1 : 0);
     db.run(
         `UPDATE store_settings
          SET whatsapp_number = ?, wholesale_enabled = ?, wholesale_moq = ?, wholesale_discount = ?, banner_enabled = ?, banner_text = ?,
-             banner_starts = ?, banner_ends = ?
+             banner_starts = ?, banner_ends = ?,
+             welcome_enabled = COALESCE(?, welcome_enabled), welcome_percent = COALESCE(?, welcome_percent)
          WHERE id = 1`,
         [whatsapp_number, wholesale_enabled ? 1 : 0, wholesale_moq, wholesale_discount, banner_enabled ? 1 : 0, banner_text,
-            bannerStarts, bannerEnds],
+            bannerStarts, bannerEnds, welcomeEnabled, welcomePercent],
         function(err) {
             if (err) return serverError(res, err);
             logAdminAction(req, 'update', 'settings', 'store', 'Updated storefront settings', {
@@ -1046,14 +1057,28 @@ function parseSizesJson(raw) {
     return null;
 }
 
+// The real price before a sale. Empty clears it; otherwise it must sit above
+// the selling price, or the storefront would advertise a discount that isn't one.
+function parseCompareAtPrice(value, price) {
+    if (value === undefined || value === null || String(value).trim() === '') return { value: null };
+    const amount = Math.round(Number(value) * 100) / 100;
+    if (!(Number(price) > 0)) return { error: 'Set a selling price before adding a was price' };
+    if (!isFinite(amount) || amount <= Number(price) || amount > 1000000) {
+        return { error: 'The was price must be higher than the selling price' };
+    }
+    return { value: amount };
+}
+
 // Add new product (Manager only)
 app.post('/api/products', authenticateToken, requireManager, (req, res) => {
     const { name, sku, size, price, img, cat, stock, badge, description, fulfillment_type, sizes } = req.body;
     const sizesJson = normalizeSizes(sizes);
+    const compareAt = parseCompareAtPrice(req.body.compare_at_price, price);
+    if (compareAt.error) return res.status(400).json({ error: compareAt.error });
     const insert = (finalSku) => {
         db.run(
-            `INSERT INTO products (name, sku, size, price, img, cat, stock, badge, description, fulfillment_type, sizes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [name, finalSku || null, size, price, img, cat, stock, badge, description || null, fulfillment_type || 'in_stock', sizesJson],
+            `INSERT INTO products (name, sku, size, price, img, cat, stock, badge, description, fulfillment_type, sizes, compare_at_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [name, finalSku || null, size, price, img, cat, stock, badge, description || null, fulfillment_type || 'in_stock', sizesJson, compareAt.value],
             function (err) {
                 if (isDuplicateSku(err)) return res.status(409).json({ error: 'That SKU is already in use by another product.' });
                 if (err) return serverError(res, err);
@@ -1077,9 +1102,16 @@ app.post('/api/products', authenticateToken, requireManager, (req, res) => {
 app.put('/api/products/:id', authenticateToken, requireManager, (req, res) => {
     const { name, sku, size, price, img, cat, stock, badge, description, fulfillment_type, sizes } = req.body;
     const sizesJson = normalizeSizes(sizes);
+    // An older admin page that knows nothing of was prices leaves the stored one alone.
+    const sendsCompareAt = Object.prototype.hasOwnProperty.call(req.body, 'compare_at_price');
+    const compareAt = parseCompareAtPrice(req.body.compare_at_price, price);
+    if (sendsCompareAt && compareAt.error) return res.status(400).json({ error: compareAt.error });
     db.run(
-        `UPDATE products SET name = ?, sku = ?, size = ?, price = ?, img = ?, cat = ?, stock = ?, badge = ?, description = ?, fulfillment_type = ?, sizes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-        [name, sku || null, size, price, img, cat, stock, badge, description || null, fulfillment_type || 'in_stock', sizesJson, req.params.id],
+        `UPDATE products SET name = ?, sku = ?, size = ?, price = ?, img = ?, cat = ?, stock = ?, badge = ?, description = ?, fulfillment_type = ?, sizes = ?,
+            compare_at_price = CASE WHEN ? THEN ? WHEN compare_at_price > ? THEN compare_at_price ELSE NULL END,
+            updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [name, sku || null, size, price, img, cat, stock, badge, description || null, fulfillment_type || 'in_stock', sizesJson,
+            sendsCompareAt ? 1 : 0, compareAt.value, Number(price) || 0, req.params.id],
         function (err) {
             if (isDuplicateSku(err)) return res.status(409).json({ error: 'That SKU is already in use by another product.' });
             if (err) return serverError(res, err);
@@ -1494,6 +1526,50 @@ function normalizePreorderKind(orderType, kind) {
     return PREORDER_KINDS.includes(value) ? value : 'shop';
 }
 
+// WhatsApp numbers as shoppers type them (024 123 4567, +233 24 123 4567,
+// 233241234567, or another country with its + code) become digits with the
+// country code first, so the sign-up list and orders match on one form.
+// Returns '' for anything that cannot be a phone number.
+function toWhatsAppDigits(raw) {
+    const text = String(raw || '').trim();
+    let digits = text.replace(/\D/g, '');
+    const international = text.startsWith('+') || text.startsWith('00');
+    if (text.startsWith('00')) digits = digits.slice(2);
+    if (!international && /^0\d{9}$/.test(digits)) digits = '233' + digits.slice(1);
+    if (!international && /^[25]\d{8}$/.test(digits)) digits = '233' + digits;
+    if (/^233\d{9}$/.test(digits)) return digits;
+    if (digits.startsWith('233')) return '';
+    return international && /^[1-9]\d{7,14}$/.test(digits) ? digits : '';
+}
+
+// The welcome offer's % when it is switched on, else 0.
+function welcomePercentOf(settings) {
+    if (!settings || !Number(settings.welcome_enabled)) return 0;
+    const percent = Number(settings.welcome_percent);
+    return isFinite(percent) && percent > 0 ? Math.min(50, percent) : 0;
+}
+
+// The welcome offer takes a % off the first order from a number on the
+// WhatsApp list. Wholesale has its own price, so only retail and pre-orders
+// qualify. The claim is a single conditional UPDATE: of two orders racing on
+// one number, only one gets the discount.
+async function claimWelcomeDiscount(phone, isWholesale) {
+    const digits = toWhatsAppDigits(phone);
+    if (isWholesale || !digits) return 0;
+    const percent = welcomePercentOf(await dbGetAsync('SELECT welcome_enabled, welcome_percent FROM store_settings WHERE id = 1'));
+    if (!percent) return 0;
+    const claim = await dbRunAsync('UPDATE whatsapp_signups SET redeemed_at = CURRENT_TIMESTAMP WHERE phone = ? AND redeemed_at IS NULL', [digits]);
+    return claim.changes === 1 ? percent : 0;
+}
+function linkWelcomeClaim(phone, orderId) {
+    return dbRunAsync('UPDATE whatsapp_signups SET redeemed_order_id = ? WHERE phone = ? AND redeemed_at IS NOT NULL AND redeemed_order_id IS NULL',
+        [orderId, toWhatsAppDigits(phone)]);
+}
+// A cancelled or failed order gives the number its welcome discount back.
+function releaseWelcomeClaim(orderId) {
+    return dbRunAsync('UPDATE whatsapp_signups SET redeemed_at = NULL, redeemed_order_id = NULL WHERE redeemed_order_id = ?', [orderId]);
+}
+
 // Helper for backend price calculation
 function getPriceModifier(sizeLabel) {
     if (!sizeLabel) return 0;
@@ -1663,10 +1739,14 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
         });
 
         Promise.all(productPromises)
-            .then(() => {
-                // The counter discount comes off the summed lines, not off
-                // each unit price, so it cannot be lost to rounding per item.
-                if (discountPercent > 0) total_amount = total_amount * (1 - discountPercent / 100);
+            .then(async () => {
+                // Staff set their own counter discount; a storefront order may
+                // carry the welcome offer instead, never both.
+                const welcomePercent = req.staff ? 0 : await claimWelcomeDiscount(customer_phone, isWholesale);
+                const appliedDiscount = discountPercent || welcomePercent;
+                // The discount comes off the summed lines, not off each unit
+                // price, so it cannot be lost to rounding per item.
+                if (appliedDiscount > 0) total_amount = total_amount * (1 - appliedDiscount / 100);
                 total_amount = Math.round(total_amount * 100) / 100;
                 // Pre-orders are paid in full before DC Kids orders from China.
                 const initialStatus = order_type === 'preorder' ? 'awaiting_payment' : 'pending';
@@ -1682,9 +1762,13 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                         notes, customer_account_id, idempotency_key, discount_percent, source, preorder_kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
                     [tempNumber, customer_name, customer_phone, authoritativeEmail || null, order_type, total_amount, initialStatus,
                         delivery_area || address.city || null, address.line1 || null, address.line2 || null, address.city || null,
-                        address.region || null, address.landmark || null, notes || null, req.customer ? req.customer.cid : null, idemKey, discountPercent, orderSource,
+                        address.region || null, address.landmark || null, notes || null, req.customer ? req.customer.cid : null, idemKey, appliedDiscount, orderSource,
                         preorderKind],
                     function(err) {
+                        if (err && welcomePercent) {
+                            dbRunAsync('UPDATE whatsapp_signups SET redeemed_at = NULL WHERE phone = ? AND redeemed_order_id IS NULL', [toWhatsAppDigits(customer_phone)])
+                                .catch((releaseErr) => console.error('[Welcome offer release]', releaseErr.message));
+                        }
                         if (err) {
                             // Two identical retries raced: the first won the unique
                             // idempotency slot — hand back its order.
@@ -1700,6 +1784,9 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                         const order_id = this.lastID;
                         const order_number = 'ORD-' + String(10000 + order_id);
                         db.run(`UPDATE orders SET order_number = ? WHERE id = ?`, [order_number, order_id]);
+                        if (welcomePercent) {
+                            linkWelcomeClaim(customer_phone, order_id).catch((linkErr) => console.error('[Welcome offer link]', linkErr.message));
+                        }
 
                         const insertItemStmt = db.prepare(`INSERT INTO order_items (order_id, product_id, product_name, quantity, price_at_time) VALUES (?, ?, ?, ?, ?)`);
                         processedItems.forEach(pi => {
@@ -1729,7 +1816,7 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
 
                         notifyStaffOfOrder({ order_number, customer_name, order_type, total_amount }, false);
 
-                        res.json({ success: true, order_number, total_amount, status: initialStatus });
+                        res.json({ success: true, order_number, total_amount, status: initialStatus, welcome_discount: welcomePercent });
                     }
                 );
             })
@@ -1849,21 +1936,27 @@ async function createPaystackOrder(checkout, priced, customer) {
     try {
         await dbRunAsync('BEGIN IMMEDIATE');
         transactionOpen = true;
+        // Claimed inside the transaction, so a failed order rolls the claim back too.
+        const welcomePercent = await claimWelcomeDiscount(checkout.customerPhone, checkout.isWholesale);
+        const totalAmount = welcomePercent
+            ? Math.round(priced.totalAmount * (1 - welcomePercent / 100) * 100) / 100
+            : priced.totalAmount;
         const temporaryNumber = `TMP-${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
         const inserted = await dbRunAsync(
             `INSERT INTO orders (order_number, customer_name, customer_phone, customer_email, order_type, total_amount, status,
                 delivery_area, delivery_address_line1, delivery_address_line2, delivery_city, delivery_region,
-                delivery_landmark, notes, customer_account_id, source, preorder_kind)
-             VALUES (?, ?, ?, ?, ?, ?, 'awaiting_payment', ?, ?, ?, ?, ?, ?, ?, ?, 'storefront', ?)`,
+                delivery_landmark, notes, customer_account_id, source, preorder_kind, discount_percent)
+             VALUES (?, ?, ?, ?, ?, ?, 'awaiting_payment', ?, ?, ?, ?, ?, ?, ?, ?, 'storefront', ?, ?)`,
             [temporaryNumber, checkout.customerName, checkout.customerPhone, checkout.customerEmail, checkout.orderType,
-                priced.totalAmount, checkout.address.city, checkout.address.line1, checkout.address.line2 || null,
+                totalAmount, checkout.address.city, checkout.address.line1, checkout.address.line2 || null,
                 checkout.address.city, checkout.address.region, checkout.address.landmark || null, checkout.notes || null,
-                customer ? customer.cid : null, checkout.preorderKind]
+                customer ? customer.cid : null, checkout.preorderKind, welcomePercent]
         );
         const orderId = inserted.lastID;
         const orderNumber = `ORD-${10000 + orderId}`;
         const reference = `DCK-${orderId}-${crypto.randomBytes(10).toString('hex')}`;
         await dbRunAsync('UPDATE orders SET order_number = ? WHERE id = ?', [orderNumber, orderId]);
+        if (welcomePercent) await linkWelcomeClaim(checkout.customerPhone, orderId);
         for (const item of priced.processedItems) {
             await dbRunAsync(
                 'INSERT INTO order_items (order_id, product_id, product_name, quantity, price_at_time) VALUES (?, ?, ?, ?, ?)',
@@ -1885,11 +1978,11 @@ async function createPaystackOrder(checkout, priced, customer) {
         const payment = await dbRunAsync(
             `INSERT INTO payments (order_id, payment_method, amount, status, provider, provider_reference, currency)
              VALUES (?, 'Paystack', ?, 'pending', 'paystack', ?, 'GHS')`,
-            [orderId, priced.totalAmount, reference]
+            [orderId, totalAmount, reference]
         );
         await dbRunAsync('COMMIT');
         transactionOpen = false;
-        return { orderId, orderNumber, paymentId: payment.lastID, reference };
+        return { orderId, orderNumber, paymentId: payment.lastID, reference, totalAmount, welcomePercent };
     } catch (error) {
         if (transactionOpen) {
             try { await dbRunAsync('ROLLBACK'); } catch (rollbackError) { console.error('[Paystack order rollback]', rollbackError.message); }
@@ -2176,18 +2269,20 @@ app.post('/api/checkout/paystack', optionalCustomer, async (req, res) => {
         const callbackUrl = `${APP_URL.replace(/\/$/, '')}/payment-result.html`;
         const initialized = await paystackApiRequest('/transaction/initialize', 'POST', {
             email: checkout.customerEmail,
-            amount: String(Math.round(priced.totalAmount * 100)),
+            amount: String(Math.round(created.totalAmount * 100)),
             currency: 'GHS', reference: created.reference, callback_url: callbackUrl,
             metadata: { source_app: 'dckids', order_number: created.orderNumber, cancel_action: callbackUrl }
         });
         if (!initialized || !initialized.authorization_url || initialized.reference !== created.reference) {
             throw paymentError('Paystack did not initialize the payment correctly', 502);
         }
-        res.json({ order_number: created.orderNumber, reference: created.reference, authorization_url: initialized.authorization_url });
+        res.json({ order_number: created.orderNumber, reference: created.reference, authorization_url: initialized.authorization_url,
+            total_amount: created.totalAmount, welcome_discount: created.welcomePercent });
     } catch (error) {
         if (created) {
             try {
                 await dbRunAsync("UPDATE orders SET status = 'payment_failed', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [created.orderId]);
+                await releaseWelcomeClaim(created.orderId);
                 await dbRunAsync("UPDATE payments SET status = 'failed', gateway_response = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
                     [String(error.message || 'Paystack initialization failed').slice(0, 500), created.paymentId]);
             } catch (updateError) { console.error('[Paystack initialization cleanup]', updateError.message); }
@@ -2416,6 +2511,7 @@ app.put('/api/orders/:id', authenticateToken, async (req, res) => {
             return res.json({ success: true, changes: result.becamePaid ? 1 : 0 });
         }
         const updated = await dbRunAsync('UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [normStatus, orderId]);
+        if (updated.changes && normStatus === 'cancelled') await releaseWelcomeClaim(orderId);
         if (updated.changes) logAdminAction(req, 'update_status', 'order', orderId, `Changed order #${orderId} to ${normStatus.replace(/_/g, ' ')}`, { from: order.status, to: normStatus });
         res.json({ success: true, changes: updated.changes });
     } catch (error) { serverError(res, error); }
@@ -2432,6 +2528,7 @@ app.delete('/api/orders/:id', authenticateToken, (req, res) => {
             db.run(`DELETE FROM payments WHERE order_id = ?`, [orderId], () => {
                 db.run(`DELETE FROM orders WHERE id = ?`, [orderId], function(err) {
                     if (err) return serverError(res, err);
+                    releaseWelcomeClaim(orderId).catch((releaseErr) => console.error('[Welcome offer release]', releaseErr.message));
                     logAdminAction(req, 'delete', 'order', orderId, `Deleted order #${orderId}`);
                     res.json({ success: true, deleted: orderId });
                 });
@@ -3152,7 +3249,8 @@ app.get('/api/customer/orders', authenticateCustomer, async (req, res) => {
                 byId.set(row.id, {
                     id: row.id, order_number: row.order_number, customer_name: row.customer_name,
                     customer_phone: row.customer_phone, order_type: row.order_type, preorder_kind: row.preorder_kind || null,
-                    total_amount: Number(row.total_amount || 0), status: row.status || 'pending',
+                    total_amount: Number(row.total_amount || 0), discount_percent: Number(row.discount_percent) || 0,
+                    status: row.status || 'pending',
                     customer_email: row.customer_email, delivery_area: row.delivery_area,
                     delivery_address_line1: row.delivery_address_line1, delivery_address_line2: row.delivery_address_line2,
                     delivery_city: row.delivery_city, delivery_region: row.delivery_region,
@@ -3258,6 +3356,7 @@ app.post('/api/orders/track', trackLimiter, (req, res) => {
                     order_type: order.order_type,
                     preorder_kind: order.preorder_kind || null,
                     total_amount: order.total_amount,
+                    discount_percent: Number(order.discount_percent) || 0,
                     created_at: order.created_at,
                     updated_at: order.updated_at,
                     customer_name: order.customer_name,
@@ -3567,6 +3666,49 @@ app.post('/api/push/test', authenticateToken, async (req, res) => {
             tag: 'dckids-test'
         }, req.user.id);
         res.json({ success: true, sent });
+    } catch (err) { serverError(res, err); }
+});
+
+// ===========================================================================
+//   WHATSAPP LIST (storefront pop-up)
+//   Shoppers join with their WhatsApp number and explicit consent; their first
+//   order then gets the welcome offer (claimWelcomeDiscount). The owner sees
+//   the list in admin and removes anyone who asks to stop.
+// ===========================================================================
+app.post('/api/whatsapp-signups', signupLimiter, async (req, res) => {
+    const body = req.body || {};
+    const phone = toWhatsAppDigits(body.phone);
+    if (!phone) return res.status(400).json({ error: 'Enter your WhatsApp number, e.g. 024 123 4567' });
+    if (body.consent !== true) return res.status(400).json({ error: 'Tick the box so we may message you on WhatsApp' });
+    try {
+        await dbRunAsync('INSERT INTO whatsapp_signups (phone) VALUES (?) ON CONFLICT(phone) DO NOTHING', [phone]);
+        const signup = await dbGetAsync('SELECT redeemed_at FROM whatsapp_signups WHERE phone = ?', [phone]);
+        const percent = welcomePercentOf(await dbGetAsync('SELECT welcome_enabled, welcome_percent FROM store_settings WHERE id = 1'));
+        res.json({ success: true, percent, eligible: percent > 0 && !signup.redeemed_at });
+    } catch (err) { serverError(res, err); }
+});
+
+app.get('/api/whatsapp-signups', authenticateToken, requireManager, async (req, res) => {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    try {
+        const total = (await dbGetAsync('SELECT COUNT(*) AS count FROM whatsapp_signups')).count;
+        const signups = await dbAllAsync(
+            `SELECT s.id, s.phone, s.consented_at, s.redeemed_at, o.order_number
+               FROM whatsapp_signups s LEFT JOIN orders o ON o.id = s.redeemed_order_id
+              ORDER BY s.id DESC LIMIT ? OFFSET ?`,
+            [limit, (page - 1) * limit]
+        );
+        res.json({ signups, total, page, pages: Math.max(1, Math.ceil(total / limit)) });
+    } catch (err) { serverError(res, err); }
+});
+
+app.delete('/api/whatsapp-signups/:id', authenticateToken, requireManager, async (req, res) => {
+    try {
+        const removed = await dbRunAsync('DELETE FROM whatsapp_signups WHERE id = ?', [req.params.id]);
+        if (!removed.changes) return res.status(404).json({ error: 'That number is not on the list' });
+        logAdminAction(req, 'delete', 'whatsapp_signup', req.params.id, 'Removed a number from the WhatsApp list');
+        res.json({ success: true });
     } catch (err) { serverError(res, err); }
 });
 

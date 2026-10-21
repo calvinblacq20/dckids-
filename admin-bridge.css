@@ -1621,6 +1621,12 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
 .settings-recovery-card__actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .settings-recovery-card__label { font-size: 11px; color: var(--ink-50); text-transform: uppercase; letter-spacing: .04em; }
 .settings-recovery-card__status { margin-top: 10px; font-weight: 500; color: var(--ink); }
+.whatsapp-row { display: flex; align-items: center; gap: 10px; cursor: default; }
+.whatsapp-row .rail-row__name { display: flex; flex-direction: column; gap: 1px; min-width: 0; text-decoration: none; }
+.whatsapp-row .rail-row__name em { font-style: normal; font-size: 11px; color: var(--ink-50); }
+.whatsapp-row__rm { margin-left: auto; min-height: 36px; padding: 0 10px; border: 1px solid var(--ink-12); border-radius: var(--r-12); background: none; font: inherit; font-size: 12px; color: var(--ink-75); cursor: pointer; }
+.whatsapp-row__rm:hover { color: var(--ink); border-color: var(--ink-50); }
+.whatsapp-list__copy { width: 100%; margin-top: 12px; }
 
 .ic-violet { background: #ebe6ff; color: var(--label-lilac); }
 .ic-pink   { background: var(--lime-wash); color: var(--label-lime); }

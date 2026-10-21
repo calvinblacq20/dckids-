@@ -3,7 +3,7 @@
    after a Paystack payment, on the tracking page and in their account.
 
    DCReceipt.open({
-     orderNumber, total, status, createdAt, orderType, paymentMethod, preorderKind,
+     orderNumber, total, discountPercent, status, createdAt, orderType, paymentMethod, preorderKind,
      customerName, phone, email, address,
      items: [{ name, size, qty, price }]   // price is per piece; "Name (Size)" names are split
    });
@@ -75,6 +75,13 @@
       return '<tr><td><span class="receipt__desc">' + esc(parts.name) + '</span><span class="receipt__size">Size: ' + esc(parts.size) + '</span></td>' +
         '<td class="num">' + qty + '</td><td class="num">' + money((Number(item.price) || 0) * qty) + '</td></tr>';
     }).join('');
+    // The lines add up to the price before the discount; the total is what was charged.
+    const discount = Number(r.discountPercent) || 0;
+    const subtotal = (r.items || []).reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.qty) || 1), 0);
+    const discountRows = discount > 0 && subtotal > 0
+      ? '<div><span>Subtotal</span><span>' + money(subtotal) + '</span></div>' +
+        '<div><span>Discount (' + discount + '%)</span><span>&minus;' + money(subtotal - Number(r.total || 0)) + '</span></div>'
+      : '';
 
     document.getElementById('dc-receipt-card').innerHTML =
       '<header class="receipt__id">' +
@@ -101,7 +108,7 @@
         '<div class="receipt__muted">' + esc(contact) + '</div></section>' +
       '<table class="receipt__table"><thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Amount</th></tr></thead>' +
         '<tbody>' + (rows || '<tr><td colspan="3" class="receipt__muted">Item details are not available for this order.</td></tr>') + '</tbody></table>' +
-      '<div class="receipt__sum"><div class="receipt__sum-total"><span>Order total</span><b>' + money(r.total) + '</b></div></div>' +
+      '<div class="receipt__sum">' + discountRows + '<div class="receipt__sum-total"><span>Order total</span><b>' + money(r.total) + '</b></div></div>' +
       '<p class="receipt__note">Thank you for shopping with DC Kids Brand.</p>';
   }
 

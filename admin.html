@@ -42,7 +42,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=98">
+  <link rel="stylesheet" href="admin-bridge.css?v=99">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -4095,6 +4095,18 @@
                 </div>
               </section>
 
+              <section class="adm-card" id="whatsapp-list-card" aria-labelledby="whatsapp-list-title" hidden>
+                <div class="adm-card-head">
+                  <h2 id="whatsapp-list-title">WhatsApp list</h2>
+                  <span class="chip-count" id="whatsapp-list-count">0</span>
+                </div>
+                <div class="adm-card-body">
+                  <p class="empty-line" id="whatsapp-list-status" role="status">Shoppers who join from the shop's pop-up appear here.</p>
+                  <div class="rail-list" id="whatsapp-list"></div>
+                  <button type="button" class="btn btn-secondary whatsapp-list__copy" id="whatsapp-list-copy" onclick="copyWhatsAppList()" hidden>Copy all numbers</button>
+                </div>
+              </section>
+
               <section class="adm-card">
                 <div class="adm-card-head"><h2>Loyalty leaderboard</h2></div>
                 <div class="adm-card-body">
@@ -4988,6 +5000,15 @@
     </div>
     <p class="form-hint">The shop shows these dates on the announcement and stops showing it after the last day. Leave them empty for an announcement with no dates.</p>
   </div>
+  <div class="form-group">
+    <label style="display:flex; align-items:center; gap: 8px; cursor:pointer; margin-bottom:8px;">
+      <input type="checkbox" id="config-welcome-enabled" style="width:20px; height:20px;">
+      <span>WhatsApp sign-up pop-up with a first-order discount</span>
+    </label>
+    <label for="config-welcome-percent" class="form-label">Welcome discount (%)</label>
+    <input type="number" inputmode="numeric" min="1" max="50" step="1" id="config-welcome-percent" class="form-input" placeholder="e.g. 10" aria-describedby="config-welcome-hint">
+    <p class="form-hint" id="config-welcome-hint">Shoppers who join your WhatsApp list get this much off their first retail or pre-order, once per number. Wholesale orders keep their own price. Cancelling the order gives the discount back.</p>
+  </div>
   <div class="settings-form-actions">
     <button id="save-store-config-btn" class="btn btn-primary settings-action-btn" type="submit">Save Store Settings</button>
   </div>
@@ -5121,6 +5142,12 @@
             <div style="grid-column: span 1;">
               <label for="modal-product-price" class="block text-sm font-medium text-gray-700 mb-1.5" style="display: block; margin-bottom: 6px;">Price (GHS)</label>
               <input type="number" inputmode="decimal" min="0" step="0.01" id="modal-product-price" value="180.00" class="w-full border border-solid border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-gray-900 shadow-sm" style="box-sizing: border-box; width: 100%; border-radius: 8px; padding: 10px 12px; font-size: 13px;" />
+            </div>
+
+            <div style="grid-column: span 1;">
+              <label for="modal-product-compare" class="block text-sm font-medium text-gray-700 mb-1.5" style="display: block; margin-bottom: 6px;">Was price (GHS) <span style="font-weight: 400; color: #6b7280;">optional</span></label>
+              <input type="number" inputmode="decimal" min="0" step="0.01" id="modal-product-compare" placeholder="Price before the sale" aria-describedby="modal-product-compare-hint" class="w-full border border-solid border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-gray-900 shadow-sm" style="box-sizing: border-box; width: 100%; border-radius: 8px; padding: 10px 12px; font-size: 13px;" />
+              <p id="modal-product-compare-hint" style="margin: 4px 0 0; font-size: 11px; color: #6b7280;">The shop shows "% off" with this price crossed out. Leave empty when it is not on sale.</p>
             </div>
 
             <div style="grid-column: span 1;">
@@ -5365,6 +5392,12 @@
                      <svg onclick="var el = document.getElementById('add-product-price'); el.value = Math.max(0, (parseFloat(el.value) || 0) - 1); el.dispatchEvent(new Event('change'));" class="w-3 h-3 text-gray-400 cursor-pointer hover:text-gray-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
                   </div>
                 </div>
+              </div>
+
+              <div>
+                <label for="add-product-compare" class="block text-sm font-bold text-gray-900 mb-2">Was price (GHS) <span class="font-normal text-gray-500">optional</span></label>
+                <input type="number" id="add-product-compare" placeholder="Price before the sale" aria-describedby="add-product-compare-hint" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-gray-400 shadow-sm transition-shadow" inputmode="decimal" min="0" step="0.01" />
+                <p id="add-product-compare-hint" class="mt-1 text-xs text-gray-500">The shop shows "% off" with this price crossed out. Leave empty when it is not on sale.</p>
               </div>
 
               <div>
@@ -6357,7 +6390,7 @@
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
   <script src="admin-demo.js?v=15"></script>
-  <script src="admin.js?v=177"></script>
+  <script src="admin.js?v=178"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

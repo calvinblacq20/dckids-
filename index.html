@@ -33,7 +33,7 @@
 
   <link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" as="image" type="image/webp" href="images/hero_shop_1.webp" imagesrcset="images/hero_shop_1-720.webp 720w, images/hero_shop_1.webp 1179w" imagesizes="100vw">
-  <link rel="stylesheet" href="store.css?v=13">
+  <link rel="stylesheet" href="store.css?v=14">
 
   <!-- Structured data: Organization + WebSite (SEO + Google rich results) -->
   <script type="application/ld+json">
@@ -384,6 +384,7 @@
         <p class="cart__hint" id="co-pay-note" hidden>Online payment covers your items. We'll contact you to confirm the delivery charge.</p>
       </div>
       <div class="cart__foot">
+        <div class="cart__sub cart__welcome" id="co-welcome" hidden><span>Welcome offer (<span id="co-welcome-pct">10</span>% off)</span><b id="co-welcome-amt">&minus;GH₵ 0.00</b></div>
         <div class="cart__sub"><span>Total</span><b id="cart-total-2">GH₵ 0.00</b></div>
         <button class="btn btn--dark" type="submit" name="method" value="paystack" id="pay-btn" hidden>Pay securely with Paystack</button>
         <button class="btn btn--wa" type="submit" name="method" value="whatsapp" id="place-btn">Order on WhatsApp</button>
@@ -439,6 +440,31 @@
     </div>
   </div>
 
+  <!-- ===================== WHATSAPP LIST + WELCOME OFFER ===================== -->
+  <!-- Only opened when the live server has the offer switched on (initWelcome). -->
+  <dialog class="welcome" id="welcome" aria-labelledby="welcome-title" aria-describedby="welcome-text">
+    <div class="welcome__media" aria-hidden="true">
+      <img src="images/hero_shop_2-720.webp" alt="" width="720" height="1280" loading="lazy" decoding="async">
+    </div>
+    <div class="welcome__body">
+      <button type="button" class="welcome__x" onclick="closeWelcome()" aria-label="Close">&times;</button>
+      <p class="welcome__kicker" id="welcome-kicker">DC Kids on WhatsApp</p>
+      <h2 class="welcome__title" id="welcome-title"><b id="welcome-pct">10% off</b> your first order</h2>
+      <p class="welcome__text" id="welcome-text">Join our WhatsApp list for new arrivals and China pre-order dates. Your discount comes off automatically when you check out with this number.</p>
+      <form class="welcome__form" id="welcome-form" onsubmit="return joinWelcome(event)" novalidate>
+        <label class="field"><span>WhatsApp number</span><input id="welcome-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="024 123 4567" maxlength="30" required></label>
+        <label class="welcome__consent">
+          <input type="checkbox" id="welcome-consent" required>
+          <span>Yes, DC Kids may message me on WhatsApp about new arrivals and offers. I can ask to stop at any time. <a href="privacy.html">Privacy policy</a></span>
+        </label>
+        <p class="welcome__error" id="welcome-error" role="alert" hidden></p>
+        <button class="btn btn--dark" type="submit" id="welcome-submit">Get my discount</button>
+      </form>
+      <button class="btn btn--dark" type="button" id="welcome-shop" hidden onclick="closeWelcome(); location.hash = '#shop';">Start shopping</button>
+      <button class="welcome__skip" type="button" id="welcome-skip" onclick="closeWelcome()">No thanks</button>
+    </div>
+  </dialog>
+
   <!-- ============================= PROMO ============================= -->
   <div class="promo" id="promo" role="region" aria-label="Store announcement">
     <div class="promo__in">
@@ -460,10 +486,10 @@
   </button>
 
   <script src="image-resolver.js?v=1"></script>
-  <script src="receipt.js?v=1"></script>
+  <script src="receipt.js?v=2"></script>
   <!-- async: customer sign-in must never hold up the first paint of the shop -->
   <script type="module" async src="firebase-auth.js?v=2"></script>
-  <script src="app.js?v=34"></script>
+  <script src="app.js?v=35"></script>
   <script>
     if ('serviceWorker' in navigator) {
       // When an updated worker takes control, reload once so the page runs the

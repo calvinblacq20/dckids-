@@ -520,6 +520,46 @@ async function run() {
         r.status === 200 && Number(pendingAnalytics.kpis.totalRevenue || 0) === 0,
         `got ${pendingAnalytics.kpis && pendingAnalytics.kpis.totalRevenue}`);
 
+    // ---- was-prices and the WhatsApp-list welcome offer ----
+    r = await fetch(`${BASE}/api/products/1`, json('PUT', Object.assign({}, p1, { stock: 200, compare_at_price: p1.price }), auth));
+    check('a was price at or below the price is refused', r.status === 400, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/products/1`, json('PUT', Object.assign({}, p1, { stock: 200, compare_at_price: p1.price * 2 }), auth));
+    check('a was price above the price is saved', r.status === 200 && close((await dbGet('SELECT compare_at_price FROM products WHERE id = 1')).compare_at_price, p1.price * 2));
+    const { compare_at_price: _ignored, ...withoutCompare } = Object.assign({}, p1, { stock: 200 });
+    await fetch(`${BASE}/api/products/1`, json('PUT', withoutCompare, auth));
+    check('an older admin page that omits the was price keeps it', close((await dbGet('SELECT compare_at_price FROM products WHERE id = 1')).compare_at_price, p1.price * 2));
+    const storeSettings = await (await fetch(`${BASE}/api/settings`)).json();
+    check('the welcome offer starts on at 10%', Number(storeSettings.welcome_enabled) === 1 && Number(storeSettings.welcome_percent) === 10);
+    r = await fetch(`${BASE}/api/whatsapp-signups`, json('POST', { phone: '12', consent: true }));
+    check('a sign-up needs a real WhatsApp number', r.status === 400, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/whatsapp-signups`, json('POST', { phone: '024 555 0101' }));
+    check('a sign-up needs consent', r.status === 400, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/whatsapp-signups`, json('POST', { phone: '024 555 0101', consent: true }));
+    const signup = await r.json();
+    check('a sign-up is saved in one number format and offered 10%', r.status === 200 && signup.eligible === true && signup.percent === 10 &&
+        !!(await dbGet("SELECT id FROM whatsapp_signups WHERE phone = '233245550101'")));
+    const welcomeOrder = async (phone, orderType) => (await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Welcome Buyer', customer_phone: phone, order_type: orderType || 'retail', items: [{ id: 1, quantity: orderType === 'wholesale' ? 10 : 1, size: sizeLabel }]
+    }))).json();
+    const firstWelcome = await welcomeOrder('+233 24 555 0101');
+    check('the first order from a signed-up number gets 10% off', firstWelcome.welcome_discount === 10 && close(firstWelcome.total_amount, unitRetail * 0.9),
+        `got ${firstWelcome.total_amount}`);
+    const secondWelcome = await welcomeOrder('0245550101');
+    check('the welcome offer is used once per number', secondWelcome.welcome_discount === 0 && close(secondWelcome.total_amount, unitRetail));
+    const firstWelcomeRow = await dbGet('SELECT id FROM orders WHERE order_number = ?', [firstWelcome.order_number]);
+    await fetch(`${BASE}/api/orders/${firstWelcomeRow.id}`, json('PUT', { status: 'cancelled' }, auth));
+    const wholesaleWelcome = await welcomeOrder('0245550101', 'wholesale');
+    check('wholesale orders do not take the welcome offer', wholesaleWelcome.welcome_discount === 0);
+    const retryWelcome = await welcomeOrder('0245550101');
+    check('cancelling the order gives the welcome offer back', retryWelcome.welcome_discount === 10);
+    r = await fetch(`${BASE}/api/whatsapp-signups`);
+    check('the WhatsApp list needs a manager sign-in', r.status === 401, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/whatsapp-signups`, { headers: auth });
+    const signupList = await r.json();
+    check('managers see who joined and which order used the offer', r.status === 200 && signupList.total === 1 && signupList.signups[0].order_number === retryWelcome.order_number);
+    r = await fetch(`${BASE}/api/whatsapp-signups/${signupList.signups[0].id}`, { method: 'DELETE', headers: auth });
+    check('a number can be removed from the WhatsApp list', r.status === 200 && !(await dbGet('SELECT id FROM whatsapp_signups')));
+
     // ---- order alerts on staff devices (Web Push) ----
     // The network send is swapped for a recorder; everything else is the real path.
     const pushed = [];

@@ -2253,6 +2253,21 @@ document.addEventListener('click', function(e) {
 /* ============================================================
    SECTION 14: PRODUCT MODAL SAVE
    ============================================================ */
+// The optional "was price" field: null when empty, undefined (after a toast)
+// when it would not be a real discount. The server applies the same rule.
+function readWasPrice(inputId, price) {
+    var el = document.getElementById(inputId);
+    var raw = el ? el.value.trim() : '';
+    if (!raw) return null;
+    var was = parseFloat(raw);
+    if (isNaN(was) || !(price > 0) || was <= price) {
+        showToast('The was price must be higher than the selling price', 'warning');
+        if (el) el.focus();
+        return undefined;
+    }
+    return was;
+}
+
 function openEditModal(id) {
     var modal = document.getElementById('modal-product');
     if (!modal) return;
@@ -2263,6 +2278,7 @@ function openEditModal(id) {
     var sizeEl = document.getElementById('modal-product-size');
     var catEl = document.getElementById('modal-product-cat');
     var priceEl = document.getElementById('modal-product-price');
+    var compareEl = document.getElementById('modal-product-compare');
     var stockEl = document.getElementById('modal-product-stock');
     var badgeEl = document.getElementById('modal-product-badge');
     var descEl = document.getElementById('modal-product-desc');
@@ -2280,6 +2296,7 @@ function openEditModal(id) {
             if (sizeEl) sizeEl.value = p.size || '';
             if (catEl) catEl.value = p.cat || 'clothing';
             if (priceEl) priceEl.value = p.price || '';
+            if (compareEl) compareEl.value = p.compare_at_price || '';
             if (stockEl) stockEl.value = p.stock != null ? p.stock : 0;
             if (badgeEl) badgeEl.value = p.badge || '';
             if (descEl) descEl.value = p.description || '';
@@ -2297,6 +2314,7 @@ function openEditModal(id) {
         if (sizeEl) sizeEl.value = '';
         if (catEl) catEl.value = 'clothing';
         if (priceEl) priceEl.value = '';
+        if (compareEl) compareEl.value = '';
         if (stockEl) stockEl.value = 0;
         if (badgeEl) badgeEl.value = '';
         if (descEl) descEl.value = '';
@@ -2455,6 +2473,8 @@ function saveProduct() {
         showToast('Stock must be 0 or greater', 'warning');
         return;
     }
+    var compareVal = readWasPrice('modal-product-compare', priceVal);
+    if (compareVal === undefined) return;
 
     var id = document.getElementById('modal-product-id').value;
     var isEditing = id !== '';
@@ -2468,6 +2488,7 @@ function saveProduct() {
         size: document.getElementById('modal-product-size').value,
         cat: document.getElementById('modal-product-cat').value,
         price: priceVal,
+        compare_at_price: compareVal,
         stock: stockVal,
         badge: document.getElementById('modal-product-badge').value || null,
         img: document.getElementById('modal-product-img-src').value,
@@ -3577,7 +3598,84 @@ function updateCustomerStats() {
     if (newEl) newEl.textContent = newCount;
 }
 
+/* WhatsApp list: shoppers who joined from the storefront pop-up, with consent.
+   Managers only, since it is a list of personal numbers. */
+var whatsappSignups = [];
+
+function formatWhatsAppNumber(digits) {
+    var d = String(digits || '');
+    return /^233\d{9}$/.test(d) ? '+233 ' + d.slice(3, 5) + ' ' + d.slice(5, 8) + ' ' + d.slice(8) : '+' + d;
+}
+
+function whatsappSignupNote(signup) {
+    var joined = new Date(String(signup.consented_at || '').replace(' ', 'T') + 'Z');
+    var when = isNaN(joined.getTime()) ? '' : 'Joined ' + joined.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) + ' · ';
+    if (signup.order_number) return when + 'discount used on ' + signup.order_number;
+    return when + (signup.redeemed_at ? 'discount in use' : 'discount not used yet');
+}
+
+function loadWhatsAppList() {
+    var card = document.getElementById('whatsapp-list-card');
+    if (!card) return;
+    card.hidden = !(currentRole === 'manager' || currentRole === 'admin');
+    if (card.hidden) return;
+    var list = document.getElementById('whatsapp-list');
+    var status = document.getElementById('whatsapp-list-status');
+    var copy = document.getElementById('whatsapp-list-copy');
+    fetch(API_URL + '/whatsapp-signups?limit=500', { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') } })
+        .then(function (res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        })
+        .then(function (data) {
+            whatsappSignups = data.signups || [];
+            document.getElementById('whatsapp-list-count').textContent = data.total || 0;
+            status.textContent = 'Shoppers who join from the shop\'s pop-up appear here.';
+            status.hidden = whatsappSignups.length > 0;
+            copy.hidden = !whatsappSignups.length;
+            list.innerHTML = whatsappSignups.map(function (s) {
+                var number = formatWhatsAppNumber(s.phone);
+                return '<div class="rail-row whatsapp-row">' +
+                    '<a class="rail-row__name" href="https://wa.me/' + encodeURIComponent(s.phone) + '" target="_blank" rel="noopener">' + escapeHtml(number) +
+                    '<em>' + escapeHtml(whatsappSignupNote(s)) + '</em></a>' +
+                    '<button type="button" class="whatsapp-row__rm" onclick="removeWhatsAppSignup(' + Number(s.id) + ')" aria-label="Remove ' + escapeHtml(number) + ' from the WhatsApp list">Remove</button>' +
+                    '</div>';
+            }).join('');
+        })
+        .catch(function (err) {
+            list.innerHTML = '';
+            copy.hidden = true;
+            status.hidden = false;
+            status.textContent = 'The WhatsApp list could not be loaded. Refresh to try again.';
+            console.warn('WhatsApp list unavailable:', err.message);
+        });
+}
+
+// For someone who asks to stop getting messages.
+function removeWhatsAppSignup(id) {
+    if (!window.confirm('Remove this number from the WhatsApp list? Do this when someone asks to stop getting messages.')) return;
+    fetch(API_URL + '/whatsapp-signups/' + id, { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') } })
+        .then(function (res) {
+            if (!res.ok) return res.json().catch(function () { return {}; }).then(function (d) { throw new Error(d.error || 'Could not remove that number'); });
+            showToast('Removed from the WhatsApp list', 'success');
+            loadWhatsAppList();
+        })
+        .catch(function (err) { showToast(err.message, 'error'); });
+}
+
+function copyWhatsAppList() {
+    var text = whatsappSignups.map(function (s) { return '+' + s.phone; }).join('\n');
+    if (!navigator.clipboard || !navigator.clipboard.writeText) {
+        showToast('Copying is not available in this browser', 'error');
+        return;
+    }
+    navigator.clipboard.writeText(text)
+        .then(function () { showToast(whatsappSignups.length + (whatsappSignups.length === 1 ? ' number' : ' numbers') + ' copied', 'success'); })
+        .catch(function () { showToast('Could not copy the numbers', 'error'); });
+}
+
 function loadCustomers() {
+    loadWhatsAppList();
     var tbody = document.getElementById('customers-tbody');
     if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;padding:40px;">Loading customers...</td></tr>';
     fetchCustomersFromServer()
@@ -7889,6 +7987,10 @@ function loadStoreConfig() {
             const bannerEndsInput = document.getElementById('config-banner-ends');
             if(bannerStartsInput) bannerStartsInput.value = data.banner_starts || '';
             if(bannerEndsInput) bannerEndsInput.value = data.banner_ends || '';
+            const welcomeEnabledInput = document.getElementById('config-welcome-enabled');
+            const welcomePercentInput = document.getElementById('config-welcome-percent');
+            if(welcomeEnabledInput) welcomeEnabledInput.checked = !!Number(data.welcome_enabled);
+            if(welcomePercentInput) welcomePercentInput.value = data.welcome_percent || 10;
         })
         .catch(err => console.warn("Store config API unavailable, using local data:", err && err.message ? err.message : err));
 }
@@ -7906,7 +8008,9 @@ function saveStoreConfig(e) {
         banner_enabled: document.getElementById('config-banner-enabled').checked,
         banner_text: document.getElementById('config-banner-text').value,
         banner_starts: document.getElementById('config-banner-starts').value,
-        banner_ends: document.getElementById('config-banner-ends').value
+        banner_ends: document.getElementById('config-banner-ends').value,
+        welcome_enabled: document.getElementById('config-welcome-enabled').checked,
+        welcome_percent: Number(document.getElementById('config-welcome-percent').value) || 10
     };
 
     fetch(API_URL + '/settings', {
@@ -8572,6 +8676,7 @@ function openAddProductModal() {
     document.getElementById('add-product-sku').value = '';
     document.getElementById('add-product-cat').value = '';
     document.getElementById('add-product-price').value = '';
+    document.getElementById('add-product-compare').value = '';
     document.getElementById('add-product-stock').value = '';
     document.getElementById('add-product-status').value = 'in_stock';
     var addFulfillmentEl = document.getElementById('add-product-fulfillment');
@@ -8657,6 +8762,8 @@ function saveNewProduct() {
         showToast('Stock must be 0 or greater', 'warning');
         return;
     }
+    var compareVal = readWasPrice('add-product-compare', priceVal);
+    if (compareVal === undefined) return;
 
     var addDescEl = document.getElementById('add-product-desc');
     var addFulfillmentEl = document.getElementById('add-product-fulfillment');
@@ -8666,6 +8773,7 @@ function saveNewProduct() {
         size: document.getElementById('add-product-size').value.trim() || 'Standard',
         cat: catVal,
         price: priceVal,
+        compare_at_price: compareVal,
         stock: stockVal,
         badge: document.getElementById('add-product-badge').value.trim() || null,
         img: document.getElementById('add-product-img-src').value,
