@@ -18,9 +18,28 @@ const catalogue = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const APPLY = process.argv.includes('--apply');
 
 const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-const PREFIX = { clothing: 'CLO', shoes: 'SHO', feeding: 'FED', gear: 'GER',
-                 bathcare: 'BAT', newborn: 'NBN', bedding: 'BED',
-                 accessories: 'ACC', essentials: 'ESS' };
+/* The SKU prefix for a category is whatever that category already uses, read
+   from the data rather than declared here. Guessing produced FED, GER and NBN
+   against a catalogue that had settled on FEE, GEA and NEW — seven orphan SKUs
+   and a failing test. The fallback only covers a category with no products yet. */
+const FALLBACK = { clothing: 'CLO', shoes: 'SHO', feeding: 'FEE', gear: 'GEA',
+                   bathcare: 'BAT', newborn: 'NEW', bedding: 'BED',
+                   accessories: 'ACC', essentials: 'ESS' };
+
+function prefixesByCategory(rows) {
+    const tally = {};
+    for (const row of rows) {
+        const match = /^([A-Z]+)-\d+$/.exec(row.sku || '');
+        if (!match || !row.cat) continue;
+        tally[row.cat] = tally[row.cat] || {};
+        tally[row.cat][match[1]] = (tally[row.cat][match[1]] || 0) + 1;
+    }
+    const winner = {};
+    for (const cat of Object.keys(tally)) {
+        winner[cat] = Object.entries(tally[cat]).sort((a, b) => b[1] - a[1])[0][0];
+    }
+    return winner;
+}
 
 const db = new sqlite3.Database(DB, APPLY ? sqlite3.OPEN_READWRITE : sqlite3.OPEN_READONLY);
 const all = (sql, p = []) => new Promise((res, rej) => db.all(sql, p, (e, r) => e ? rej(e) : res(r)));
@@ -31,6 +50,8 @@ const run = (sql, p = []) => new Promise((res, rej) => db.run(sql, p, function (
     const byName = new Map(existing.map((p) => [norm(p.name), p]));
 
     // Next free number per prefix, so a new SKU never collides with an old one.
+    const PREFIX = Object.assign({}, FALLBACK, prefixesByCategory(existing));
+
     const nextNum = {};
     for (const p of existing) {
         const m = /^([A-Z]+)-(\d+)$/.exec(p.sku || '');

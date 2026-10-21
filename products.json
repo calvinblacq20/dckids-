@@ -4134,7 +4134,7 @@
     "stock": 1,
     "badge": null,
     "updated_at": "2026-10-21 19:24:02",
-    "sku": "NBN-0001",
+    "sku": "NEW-0018",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -4149,7 +4149,7 @@
     "stock": 1,
     "badge": null,
     "updated_at": "2026-10-21 19:24:02",
-    "sku": "NBN-0002",
+    "sku": "NEW-0019",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -4179,7 +4179,7 @@
     "stock": 0,
     "badge": null,
     "updated_at": "2026-10-21 19:24:02",
-    "sku": "FED-0001",
+    "sku": "FEE-0036",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -4194,7 +4194,7 @@
     "stock": 1,
     "badge": null,
     "updated_at": "2026-10-21 19:24:02",
-    "sku": "FED-0002",
+    "sku": "FEE-0037",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -4284,7 +4284,7 @@
     "stock": 1,
     "badge": null,
     "updated_at": "2026-10-21 19:24:02",
-    "sku": "FED-0003",
+    "sku": "FEE-0038",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -4314,7 +4314,7 @@
     "stock": 1,
     "badge": null,
     "updated_at": "2026-10-21 19:24:03",
-    "sku": "GER-0001",
+    "sku": "GEA-0021",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
@@ -4359,7 +4359,7 @@
     "stock": 0,
     "badge": null,
     "updated_at": "2026-10-21 19:24:03",
-    "sku": "FED-0004",
+    "sku": "FEE-0039",
     "description": null,
     "fulfillment_type": "in_stock",
     "sizes": null
