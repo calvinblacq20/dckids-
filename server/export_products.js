@@ -16,7 +16,7 @@ const DB = process.env.DB_PATH || path.join(__dirname, 'inventory.db');
 const OUT = path.join(__dirname, '..', 'products.json');
 
 const FIELDS = ['id', 'name', 'size', 'price', 'img', 'cat', 'stock', 'badge',
-                'updated_at', 'sku', 'description', 'fulfillment_type', 'sizes'];
+                'updated_at', 'sku', 'description', 'fulfillment_type', 'sizes', 'compare_at_price'];
 
 const db = new sqlite3.Database(DB, sqlite3.OPEN_READONLY);
 
