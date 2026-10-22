@@ -11,8 +11,8 @@
   <link rel="icon" href="icon.png" type="image/png">
   <link rel="manifest" href="/manifest.json">
   <link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="store.css?v=14">
-  <link rel="stylesheet" href="product.css?v=5">
+  <link rel="stylesheet" href="store.css?v=17">
+  <link rel="stylesheet" href="product.css?v=6">
 </head>
 <body class="product-page">
   <a class="product-skip-link" href="#productMain">Skip to product details</a>
@@ -50,7 +50,6 @@
         <div class="product-gallery">
           <div class="product-gallery__main">
             <img id="productMainImage" src="images/placeholder.svg" alt="">
-            <span id="productImageLabel" class="product-image-label" hidden>Category image</span>
           </div>
           <div id="productThumbnails" class="product-thumbnails" aria-label="Product images"></div>
         </div>
@@ -191,9 +190,9 @@
 
   <div id="productToast" class="product-toast" role="status" aria-live="polite" hidden></div>
 
-  <script src="image-resolver.js?v=1"></script>
+  <script src="image-resolver.js?v=2"></script>
   <!-- not async: product.js reads window.DCKidsAuth at start-up for the wishlist -->
   <script type="module" src="firebase-auth.js?v=2"></script>
-  <script src="product.js?v=5" defer></script>
+  <script src="product.js?v=6" defer></script>
 </body>
 </html>

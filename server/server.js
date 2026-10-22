@@ -3829,7 +3829,7 @@ app.get('/api/products/image-health', authenticateToken, requireManager, (req, r
             if (err2) return serverError(res, err2);
             const placeholderRe = /(^|\/)placeholder\.(?:svg|png|jpe?g|webp)$/i;
             const categoryArtworkRe = /^images\/category-fallbacks\/(?:newborn|clothing|shoes|feeding|gear|bathcare|essentials|accessories|bedding)\.webp$/i;
-            const knownLogoPlaceholderRe = /(^|\/)product_(?:1|5\d|6\d|7\d|8[0-3])\.jpg$/i;
+            const knownLogoPlaceholderRe = /(^|\/)product_(?:1|2|5\d|6\d|7\d|8[0-3])\.jpg$/i;
             const safeImageRe = /^images\/[a-zA-Z0-9_./-]+$/;
             const missingImages = [];
             const missingSkus = [];

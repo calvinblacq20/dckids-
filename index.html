@@ -32,8 +32,8 @@
   <link rel="icon" href="icon.png" type="image/png">
 
   <link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" as="image" type="image/webp" href="images/hero_shop_1.webp" imagesrcset="images/hero_shop_1-720.webp 720w, images/hero_shop_1.webp 1179w" imagesizes="100vw">
-  <link rel="stylesheet" href="store.css?v=14">
+  <link rel="preload" as="image" type="image/webp" href="images/hero_shop_1.webp?v=2" imagesrcset="images/hero_shop_1-720.webp?v=2 720w, images/hero_shop_1.webp?v=2 1179w" imagesizes="100vw">
+  <link rel="stylesheet" href="store.css?v=17">
 
   <!-- Structured data: Organization + WebSite (SEO + Google rich results) -->
   <script type="application/ld+json">
@@ -124,7 +124,7 @@
     <!-- Full-bleed cover that stays pinned while the page slides up over it -->
     <section class="hero" id="hero" aria-label="DC Kids Brand">
       <div class="hero__slides" id="hero-slides">
-        <img class="hero__slide hero__slide--shop is-active" src="images/hero_shop_1.webp" srcset="images/hero_shop_1-720.webp 720w, images/hero_shop_1.webp 1179w" sizes="100vw" width="1179" height="2096" alt="The DC Kids owner showing a mother and her baby the clothing wall in the store" fetchpriority="high">
+        <img class="hero__slide hero__slide--shop is-active" src="images/hero_shop_1.webp?v=2" srcset="images/hero_shop_1-720.webp?v=2 720w, images/hero_shop_1.webp?v=2 1179w" sizes="100vw" width="1179" height="2096" alt="The DC Kids owner in a DC Kids Brand tee in the store" fetchpriority="high">
         <img class="hero__slide hero__slide--owner" data-src="images/hero_shop_2.webp" data-srcset="images/hero_shop_2-720.webp 720w, images/hero_shop_2.webp 1179w" sizes="100vw" width="1179" height="2096" alt="The DC Kids owner in a DC Kids Brand tee, holding baby shoes in the store" decoding="async">
       </div>
       <div class="hero__shade" aria-hidden="true"></div>
@@ -165,7 +165,7 @@
     <section class="section">
       <div class="container split">
         <div class="split__img reveal-img--diag">
-          <img src="images/category-fallbacks/newborn.webp" alt="Newborn essentials" loading="lazy">
+          <img src="images/editorial/new-arrivals.webp" alt="" loading="lazy">
         </div>
         <div class="reveal">
           <div class="section__label">New in</div>
@@ -258,7 +258,7 @@
     <section class="section" id="about">
       <div class="container about">
         <div class="about__img reveal-img">
-          <img src="images/category-fallbacks/essentials.webp" alt="Baby essentials" loading="lazy">
+          <img src="images/editorial/about.webp" alt="" loading="lazy">
         </div>
         <div class="reveal">
           <div class="section__label">About</div>
@@ -274,22 +274,18 @@
         <div class="section__label reveal">Why DC Kids</div>
         <div class="values reveal-stagger">
           <div class="value">
-            <div class="value__media"><img src="images/category-fallbacks/bedding.webp" alt="" loading="lazy"></div>
             <div class="value__name">Comfort first</div>
             <div class="value__role">Soft, breathable fabrics</div>
           </div>
           <div class="value">
-            <div class="value__media"><img src="images/category-fallbacks/shoes.webp" alt="" loading="lazy"></div>
             <div class="value__name">Every size</div>
             <div class="value__role">Newborn through 12 years</div>
           </div>
           <div class="value">
-            <div class="value__media"><img src="images/category-fallbacks/gear.webp" alt="" loading="lazy"></div>
             <div class="value__name">Wholesale ready</div>
             <div class="value__role">Bulk pricing for resellers</div>
           </div>
           <div class="value">
-            <div class="value__media"><img src="images/category-fallbacks/accessories.webp" alt="" loading="lazy"></div>
             <div class="value__name">Order on WhatsApp</div>
             <div class="value__role">Fast, personal checkout</div>
           </div>
@@ -485,11 +481,11 @@
     Install app
   </button>
 
-  <script src="image-resolver.js?v=1"></script>
+  <script src="image-resolver.js?v=2"></script>
   <script src="receipt.js?v=2"></script>
   <!-- async: customer sign-in must never hold up the first paint of the shop -->
   <script type="module" async src="firebase-auth.js?v=2"></script>
-  <script src="app.js?v=35"></script>
+  <script src="app.js?v=38"></script>
   <script>
     if ('serviceWorker' in navigator) {
       // When an updated worker takes control, reload once so the page runs the

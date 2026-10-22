@@ -55,11 +55,17 @@ function catLabel(c) {
   const k = catKey(c);
   return CAT_LABELS[k] || (k ? k.charAt(0).toUpperCase() + k.slice(1) : 'Other');
 }
+const CATEGORY_TILES = ['clothing', 'shoes', 'accessories', 'feeding', 'gear', 'bathcare', 'newborn', 'bedding', 'essentials'];
+function categoryTileImage(cat) {
+  const key = catKey(cat);
+  return CATEGORY_TILES.indexOf(key) === -1
+    ? fallbackOf()
+    : 'images/categories/' + key + '.webp';
+}
 function imgOf(p) { return window.DCImageResolver ? DCImageResolver.resolve(p).src : (p.img || 'images/placeholder.svg'); }
-function fallbackOf(p) {
+function fallbackOf() {
   const r = window.DCImageResolver;
-  if (!r) return 'images/placeholder.svg';
-  return r.CATEGORY_IMAGES[catKey(p.cat)] || r.PLACEHOLDER;
+  return r ? r.PLACEHOLDER : 'images/placeholder.svg';
 }
 function isWholesale() { return storeMode === 'wholesale' && !!siteConfig.wholesale_enabled; }
 function moq() { return Math.max(1, parseInt(siteConfig.wholesale_moq, 10) || 10); }
@@ -181,7 +187,7 @@ function cardHTML(p, i, life) {
   const delay = (i % 3) * 70;
   return '<a class="card reveal-card' + (life ? ' card--life' : '') + '" href="#product-' + p.id + '" style="transition-delay:' + delay + 'ms">' +
       '<span class="card__media">' +
-        '<img src="' + esc(imgOf(p)) + '" alt="' + esc(p.name) + '" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'' + esc(fallbackOf(p)) + '\'">' +
+        '<img src="' + esc(imgOf(p)) + '" alt="' + esc(p.name) + '" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'' + esc(fallbackOf()) + '\'">' +
         badgeHTML(p) +
       '</span>' +
       '<span class="card__body">' +
@@ -201,7 +207,7 @@ function skeletonHTML(n) {
 // to carry overlaid text, so the editorial slots use the styled category shots.
 function editorialTileHTML(cat, i) {
   return '<a class="card card--life card--edit reveal-card" href="#shop" data-cat="' + esc(cat) + '" style="transition-delay:' + ((i % 3) * 70) + 'ms">' +
-      '<span class="card__media"><img src="' + esc(fallbackOf({ cat: cat })) + '" alt="' + esc(catLabel(cat)) + ' collection" loading="lazy" decoding="async"></span>' +
+      '<span class="card__media"><img src="' + esc(categoryTileImage(cat)) + '" alt="' + esc(catLabel(cat)) + ' collection" loading="lazy" decoding="async"></span>' +
       '<span class="card__body"><span class="card__name">' + esc(catLabel(cat)) + '</span><span class="card__price">Shop now &rarr;</span></span>' +
     '</a>';
 }
@@ -254,7 +260,7 @@ function renderCollections() {
   if (!el) return;
   const counts = categoryCounts();
   el.innerHTML = orderedCats(counts).map((c) =>
-    '<a class="coll" href="#shop" data-cat="' + esc(c) + '" data-img="' + esc(fallbackOf({ cat: c })) + '">' +
+    '<a class="coll" href="#shop" data-cat="' + esc(c) + '" data-img="' + esc(categoryTileImage(c)) + '">' +
       '<span>' + esc(catLabel(c)) + '</span>' +
       '<span class="coll__idx">' + counts[c] + ' item' + (counts[c] === 1 ? '' : 's') + '</span>' +
     '</a>'
@@ -400,7 +406,7 @@ function renderCart() {
       const p = byId.get(i.id);
       if (!p) return '';
       return '<div class="citem">' +
-          '<img class="citem__img" src="' + esc(imgOf(p)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(fallbackOf(p)) + '\'">' +
+          '<img class="citem__img" src="' + esc(imgOf(p)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(fallbackOf()) + '\'">' +
           '<div>' +
             '<div class="citem__name">' + esc(p.name) + '</div>' +
             '<div class="citem__meta">Size ' + esc(i.size) + ' · GH₵ ' + gh(unitPrice(p, i.size)) + (isWholesale() ? ' / pc' : '') + '</div>' +
@@ -545,7 +551,7 @@ function openPdp(id) {
   pdp.qty = isWholesale() ? moq() : 1;
 
   const img = $('pdp-img');
-  img.onerror = function () { this.onerror = null; this.src = fallbackOf(p); };
+  img.onerror = function () { this.onerror = null; this.src = fallbackOf(); };
   img.src = imgOf(p);
   img.alt = p.name;
   $('pdp-name').textContent = p.name;
