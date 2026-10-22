@@ -372,6 +372,10 @@ button { font-family: inherit; cursor: pointer; }
 .footer__bottom { margin-top: clamp(40px, 6vw, 70px); padding-top: 24px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 13px; color: var(--muted); }
 .footer__bottom a { color: var(--muted); }
 .footer__bottom a:hover { color: var(--ink); }
+/* Legal links stay small — that is the right weight for them — but the tap
+   area does not have to be. Vertical padding on an inline element grows the
+   hit box without moving the line it sits on, taking 19px to about 41px. */
+.footer__bottom a { padding-block: 11px; }
 
 /* --------------------------------------------------------- CART DRAWER ---- */
 .scrim { position: fixed; inset: 0; background: rgba(20,20,18,.34); opacity: 0; visibility: hidden; transition: opacity .4s var(--ease); z-index: 98; }
