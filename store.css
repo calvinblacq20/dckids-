@@ -195,7 +195,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 .hero__slide.is-active { opacity: 1; transform: scale(1); }
 /* portrait photos in a wide cover: keep the owner's face inside the visible band */
-.hero__slide--shop { object-position: 30% 47%; }
+.hero__slide--shop { object-position: 55% 42%; }
 .hero__slide--owner { object-position: 50% 52%; }
 /* top fade keeps the white nav legible; bottom fade carries the headline */
 .hero__shade {

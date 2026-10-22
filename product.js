@@ -126,7 +126,7 @@
 
   function resolveImage(product) {
     if (window.DCImageResolver) return window.DCImageResolver.resolve(product);
-    return { src: product && product.img ? product.img : 'images/placeholder.svg', isCategoryFallback: false };
+    return { src: product && product.img ? product.img : 'images/placeholder.svg', isPlaceholder: !product || !product.img };
   }
 
   function useFallback(image, category) {
@@ -211,7 +211,6 @@
     main.src = images[0] || 'images/placeholder.svg';
     main.alt = product.name;
     main.onerror = () => useFallback(main, product.cat);
-    byId('productImageLabel').hidden = !resolved.isCategoryFallback;
     byId('productThumbnails').innerHTML = images.map((src, index) => `<button class="product-thumbnail${index === 0 ? ' is-active' : ''}" type="button" data-image="${escapeHtml(src)}" aria-label="View image ${index + 1}" aria-pressed="${index === 0}"><img src="${escapeHtml(src)}" alt="" loading="lazy"></button>`).join('');
     byId('productThumbnails').hidden = images.length < 2;
     byId('productThumbnails').querySelectorAll('img').forEach((image) => { image.onerror = () => useFallback(image, product.cat); });

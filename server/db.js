@@ -7,7 +7,6 @@ const { DB_PATH: dbPath, ensureStorageReady } = require('./storage');
 ensureStorageReady();
 
 const SKU_PREFIXES = { clothing: 'CLO', shoes: 'SHO', accessories: 'ACC', newborn: 'NEW', bedding: 'BED', essentials: 'ESS', feeding: 'FEE', gear: 'GEA', bathcare: 'BAT' };
-const CATEGORY_IMAGES = { clothing: 'images/category-fallbacks/clothing.webp', shoes: 'images/category-fallbacks/shoes.webp', accessories: 'images/category-fallbacks/accessories.webp', newborn: 'images/category-fallbacks/newborn.webp', bedding: 'images/category-fallbacks/bedding.webp', essentials: 'images/category-fallbacks/essentials.webp', feeding: 'images/category-fallbacks/feeding.webp', gear: 'images/category-fallbacks/gear.webp', bathcare: 'images/category-fallbacks/bathcare.webp' };
 const DEFAULT_STORE_BANNER = 'China Pre-Orders are open! Message us on WhatsApp for the current closing date.';
 const LEGACY_STORE_BANNER = "China Pre-Order Window OPEN! Orders close May 18th — Don't miss out!";
 function skuPrefixForCategory(cat) {
@@ -40,22 +39,50 @@ function backfillMissingProductSkus(done) {
     });
 }
 
-function backfillCategoryArtwork(done) {
-    const normalizedImageSql = `lower(replace(img, '\\', '/'))`;
-    const missingImageSql = `(img IS NULL OR trim(img) = '' OR ${normalizedImageSql} IN ('images/placeholder.svg', 'images/placeholder.png', 'images/product_1.jpg') OR ${normalizedImageSql} GLOB 'images/product_[5-7][0-9].jpg' OR ${normalizedImageSql} GLOB 'images/product_8[0-3].jpg')`;
-    const entries = Object.entries(CATEGORY_IMAGES);
-    let pending = entries.length;
-    let updated = 0;
-    entries.forEach(([category, image]) => {
-        db.run(`UPDATE products SET img = ? WHERE lower(cat) = ? AND ${missingImageSql}`, [image, category], function (err) {
-            if (err) console.error(`Category artwork backfill (${category}) failed:`, err.message);
-            else updated += this.changes || 0;
-            pending--;
-            if (!pending) {
-                if (updated) console.log(`Category artwork backfill: assigned ${updated} product image(s).`);
-                done();
-            }
-        });
+// Two kinds of picture were removed from the repository: generated category
+// artwork, and marketing material (flyers, a greeting card, an unrelated
+// advert) that had been sitting in product slots. Either one reads as a photo
+// of the item. Databases seeded before that still carry the paths, so clear
+// them and let those products fall to the placeholder.
+function retireGeneratedArtwork(done) {
+    const normalized = `lower(replace(img, '\\', '/'))`;
+    db.run(`UPDATE products SET img = '' WHERE ${normalized} GLOB 'images/category-fallbacks/*.webp' OR ${normalized} IN ('images/product_2.jpg', 'images/product_11.jpg', 'images/product_12.jpg', 'images/product_28.jpg', 'images/product_29.jpg', 'images/product_36.jpg', 'images/product_271_upload.jpg')`, function (err) {
+        if (err) console.error('Retiring generated artwork failed:', err.message);
+        else if (this.changes) console.log(`Retired generated artwork from ${this.changes} product(s).`);
+        done();
+    });
+}
+
+// products.json carries the catalogue's photographs, and it is also what a
+// fresh install seeds from. A database seeded before the supplier's images
+// arrived has the products but not the pictures, so match on SKU and fill in
+// any that are still blank. Products that already carry an image are left
+// alone: someone may have uploaded a better one through the admin.
+function backfillCatalogueImages(done) {
+    const fs = require('fs');
+    let snapshot;
+    try {
+        snapshot = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'products.json'), 'utf8'));
+    } catch (err) {
+        console.error('Catalogue image backfill skipped:', err.message);
+        return done();
+    }
+    const rows = snapshot.filter((item) => item && item.sku && item.img);
+    if (!rows.length) return done();
+
+    let pending = rows.length;
+    let filled = 0;
+    rows.forEach((item) => {
+        db.run("UPDATE products SET img = ? WHERE sku = ? AND (img IS NULL OR trim(img) = '')",
+            [item.img, item.sku], function (err) {
+                if (err) console.error(`Catalogue image backfill (${item.sku}) failed:`, err.message);
+                else filled += this.changes || 0;
+                pending--;
+                if (!pending) {
+                    if (filled) console.log(`Catalogue image backfill: set ${filled} product image(s).`);
+                    done();
+                }
+            });
     });
 }
 
@@ -613,7 +640,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
                         { id:36, name:"Girls' Ballet Flats",              size:"Size 24–32", price:55,   img:"images/product_76.jpg", cat:"shoes",       stock:11, badge:"new" },
                         { id:37, name:"Kids' Winter Boots",               size:"Size 25–35", price:90,   img:"images/product_77.jpg", cat:"shoes",       stock:4, badge:"" },
                         
-                        { id:38, name:"Designer Sunglasses",              size:"One Size",   price:25,   img:"images/product_2.jpg",  cat:"accessories", stock:25, badge:"hot" },
+                        { id:38, name:"Designer Sunglasses",              size:"One Size",   price:25,   img:"",                      cat:"accessories", stock:25, badge:"hot" },
                         { id:39, name:"Kids' Baseball Cap",               size:"Adjustable", price:30,   img:"images/product_3.jpg",  cat:"accessories", stock:18, badge:"" },
                         { id:40, name:"Girls' Hair Accessories",          size:"Pack of 5",  price:20,   img:"images/product_4.jpg",  cat:"accessories", stock:30, badge:"new" },
                         { id:41, name:"Winter Beanie & Scarf",            size:"2Y – 8Y",    price:45,   img:"images/product_5.jpg",  cat:"accessories", stock:12, badge:"" },
@@ -626,7 +653,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
                         { id:47, name:"Newborn Starter Kit",              size:"0 – 3M",    price:85,   img:"images/product_53.jpg", cat:"baby",        stock:10, badge:"" },
                         { id:48, name:"Soft Cotton Swaddles",             size:"Pack of 3",  price:45,   img:"images/product_54.jpg", cat:"baby",        stock:20, badge:"" },
                         
-                        { id:49, name:"Primary School Backpack",          size:"Standard",   price:65,   img:"images/product_29.jpg", cat:"bags",        stock:15, badge:"new" },
+                        { id:49, name:"Primary School Backpack",          size:"Standard",   price:65,   img:"", cat:"bags",        stock:15, badge:"new" },
                         { id:50, name:"Kindergarten Mini Bag",            size:"Small",      price:45,   img:"images/product_30.jpg", cat:"bags",        stock:12, badge:"" },
                         { id:51, name:"Cartoon Character Bag",            size:"Medium",     price:55,   img:"images/product_31.jpg", cat:"bags",        stock:8, badge:"hot" },
                         { id:52, name:"Waterproof School Bag",            size:"Large",      price:80,   img:"images/product_32.jpg", cat:"bags",        stock:10, badge:"" },
@@ -655,10 +682,10 @@ const db = new sqlite3.Database(dbPath, (err) => {
                         // instead of only inside a fake "preorder" category.
                         { id:71, name:"Pre-Order: Luxury Winter Coat",    size:"2Y – 10Y",   price:150,  img:"images/product_78.jpg", cat:"clothing",    stock:10, badge:"china", fulfillment_type:"preorder" },
                         { id:72, name:"Pre-Order: Designer Sneakers",     size:"Size 26–36", price:120,  img:"images/product_83.jpg", cat:"shoes",       stock:10, badge:"china", fulfillment_type:"preorder" },
-                        { id:73, name:"Pre-Order: Formal Suit Set",       size:"3Y – 12Y",   price:200,  img:"images/product_11.jpg", cat:"clothing",    stock:10, badge:"china", fulfillment_type:"preorder" },
-                        { id:74, name:"Pre-Order: Princess Gown",         size:"4Y – 10Y",   price:180,  img:"images/product_12.jpg", cat:"clothing",    stock:10, badge:"china", fulfillment_type:"preorder" },
-                        { id:75, name:"Pre-Order: Premium Baby Gear",     size:"One Size",   price:250,  img:"images/product_28.jpg", cat:"newborn",     stock:10, badge:"china", fulfillment_type:"preorder" },
-                        { id:76, name:"Pre-Order: School Tech Bundle",    size:"Assorted",    price:300,  img:"images/product_36.jpg", cat:"essentials",  stock:10, badge:"china", fulfillment_type:"preorder" },
+                        { id:73, name:"Pre-Order: Formal Suit Set",       size:"3Y – 12Y",   price:200,  img:"", cat:"clothing",    stock:10, badge:"china", fulfillment_type:"preorder" },
+                        { id:74, name:"Pre-Order: Princess Gown",         size:"4Y – 10Y",   price:180,  img:"", cat:"clothing",    stock:10, badge:"china", fulfillment_type:"preorder" },
+                        { id:75, name:"Pre-Order: Premium Baby Gear",     size:"One Size",   price:250,  img:"", cat:"newborn",     stock:10, badge:"china", fulfillment_type:"preorder" },
+                        { id:76, name:"Pre-Order: School Tech Bundle",    size:"Assorted",    price:300,  img:"", cat:"essentials",  stock:10, badge:"china", fulfillment_type:"preorder" },
                         { id:77, name:"Pre-Order: Boutique Shoe Mix",     size:"Assorted",    price:null, img:"images/product_37.jpg", cat:"shoes",       stock:10, badge:"china", fulfillment_type:"preorder" },
                         { id:78, name:"Pre-Order: Kids Smartwatch",       size:"One Size",   price:85,   img:"images/product_55.jpg", cat:"accessories", stock:10, badge:"china", fulfillment_type:"preorder" },
                         { id:79, name:"Pre-Order: Playroom Furniture",    size:"Standard",   price:450,  img:"images/product_65.jpg", cat:"bedding",     stock:10, badge:"china", fulfillment_type:"preorder" },
@@ -1044,7 +1071,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
         db.run('SELECT 1', () => {
             db.run('SELECT 1', () => migrateCustomerAuthSchema(() => {
                 migrateCommerceSchema(() => migrateAdminOperationsSchema(() => {
-                    backfillMissingProductSkus(() => backfillCategoryArtwork(_markDbReady));
+                    backfillMissingProductSkus(() => retireGeneratedArtwork(() => backfillCatalogueImages(_markDbReady)));
                 }));
             }));
         });
@@ -1058,6 +1085,7 @@ const _dbReadyCbs = [];
 function _markDbReady() { _dbReady = true; while (_dbReadyCbs.length) _dbReadyCbs.shift()(); }
 db.whenReady = function (cb) { if (_dbReady) cb(); else _dbReadyCbs.push(cb); };
 db.backfillMissingProductSkus = backfillMissingProductSkus;
-db.backfillCategoryArtwork = backfillCategoryArtwork;
+db.retireGeneratedArtwork = retireGeneratedArtwork;
+db.backfillCatalogueImages = backfillCatalogueImages;
 
 module.exports = db;

@@ -8,7 +8,6 @@
 const API_URL = '/api';
 let globalProducts = [];
 
-const ADMIN_CATEGORY_IMAGES = DCImageResolver.CATEGORY_IMAGES;
 
 function isMissingProductImage(product) {
     return !DCImageResolver.isGenuineImage(product && product.img);
@@ -16,15 +15,15 @@ function isMissingProductImage(product) {
 
 function resolveAdminProductImage(product) {
     var image = DCImageResolver.resolve(product);
-    return { src: image.src, isCategory: image.isCategoryFallback };
+    return { src: image.src, isPlaceholder: image.isPlaceholder };
 }
 
 function adminImageMarkup(product, style) {
     var image = resolveAdminProductImage(product);
-    var fallback = ADMIN_CATEGORY_IMAGES[String(product && product.cat || '').toLowerCase()] || 'images/placeholder.svg';
+    var fallback = DCImageResolver.PLACEHOLDER;
     return '<span class="admin-image-wrap"><img src="' + escapeHtml(image.src) + '" alt="' + escapeHtml(product.name || '') + '"' +
         (style ? ' style="' + style + '"' : '') + ' onerror="this.onerror=null;this.src=\'' + escapeHtml(fallback) + '\'">' +
-        (image.isCategory ? '<span class="admin-image-badge">Category image</span>' : '') + '</span>';
+        (image.isPlaceholder ? '<span class="admin-image-badge">No photo</span>' : '') + '</span>';
 }
 
 /* Transparent 1x1 GIF — safe empty-image placeholder (never requests the page URL). */
@@ -1886,7 +1885,7 @@ function openProductDetail(productId) {
         var detailImage = resolveAdminProductImage(p);
         img.src = detailImage.src;
         img.alt = p.name || '';
-        img.onerror = function() { this.onerror = null; this.src = ADMIN_CATEGORY_IMAGES[String(p.cat || '').toLowerCase()] || 'images/placeholder.svg'; };
+        img.onerror = function() { this.onerror = null; this.src = DCImageResolver.PLACEHOLDER; };
         var media = img.parentElement;
         var oldBadge = media && media.querySelector('.admin-image-badge');
         if (oldBadge) oldBadge.remove();
@@ -2320,7 +2319,7 @@ function openEditModal(id) {
         if (descEl) descEl.value = '';
         if (idEl) idEl.value = '';
         if (fulfillmentEl) fulfillmentEl.value = 'in_stock';
-        if (imgPreview) imgPreview.src = ADMIN_CATEGORY_IMAGES.clothing;
+        if (imgPreview) imgPreview.src = DCImageResolver.PLACEHOLDER;
         if (imgSrcEl) imgSrcEl.value = 'images/placeholder.svg';
         if (typeof setSizeRows === 'function') setSizeRows('modal-product', []);
         if (typeof populateSizePresetDropdowns === 'function') populateSizePresetDropdowns();
@@ -3365,7 +3364,7 @@ function openOrderItemPreviewModal(orderDbId) {
         if (mainImg) {
             var mainMeta = resolveAdminProductImage({ img: data.product_image, cat: data.category, name: data.item_name });
             mainImg.src = mainMeta.src;
-            mainImg.onerror = function() { this.onerror = null; this.src = ADMIN_CATEGORY_IMAGES[String(data.category || '').toLowerCase()] || 'images/placeholder.svg'; };
+            mainImg.onerror = function() { this.onerror = null; this.src = DCImageResolver.PLACEHOLDER; };
             var mainWrap = mainImg.parentElement;
             var mainBadge = mainWrap && mainWrap.querySelector('.admin-image-badge');
             if (mainBadge) mainBadge.remove();
@@ -10588,7 +10587,7 @@ function submitProductImport() {
 function downloadProductCsvTemplate() {
     var csv = 'name,price,stock,cat,size,badge,img,fulfillment_type,sku,description\n' +
               '"Baby Romper Set",97,12,clothing,"0-3M,3-6M,6-9M",new,images/placeholder.svg,in_stock,,"Soft cotton romper set — leave sku blank to auto-assign"\n' +
-              '"Knit Sweater",128,8,clothing,2Y,hot,images/product_2.jpg,preorder,CLO-0050,"Warm winter knit — China pre-order, with our own SKU"\n';
+              '"Knit Sweater",128,8,clothing,2Y,hot,images/product_42.jpg,preorder,CLO-0050,"Warm winter knit — China pre-order, with our own SKU"\n';
     var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');

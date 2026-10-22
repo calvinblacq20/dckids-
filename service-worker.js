@@ -9,7 +9,7 @@
    - Images + fonts: cache-first.
    - Bumping VERSION wipes old caches on activate.
 */
-const VERSION = 'dckids-v286';
+const VERSION = 'dckids-v293';
 const STATIC_CACHE = 'dckids-static-' + VERSION;
 const RUNTIME_CACHE = 'dckids-runtime-' + VERSION;
 
@@ -58,16 +58,7 @@ const APP_SHELL = [
   '/brand/splash-dc.webp?v=2',
   '/brand/splash-mark.webp?v=2',
   '/brand/splash-tagline.webp?v=2',
-  '/images/placeholder.svg',
-  '/images/category-fallbacks/newborn.webp',
-  '/images/category-fallbacks/clothing.webp',
-  '/images/category-fallbacks/shoes.webp',
-  '/images/category-fallbacks/feeding.webp',
-  '/images/category-fallbacks/gear.webp',
-  '/images/category-fallbacks/bathcare.webp',
-  '/images/category-fallbacks/essentials.webp',
-  '/images/category-fallbacks/accessories.webp',
-  '/images/category-fallbacks/bedding.webp'
+  '/images/placeholder.svg'
 ];
 
 self.addEventListener('install', (event) => {

@@ -73,7 +73,7 @@ const run = (sql, p = []) => new Promise((res, rej) => db.run(sql, p, function (
             inserts.push({ ...item,
                 sku: `${prefix}-${String(nextNum[prefix]).padStart(4, '0')}`,
                 stock: item.in_stock ? 1 : 0,
-                img: `images/category-fallbacks/${item.cat}.webp` });
+                img: '' });
         }
     }
 

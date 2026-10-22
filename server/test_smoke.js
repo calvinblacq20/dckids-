@@ -165,24 +165,70 @@ async function run() {
     check('fresh catalogue SKUs are unique', new Set(seededSkus).size === seededSkus.length);
     check('SKU prefixes cover every category', products.every(p => /^(CLO|SHO|ACC|NEW|BED|ESS|FEE|GEA|BAT)-\d{4}$/.test(p.sku)), 'unexpected SKU prefix');
     const categoryAssets = ['newborn','clothing','shoes','feeding','gear','bathcare','essentials','accessories','bedding'];
-    const categoryImageCount = products.filter(p => /^images\/category-fallbacks\/[a-z]+\.webp$/.test(p.img || '')).length;
-    check('placeholder products reuse category artwork', categoryImageCount >= 180, `got ${categoryImageCount}`);
-    check('all category fallback assets exist', categoryAssets.every(name => fs.existsSync(path.join(__dirname, '..', 'images', 'category-fallbacks', name + '.webp'))));
     const imageResolver = require('../image-resolver');
-    check('all categories resolve to their matching fallback', categoryAssets.every(name => imageResolver.resolve({ cat: name, img: 'images/placeholder.svg' }).src === 'images/category-fallbacks/' + name + '.webp'));
-    check('stored category artwork remains visibly labelled', categoryAssets.every(name => {
+    check('the generated category artwork is gone from the repository',
+        !fs.existsSync(path.join(__dirname, '..', 'images', 'category-fallbacks')));
+    // Flyers, a Christmas card, a promo collage, a wholesale text list and a
+    // camera advert were all sitting in product slots.
+    const retiredMarketing = ['product_2.jpg', 'product_11.jpg', 'product_12.jpg',
+        'product_28.jpg', 'product_29.jpg', 'product_36.jpg', 'product_271_upload.jpg'];
+    check('the marketing material is gone from the repository',
+        retiredMarketing.every(name => !fs.existsSync(path.join(__dirname, '..', 'images', name))));
+    check('no product in the catalogue points at generated artwork or marketing',
+        products.every(p => {
+            const img = String(p.img || '').replace(/\\/g, '/').toLowerCase();
+            return !img.includes('category-fallbacks') &&
+                !retiredMarketing.some(name => img.endsWith('/' + name));
+        }));
+    check('a product without a photo resolves to the placeholder', categoryAssets.every(name => {
+        const resolved = imageResolver.resolve({ cat: name, img: '' });
+        return resolved.src === 'images/placeholder.svg' && resolved.isPlaceholder === true;
+    }));
+    check('artwork paths left in older databases resolve to the placeholder', categoryAssets.every(name => {
         const resolved = imageResolver.resolve({ cat: name, img: 'images/category-fallbacks/' + name + '.webp' });
-        return resolved.src === 'images/category-fallbacks/' + name + '.webp' && resolved.isCategoryFallback === true && imageResolver.isGenuineImage(resolved.src) === false;
+        return resolved.src === 'images/placeholder.svg' && resolved.isPlaceholder === true;
     }));
-    check('legacy logo duplicates resolve as category artwork', ['product_50.jpg', 'product_66.jpg', 'product_83.jpg'].every(name => {
-        const resolved = imageResolver.resolve({ cat: 'shoes', img: 'images/' + name });
-        return resolved.src === 'images/category-fallbacks/shoes.webp' && resolved.isCategoryFallback === true;
+    check('the flyer and the logo cards resolve to the placeholder',
+        ['product_2.jpg', 'product_50.jpg', 'product_66.jpg', 'product_83.jpg'].every(name => {
+            const resolved = imageResolver.resolve({ cat: 'shoes', img: 'images/' + name });
+            return resolved.src === 'images/placeholder.svg' && resolved.isPlaceholder === true;
+        }));
+    check('the database clears retired artwork instead of assigning it',
+        /retireGeneratedArtwork[\s\S]*?category-fallbacks/.test(fs.readFileSync(path.join(__dirname, 'db.js'), 'utf8')));
+    // A product pointing at a file that is not there renders a broken card,
+    // and nothing else in the suite would notice.
+    const missingFiles = products.filter((p) => p.img &&
+        !fs.existsSync(path.join(__dirname, '..', ...String(p.img).split('/'))));
+    check('every product image on disk', missingFiles.length === 0,
+        missingFiles.slice(0, 5).map((p) => `${p.sku}:${p.img}`).join(', '));
+    const onCatalogue = products.filter((p) => String(p.img || '').startsWith('images/catalogue/'));
+    check('the supplier catalogue is wired up', onCatalogue.length >= 250,
+        `got ${onCatalogue.length}`);
+    check('catalogue images are square and web-sized', onCatalogue.slice(0, 12).every((p) => {
+        const file = path.join(__dirname, '..', ...String(p.img).split('/'));
+        return fs.statSync(file).size < 400 * 1024;
     }));
+    // Section and category imagery is decorative: it carries the category's
+    // own name and never stands in for a product the customer can order.
+    const tileCats = ['clothing','shoes','accessories','feeding','gear',
+        'bathcare','newborn','bedding','essentials'];
+    check('every category tile image is on disk', tileCats.every((c) =>
+        fs.existsSync(path.join(__dirname, '..', 'images', 'categories', c + '.webp'))));
+    check('the editorial slots have their images', ['about.webp', 'new-arrivals.webp'].every((f) =>
+        fs.existsSync(path.join(__dirname, '..', 'images', 'editorial', f))));
+    const appForTiles = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
+    check('category art is kept out of the product fallback',
+        appForTiles.includes('function categoryTileImage(cat)') &&
+        appForTiles.includes("return r ? r.PLACEHOLDER : 'images/placeholder.svg';"));
+    check('library imagery is credited',
+        fs.readFileSync(path.join(__dirname, '..', 'docs', 'image-credits.md'), 'utf8')
+            .includes('Unsplash License'));
     check('source catalogue contains no known logo placeholders', products.every(p => !imageResolver.isKnownLogoPlaceholder(p.img)));
     const realImage = imageResolver.resolve({ cat: 'clothing', img: 'images/product_42.jpg' });
-    check('genuine product images remain unchanged', realImage.src === 'images/product_42.jpg' && realImage.isCategoryFallback === false);
+    check('genuine product images remain unchanged', realImage.src === 'images/product_42.jpg' && realImage.isPlaceholder === false);
     const swSource = fs.readFileSync(path.join(__dirname, '..', 'service-worker.js'), 'utf8');
-    check('service worker caches category fallbacks', categoryAssets.every(name => swSource.includes('/images/category-fallbacks/' + name + '.webp')));
+    check('service worker precaches the placeholder and no retired artwork',
+        swSource.includes("/images/placeholder.svg") && !swSource.includes('category-fallbacks'));
     check('service worker image failure returns SVG placeholder',
         swSource.includes("isImage ? imageFallback()") && swSource.includes("caches.match('/images/placeholder.svg')"));
     // respondWith(undefined) throws "Failed to convert value to 'Response'", and
@@ -206,6 +252,11 @@ async function run() {
     check('Paystack validation returns customers to their missing details',
         appSource.includes('$(firstBad[0]).focus()') && appSource.includes('Enter a valid email address to pay with Paystack.'));
     const storeStylesSource = fs.readFileSync(path.join(__dirname, '..', 'store.css'), 'utf8');
+    check('no storefront surface still references the retired artwork',
+        !appSource.includes('category-fallbacks') && !storeStylesSource.includes('card__image-label') &&
+        !fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8').includes('category-fallbacks'));
+    check('the admin flags a product that has no photograph',
+        fs.readFileSync(path.join(__dirname, '..', 'admin.js'), 'utf8').includes('No photo</span>'));
     const accountStylesSource = fs.readFileSync(path.join(__dirname, '..', 'account.css'), 'utf8');
     check('install prompt remains below drawers and checkout overlays',
         storeStylesSource.includes('.pwa-fab { position: fixed; left: 16px; bottom: 18px; z-index: 85;') &&

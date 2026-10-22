@@ -47,10 +47,10 @@
         { id: 1, name: 'Baby Romper Set', sku: 'CLO-0001', size: '0-6M', price: 85, img: 'images/product_59.jpg', cat: 'clothing', stock: 14, badge: 'new', fulfillment_type: 'in_stock', description: 'Soft cotton romper set for newborns.' },
         { id: 2, name: 'Kids Sneakers', sku: 'SHO-0001', size: '25-30', price: 120, img: 'images/product_66.jpg', cat: 'shoes', stock: 3, badge: 'hot', fulfillment_type: 'in_stock', description: 'Everyday sneakers built for play.' },
         { id: 3, name: 'Floral Dress', sku: 'CLO-0002', size: '2Y-6Y', price: 95, img: 'images/product_57.jpg', cat: 'clothing', stock: 9, badge: '', fulfillment_type: 'in_stock', description: 'Lightweight floral dress for warm days.' },
-        { id: 4, name: 'School Bag', sku: 'ACC-0001', size: 'Standard', price: 150, img: 'images/product_29.jpg', cat: 'accessories', stock: 6, badge: '', fulfillment_type: 'in_stock', description: 'Durable school bag with padded straps.' },
+        { id: 4, name: 'School Bag', sku: 'ACC-0001', size: 'Standard', price: 150, img: '', cat: 'accessories', stock: 6, badge: '', fulfillment_type: 'in_stock', description: 'Durable school bag with padded straps.' },
         { id: 5, name: 'Toddler Sandals', sku: 'SHO-0002', size: '20-25', price: 65, img: 'images/product_67.jpg', cat: 'shoes', stock: 0, badge: '', fulfillment_type: 'in_stock', description: 'Breathable sandals for toddlers.' },
         { id: 6, name: 'Pre-Order Winter Coat', sku: 'CLO-0003', size: '2Y-10Y', price: 150, img: 'images/product_78.jpg', cat: 'clothing', stock: 10, badge: 'china', fulfillment_type: 'preorder', description: 'Warm winter coat, arriving next shipment.' },
-        { id: 7, name: 'Patterned Socks (3-pack)', sku: 'ACC-0002', size: 'One Size', price: 20, img: 'images/product_2.jpg', cat: 'accessories', stock: 32, badge: '', fulfillment_type: 'in_stock', description: 'Everyday socks, three per pack.' },
+        { id: 7, name: 'Patterned Socks (3-pack)', sku: 'ACC-0002', size: 'One Size', price: 20, img: '', cat: 'accessories', stock: 32, badge: '', fulfillment_type: 'in_stock', description: 'Everyday socks, three per pack.' },
         { id: 8, name: 'Graphic T-Shirt', sku: 'CLO-0004', size: '2Y-8Y', price: 124, img: 'images/product_1.jpg', cat: 'clothing', stock: 5, badge: '', fulfillment_type: 'in_stock', description: 'Printed cotton tee for everyday wear.' }
     ];
 
