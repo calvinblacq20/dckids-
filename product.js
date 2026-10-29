@@ -54,6 +54,15 @@
     return CATEGORY_LABELS[String(category || '').toLowerCase()] || String(category || 'Products').replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
   }
 
+  // Same rule as the storefront: whole days, and closed when no dates are set.
+  function preorderWindowOpen() {
+    const starts = state.settings.preorder_starts || '';
+    const ends = state.settings.preorder_ends || '';
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    return !!(starts || ends) && (!starts || today >= starts) && (!ends || today <= ends);
+  }
+
   function normalizeProduct(product) {
     if (!product) return null;
     const next = Object.assign({}, product);
@@ -61,7 +70,8 @@
     if (next.cat === 'bags') next.cat = 'accessories';
     next.id = Number(next.id);
     next.price = Number(next.price || 0);
-    next.stock = Number(next.stock || 0);
+    // What is still buyable after open orders, when the live API says so.
+    next.stock = Number((next.available !== undefined ? next.available : next.stock) || 0);
     return next;
   }
 
@@ -241,10 +251,15 @@
     }
 
     const isPreorder = product.fulfillment_type === 'preorder';
-    const soldOut = !isPreorder && product.stock <= 0;
+    // Outside a China pre-order window the piece can't be ordered (checkout refuses it too).
+    const windowClosed = isPreorder && !preorderWindowOpen();
+    const soldOut = windowClosed || (!isPreorder && product.stock <= 0);
     const stock = byId('productStock');
     stock.className = 'product-stock';
-    if (soldOut) {
+    if (windowClosed) {
+      stock.textContent = 'China pre-orders are closed. Message us on WhatsApp to hear when the next window opens.';
+      stock.classList.add('is-out');
+    } else if (soldOut) {
       stock.textContent = 'Currently out of stock';
       stock.classList.add('is-out');
     } else if (isPreorder) {
@@ -257,7 +272,7 @@
     }
     byId('assuranceStock').textContent = soldOut ? 'Ask us when this item will return' : (isPreorder ? 'Pre-order item' : 'Available to order');
     addButton.disabled = soldOut || price <= 0;
-    addLabel.textContent = soldOut ? 'Out of stock' : (price <= 0 ? 'Ask for price on WhatsApp' : (state.mode === 'wholesale' ? 'Add bulk to cart' : 'Add to cart'));
+    addLabel.textContent = windowClosed ? 'Pre-orders closed' : soldOut ? 'Out of stock' : (price <= 0 ? 'Ask for price on WhatsApp' : (state.mode === 'wholesale' ? 'Add bulk to cart' : 'Add to cart'));
     mobilePrice.textContent = price > 0 ? money(total) : 'Price on request';
     mobileAdd.disabled = addButton.disabled;
     mobileAdd.textContent = addLabel.textContent;

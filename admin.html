@@ -42,7 +42,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=99">
+  <link rel="stylesheet" href="admin-bridge.css?v=102">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -901,6 +901,9 @@
             <option value="essentials">Essentials</option>
             <option value="accessories">Accessories / Bags</option>
             <option value="bedding">Bedding</option>
+            <option value="womens">Women's Fashion</option>
+            <option value="home">Home</option>
+            <option value="cars">Cars</option>
           </select>
           <select id="inv-status-filter" class="filter-select" aria-label="Filter by status">
             <option value="">All Status</option>
@@ -987,6 +990,9 @@
             <option value="newborn">Newborn</option>
             <option value="bedding">Bedding</option>
             <option value="shoes">Shoes</option>
+            <option value="womens">Women's Fashion</option>
+            <option value="home">Home</option>
+            <option value="cars">Cars</option>
           </select>
           <select id="prod-status-filter" class="filter-select" aria-label="Filter products by status">
             <option value="">All Status</option>
@@ -1067,6 +1073,9 @@
             <option value="newborn">Newborn</option>
             <option value="bedding">Bedding</option>
             <option value="shoes">Shoes</option>
+            <option value="womens">Women's Fashion</option>
+            <option value="home">Home</option>
+            <option value="cars">Cars</option>
           </select>
           <select onchange="if(this.value){prodBulkSetFulfillment(this.value); this.value='';}" class="filter-select" style="min-width:180px;">
             <option value="">Set listing type…</option>
@@ -5009,6 +5018,18 @@
     <input type="number" inputmode="numeric" min="1" max="50" step="1" id="config-welcome-percent" class="form-input" placeholder="e.g. 10" aria-describedby="config-welcome-hint">
     <p class="form-hint" id="config-welcome-hint">Shoppers who join your WhatsApp list get this much off their first retail or pre-order, once per number. Wholesale orders keep their own price. Cancelling the order gives the discount back.</p>
   </div>
+  <div class="form-group">
+    <span class="form-label">China pre-order window (DC Sourcing &amp; Logistics)</span>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:6px;">
+      <label style="display:flex; flex-direction:column; gap:6px;"><span class="form-label" style="margin:0;">Opens</span>
+        <input type="date" id="config-preorder-starts" class="form-input"></label>
+      <label style="display:flex; flex-direction:column; gap:6px;"><span class="form-label" style="margin:0;">Closes</span>
+        <input type="date" id="config-preorder-ends" class="form-input"></label>
+    </div>
+    <label for="config-group-url" class="form-label" style="margin-top:12px;">WhatsApp group invite link <span style="font-weight:400;">(optional)</span></label>
+    <input type="url" id="config-group-url" class="form-input" placeholder="https://chat.whatsapp.com/…" aria-describedby="config-preorder-hint">
+    <p class="form-hint" id="config-preorder-hint">The shop shows the China pre-order section only between these dates, and won't take pre-order items outside them. The group link adds a "Join our WhatsApp group" button to the section.</p>
+  </div>
   <div class="settings-form-actions">
     <button id="save-store-config-btn" class="btn btn-primary settings-action-btn" type="submit">Save Store Settings</button>
   </div>
@@ -5105,6 +5126,20 @@
             
             <p class="text-xs text-gray-500 text-center" style="margin: 0;">JPG, PNG or WEBP. Max size 10MB</p>
           </div>
+
+          <div class="pg-editor">
+            <div class="pg-editor__head">
+              <span class="block text-sm font-medium text-gray-700" id="modal-product-gallery-label">More photos</span>
+              <span class="pg-editor__count" id="modal-product-gallery-count"></span>
+            </div>
+            <ul class="pg-editor__list" id="modal-product-gallery" aria-labelledby="modal-product-gallery-label" aria-live="polite"></ul>
+            <button type="button" class="change-image-btn pg-editor__add" id="modal-product-gallery-add">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              Add photos
+            </button>
+            <input type="file" id="modal-product-gallery-input" accept="image/*" multiple style="display:none;" aria-label="Add more product photos">
+            <p class="form-hint" style="margin: 0;">Shown on the product page after the main image. "Main" swaps a photo with the main image.</p>
+          </div>
         </div>
 
         <!-- Right Side: Fields Grid -->
@@ -5132,6 +5167,9 @@
                   <option value="essentials">Essentials</option>
                   <option value="accessories">Accessories</option>
                   <option value="bedding">Bedding</option>
+                  <option value="womens">Women's Fashion</option>
+                  <option value="home">Home</option>
+                  <option value="cars">Cars</option>
                 </select>
                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500" style="position: absolute; right: 12px; top: 0; bottom: 0; display: flex; align-items: center; pointer-events: none;">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -5376,6 +5414,9 @@
                     <option value="bedding">Bedding</option>
                     <option value="shoes">Shoes</option>
                     <option value="essentials">Essentials</option>
+                    <option value="womens">Women's Fashion</option>
+                    <option value="home">Home</option>
+                    <option value="cars">Cars</option>
                   </select>
                   <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -6390,7 +6431,7 @@
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
   <script src="admin-demo.js?v=15"></script>
-  <script src="admin.js?v=180"></script>
+  <script src="admin.js?v=184"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

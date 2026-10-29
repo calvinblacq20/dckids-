@@ -5,6 +5,9 @@
   "wholesale_discount": 20,
   "banner_enabled": 1,
   "banner_text": "China Pre-Orders are open!",
-  "banner_starts": "2026-10-17",
-  "banner_ends": "2026-10-31"
+  "banner_starts": "2026-10-25",
+  "banner_ends": "2026-11-19",
+  "preorder_starts": "2026-10-25",
+  "preorder_ends": "2026-11-19",
+  "whatsapp_group_url": ""
 }

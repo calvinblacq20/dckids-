@@ -146,6 +146,11 @@ async function run() {
         Object.keys(healthPayload).sort().join(',') === 'database,persistentStorage,status',
         healthBody);
 
+    const compressedCatalogue = await fetch(`${BASE}/api/products`, { headers: { 'Accept-Encoding': 'gzip' } });
+    await compressedCatalogue.arrayBuffer();
+    check('the catalogue is sent compressed for shoppers on mobile data',
+        compressedCatalogue.headers.get('content-encoding') === 'gzip', `content-encoding ${compressedCatalogue.headers.get('content-encoding')}`);
+
     // ---- fresh-database boot: seeded from the products.json snapshot ----
     const products = await (await fetch(`${BASE}/api/products`)).json();
     check('fresh DB seeds full catalogue', Array.isArray(products) && products.length >= 200, `got ${products.length}`);
@@ -163,7 +168,19 @@ async function run() {
     const seededSkus = products.map(p => String(p.sku || ''));
     check('fresh catalogue has no blank SKUs', seededSkus.every(Boolean));
     check('fresh catalogue SKUs are unique', new Set(seededSkus).size === seededSkus.length);
-    check('SKU prefixes cover every category', products.every(p => /^(CLO|SHO|ACC|NEW|BED|ESS|FEE|GEA|BAT)-\d{4}$/.test(p.sku)), 'unexpected SKU prefix');
+    // China pre-order pieces carry their own CN- series, whatever their category.
+    check('SKU prefixes cover every category', products.every(p => /^(CLO|SHO|ACC|NEW|BED|ESS|FEE|GEA|BAT|CN)-\d{4}$/.test(p.sku)), 'unexpected SKU prefix');
+    // The owner's own China pre-order photos: all on disk, and a fresh database
+    // gives each piece exactly its own gallery rather than borrowed shop photos.
+    const snapshot = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'products.json'), 'utf8'));
+    const preorderPieces = snapshot.filter(p => p.fulfillment_type === 'preorder' && Array.isArray(p.images));
+    check('the China pre-order pieces are in the catalogue with all their photos',
+        preorderPieces.length >= 27 && preorderPieces.reduce((n, p) => n + p.images.length, 0) >= 78, `${preorderPieces.length} pieces`);
+    check('every China pre-order photo is on disk and the first is the main image',
+        preorderPieces.every(p => p.img === p.images[0] && p.images.every(img => fs.existsSync(path.join(__dirname, '..', img)))));
+    const pieceDetail = await (await fetch(`${BASE}/api/products/${preorderPieces[0].id}`)).json();
+    check('a fresh database gives a pre-order piece its own photos, in order',
+        JSON.stringify(pieceDetail.images) === JSON.stringify(preorderPieces[0].images), JSON.stringify(pieceDetail.images));
     const categoryAssets = ['newborn','clothing','shoes','feeding','gear','bathcare','essentials','accessories','bedding'];
     const imageResolver = require('../image-resolver');
     check('the generated category artwork is gone from the repository',
@@ -226,6 +243,21 @@ async function run() {
     check('source catalogue contains no known logo placeholders', products.every(p => !imageResolver.isKnownLogoPlaceholder(p.img)));
     const realImage = imageResolver.resolve({ cat: 'clothing', img: 'images/product_42.jpg' });
     check('genuine product images remain unchanged', realImage.src === 'images/product_42.jpg' && realImage.isPlaceholder === false);
+    // The size surcharge lives in four files. The server's copy is what an order
+    // is charged; any other copy that differs shows the shopper a wrong price.
+    const modifierFrom = (file) => {
+        const source = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
+        const match = /function getPriceModifier\(sizeLabel\) \{([\s\S]*?)\r?\n\s*\}\r?\n/.exec(source);
+        return match ? new Function('sizeLabel', match[1]) : null;
+    };
+    const serverModifier = modifierFrom('server/server.js');
+    const sizeLabels = ['0-3M', '12-18M', '18M', '24M', '1Y', '2Y', '3Y', '4Y', '5Y', '6Y', '7Y', '8Y', '9Y', '10Y', '12Y',
+        '14', '21', '22', '27', '28', '32', '33', '34', '35', '36', 'One Size', ''];
+    ['app.js', 'product.js', 'admin.js'].forEach((file) => {
+        const modifier = modifierFrom(file);
+        const drift = modifier ? sizeLabels.filter((s) => modifier(s) !== serverModifier(s)) : ['function not found'];
+        check(`${file} adds the same size surcharge the server charges`, drift.length === 0, drift.join(', '));
+    });
     const swSource = fs.readFileSync(path.join(__dirname, '..', 'service-worker.js'), 'utf8');
     check('service worker precaches the placeholder and no retired artwork',
         swSource.includes("/images/placeholder.svg") && !swSource.includes('category-fallbacks'));
@@ -269,10 +301,18 @@ async function run() {
         accountStylesSource.includes('.account-tabs { position: static; flex-direction: row; overflow-x: auto;') &&
         accountStylesSource.includes('.account-tab.is-active { color: var(--ink);') &&
         !accountStylesSource.includes('prefers-color-scheme: dark'));
-    check('pre-order banner avoids stale dated messaging',
-        storefrontSource.includes('Message us on WhatsApp for the current closing date.') &&
+    check('the pre-order section carries no fixed dates and stays hidden until a window opens',
+        storefrontSource.includes('id="preorders" aria-labelledby="pre-title" hidden') &&
+        storefrontSource.includes('<p class="pre__window-dates" id="pre-window-dates"></p>') &&
         !storefrontSource.includes('Orders close May 18th') &&
         !storefrontSource.includes('Ends May 18'));
+    check('the China Pre-Order tab lists its pieces with category filters while the shop leaves them out',
+        storefrontSource.includes('id="pre-grid"') && storefrontSource.includes('id="pre-filters"') &&
+        appSource.includes('const items = products.filter(isPreorder);') &&
+        appSource.includes('function inStockView(p) { return !isPreorder(p); }'));
+    const catLabelsBlock = (appSource.match(/const CAT_LABELS = \{([\s\S]*?)\};/) || [])[1] || '';
+    const unlabelledCats = [...new Set(snapshot.map(p => p.cat))].filter(c => c && !new RegExp('\\b' + c + ':').test(catLabelsBlock));
+    check('every catalogue category has a storefront name', unlabelledCats.length === 0, unlabelledCats.join(', '));
     const productPageSource = fs.readFileSync(path.join(__dirname, '..', 'product.html'), 'utf8');
     const productStylesSource = fs.readFileSync(path.join(__dirname, '..', 'product.css'), 'utf8');
     const supportPageSource = fs.readFileSync(path.join(__dirname, '..', 'support.html'), 'utf8');
@@ -330,8 +370,13 @@ async function run() {
         !!String(staticSettings.banner_text || '').trim());
     check('settings.json run dates are real days in order',
         isDay(staticSettings.banner_starts) && isDay(staticSettings.banner_ends) && staticSettings.banner_starts <= staticSettings.banner_ends);
-    check('the service worker never serves a stale settings.json',
-        fs.readFileSync(path.join(__dirname, '..', 'service-worker.js'), 'utf8').includes("url.pathname === '/settings.json'"));
+    check('settings.json carries a real China pre-order window for the static deploy',
+        isDay(staticSettings.preorder_starts) && isDay(staticSettings.preorder_ends) && staticSettings.preorder_starts <= staticSettings.preorder_ends);
+    const workerSource = fs.readFileSync(path.join(__dirname, '..', 'service-worker.js'), 'utf8');
+    check('the service worker fetches settings and the catalogue live, static copies included',
+        workerSource.includes("['/api/settings', '/settings.json', '/api/products', '/products.json'].includes(url.pathname)"));
+    check('the service worker keeps the last catalogue for offline shoppers',
+        /if \(isLiveConfig\) \{\s*event\.respondWith\(fetch\(req\)\.then\(\(res\) => \{\s*if \(res\.ok\) \{[\s\S]*?c\.put\(req, copy\)/.test(workerSource));
     check('the storefront no longer asks for a pre-order deposit',
         !/deposit/i.test(storefrontSource) && !/deposit/i.test(appSource));
     check('customer-care page covers linked support sections',
@@ -405,6 +450,25 @@ async function run() {
     r = await fetch(`${BASE}/api/admin/customers`, { headers: auth });
     const sharedCustomers = await r.json();
     check('customer directory returns persisted records', r.status === 200 && sharedCustomers.some(customer => customer.id === manualCustomer.id && customer.notes === 'Prefers WhatsApp updates.'));
+
+    // The admin's "More photos": a manager replaces a gallery, but only with files the site serves.
+    const galleryTarget = preorderPieces[1];
+    const keptPhotos = galleryTarget.images.slice().reverse().slice(0, 2);
+    const putGallery = (id, images, headers) => fetch(`${BASE}/api/products/${id}/images`, json('PUT', { images }, headers));
+    r = await putGallery(galleryTarget.id, keptPhotos);
+    check('changing a product\'s photos needs a signed-in manager', r.status === 401 || r.status === 403, `status ${r.status}`);
+    r = await putGallery(galleryTarget.id, keptPhotos, auth);
+    const galleryAfter = await (await fetch(`${BASE}/api/products/${galleryTarget.id}`)).json();
+    check('a manager can remove and reorder a product\'s photos',
+        r.status === 200 && JSON.stringify(galleryAfter.images) === JSON.stringify(keptPhotos), JSON.stringify(galleryAfter.images));
+    r = await putGallery(galleryTarget.id, ['images/../server/secret.png'], auth);
+    check('a gallery path outside the images folder is refused', r.status === 400, `status ${r.status}`);
+    r = await putGallery(galleryTarget.id, ['images/preorders/not-a-real-photo.webp'], auth);
+    check('a gallery photo that is not on disk is refused', r.status === 400, `status ${r.status}`);
+    r = await putGallery(galleryTarget.id, Array(13).fill(keptPhotos[0]), auth);
+    check('a gallery holds at most twelve photos', r.status === 400, `status ${r.status}`);
+    r = await putGallery(999999, keptPhotos, auth);
+    check('photos for a missing product return 404', r.status === 404, `status ${r.status}`);
 
     r = await fetch(`${BASE}/api/suppliers`, json('POST', {
         supplier_name: 'Accra Kids Textiles', contact_person: 'Ama Mensah', email: 'ama@supplier.test',
@@ -565,6 +629,13 @@ async function run() {
     check('guest checkout creates order', r.status === 200 && order.success === true);
     check('order number assigned', /^ORD-\d+$/.test(order.order_number || ''), order.order_number);
     check(`retail total = unit x 2 (${unitRetail} x 2)`, close(order.total_amount, unitRetail * 2), `got ${order.total_amount}`);
+    const listedAfterOrder = (await (await fetch(`${BASE}/api/products`)).json()).find((p) => p.id === 1);
+    const heldByOrders = (await dbGet(
+        `SELECT COALESCE(SUM(oi.quantity), 0) AS held FROM order_items oi JOIN orders o ON o.id = oi.order_id
+          WHERE oi.product_id = 1 AND o.status IN ('pending', 'pending_deposit', 'awaiting_payment', 'payment_review', 'processing')`)).held;
+    check('the shop shows the stock left after open orders, not the raw count',
+        heldByOrders >= 2 && listedAfterOrder.available === Math.max(0, listedAfterOrder.stock - heldByOrders),
+        `stock ${listedAfterOrder.stock}, held ${heldByOrders}, available ${listedAfterOrder.available}`);
     r = await fetch(`${BASE}/api/analytics/sales?period=week`, { headers: auth });
     const pendingAnalytics = await r.json();
     check('pending WhatsApp orders are excluded from recognized revenue',
@@ -902,6 +973,28 @@ async function run() {
         order_type: 'wholesale', items: [{ id: 1, quantity: moq - 1, size: sizeLabel }]
     }));
     check('wholesale below MOQ rejected', r.status === 400, `status ${r.status}`);
+
+    // ---- the China pre-order window (DC Sourcing & Logistics) ----
+    const isoDay = (offset) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
+    const earlyPreorder = { customer_name: 'Early Bird', customer_phone: '0243333300', order_type: 'preorder', items: [{ id: 1, quantity: 1, size: sizeLabel }] };
+    await dbRun('UPDATE store_settings SET preorder_starts = NULL, preorder_ends = NULL WHERE id = 1');
+    r = await fetch(`${BASE}/api/orders`, json('POST', earlyPreorder));
+    check('with no pre-order window set, the shop takes no pre-orders', r.status === 400 && /closed/i.test((await r.json()).error), `status ${r.status}`);
+    await dbRun('UPDATE store_settings SET preorder_starts = ?, preorder_ends = ? WHERE id = 1', [isoDay(-10), isoDay(-1)]);
+    r = await fetch(`${BASE}/api/orders`, json('POST', earlyPreorder));
+    check('after the window closes, pre-order checkout is refused', r.status === 400, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/orders`, json('POST', earlyPreorder, auth));
+    check('staff can still take a pre-order at the counter outside the window', r.status === 200, `status ${r.status}`);
+    const currentSettings = await (await fetch(`${BASE}/api/settings`)).json();
+    const putSettings = (changes) => fetch(`${BASE}/api/settings`, json('PUT', Object.assign({}, currentSettings, changes), auth));
+    r = await putSettings({ preorder_starts: isoDay(5), preorder_ends: isoDay(1) });
+    check('a pre-order window cannot close before it opens', r.status === 400, `status ${r.status}`);
+    r = await putSettings({ preorder_starts: isoDay(-1), preorder_ends: isoDay(20), whatsapp_group_url: 'https://collector.example.com/join' });
+    check('only a real WhatsApp group invite is accepted as the group link', r.status === 400, `status ${r.status}`);
+    r = await putSettings({ preorder_starts: isoDay(-1), preorder_ends: isoDay(20), whatsapp_group_url: 'https://chat.whatsapp.com/AbCdEfGhIjKlMnOpQrStUv' });
+    const openSettings = await (await fetch(`${BASE}/api/settings`)).json();
+    check('the owner sets the window and group link in admin settings', r.status === 200 &&
+        openSettings.preorder_ends === isoDay(20) && openSettings.whatsapp_group_url === 'https://chat.whatsapp.com/AbCdEfGhIjKlMnOpQrStUv');
 
     // ---- China pre-orders: paid in full up front, three kinds ----
     r = await fetch(`${BASE}/api/orders`, json('POST', {

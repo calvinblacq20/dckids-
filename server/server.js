@@ -1,6 +1,7 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
+const compression = require('compression');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
@@ -20,6 +21,10 @@ const {
 const app = express();
 app.set('trust proxy', 1); // accurate req.ip behind a reverse proxy (nginx/render/etc.)
 app.disable('x-powered-by'); // don't advertise the framework to scanners
+// Pages, scripts, styles and the catalogue are text and shrink to about a
+// quarter gzipped: the difference a shopper on mobile data waits for.
+// Images and fonts are already compressed, so compression skips them.
+app.use(compression());
 
 // Keep the store up through unexpected errors. A single bad request or a stray
 // async rejection must never take the whole server down — that's what made the
@@ -43,6 +48,14 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => 
 // decremented stock.
 const STOCK_HOLDING_STATUSES = ['pending', 'pending_deposit', 'awaiting_payment', 'payment_review', 'processing'];
 const STOCK_HOLDING_PLACEHOLDERS = STOCK_HOLDING_STATUSES.map(() => '?').join(', ');
+// What a shopper can still buy: stock minus the pieces open orders already
+// hold, the same reservation checkout enforces, so the shop never shows
+// "in stock" for something checkout will refuse. Pre-orders are sourced on
+// demand and NULL stock is untracked, so both pass through unchanged.
+// Select from `products p` and bind STOCK_HOLDING_STATUSES first.
+const AVAILABLE_STOCK_SQL = `CASE WHEN p.stock IS NULL OR p.fulfillment_type = 'preorder' THEN p.stock
+    ELSE MAX(0, p.stock - COALESCE((SELECT SUM(oi.quantity) FROM order_items oi JOIN orders o ON o.id = oi.order_id
+        WHERE oi.product_id = p.id AND o.status IN (${STOCK_HOLDING_PLACEHOLDERS})), 0)) END AS available`;
 
 const DEFAULT_STORE_BANNER = 'China Pre-Orders are open! Message us on WhatsApp for the current closing date.';
 const LEGACY_STORE_BANNER = "China Pre-Order Window OPEN! Orders close May 18th — Don't miss out!";
@@ -895,7 +908,7 @@ app.get('/api/products', (req, res) => {
     const hasPaging = req.query.page !== undefined || req.query.limit !== undefined;
 
     if (!hasPaging) {
-        return db.all(`SELECT * FROM products`, [], (err, rows) => {
+        return db.all(`SELECT p.*, ${AVAILABLE_STOCK_SQL} FROM products p`, STOCK_HOLDING_STATUSES, (err, rows) => {
             if (err) return serverError(res, err);
             res.json(rows);
         });
@@ -912,7 +925,8 @@ app.get('/api/products', (req, res) => {
 
     db.get(`SELECT COUNT(*) AS total FROM products ${where}`, countParams, (err, countRow) => {
         if (err) return serverError(res, err);
-        db.all(`SELECT * FROM products ${where} ORDER BY id DESC LIMIT ? OFFSET ?`, pageParams, (err2, rows) => {
+        db.all(`SELECT p.*, ${AVAILABLE_STOCK_SQL} FROM products p ${where} ORDER BY p.id DESC LIMIT ? OFFSET ?`,
+            [...STOCK_HOLDING_STATUSES, ...pageParams], (err2, rows) => {
             if (err2) return serverError(res, err2);
             const total = (countRow && countRow.total) || 0;
             res.json({ products: rows, total, page, limit, pages: Math.ceil(total / limit) });
@@ -973,14 +987,34 @@ app.put('/api/settings', authenticateToken, requireManager, (req, res) => {
         return res.status(400).json({ error: 'The welcome offer must be between 1% and 50%' });
     }
     const welcomeEnabled = req.body.welcome_enabled === undefined ? null : (req.body.welcome_enabled ? 1 : 0);
+    // Pre-order window and group link: an older admin page sends neither, and
+    // keeps what is stored; a newer one sends them, and an empty field clears.
+    const sendsPreorder = Object.prototype.hasOwnProperty.call(req.body, 'preorder_ends');
+    const preorderStarts = bannerDate(req.body.preorder_starts);
+    const preorderEnds = bannerDate(req.body.preorder_ends);
+    if (preorderStarts === undefined || preorderEnds === undefined) {
+        return res.status(400).json({ error: 'Pre-order window dates must be real dates (YYYY-MM-DD)' });
+    }
+    if (preorderStarts && preorderEnds && preorderEnds < preorderStarts) {
+        return res.status(400).json({ error: 'The pre-order window cannot close before it opens' });
+    }
+    // Only a real group invite, so the shop never links shoppers somewhere unexpected.
+    const groupUrl = String(req.body.whatsapp_group_url || '').trim();
+    if (groupUrl && !/^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]{10,40}$/.test(groupUrl)) {
+        return res.status(400).json({ error: 'The WhatsApp group link must be an invite link like https://chat.whatsapp.com/…' });
+    }
     db.run(
         `UPDATE store_settings
          SET whatsapp_number = ?, wholesale_enabled = ?, wholesale_moq = ?, wholesale_discount = ?, banner_enabled = ?, banner_text = ?,
              banner_starts = ?, banner_ends = ?,
-             welcome_enabled = COALESCE(?, welcome_enabled), welcome_percent = COALESCE(?, welcome_percent)
+             welcome_enabled = COALESCE(?, welcome_enabled), welcome_percent = COALESCE(?, welcome_percent),
+             preorder_starts = CASE WHEN ? THEN ? ELSE preorder_starts END,
+             preorder_ends = CASE WHEN ? THEN ? ELSE preorder_ends END,
+             whatsapp_group_url = CASE WHEN ? THEN ? ELSE whatsapp_group_url END
          WHERE id = 1`,
         [whatsapp_number, wholesale_enabled ? 1 : 0, wholesale_moq, wholesale_discount, banner_enabled ? 1 : 0, banner_text,
-            bannerStarts, bannerEnds, welcomeEnabled, welcomePercent],
+            bannerStarts, bannerEnds, welcomeEnabled, welcomePercent,
+            sendsPreorder ? 1 : 0, preorderStarts, sendsPreorder ? 1 : 0, preorderEnds, sendsPreorder ? 1 : 0, groupUrl || null],
         function(err) {
             if (err) return serverError(res, err);
             logAdminAction(req, 'update', 'settings', 'store', 'Updated storefront settings', {
@@ -1119,6 +1153,51 @@ app.put('/api/products/:id', authenticateToken, requireManager, (req, res) => {
             res.json({ changes: this.changes });
         }
     );
+});
+
+// Replace a product's photo gallery, in display order (Manager only). Each path
+// must already be a file the site serves: a checked-in image or an upload from
+// /api/upload-image. The main photo (products.img) is left to the product form.
+const GALLERY_PATH_RE = /^images\/[a-zA-Z0-9_./-]+\.(?:jpe?g|png|webp)$/i;
+const MAX_GALLERY_PHOTOS = 12;
+app.put('/api/products/:id/images', authenticateToken, requireManager, async (req, res) => {
+    const fs = require('fs');
+    const productId = Number(req.params.id);
+    if (!Number.isInteger(productId) || productId < 1) return res.status(400).json({ error: 'Invalid product id' });
+    const images = req.body && req.body.images;
+    if (!Array.isArray(images) || images.length > MAX_GALLERY_PHOTOS) {
+        return res.status(400).json({ error: `images must be a list of up to ${MAX_GALLERY_PHOTOS} photos` });
+    }
+    const imagesDir = path.join(__dirname, '..', 'images');
+    const clean = [];
+    for (const raw of images) {
+        const img = String(raw || '').replace(/\\/g, '/');
+        if (!GALLERY_PATH_RE.test(img) || img.includes('..')) return res.status(400).json({ error: 'Unsafe image path' });
+        const isUpload = SERVER_ISSUED_IMAGE_RE.test(img);
+        const onDisk = isUpload ? path.join(UPLOAD_DIR, path.basename(img)) : path.join(__dirname, '..', ...img.split('/'));
+        if (!onDisk.startsWith(isUpload ? UPLOAD_DIR : imagesDir) || !fs.existsSync(onDisk)) {
+            return res.status(400).json({ error: 'Image file does not exist: ' + img });
+        }
+        if (!clean.includes(img)) clean.push(img);
+    }
+    let transactionOpen = false;
+    try {
+        const product = await dbGetAsync('SELECT id, name FROM products WHERE id = ?', [productId]);
+        if (!product) return res.status(404).json({ error: 'Product not found' });
+        await dbRunAsync('BEGIN IMMEDIATE');
+        transactionOpen = true;
+        await dbRunAsync('DELETE FROM product_images WHERE product_id = ?', [productId]);
+        for (const img of clean) await dbRunAsync('INSERT INTO product_images (product_id, image_url) VALUES (?, ?)', [productId, img]);
+        await dbRunAsync('COMMIT');
+        transactionOpen = false;
+        logAdminAction(req, 'update', 'product', productId, `Updated photos (${clean.length}) for ${product.name || productId}`);
+        res.json({ images: clean });
+    } catch (error) {
+        if (transactionOpen) {
+            try { await dbRunAsync('ROLLBACK'); } catch (rollbackError) { console.error('[gallery rollback]', rollbackError.message); }
+        }
+        serverError(res, error);
+    }
 });
 
 // Delete product (Manager only). Order history is untouched on purpose —
@@ -1542,6 +1621,17 @@ function toWhatsAppDigits(raw) {
     return international && /^[1-9]\d{7,14}$/.test(digits) ? digits : '';
 }
 
+// The China pre-order window runs over whole days in Ghana time, which is UTC.
+// Either date may be left open-ended; with neither set the window is closed.
+function preorderWindowOpen(settings, now) {
+    const starts = settings && settings.preorder_starts;
+    const ends = settings && settings.preorder_ends;
+    if (!starts && !ends) return false;
+    const today = (now || new Date()).toISOString().slice(0, 10);
+    return (!starts || today >= starts) && (!ends || today <= ends);
+}
+const PREORDER_CLOSED_MESSAGE = 'China pre-orders are closed right now. Message us on WhatsApp to hear when the next window opens.';
+
 // The welcome offer's % when it is switched on, else 0.
 function welcomePercentOf(settings) {
     if (!settings || !Number(settings.welcome_enabled)) return 0;
@@ -1657,7 +1747,8 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
 
         let total_amount = 0;
         const processedItems = [];
-        
+        let hasPreorderItem = order_type === 'preorder';
+
         // We need to fetch product prices asynchronously
         const productPromises = items.map(item => {
             return new Promise((resolve, reject) => {
@@ -1713,7 +1804,10 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                     // sitting in earlier pending/processing orders are already
                     // promised. Count them as reserved and refuse to promise the
                     // same pieces twice. Pre-orders are sourced on demand, so they skip this.
-                    if (product.fulfillment_type === 'preorder') return acceptItem();
+                    if (product.fulfillment_type === 'preorder') {
+                        hasPreorderItem = true;
+                        return acceptItem();
+                    }
 
                     db.get(
                         `SELECT COALESCE(SUM(oi.quantity), 0) AS reserved
@@ -1740,6 +1834,13 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
 
         Promise.all(productPromises)
             .then(async () => {
+                // Staff can take a pre-order at the counter any time; the shop
+                // only while a window is open.
+                if (hasPreorderItem && !req.staff && !preorderWindowOpen(settings)) {
+                    const closed = new Error(PREORDER_CLOSED_MESSAGE);
+                    closed.status = 400;
+                    throw closed;
+                }
                 // Staff set their own counter discount; a storefront order may
                 // carry the welcome offer instead, never both.
                 const welcomePercent = req.staff ? 0 : await claimWelcomeDiscount(customer_phone, isWholesale);
@@ -1900,6 +2001,9 @@ async function pricePaystackCheckout(checkout) {
         unitPrice = Math.round(unitPrice * 100) / 100;
         const quantity = Number(item.quantity);
         if (checkout.isWholesale && quantity < minimumOrder) throw paymentError(`Wholesale orders need at least ${minimumOrder} pieces per item`);
+        if ((product.fulfillment_type === 'preorder' || checkout.orderType === 'preorder') && !preorderWindowOpen(settings)) {
+            throw paymentError(PREORDER_CLOSED_MESSAGE);
+        }
 
         // The card path priced an order without ever checking stock, so it could
         // take payment for pieces already promised to earlier orders. Refusing
@@ -3870,7 +3974,7 @@ app.get('/api/products/:id', (req, res) => {
     if (!Number.isInteger(productId) || String(productId) !== String(req.params.id) || productId <= 0) {
         return res.status(400).json({ error: 'Invalid product ID' });
     }
-    db.get(`SELECT * FROM products WHERE id = ?`, [productId], (err, product) => {
+    db.get(`SELECT p.*, ${AVAILABLE_STOCK_SQL} FROM products p WHERE p.id = ?`, [...STOCK_HOLDING_STATUSES, productId], (err, product) => {
         if (err) return serverError(res, err);
         if (!product) return res.status(404).json({ error: 'Product not found' });
         db.all(

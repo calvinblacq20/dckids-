@@ -84,7 +84,8 @@
 
 .tk-steps { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); margin: 28px 0; padding: 0; }
 .tk-step { position: relative; display: flex; flex-direction: column; gap: 10px; padding-top: 16px; border-top: 2px solid var(--line); }
-.tk-step__dot { font-size: 13px; color: var(--muted); letter-spacing: .06em; }
+.tk-step__dot { color: var(--muted); line-height: 0; }
+.tk-step__dot svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .tk-step__label { font-size: 15px; color: var(--muted); }
 .tk-step--done { border-top-color: var(--sage-dark); }
 .tk-step--done .tk-step__dot, .tk-step--done .tk-step__label { color: var(--ink-soft); }

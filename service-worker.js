@@ -9,7 +9,7 @@
    - Images + fonts: cache-first.
    - Bumping VERSION wipes old caches on activate.
 */
-const VERSION = 'dckids-v293';
+const VERSION = 'dckids-v304';
 const STATIC_CACHE = 'dckids-static-' + VERSION;
 const RUNTIME_CACHE = 'dckids-runtime-' + VERSION;
 
@@ -129,12 +129,20 @@ self.addEventListener('fetch', (event) => {
   const isCode = url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
   const isImage = req.destination === 'image' || /\.(?:png|jpe?g|gif|svg|webp|avif)$/i.test(url.pathname);
 
-  // Live store config must NEVER be served from cache — always go to network so
-  // admin changes (banner, discount, WhatsApp) reach shoppers immediately.
-  // settings.json is the static deploy's copy of /api/settings: just as live.
-  const isLiveConfig = url.pathname === '/api/settings' || url.pathname === '/settings.json' || url.pathname === '/api/products' || /^\/api\/products\/\d+$/.test(url.pathname);
+  // Live store config and the catalogue always come from the network first, so
+  // admin changes (banner, discount, prices, stock) reach shoppers immediately.
+  // settings.json and products.json are the static deploy's copies: just as live.
+  // The last good answer is kept only for when the network is gone, so the
+  // shop still shows its catalogue offline.
+  const isLiveConfig = ['/api/settings', '/settings.json', '/api/products', '/products.json'].includes(url.pathname) || /^\/api\/products\/\d+$/.test(url.pathname);
   if (isLiveConfig) {
-    event.respondWith(fetch(req).catch(() => cachedOr(req, null, accept)));
+    event.respondWith(fetch(req).then((res) => {
+      if (res.ok) {
+        const copy = res.clone();
+        caches.open(RUNTIME_CACHE).then((c) => c.put(req, copy)).catch(() => {});
+      }
+      return res;
+    }).catch(() => cachedOr(req, null, accept)));
     return;
   }
 

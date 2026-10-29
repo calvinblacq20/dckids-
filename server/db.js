@@ -730,7 +730,10 @@ const db = new sqlite3.Database(dbPath, (err) => {
             db.all('PRAGMA table_info(store_settings)', (e, cols) => {
                 if (e || !cols) return;
                 const names = cols.map(c => c.name);
-                ['banner_starts', 'banner_ends'].forEach((column) => {
+                // The China pre-order window (YYYY-MM-DD) and the WhatsApp group
+                // invite: the storefront shows the pre-order section only between
+                // the dates, and checkout refuses pre-order items outside them.
+                ['banner_starts', 'banner_ends', 'preorder_starts', 'preorder_ends', 'whatsapp_group_url'].forEach((column) => {
                     if (names.indexOf(column) !== -1) return;
                     db.run(`ALTER TABLE store_settings ADD COLUMN ${column} TEXT`, (er) => {
                         if (er) console.error(`Migration (store_settings.${column}) failed:`, er.message);
@@ -960,8 +963,22 @@ const db = new sqlite3.Database(dbPath, (err) => {
                     console.log("Seeding product images gallery...");
                     db.all("SELECT id, img, cat FROM products", [], (err, products) => {
                         if (err || !products) return;
+                        // A product that lists its own photos in products.json
+                        // (images: [...]), like the China pre-order items, gets
+                        // exactly those; the rest keep the sibling-based gallery.
+                        const ownGalleries = {};
+                        try {
+                            const raw = JSON.parse(require('fs').readFileSync(path.join(__dirname, '..', 'products.json'), 'utf8'));
+                            (Array.isArray(raw) ? raw : (raw.products || [])).forEach((item) => {
+                                if (Array.isArray(item.images) && item.images.length) ownGalleries[item.id] = item.images;
+                            });
+                        } catch (e) { /* no snapshot: every product uses the sibling gallery */ }
                         const stmt = db.prepare("INSERT INTO product_images (product_id, image_url) VALUES (?, ?)");
                         products.forEach(p => {
+                            if (ownGalleries[p.id]) {
+                                ownGalleries[p.id].forEach((url) => stmt.run(p.id, url));
+                                return;
+                            }
                             // Main image
                             stmt.run(p.id, p.img);
                             // Alternate images (siblings in the same category)

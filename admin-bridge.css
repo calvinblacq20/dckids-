@@ -1945,6 +1945,27 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
   background: var(--surface); color: var(--ink-75); font: inherit; font-size: 12px; cursor: pointer;
 }
 .camera-btn:hover, .change-image-btn:hover { background: var(--ground); color: var(--ink); }
+.camera-btn:disabled, .change-image-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Product form: the extra photos shown after the main image */
+.pg-editor { display: flex; flex-direction: column; gap: 10px; }
+.pg-editor__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.pg-editor__count { font-size: 11px; color: var(--ink-50); font-variant-numeric: tabular-nums; }
+.pg-editor__list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.pg-editor__item { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pg-editor__item img {
+  display: block; width: 100%; aspect-ratio: 1; object-fit: cover;
+  border-radius: var(--r-img); border: 0.8px solid var(--ink-12); background: var(--ground);
+}
+.pg-editor__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+.pg-editor__actions button {
+  min-height: 32px; padding: 0 4px; border: 0.8px solid var(--ink-12); border-radius: var(--r-pill);
+  background: var(--surface); color: var(--ink-75); font: inherit; font-size: 11px; cursor: pointer;
+}
+.pg-editor__actions button:hover { background: var(--ground); color: var(--ink); }
+.pg-editor__actions button[data-gallery-remove]:hover { background: var(--danger-wash); color: var(--danger); }
+.pg-editor__note { grid-column: 1 / -1; font-size: 12px; color: var(--ink-50); }
+.pg-editor__add { align-self: flex-start; }
 .mobile-only-btn { display: none; }
 .mobile-label { display: none; }
 @media (max-width: 639.98px) {

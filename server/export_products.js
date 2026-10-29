@@ -26,19 +26,40 @@ db.all(`SELECT ${FIELDS.join(', ')} FROM products ORDER BY id`, (error, rows) =>
         process.exit(1);
     }
 
-    // Reassemble each row in the declared order; SQLite returns column order
-    // but being explicit keeps the file stable if the schema ever gains a column.
-    const catalogue = rows.map((row) => {
-        const out = {};
-        for (const field of FIELDS) out[field] = row[field] === undefined ? null : row[field];
-        return out;
+    // Same rule as GET /api/products/:id: another product's main photo is a
+    // borrowed filler, not part of this product's gallery.
+    db.all(`SELECT pi.product_id, pi.image_url FROM product_images pi
+             WHERE NOT EXISTS (SELECT 1 FROM products other
+                                WHERE other.id <> pi.product_id AND other.img = pi.image_url)
+             ORDER BY pi.id`, (galleryError, galleryRows) => {
+        if (galleryError) {
+            console.error('FAILED:', galleryError.message);
+            process.exit(1);
+        }
+        const galleries = {};
+        for (const { product_id: id, image_url: url } of galleryRows) {
+            if (!url) continue;
+            const list = galleries[id] || (galleries[id] = []);
+            if (!list.includes(url)) list.push(url);
+        }
+
+        // Reassemble each row in the declared order; SQLite returns column order
+        // but being explicit keeps the file stable if the schema ever gains a column.
+        // Only a real multi-photo gallery is written, so the static build shows it
+        // without padding every single-photo product with a one-item list.
+        const catalogue = rows.map((row) => {
+            const out = {};
+            for (const field of FIELDS) out[field] = row[field] === undefined ? null : row[field];
+            if ((galleries[row.id] || []).length > 1) out.images = galleries[row.id];
+            return out;
+        });
+
+        const previous = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : [];
+        fs.writeFileSync(OUT, JSON.stringify(catalogue, null, 2) + '\n', 'utf8');
+
+        console.log(`products.json: ${previous.length} -> ${catalogue.length}`);
+        const added = catalogue.length - previous.length;
+        if (added > 0) console.log(`${added} more than before`);
+        db.close();
     });
-
-    const previous = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : [];
-    fs.writeFileSync(OUT, JSON.stringify(catalogue, null, 2) + '\n', 'utf8');
-
-    console.log(`products.json: ${previous.length} -> ${catalogue.length}`);
-    const added = catalogue.length - previous.length;
-    if (added > 0) console.log(`${added} more than before`);
-    db.close();
 });

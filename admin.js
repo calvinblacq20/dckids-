@@ -2294,7 +2294,8 @@ function openEditModal(id) {
             if (skuEl) skuEl.value = p.sku || '';
             if (sizeEl) sizeEl.value = p.size || '';
             if (catEl) catEl.value = p.cat || 'clothing';
-            if (priceEl) priceEl.value = p.price || '';
+            // 0 is a real price here ("price on request"); blanking it made the form refuse to save.
+            if (priceEl) priceEl.value = p.price != null ? p.price : '';
             if (compareEl) compareEl.value = p.compare_at_price || '';
             if (stockEl) stockEl.value = p.stock != null ? p.stock : 0;
             if (badgeEl) badgeEl.value = p.badge || '';
@@ -2305,6 +2306,7 @@ function openEditModal(id) {
             if (imgSrcEl) imgSrcEl.value = p.img || 'images/placeholder.svg';
             if (typeof setSizeRows === 'function') setSizeRows('modal-product', p.sizes);
             if (typeof populateSizePresetDropdowns === 'function') populateSizePresetDropdowns();
+            loadProductGallery(p.id, p.img || '');
         }
     } else {
         if (title) title.textContent = 'Add New Product';
@@ -2323,6 +2325,7 @@ function openEditModal(id) {
         if (imgSrcEl) imgSrcEl.value = 'images/placeholder.svg';
         if (typeof setSizeRows === 'function') setSizeRows('modal-product', []);
         if (typeof populateSizePresetDropdowns === 'function') populateSizePresetDropdowns();
+        loadProductGallery(null, '');
     }
 
     // Legacy products saved before SKUs existed have none — suggest one now
@@ -2442,6 +2445,133 @@ function handleProductImageUpload(event) {
         });
 }
 
+/* "More photos" in the product form. Loaded when the form opens and saved
+   after the product itself, so a brand-new product gets its photos once it
+   has an id. While the list is unknown (loading, or the load failed) it is
+   never saved, so a failed fetch can't wipe a gallery. */
+var MAX_EXTRA_PHOTOS = 11; // the server keeps 12 per product, the main image included
+var productGallery = { forId: null, extras: [], openedExtras: null, openedMain: '', note: '' };
+
+function loadProductGallery(productId, mainImg) {
+    productGallery = { forId: productId || null, extras: [], openedExtras: null, openedMain: mainImg || '', note: 'Loading photos…' };
+    if (!productId) {
+        productGallery.openedExtras = [];
+        productGallery.note = '';
+        return renderProductGallery();
+    }
+    renderProductGallery();
+    fetch(API_URL + '/products/' + encodeURIComponent(productId))
+        .then(function(res) {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        })
+        .then(function(product) {
+            if (productGallery.forId !== productId) return; // the form moved on to another product
+            var extras = (Array.isArray(product.images) ? product.images : []).filter(function(src, i, all) {
+                return src && src !== mainImg && all.indexOf(src) === i;
+            });
+            productGallery.extras = extras.slice();
+            productGallery.openedExtras = extras;
+            productGallery.note = '';
+            renderProductGallery();
+        })
+        .catch(function(err) {
+            if (productGallery.forId !== productId) return;
+            console.warn('[product photos]', err.message);
+            productGallery.note = 'Photos could not be loaded. Saving keeps the ones already there.';
+            renderProductGallery();
+        });
+}
+
+function renderProductGallery() {
+    var list = document.getElementById('modal-product-gallery');
+    var count = document.getElementById('modal-product-gallery-count');
+    var addBtn = document.getElementById('modal-product-gallery-add');
+    if (!list) return;
+    var ready = productGallery.openedExtras !== null;
+    var extras = productGallery.extras;
+    if (count) count.textContent = ready && extras.length ? extras.length + ' of ' + MAX_EXTRA_PHOTOS : '';
+    if (addBtn) addBtn.disabled = !ready || Boolean(productGallery.note) || extras.length >= MAX_EXTRA_PHOTOS;
+    if (productGallery.note || !ready) {
+        list.innerHTML = '<li class="pg-editor__note">' + escapeHtml(productGallery.note || 'Loading photos…') + '</li>';
+        return;
+    }
+    list.innerHTML = extras.length ? extras.map(function(src, i) {
+        var n = i + 2; // photo 1 is the main image
+        return '<li class="pg-editor__item">' +
+            '<img src="' + escapeHtml(src) + '" alt="Photo ' + n + '" loading="lazy">' +
+            '<div class="pg-editor__actions">' +
+            '<button type="button" data-gallery-main="' + i + '" aria-label="Make photo ' + n + ' the main image">Main</button>' +
+            '<button type="button" data-gallery-remove="' + i + '" aria-label="Remove photo ' + n + '">Remove</button>' +
+            '</div></li>';
+    }).join('') : '<li class="pg-editor__note">No extra photos yet.</li>';
+}
+
+function handleProductGalleryClick(event) {
+    var btn = event.target.closest && event.target.closest('button');
+    if (!btn) return;
+    var extras = productGallery.extras;
+    if (btn.hasAttribute('data-gallery-remove')) {
+        extras.splice(Number(btn.getAttribute('data-gallery-remove')), 1);
+        return renderProductGallery();
+    }
+    if (btn.hasAttribute('data-gallery-main')) {
+        var index = Number(btn.getAttribute('data-gallery-main'));
+        var srcEl = document.getElementById('modal-product-img-src');
+        var preview = document.getElementById('modal-product-img-preview');
+        var previousMain = srcEl ? srcEl.value : '';
+        var chosen = extras[index];
+        if (previousMain && DCImageResolver.isGenuineImage(previousMain)) extras[index] = previousMain;
+        else extras.splice(index, 1);
+        if (srcEl) srcEl.value = chosen;
+        if (preview) preview.innerHTML = '<img src="' + escapeHtml(chosen) + '" alt="Preview" class="w-full h-full object-cover">';
+        renderProductGallery();
+    }
+}
+
+function handleProductGalleryFiles(event) {
+    var files = Array.prototype.slice.call(event.target.files || []);
+    event.target.value = ''; // picking the same file again should still fire change
+    var room = MAX_EXTRA_PHOTOS - productGallery.extras.length;
+    if (!files.length || room <= 0) return;
+    if (files.length > room) showToast('Only ' + room + ' more photo' + (room === 1 ? '' : 's') + ' fit, so the rest were skipped', 'warning');
+    var forId = productGallery.forId;
+    productGallery.note = 'Uploading ' + Math.min(files.length, room) + '…';
+    renderProductGallery();
+    files.slice(0, room).reduce(function(chain, file) {
+        return chain.then(function() {
+            return compressImageFile(file, 1600, 0.85).then(uploadProductImage).then(function(res) {
+                if (productGallery.forId === forId) productGallery.extras.push(res.path);
+            });
+        });
+    }, Promise.resolve())
+        .catch(function(err) { showToast(err.message || 'A photo could not be uploaded', 'error'); })
+        .then(function() {
+            if (productGallery.forId !== forId) return;
+            productGallery.note = '';
+            renderProductGallery();
+        });
+}
+
+// Resolves when there is nothing to save; rejects with the server's message otherwise.
+function saveProductGallery(productId, mainImg) {
+    if (!productId || productGallery.openedExtras === null) return Promise.resolve();
+    var unchanged = mainImg === productGallery.openedMain &&
+        JSON.stringify(productGallery.extras) === JSON.stringify(productGallery.openedExtras);
+    if (unchanged) return Promise.resolve();
+    var images = [mainImg].concat(productGallery.extras).filter(function(src, i, all) {
+        return src && DCImageResolver.isGenuineImage(src) && all.indexOf(src) === i;
+    });
+    return fetch(API_URL + '/products/' + encodeURIComponent(productId) + '/images', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('adminToken') || '') },
+        body: JSON.stringify({ images: images })
+    }).then(function(res) {
+        if (res.ok) return;
+        return res.json().catch(function() { return {}; }).then(function(d) { throw new Error(d.error || 'Photos were not saved'); });
+    });
+}
+
 
 function closeEditModal() {
     var modal = document.getElementById('modal-product');
@@ -2511,9 +2641,15 @@ function saveProduct() {
         if (!res.ok) return res.json().then(function(d) { throw new Error(d.error || 'Save failed'); });
         return res.json();
     })
-    .then(function() {
+    .then(function(saved) {
+        // The product is saved either way; a photo failure is reported, not thrown.
+        return saveProductGallery(isEditing ? id : saved && saved.id, payload.img)
+            .then(function() { return ''; }, function(err) { return err.message || 'Photos were not saved'; });
+    })
+    .then(function(galleryError) {
         closeEditModal();
-        showToast(isEditing ? 'Product updated successfully' : 'Product added successfully', 'success');
+        if (galleryError) showToast('Product saved, but its photos were not: ' + galleryError, 'warning');
+        else showToast(isEditing ? 'Product updated successfully' : 'Product added successfully', 'success');
         addActivity('product', (isEditing ? 'Updated' : 'Added') + ' product: ' + nameVal);
 
         // Reload relevant tabs
@@ -7990,6 +8126,12 @@ function loadStoreConfig() {
             const welcomePercentInput = document.getElementById('config-welcome-percent');
             if(welcomeEnabledInput) welcomeEnabledInput.checked = !!Number(data.welcome_enabled);
             if(welcomePercentInput) welcomePercentInput.value = data.welcome_percent || 10;
+            const preorderStartsInput = document.getElementById('config-preorder-starts');
+            const preorderEndsInput = document.getElementById('config-preorder-ends');
+            const groupUrlInput = document.getElementById('config-group-url');
+            if(preorderStartsInput) preorderStartsInput.value = data.preorder_starts || '';
+            if(preorderEndsInput) preorderEndsInput.value = data.preorder_ends || '';
+            if(groupUrlInput) groupUrlInput.value = data.whatsapp_group_url || '';
         })
         .catch(err => console.warn("Store config API unavailable, using local data:", err && err.message ? err.message : err));
 }
@@ -8009,7 +8151,10 @@ function saveStoreConfig(e) {
         banner_starts: document.getElementById('config-banner-starts').value,
         banner_ends: document.getElementById('config-banner-ends').value,
         welcome_enabled: document.getElementById('config-welcome-enabled').checked,
-        welcome_percent: Number(document.getElementById('config-welcome-percent').value) || 10
+        welcome_percent: Number(document.getElementById('config-welcome-percent').value) || 10,
+        preorder_starts: document.getElementById('config-preorder-starts').value,
+        preorder_ends: document.getElementById('config-preorder-ends').value,
+        whatsapp_group_url: document.getElementById('config-group-url').value.trim()
     };
 
     fetch(API_URL + '/settings', {
@@ -8494,6 +8639,15 @@ function setupEventListeners() {
             var fileInput = document.getElementById('modal-product-img');
             if (fileInput) fileInput.click();
         });
+    }
+
+    var galleryList = document.getElementById('modal-product-gallery');
+    if (galleryList) galleryList.addEventListener('click', handleProductGalleryClick);
+    var galleryAdd = document.getElementById('modal-product-gallery-add');
+    var galleryInput = document.getElementById('modal-product-gallery-input');
+    if (galleryAdd && galleryInput) {
+        galleryAdd.addEventListener('click', function() { galleryInput.click(); });
+        galleryInput.addEventListener('change', handleProductGalleryFiles);
     }
 
     // --- NEW DEDICATED ADD PRODUCT MODAL LISTENERS ---
@@ -11186,7 +11340,10 @@ function downloadProductCsvTemplate() {
       { id: 'bathcare',    label: 'Bath & Care' },
       { id: 'essentials',  label: 'Baby Essentials' },
       { id: 'accessories', label: 'Bags & Accessories' },
-      { id: 'bedding',     label: 'Bedding' }
+      { id: 'bedding',     label: 'Bedding' },
+      { id: 'womens',      label: "Women's Fashion" },
+      { id: 'home',        label: 'Home' },
+      { id: 'cars',        label: 'Cars' }
     ];
   }
   function loadCats() {
@@ -11378,8 +11535,12 @@ function downloadProductCsvTemplate() {
     var cats = loadCats();
     var ids = cats.map(function (c) { return c.id; });
     var prods = (typeof globalProducts !== 'undefined' && globalProducts) ? globalProducts : [];
+    // A browser that saved its list before a default was added still gets that
+    // default's proper name when a product uses it.
+    var knownLabels = {};
+    defaults().forEach(function (c) { knownLabels[c.id] = c.label; });
     prods.forEach(function (p) {
-      if (p.cat && ids.indexOf(p.cat) === -1) { cats.push({ id: p.cat, label: p.cat }); ids.push(p.cat); }
+      if (p.cat && ids.indexOf(p.cat) === -1) { cats.push({ id: p.cat, label: knownLabels[p.cat] || p.cat }); ids.push(p.cat); }
     });
     [['add-product-cat', true], ['modal-product-cat', false]].forEach(function (pair) {
       var sel = document.getElementById(pair[0]);

@@ -33,7 +33,7 @@
 
   <link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" as="image" type="image/webp" href="images/hero_shop_1.webp?v=2" imagesrcset="images/hero_shop_1-720.webp?v=2 720w, images/hero_shop_1.webp?v=2 1179w" imagesizes="100vw">
-  <link rel="stylesheet" href="store.css?v=17">
+  <link rel="stylesheet" href="store.css?v=26">
 
   <!-- Structured data: Organization + WebSite (SEO + Google rich results) -->
   <script type="application/ld+json">
@@ -77,7 +77,7 @@
     <nav class="nav__links" aria-label="Primary">
       <a href="#shop">Shop</a>
       <a href="#collections">Collections</a>
-      <a href="#preorders">Pre-Orders</a>
+      <a href="#preorders" class="js-preorder-link" hidden>Pre-Orders</a>
       <a href="#about">About</a>
     </nav>
     <div class="nav__right">
@@ -86,6 +86,7 @@
         <span class="nav__search-label">Search</span>
       </button>
       <a class="nav__account" id="account-link" href="/account.html">Sign in</a>
+      <button class="nav__cart nav__saved" type="button" onclick="openSaved()" aria-label="Open wishlist">Wishlist <b id="saved-count">0</b></button>
       <button class="nav__cart" type="button" onclick="openCart()" aria-label="Open cart">Cart <b id="cart-count">0</b></button>
       <button class="nav__menu" type="button" onclick="toggleMenu(true)" aria-label="Open menu">Menu</button>
     </div>
@@ -95,8 +96,9 @@
     <button class="m-menu__close" type="button" onclick="toggleMenu(false)">Close</button>
     <a href="#shop" onclick="toggleMenu(false)">Shop</a>
     <a href="#collections" onclick="toggleMenu(false)">Collections</a>
-    <a href="#preorders" onclick="toggleMenu(false)">China Pre-Orders</a>
+    <a href="#preorders" class="js-preorder-link" onclick="toggleMenu(false)" hidden>China Pre-Orders</a>
     <a href="#about" onclick="toggleMenu(false)">About</a>
+    <a href="#wishlist" onclick="toggleMenu(false); openSaved(); return false;">Wishlist <span class="m-menu__count" id="m-saved-count"></span></a>
     <a href="/account.html" id="m-account-link">Sign in</a>
     <a href="track.html">Track order</a>
   </div>
@@ -147,11 +149,87 @@
     <!-- Every section from here on rides over the pinned hero (curtain reveal) -->
     <div class="cover">
 
-    <!-- Retail / Wholesale switch — shown only when wholesale is enabled -->
+    <!-- Retail / Wholesale / China Pre-Order tabs. Wholesale shows only when it is
+         switched on, China Pre-Order only while a pre-order window is open. -->
     <div class="mode-bar" id="mode-bar" style="display:none;" role="group" aria-label="Store mode">
       <button type="button" data-mode="retail" onclick="setMode('retail')">Retail</button>
       <button type="button" data-mode="wholesale" onclick="setMode('wholesale')">Wholesale</button>
+      <button type="button" data-mode="preorder" class="js-preorder-link" onclick="showPreorders(true)" hidden><span class="mode-bar__long">China </span>Pre-Order</button>
     </div>
+
+    <!-- ============ DC SOURCING & LOGISTICS · CHINA PRE-ORDERS ============ -->
+    <!-- The China Pre-Order tab's view: shown in place of the rest of the page
+         when that tab is chosen, and only while a window is open. -->
+    <section class="section section--panel sourcing" id="preorders" aria-labelledby="pre-title" hidden>
+      <div class="container">
+        <div class="pre__head reveal">
+          <div>
+            <div class="section__label">DC Sourcing &amp; Logistics</div>
+            <h2 class="section__ghost" id="pre-title">China <span class="nowrap">Pre-Orders</span></h2>
+          </div>
+          <div class="pre__window" aria-live="polite">
+            <p class="pre__window-label">Window open</p>
+            <p class="pre__window-dates" id="pre-window-dates"></p>
+            <p class="pre__window-left" id="pre-window-left"></p>
+          </div>
+        </div>
+        <p class="pre__intro">On-ground sourcing in China. Tell us what you need and we find it in the market, buy it, ship it and deliver it to you in Ghana. Slots each window are limited, and every pre-order is paid in full before we order.</p>
+
+        <div class="pre__finds" id="pre-finds" hidden>
+          <div class="pre__finds-head">
+            <h3 class="pre__subhead">This window's finds</h3>
+            <p class="pre__finds-note">Tap a piece for more photos. Where there's no price yet, ask us on WhatsApp.</p>
+          </div>
+          <div class="pre__filters" id="pre-filters" role="group" aria-label="Filter this window's finds"></div>
+          <div class="product-grid pre__grid" id="pre-grid" aria-live="polite"></div>
+        </div>
+
+        <h3 class="pre__subhead">What we source</h3>
+        <ul class="pre__source reveal-stagger">
+          <li><img src="images/sourcing/kids-clothing.webp" alt="" width="720" height="540" loading="lazy" decoding="async"><b>Kids' clothing</b><span>Everyday wear, sets and dresses, newborn to 12 years.</span></li>
+          <li><img src="images/sourcing/shoes-sneakers.webp" alt="" width="720" height="540" loading="lazy" decoding="async"><b>School shoes &amp; sneakers</b><span>School shoes for the new term, and sneakers in kids' and adult sizes.</span></li>
+          <li><img src="images/sourcing/slippers-slides.webp" alt="" width="720" height="540" loading="lazy" decoding="async"><b>Slippers &amp; slides</b><span>Boxed slides by the pair, or wholesale from 10 pairs.</span></li>
+          <li><img src="images/sourcing/bags-accessories.webp" alt="" width="720" height="540" loading="lazy" decoding="async"><b>Bags &amp; accessories</b><span>Ladies' handbags, watches and fashion accessories.</span></li>
+          <li><img src="images/sourcing/baby-gear.webp" alt="" width="720" height="540" loading="lazy" decoding="async"><b>Baby gear</b><span>Bouncers, rockers, swings and walkers.</span></li>
+          <li><img src="images/sourcing/womens-fashion.webp" alt="" width="720" height="540" loading="lazy" decoding="async"><b>Women's fashion</b><span>Bodysuits, tops and everyday pieces for mum.</span></li>
+          <li><img src="images/sourcing/cars-home.webp" alt="" width="720" height="540" loading="lazy" decoding="async"><b>Cars &amp; home</b><span>Cars, standing fans and home electronics, sourced to order.</span></li>
+          <li><img src="images/sourcing/personal-shopping.webp" alt="" width="720" height="540" loading="lazy" decoding="async"><b>Personal shopping</b><span>Seen it online? Send us a photo or link and we'll find it.</span></li>
+        </ul>
+
+        <div class="pre__kinds reveal-stagger" aria-label="Three ways to pre-order">
+          <article class="pre__kind">
+            <p class="pre__kind-label">DC Kids picks</p>
+            <h3>What we bring in</h3>
+            <p>Pieces we find in the market and bring in ourselves each window. We share them on WhatsApp as they come in.</p>
+            <a class="link-underline js-wa-link" href="#" data-msg="Hi DC Sourcing &amp; Logistics! What are you bringing in this China pre-order window?">Ask what's in this window</a>
+          </article>
+          <article class="pre__kind">
+            <p class="pre__kind-label">Personal</p>
+            <h3>For you and your family</h3>
+            <p>Want something we haven't listed? Send us a photo or link and we'll source it for you.</p>
+            <a class="link-underline js-wa-link" href="#" data-msg="Hi DC Sourcing &amp; Logistics! I'd like a personal China pre-order. Here is what I'm looking for:">Start a personal order</a>
+          </article>
+          <article class="pre__kind">
+            <p class="pre__kind-label">Bulk</p>
+            <h3>For resellers</h3>
+            <p>Wholesale quantities at wholesale prices, for your own shop or market stall.</p>
+            <a class="link-underline js-wa-link" href="#" data-msg="Hi DC Sourcing &amp; Logistics! I'd like to place a bulk China pre-order for resale.">Start a bulk order</a>
+          </article>
+        </div>
+
+        <ol class="pre__steps reveal-stagger" aria-label="How pre-orders work">
+          <li><span class="pre__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z"/></svg></span><b>Choose</b><span>Pick from what we share on WhatsApp, or send us what you want. Confirm the colour and size with us before you pay.</span></li>
+          <li><span class="pre__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7h15a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 7V6a2 2 0 0 1 2-2h11"/><path d="M16 13.5h.01"/></svg></span><b>Pay in full</b><span>Paid up front, using the payment details we send you on WhatsApp. We only order once it's paid.</span></li>
+          <li><span class="pre__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/></svg></span><b>We buy and ship</b><span>Bought on the ground in China and shipped to Ghana. Items land in three to four weeks.</span></li>
+          <li><span class="pre__icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2 6h12v10H2zM14 10h4l4 4v2h-8"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg></span><b>Collect or delivery</b><span>Pick up in Kasoa or we deliver. Nothing more to pay for the items.</span></li>
+        </ol>
+
+        <div class="pre__cta">
+          <a class="btn btn--wa js-wa-link" href="#" data-msg="Hi DC Sourcing &amp; Logistics! I'd like to place a China pre-order. Here is what I'm looking for:">Start a pre-order on WhatsApp</a>
+          <a class="btn" id="pre-group" href="#" target="_blank" rel="noopener" hidden>Join our WhatsApp group</a>
+        </div>
+      </div>
+    </section>
 
     <!-- =========================== BESTSELLERS =========================== -->
     <section class="section section--panel" id="bestsellers">
@@ -173,49 +251,6 @@
           <p class="split__text">Discover the latest pieces and fresh picks for the little ones.</p>
           <a class="link-underline" href="#shop">Shop now</a>
         </div>
-      </div>
-    </section>
-
-    <!-- ========================= CHINA PRE-ORDERS ========================= -->
-    <section class="section section--panel" id="preorders">
-      <div class="container">
-        <div class="pre__head reveal">
-          <div>
-            <div class="section__label">China sourcing</div>
-            <h2 class="section__ghost">China <span class="nowrap">Pre-Orders</span></h2>
-          </div>
-          <p class="pre__intro">Pieces sourced on the ground in China and shipped to us in Kasoa. Every pre-order is paid in full before we order. <span id="pre-window">Message us on WhatsApp for the current closing date.</span></p>
-        </div>
-
-        <div class="pre__kinds reveal-stagger" aria-label="Three ways to pre-order">
-          <article class="pre__kind">
-            <p class="pre__kind-label">DC Kids picks</p>
-            <h3>What we bring in</h3>
-            <p>Pieces we choose and import ourselves, listed below. Add them to your cart and check out.</p>
-            <a class="link-underline" href="#preorder-grid">See this window's picks</a>
-          </article>
-          <article class="pre__kind">
-            <p class="pre__kind-label">Personal</p>
-            <h3>For your family</h3>
-            <p>Seen something you want that isn't listed? Send us a photo or link and we'll source it for you.</p>
-            <a class="link-underline js-wa-link" href="#" data-msg="Hi DC Kids! I'd like a personal China pre-order. Here is what I'm looking for:">Start a personal order</a>
-          </article>
-          <article class="pre__kind">
-            <p class="pre__kind-label">Bulk</p>
-            <h3>For resellers</h3>
-            <p>Order in wholesale quantities at wholesale prices, for your own shop or market stall.</p>
-            <a class="link-underline js-wa-link" href="#" data-msg="Hi DC Kids! I'd like to place a bulk China pre-order for resale.">Start a bulk order</a>
-          </article>
-        </div>
-
-        <ol class="pre__steps reveal-stagger" aria-label="How pre-orders work">
-          <li><span class="pre__num">01</span><b>Choose</b><span>Pick from the list below, or send us what you want on WhatsApp.</span></li>
-          <li><span class="pre__num">02</span><b>Pay in full</b><span>100% up front by Paystack or MoMo. We only order once it's paid.</span></li>
-          <li><span class="pre__num">03</span><b>We order from China</b><span>Your items ship direct and land in 3–4 weeks.</span></li>
-          <li><span class="pre__num">04</span><b>Collect or delivery</b><span>Pick up in Kasoa or we deliver. Nothing more to pay for the items.</span></li>
-        </ol>
-
-        <div class="product-grid" id="preorder-grid" aria-live="polite"></div>
       </div>
     </section>
 
@@ -313,7 +348,7 @@
           <h4>Navigate</h4>
           <a href="#shop">Shop</a>
           <a href="#collections">Collections</a>
-          <a href="#preorders">China Pre-Orders</a>
+          <a href="#preorders" class="js-preorder-link" hidden>China Pre-Orders</a>
           <a href="#about">About</a>
         </div>
         <div class="footer__col">
@@ -336,7 +371,7 @@
       </div>
       <div class="footer__bottom">
         <span>&copy; <span id="year"></span> DC Kids Brand. All rights reserved.</span>
-        <span>Pay with Paystack &middot; Cards &middot; Mobile Money</span>
+        <span>Order and pay on WhatsApp &middot; Mobile Money</span>
         <span><a href="/privacy.html">Privacy</a> &middot; <a href="/terms.html">Terms</a> &middot; <a href="/terms.html#returns">Refunds</a></span>
       </div>
     </div>
@@ -346,7 +381,7 @@
   <div class="scrim" id="scrim" onclick="closeAll()"></div>
   <aside class="cart" id="cart" role="dialog" aria-modal="true" aria-labelledby="cart-title" aria-hidden="true">
     <div class="cart__head">
-      <h3 id="cart-title">Your cart <span id="cart-count-head">0</span></h3>
+      <h3 id="cart-title"><span id="cart-title-text">Your cart</span> <span id="cart-count-head">0</span></h3>
       <button class="cart__close" type="button" onclick="closeCart()" aria-label="Close cart">&times;</button>
     </div>
 
@@ -363,11 +398,12 @@
     <form class="cart__view cart__form" id="cart-view-details" hidden onsubmit="return submitOrder(event)" novalidate>
       <div class="cart__items">
         <button type="button" class="cart__back" onclick="showCartView('items')">&larr; Back to cart</button>
-        <p class="cart__hint" id="co-hint">Pay online with Paystack, or finish your order on WhatsApp.</p>
+        <p class="cart__hint" id="co-hint">Your order completes on WhatsApp. We'll confirm delivery and payment there.</p>
         <p class="cart__error" id="co-error" role="alert" hidden></p>
         <label class="field"><span>Full name</span><input id="co-name" required maxlength="100" autocomplete="name"></label>
-        <label class="field"><span>Phone (WhatsApp)</span><input id="co-phone" type="tel" required maxlength="30" autocomplete="tel"></label>
-        <label class="field"><span>Email <em>(needed to pay online)</em></span><input id="co-email" type="email" maxlength="254" autocomplete="email"></label>
+        <label class="field"><span>Phone (WhatsApp)</span><input id="co-phone" type="tel" required maxlength="30" autocomplete="tel" aria-describedby="co-welcome-hint"></label>
+        <p class="cart__hint cart__hint--offer" id="co-welcome-hint" hidden></p>
+        <label class="field"><span>Email <em>(optional)</em></span><input id="co-email" type="email" maxlength="254" autocomplete="email"></label>
         <label class="field" id="co-saved-wrap" hidden><span>Saved address</span><select id="co-saved"></select></label>
         <label class="field"><span>Delivery address</span><input id="co-line1" maxlength="200" placeholder="House number and street" autocomplete="address-line1"></label>
         <label class="field"><span>Apartment or directions <em>(optional)</em></span><input id="co-line2" maxlength="200" autocomplete="address-line2"></label>
@@ -388,6 +424,14 @@
     </form>
 
     <!-- step 3: confirmation -->
+    <!-- saved for later (wishlist) -->
+    <div class="cart__view" id="cart-view-saved" hidden>
+      <div class="cart__items" id="saved-items"></div>
+      <div class="cart__foot">
+        <button class="btn btn--light" type="button" onclick="showCartView('items')">View cart</button>
+      </div>
+    </div>
+
     <div class="cart__view" id="cart-view-done" hidden>
       <div class="cart__items cart__done">
         <div class="done__tick" aria-hidden="true">&#10003;</div>
@@ -428,6 +472,10 @@
           <button class="btn btn--light" type="button" id="pdp-add" onclick="pdpAdd(false)">Add to Cart</button>
         </div>
         <button class="btn btn--dark" type="button" id="pdp-buy" onclick="pdpAdd(true)">Buy Now</button>
+        <button class="pdp__save" type="button" id="pdp-save" onclick="toggleWishlist(pdp.id)" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.2-9.3C1.7 8 3.6 4.5 7.1 4.5c2 0 3.6 1.1 4.9 2.9 1.3-1.8 2.9-2.9 4.9-2.9 3.5 0 5.4 3.5 4.3 6.7-1.7 4.7-9.2 9.3-9.2 9.3z"/></svg>
+          <span id="pdp-save-label">Save to wishlist</span>
+        </button>
         <div class="pdp__links">
           <a class="pdp__ask" id="pdp-more" href="/product.html">Reviews and full details</a>
           <a class="pdp__ask" id="pdp-ask" href="#" target="_blank" rel="noopener">Ask about this item on WhatsApp</a>
@@ -485,7 +533,7 @@
   <script src="receipt.js?v=2"></script>
   <!-- async: customer sign-in must never hold up the first paint of the shop -->
   <script type="module" async src="firebase-auth.js?v=2"></script>
-  <script src="app.js?v=38"></script>
+  <script src="app.js?v=47"></script>
   <script>
     if ('serviceWorker' in navigator) {
       // When an updated worker takes control, reload once so the page runs the

@@ -10,6 +10,8 @@ const WHOLESALE_MAX_QTY = 1000;
 const CART_KEY = 'dcKidsCart';
 const CUSTOMER_KEY = 'dcKidsCustomer';
 const PAYSTACK_PENDING_KEY = 'dcKidsPendingPaystackCheckout';
+const WISHLIST_KEY = 'dcKidsGuestWishlist'; // the same list product.html and the account page use
+const HEART_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.2-9.3C1.7 8 3.6 4.5 7.1 4.5c2 0 3.6 1.1 4.9 2.9 1.3-1.8 2.9-2.9 4.9-2.9 3.5 0 5.4 3.5 4.3 6.7-1.7 4.7-9.2 9.3-9.2 9.3z"/></svg>';
 const WELCOME_KEY = 'dcKidsWelcome';                 // { phone, percent } once joined
 const WELCOME_SNOOZE_KEY = 'dcKidsWelcomeSnoozed';   // when "No thanks" was pressed
 const WELCOME_SNOOZE_MS = 14 * 24 * 60 * 60 * 1000;
@@ -18,16 +20,20 @@ const WELCOME_DELAY_MS = 12000;
 const CAT_LABELS = {
   newborn: 'Newborn', clothing: 'Clothing', shoes: 'Shoes', footwear: 'Shoes',
   feeding: 'Feeding', gear: 'Baby gear', bathcare: 'Bath & care',
-  essentials: 'Essentials', accessories: 'Accessories', bedding: 'Bedding'
+  essentials: 'Essentials', accessories: 'Accessories', bedding: 'Bedding',
+  womens: "Women's fashion", home: 'Home', cars: 'Cars'
 };
-const CAT_ORDER = ['newborn', 'clothing', 'shoes', 'essentials', 'feeding', 'gear', 'bathcare', 'bedding', 'accessories'];
+const CAT_ORDER = ['newborn', 'clothing', 'shoes', 'essentials', 'feeding', 'gear', 'bathcare', 'bedding', 'accessories', 'womens', 'home', 'cars'];
 
 let products = [];
 let catalogueLoaded = false;
+let catalogueFromApi = false; // false on the static build, which has no /api to ask
 let byId = new Map();
 let siteConfig = {};
 let storeMode = localStorage.getItem('storeMode') || 'retail';
 let cart = [];
+let wishlist = new Set();
+let preorderView = false;
 let checkoutIdemKey = null;
 let checkoutIdemMethod = null;
 let lastReceipt = null;
@@ -81,9 +87,8 @@ function getPriceModifier(sizeLabel) {
   const s = String(sizeLabel || '').trim();
   if (/^(0-3M|3-6M|6-9M|9-12M|12-18M|0M|3M|6M|9M|12M|14|15|16|17|18|19|20|21)$/i.test(s)) return 0;
   if (/^(18M|24M|1Y|2Y|22|23|24|25|26|27)$/i.test(s)) return 5;
-  if (/^(3Y|4Y|28|29|30|31|32|33|34)$/i.test(s)) return 10;
-  if (/^(5Y|6Y|7Y|35|36)$/i.test(s)) return 15;
-  if (/^(8Y|9Y|10Y|11Y|12Y)$/i.test(s)) return 20;
+  if (/^(3Y|4Y|5Y|28|29|30|31|32)$/i.test(s)) return 10;
+  if (/^(6Y|7Y|8Y|33|34|35|36)$/i.test(s)) return 15;
   return 0;
 }
 
@@ -183,18 +188,24 @@ function cardPriceHTML(p) {
   return '<span class="card__price card__price--sale">' + salePriceHTML(p, span.min, span.max - span.min > 0.005 ? 'From ' : '') + '</span>';
 }
 
+// The heart sits beside the card link, not inside it: a button nested in a
+// link is invalid and would open the product as well as saving it.
 function cardHTML(p, i, life) {
   const delay = (i % 3) * 70;
-  return '<a class="card reveal-card' + (life ? ' card--life' : '') + '" href="#product-' + p.id + '" style="transition-delay:' + delay + 'ms">' +
-      '<span class="card__media">' +
-        '<img src="' + esc(imgOf(p)) + '" alt="' + esc(p.name) + '" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'' + esc(fallbackOf()) + '\'">' +
-        badgeHTML(p) +
-      '</span>' +
-      '<span class="card__body">' +
-        '<span class="card__name">' + esc(p.name) + '</span>' +
-        cardPriceHTML(p) +
-      '</span>' +
-    '</a>';
+  const saved = wishlist.has(p.id);
+  return '<div class="card-cell reveal-card" style="transition-delay:' + delay + 'ms">' +
+      '<a class="card' + (life ? ' card--life' : '') + '" href="#product-' + p.id + '">' +
+        '<span class="card__media">' +
+          '<img src="' + esc(imgOf(p)) + '" alt="' + esc(p.name) + '" loading="lazy" decoding="async" onerror="this.onerror=null;this.src=\'' + esc(fallbackOf()) + '\'">' +
+          badgeHTML(p) +
+        '</span>' +
+        '<span class="card__body">' +
+          '<span class="card__name">' + esc(p.name) + '</span>' +
+          cardPriceHTML(p) +
+        '</span>' +
+      '</a>' +
+      '<button type="button" class="card__save' + (saved ? ' is-on' : '') + '" data-save="' + p.id + '" aria-pressed="' + saved + '" aria-label="Save ' + esc(p.name) + ' to your wishlist">' + HEART_SVG + '</button>' +
+    '</div>';
 }
 
 function skeletonHTML(n) {
@@ -218,7 +229,7 @@ function renderBestsellers() {
   const isReal = (p) => !!(window.DCImageResolver && DCImageResolver.isGenuineImage(p.img));
   const rank = (p) => (catKey(p.badge) === 'hot' ? 0 : 4) + (isReal(p) ? 0 : 2) + (isSoldOut(p) ? 8 : 0);
   const seen = new Set();
-  const picks = products.filter(hasPrice).slice().sort((a, b) => rank(a) - rank(b))
+  const picks = products.filter((p) => hasPrice(p) && inStockView(p)).slice().sort((a, b) => rank(a) - rank(b))
     .filter((p) => { const k = String(p.name).trim().toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; })
     .slice(0, 4);
 
@@ -235,19 +246,13 @@ function renderBestsellers() {
   observeReveals(el);
 }
 
-function renderPreorders() {
-  const el = $('preorder-grid');
-  if (!el) return;
-  const items = products.filter(isPreorder);
-  el.innerHTML = items.length
-    ? items.map((p, i) => cardHTML(p, i, false)).join('')
-    : '<div class="shop-empty">New pre-order pieces go up when the next China window opens. Want something now? Start a custom pre-order below.</div>';
-  observeReveals(el);
-}
 
+// China pre-orders have their own tab: the shop grids, categories, bestsellers
+// and search all leave pre-order pieces out.
+function inStockView(p) { return !isPreorder(p); }
 function categoryCounts() {
   const counts = {};
-  products.forEach((p) => { const k = catKey(p.cat); if (k) counts[k] = (counts[k] || 0) + 1; });
+  products.filter(inStockView).forEach((p) => { const k = catKey(p.cat); if (k) counts[k] = (counts[k] || 0) + 1; });
   return counts;
 }
 function orderedCats(counts) {
@@ -288,7 +293,7 @@ function matchesQuery(p, q) {
 function filteredProducts() {
   const q = shop.q.trim().toLowerCase();
   return products.filter((p) =>
-    (shop.cat === 'all' || catKey(p.cat) === shop.cat) && (!q || matchesQuery(p, q))
+    inStockView(p) && (shop.cat === 'all' || catKey(p.cat) === shop.cat) && (!q || matchesQuery(p, q))
   );
 }
 
@@ -396,7 +401,7 @@ function removeLine(index) { cart.splice(index, 1); saveCart(); renderCart(); }
 function renderCart() {
   const count = cartCount();
   $('cart-count').textContent = count;
-  $('cart-count-head').textContent = count;
+  syncDrawerTitle();
   const itemsEl = $('cart-items');
   if (!cart.length) {
     itemsEl.innerHTML = '<div class="cart__empty">Your cart is empty.<br><a href="#shop" class="link-underline" onclick="closeCart()" style="margin-top:14px">Start shopping</a></div>';
@@ -442,7 +447,106 @@ function closeCart() {
   syncScrollLock();
 }
 function showCartView(view) {
-  ['items', 'details', 'done'].forEach((k) => { $('cart-view-' + k).hidden = k !== view; });
+  ['items', 'details', 'saved', 'done'].forEach((k) => { $('cart-view-' + k).hidden = k !== view; });
+  syncDrawerTitle();
+}
+// The drawer holds the cart and the wishlist; its heading follows the view.
+function syncDrawerTitle() {
+  const onSaved = !$('cart-view-saved').hidden;
+  $('cart-title-text').textContent = onSaved ? 'Your wishlist' : 'Your cart';
+  $('cart-count-head').textContent = onSaved ? savedProducts().length : cartCount();
+}
+
+/* =============================================================== wishlist */
+// Guests keep the list in the browser; signed-in shoppers keep it on their
+// account, where it merges with what they saved as a guest.
+function readGuestWishlist() {
+  try {
+    const ids = JSON.parse(localStorage.getItem(WISHLIST_KEY) || '[]');
+    return new Set((Array.isArray(ids) ? ids : []).map(Number).filter(Number.isInteger));
+  } catch (e) { return new Set(); }
+}
+// Saved pieces still in the catalogue; a removed product just drops out.
+function savedProducts() { return Array.from(wishlist).map((id) => byId.get(id)).filter(Boolean); }
+
+async function syncWishlist() {
+  if (!isSignedIn()) { wishlist = readGuestWishlist(); paintWishlist(); return; }
+  try {
+    const guestIds = Array.from(readGuestWishlist());
+    if (guestIds.length) {
+      const merge = await fetch('/api/wishlist/merge', { method: 'POST', headers: await customerAuthHeaders(), body: JSON.stringify({ productIds: guestIds }) });
+      if (merge.ok) localStorage.removeItem(WISHLIST_KEY);
+    }
+    const res = await fetch('/api/wishlist', { headers: await customerAuthHeaders(), cache: 'no-store' });
+    if (res.ok) wishlist = new Set((await res.json()).map((row) => Number(row.product_id)));
+  } catch (e) {
+    console.warn('[Wishlist] using this device\'s copy:', e.message);
+    wishlist = readGuestWishlist();
+  }
+  paintWishlist();
+}
+
+async function toggleWishlist(id) {
+  const p = byId.get(Number(id));
+  if (!p) return;
+  const wasSaved = wishlist.has(p.id);
+  if (wasSaved) wishlist.delete(p.id); else wishlist.add(p.id);
+  paintWishlist();
+  try {
+    if (isSignedIn()) {
+      const res = await fetch(wasSaved ? '/api/wishlist/' + p.id : '/api/wishlist', {
+        method: wasSaved ? 'DELETE' : 'POST',
+        headers: await customerAuthHeaders(),
+        body: wasSaved ? undefined : JSON.stringify({ product_id: p.id })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+    } else {
+      localStorage.setItem(WISHLIST_KEY, JSON.stringify(Array.from(wishlist)));
+    }
+    toast(wasSaved ? 'Removed from your wishlist' : 'Saved to your wishlist');
+  } catch (e) {
+    if (wasSaved) wishlist.add(p.id); else wishlist.delete(p.id);
+    paintWishlist();
+    toast('Could not update your wishlist. Please try again.');
+  }
+}
+
+function paintWishlist() {
+  document.querySelectorAll('[data-save]').forEach((btn) => {
+    const on = wishlist.has(Number(btn.dataset.save));
+    btn.classList.toggle('is-on', on);
+    btn.setAttribute('aria-pressed', String(on));
+  });
+  const count = savedProducts().length;
+  $('saved-count').textContent = count;
+  $('m-saved-count').textContent = count ? '(' + count + ')' : '';
+  const pdpSaved = wishlist.has(pdp.id);
+  $('pdp-save').classList.toggle('is-on', pdpSaved);
+  $('pdp-save').setAttribute('aria-pressed', String(pdpSaved));
+  $('pdp-save-label').textContent = pdpSaved ? 'Saved to wishlist' : 'Save to wishlist';
+  if (!$('cart-view-saved').hidden) renderSaved();
+  syncDrawerTitle();
+}
+
+function renderSaved() {
+  const items = savedProducts();
+  $('saved-items').innerHTML = items.length
+    ? items.map((p) =>
+        '<div class="citem">' +
+          '<img class="citem__img" src="' + esc(imgOf(p)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(fallbackOf()) + '\'">' +
+          '<div>' +
+            '<div class="citem__name">' + esc(p.name) + '</div>' +
+            '<div class="citem__meta">' + (isSoldOut(p) ? 'Sold out' : esc(priceLabel(p))) + '</div>' +
+            '<div class="citem__links"><a class="link-underline" href="#product-' + p.id + '" onclick="closeCart()">Choose a size</a>' +
+            '<button class="citem__rm" type="button" data-unsave="' + p.id + '">Remove</button></div>' +
+          '</div>' +
+        '</div>'
+      ).join('')
+    : '<div class="cart__empty">Nothing saved yet.<br>Tap the heart on any piece to keep it here.<br><a href="#shop" class="link-underline" onclick="closeCart()" style="margin-top:14px">Browse the shop</a></div>';
+}
+function openSaved() {
+  renderSaved();
+  openCart('saved');
 }
 function toggleMenu(open) {
   $('m-menu').classList.toggle('open', open);
@@ -503,7 +607,7 @@ function renderSearch() {
 
   // Name matches first; the rest (category / description hits) after.
   const nameHit = (p) => (String(p.name).toLowerCase().includes(q) ? 0 : 1);
-  const hits = products.filter((p) => matchesQuery(p, q)).sort((a, b) => nameHit(a) - nameHit(b));
+  const hits = products.filter((p) => inStockView(p) && matchesQuery(p, q)).sort((a, b) => nameHit(a) - nameHit(b));
   if (!hits.length) {
     status.textContent = 'No products match “' + raw + '”.';
     more.innerHTML = '<a class="link-underline" href="' + esc(waLink('Hello DC Kids! Do you have ' + raw + '?')) + '" target="_blank" rel="noopener">Ask us to source it on WhatsApp</a>';
@@ -542,6 +646,28 @@ function productImages(p) {
   return list;
 }
 
+function paintPdpThumbs(p) {
+  const imgs = productImages(p);
+  $('pdp-thumbs').innerHTML = imgs.length > 1
+    ? imgs.map((src, i) => '<img src="' + esc(src) + '" alt="' + esc(p.name) + ', photo ' + (i + 1) + '" loading="lazy" onclick="document.getElementById(\'pdp-img\').src=this.src">').join('')
+    : '';
+}
+
+// The live catalogue list carries no galleries, so the first time a product
+// opens its photos come from its own endpoint. (The static build's
+// products.json lists them already.)
+function loadPdpGallery(p) {
+  p.images = [];
+  fetch('/api/products/' + p.id)
+    .then((res) => (res.ok && /json/.test(res.headers.get('content-type') || '') ? res.json() : null))
+    .then((full) => {
+      if (!full || !Array.isArray(full.images)) return;
+      p.images = full.images;
+      if (pdp.id === p.id) paintPdpThumbs(p);
+    })
+    .catch(() => { /* offline: the main photo is already showing */ });
+}
+
 function openPdp(id) {
   const p = byId.get(Number(id));
   if (!p) return;
@@ -558,18 +684,20 @@ function openPdp(id) {
   $('pdp-desc').textContent = p.description || '';
   $('pdp-desc').hidden = !p.description;
 
-  const imgs = productImages(p);
-  $('pdp-thumbs').innerHTML = imgs.length > 1
-    ? imgs.map((src) => '<img src="' + esc(src) + '" alt="" onclick="document.getElementById(\'pdp-img\').src=this.src">').join('')
-    : '';
+  paintPdpThumbs(p);
+  if (catalogueFromApi && !Array.isArray(p.images)) loadPdpGallery(p);
 
   $('pdp-sizes').innerHTML = sizes.map((s) =>
     '<button type="button" class="size-chip' + (s === pdp.size ? ' sel' : '') + '" role="radio" aria-checked="' + (s === pdp.size) + '" data-size="' + esc(s) + '">' + esc(s) + '</button>'
   ).join('');
 
-  $('pdp-ask').href = waLink('Hello DC Kids! I\'m interested in ' + p.name + (p.sku ? ' (' + p.sku + ')' : '') + '.');
+  const ref = p.name + (p.sku ? ' (' + p.sku + ')' : '');
+  $('pdp-ask').href = waLink(isPreorder(p)
+    ? 'Hi DC Sourcing & Logistics! I\'d like to pre-order ' + ref + '. ' + (hasPrice(p) ? 'Is it still available?' : 'What is the price?')
+    : 'Hello DC Kids! I\'m interested in ' + ref + '.');
   $('pdp-more').href = '/product.html?id=' + p.id;
   updatePdp();
+  paintWishlist();
 
   const el = $('pdp');
   el.scrollTop = 0;
@@ -657,6 +785,8 @@ function closePdp() {
   }
 }
 function onHashChange() {
+  // Links to #preorders (nav, menu, footer, the announcement) open the China Pre-Order tab.
+  if (location.hash === '#preorders') { showPreorders(true); return; }
   const m = location.hash.match(/^#product-(\d+)$/);
   if (m) openPdp(m[1]);
   else if ($('pdp').classList.contains('open')) closePdpUI();
@@ -687,8 +817,11 @@ function startCheckout() {
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(CUSTOMER_KEY) || '{}') || {}; } catch (e) { /* no saved details — fine */ }
   const account = customerState.customer || {};
+  // A number with an unused welcome offer comes first, or the discount would silently not apply.
+  const joined = readWelcome();
+  const welcomePhone = joined && joined.percent > 0 ? joined.phone : '';
   fillIfEmpty('co-name', account.name || saved.name);
-  fillIfEmpty('co-phone', account.phone || saved.phone);
+  fillIfEmpty('co-phone', welcomePhone || account.phone || saved.phone);
   fillIfEmpty('co-email', account.email || (customerState.user && customerState.user.email) || saved.email);
   // Signed in, the server charges the account's verified email whatever is typed here.
   $('co-email').readOnly = isSignedIn();
@@ -708,8 +841,6 @@ function startCheckout() {
   $('co-hint').textContent = paystackEnabled
     ? 'Pay online with Paystack, or finish your order on WhatsApp.'
     : 'Your order completes on WhatsApp. We\'ll confirm delivery and payment there.';
-  const joined = readWelcome();
-  fillIfEmpty('co-phone', joined && joined.phone);
   renderCheckoutTotal();
   openCart('details');
   setTimeout(() => $(!$('co-name').value ? 'co-name' : !$('co-phone').value ? 'co-phone' : 'co-name').focus(), 450);
@@ -893,6 +1024,7 @@ async function applyCustomerState(state) {
   $('account-link').textContent = customerState.customer ? 'Account' : 'Sign in';
   $('m-account-link').textContent = customerState.customer ? 'My account' : 'Sign in';
   savedAddresses = [];
+  if (catalogueLoaded) syncWishlist(); // signing in brings the account's saved pieces
   if (!isSignedIn()) return;
   try {
     const res = await fetch('/api/customer/addresses', { headers: await customerAuthHeaders() });
@@ -904,10 +1036,17 @@ async function applyCustomerState(state) {
 function updateModeBar() {
   const bar = $('mode-bar');
   if (!bar) return;
-  bar.style.display = siteConfig.wholesale_enabled ? 'flex' : 'none';
-  bar.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.mode === (isWholesale() ? 'wholesale' : 'retail')));
+  const preorderOpen = preorderWindow().open;
+  bar.style.display = siteConfig.wholesale_enabled || preorderOpen ? 'flex' : 'none';
+  bar.querySelector('[data-mode="wholesale"]').hidden = !siteConfig.wholesale_enabled;
+  const active = preorderView ? 'preorder' : (isWholesale() ? 'wholesale' : 'retail');
+  bar.querySelectorAll('button').forEach((b) => {
+    b.classList.toggle('on', b.dataset.mode === active);
+    b.setAttribute('aria-pressed', String(b.dataset.mode === active));
+  });
 }
 function setMode(mode) {
+  if (preorderView) showPreorders(false);
   if (mode === 'wholesale' && !siteConfig.wholesale_enabled) return;
   if ((mode === 'wholesale') === isWholesale()) return;
   storeMode = mode;
@@ -922,7 +1061,6 @@ function setMode(mode) {
   saveCart();
   updateModeBar();
   renderBestsellers();
-  renderPreorders();
   renderShop();
   renderCart();
   if ($('pdp').classList.contains('open')) { pdp.qty = isWholesale() ? moq() : 1; updatePdp(); }
@@ -1018,6 +1156,71 @@ function runDates(starts, ends) {
   return '';
 }
 
+/* ======================================================== pre-order window */
+// China pre-orders run in windows the owner sets in admin. Outside one, the
+// section, the links to it and the pre-order pieces all stay out of the shop,
+// and the server refuses pre-order items at checkout.
+function preorderWindow() {
+  const starts = siteConfig.preorder_starts || '';
+  const ends = siteConfig.preorder_ends || '';
+  const today = todayIso();
+  const open = !!(starts || ends) && (!starts || today >= starts) && (!ends || today <= ends);
+  return { open: open, starts: starts, ends: ends, today: today };
+}
+function closesLabel(ends, today) {
+  const days = Math.round((new Date(ends + 'T00:00:00') - new Date(today + 'T00:00:00')) / 86400000);
+  return days <= 0 ? 'Closes today' : days === 1 ? 'Closes tomorrow' : 'Closes in ' + days + ' days';
+}
+function initPreorderWindow() {
+  const win = preorderWindow();
+  document.querySelectorAll('.js-preorder-link').forEach((a) => { a.hidden = !win.open; });
+  if (!win.open) return;
+  $('pre-window-dates').textContent = runDates(win.starts, win.ends);
+  $('pre-window-left').textContent = win.ends ? closesLabel(win.ends, win.today) : 'Open now';
+  // The same rule the server applies, so only a real group invite is ever linked.
+  const group = String(siteConfig.whatsapp_group_url || '');
+  const hasGroup = /^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]{10,40}$/.test(group);
+  $('pre-group').hidden = !hasGroup;
+  if (hasGroup) $('pre-group').href = group;
+}
+
+// The China Pre-Order tab swaps the page below the tabs for the pre-order view,
+// the way Retail and Wholesale swap the prices. Any other tab switches back.
+function showPreorders(on) {
+  if (on && !preorderWindow().open) return;
+  preorderView = !!on;
+  document.body.classList.toggle('is-preorder-view', preorderView);
+  $('preorders').hidden = !preorderView;
+  updateModeBar();
+  if (preorderView) {
+    observeReveals($('preorders'));
+    // Land on the tabs, so the view that just changed is what the shopper sees.
+    window.scrollTo({ top: $('mode-bar').getBoundingClientRect().top + window.scrollY - $('nav').offsetHeight, behavior: REDUCE_MOTION ? 'auto' : 'smooth' });
+  }
+  if (location.hash === '#preorders' && !preorderView) history.replaceState(null, '', location.pathname + location.search);
+}
+
+// This window's pre-order pieces, filtered by category inside the tab. The
+// catalogue only holds them while a window is open (see init).
+const preorderShelf = { cat: 'all' };
+function renderPreorders() {
+  const items = products.filter(isPreorder);
+  $('pre-finds').hidden = !items.length;
+  if (!items.length) return;
+  const counts = {};
+  items.forEach((p) => { const k = catKey(p.cat); if (k) counts[k] = (counts[k] || 0) + 1; });
+  if (!counts[preorderShelf.cat]) preorderShelf.cat = 'all';
+  const cats = orderedCats(counts);
+  $('pre-filters').innerHTML = cats.length > 1 ? ['all'].concat(cats).map((c) => {
+    const on = c === preorderShelf.cat;
+    return '<button type="button" class="pre__filter' + (on ? ' on' : '') + '" data-pre-cat="' + esc(c) + '" aria-pressed="' + on + '">' +
+      esc(c === 'all' ? 'All' : catLabel(c)) + '</button>';
+  }).join('') : '';
+  const shown = preorderShelf.cat === 'all' ? items : items.filter((p) => catKey(p.cat) === preorderShelf.cat);
+  $('pre-grid').innerHTML = shown.map((p, i) => cardHTML(p, i, false)).join('');
+  observeReveals($('pre-grid'));
+}
+
 function initPromo() {
   const text = siteConfig.banner_enabled ? String(siteConfig.banner_text || '').trim() : '';
   if (!text) return;
@@ -1027,8 +1230,8 @@ function initPromo() {
   // Outside its run dates the announcement stays down, so a closed window is never advertised.
   if ((starts && today < starts) || (ends && today > ends)) return;
   const dates = runDates(starts, ends);
-  const isPreorder = /pre-?order/i.test(text);
-  if (isPreorder && dates) $('pre-window').textContent = 'This window runs ' + dates + '.';
+  // Only point at the pre-orders while they're open; otherwise the link would land on nothing.
+  const isPreorder = /pre-?order/i.test(text) && preorderWindow().open;
   // Dismissal is per announcement and window, so a new window shows again.
   const key = text + '|' + dates;
   $('promo').dataset.key = key;
@@ -1101,6 +1304,11 @@ function renderCheckoutTotal() {
   $('co-welcome-pct').textContent = percent;
   $('co-welcome-amt').textContent = '−GH₵ ' + gh(off);
   $('cart-total-2').textContent = 'GH₵ ' + gh(subtotal - off);
+  // Typed a different number? Say which one the offer belongs to.
+  const joined = readWelcome();
+  const linkedElsewhere = !percent && joined && joined.percent > 0 && !isWholesale() && $('co-phone').value.trim() !== '';
+  $('co-welcome-hint').hidden = !linkedElsewhere;
+  if (linkedElsewhere) $('co-welcome-hint').textContent = 'Your ' + joined.percent + '% welcome offer is for ' + joined.phone + '. Check out with that number to use it.';
 }
 
 function openWelcome() {
@@ -1161,7 +1369,9 @@ async function joinWelcome(e) {
     }
     const percent = data.eligible ? Number(data.percent) || 0 : 0;
     try { localStorage.setItem(WELCOME_KEY, JSON.stringify({ phone: phone, percent: percent })); } catch (err) { /* storage blocked */ }
-    if (!$('co-phone').value) $('co-phone').value = phone;
+    // The offer is tied to this number, so checkout should start with it.
+    $('co-phone').value = phone;
+    renderCheckoutTotal();
     $('welcome-kicker').textContent = 'You\'re on the list';
     $('welcome-title').textContent = percent ? 'Your ' + percent + '% is waiting' : 'Thanks for joining';
     $('welcome-text').textContent = percent
@@ -1220,6 +1430,8 @@ function wireEvents() {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAll(); });
 
   document.addEventListener('click', (e) => {
+    const save = e.target.closest('[data-save], [data-unsave]');
+    if (save) { toggleWishlist(save.dataset.save || save.dataset.unsave); return; }
     const card = e.target.closest('a.card');
     if (card && /^#product-\d+$/.test(card.getAttribute('href'))) pdpFromNav = true;
     // The search panel sits above the product page, so step out of it first.
@@ -1230,6 +1442,8 @@ function wireEvents() {
     if (coll) { shop.q = ''; if ($('shop-search')) $('shop-search').value = ''; setShopCat(coll.dataset.cat); }
     const chip = e.target.closest('.cat-chip');
     if (chip) setShopCat(chip.dataset.cat);
+    const shelf = e.target.closest('[data-pre-cat]');
+    if (shelf) { preorderShelf.cat = shelf.dataset.preCat; renderPreorders(); }
     const size = e.target.closest('.size-chip');
     if (size) { pdp.size = size.dataset.size; updatePdp(); }
   });
@@ -1295,11 +1509,14 @@ function applyUrlParams() {
 function normalizeProducts(list) {
   return (Array.isArray(list) ? list : []).map((p) => {
     const cat = catKey(p.cat) === 'baby' ? 'newborn' : catKey(p.cat) === 'bags' ? 'accessories' : p.cat;
+    // The live API sends what is still buyable after open orders; the static
+    // products.json only has the raw count.
+    const stock = p.available !== undefined ? p.available : p.stock;
     return Object.assign({}, p, {
       id: Number(p.id),
       cat: cat,
       price: Number(p.price || 0),
-      stock: (p.stock === null || p.stock === undefined || p.stock === '') ? null : Number(p.stock)
+      stock: (stock === null || stock === undefined || stock === '') ? null : Number(stock)
     });
   }).filter((p) => p.id && p.name);
 }
@@ -1324,7 +1541,7 @@ async function loadCatalogue() {
     const type = res.headers.get('content-type') || '';
     if (res.ok && type.includes('application/json')) {
       const data = normalizeProducts(await res.json());
-      if (data.length) return data;
+      if (data.length) { catalogueFromApi = true; return data; }
     }
   } catch (e) { /* fall through to the static catalogue */ }
   try {
@@ -1337,28 +1554,36 @@ async function loadCatalogue() {
 async function init() {
   $('year').textContent = new Date().getFullYear();
   loadCart();
+  wishlist = readGuestWishlist();
   wireEvents();
   initHeroSlides();
   observeReveals();
   $('bestsellers-grid').innerHTML = skeletonHTML(6);
-  $('preorder-grid').innerHTML = skeletonHTML(3);
   $('product-grid').innerHTML = skeletonHTML(6);
 
+  // Settings, the Paystack switch and the catalogue don't depend on each
+  // other, so they load side by side: on 3G each round trip costs a second.
+  const catalogueReady = loadCatalogue();
+  const paystackReady = fetch('/api/payments/paystack/config', { cache: 'no-store' })
+    .then((res) => (res.ok ? res.json() : {}))
+    .then((cfg) => cfg.enabled === true)
+    .catch(() => false); // WhatsApp checkout still works
   siteConfig = await loadSettings();
-  try {
-    const res = await fetch('/api/payments/paystack/config', { cache: 'no-store' });
-    if (res.ok) paystackEnabled = (await res.json()).enabled === true;
-  } catch (e) { /* WhatsApp checkout still works */ }
+  paystackEnabled = await paystackReady;
   if (!siteConfig.wholesale_enabled && storeMode === 'wholesale') {
     storeMode = 'retail';
     localStorage.setItem('storeMode', 'retail');
   }
   updateModeBar();
   applyWaLinks();
+  initPreorderWindow();
   initPromo();
   initWelcome();
 
-  products = await loadCatalogue();
+  products = await catalogueReady;
+  // Outside a window the pre-order pieces aren't for sale, so they leave the shop
+  // (and any cart) entirely rather than failing at checkout.
+  if (!preorderWindow().open) products = products.filter((p) => !isPreorder(p));
   byId = new Map(products.map((p) => [p.id, p]));
   catalogueLoaded = true;
   if ($('search').classList.contains('open')) renderSearch();
@@ -1367,7 +1592,6 @@ async function init() {
     const msg = '<div class="shop-empty">We couldn\'t load the catalogue right now. Please refresh, or <a class="link-underline js-wa-link" data-msg="Hello DC Kids! I\'d like to place an order.">order on WhatsApp</a>.</div>';
     $('bestsellers-grid').innerHTML = msg;
     $('product-grid').innerHTML = '';
-    $('preorder-grid').innerHTML = '';
     applyWaLinks();
     renderCart();
     return;
@@ -1380,12 +1604,13 @@ async function init() {
 
   renderCart();
   renderBestsellers();
-  renderPreorders();
   renderCollections();
   renderShopCats();
   renderShop();
+  renderPreorders();
+  syncWishlist();
 
-  if (/^#product-\d+$/.test(location.hash)) onHashChange();
+  if (/^#product-\d+$/.test(location.hash) || location.hash === '#preorders') onHashChange();
   applyUrlParams();
   reconcilePaystack();
 }

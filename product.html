@@ -11,7 +11,7 @@
   <link rel="icon" href="icon.png" type="image/png">
   <link rel="manifest" href="/manifest.json">
   <link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="store.css?v=17">
+  <link rel="stylesheet" href="store.css?v=26">
   <link rel="stylesheet" href="product.css?v=6">
 </head>
 <body class="product-page">
@@ -92,7 +92,7 @@
           <ul class="product-assurances" aria-label="Order information">
             <li><span id="assuranceStock">Availability confirmed at checkout</span></li>
             <li><span>Delivery is arranged separately</span></li>
-            <li><span>Pay with Paystack or order on WhatsApp</span></li>
+            <li><span>Order and pay on WhatsApp</span></li>
           </ul>
         </div>
       </section>
@@ -184,7 +184,7 @@
     <div class="product-cart-drawer__footer">
       <div class="product-cart-subtotal"><span>Subtotal</span><strong id="productCartSubtotal">GH₵ 0.00</strong></div>
       <a id="productCheckoutLink" class="btn btn--dark" href="/?openCart=1">Go to checkout</a>
-      <p>Pay with Paystack or order on WhatsApp at checkout.</p>
+      <p>Your order completes on WhatsApp, where we confirm payment and delivery.</p>
     </div>
   </aside>
 
@@ -193,6 +193,6 @@
   <script src="image-resolver.js?v=2"></script>
   <!-- not async: product.js reads window.DCKidsAuth at start-up for the wishlist -->
   <script type="module" src="firebase-auth.js?v=2"></script>
-  <script src="product.js?v=6" defer></script>
+  <script src="product.js?v=9" defer></script>
 </body>
 </html>
