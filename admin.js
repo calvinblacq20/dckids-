@@ -9318,6 +9318,10 @@ function bulkFactor(price, bulkPrice, discountPercent) {
     if (bulk > 0 && bulk < base) return bulk / base;
     return 1 - (Number(discountPercent) || 0) / 100;
 }
+// Bulk price from the minimum, retail under it — must stay identical to the server's bulkApplies.
+function bulkApplies(isWholesale, quantity, minimum) {
+    return !!isWholesale && Number(quantity) >= (Number(minimum) || 1);
+}
 
 /* The reference puts a minus and a plus either side of the quantity rather
    than leaving a bare number field. */
@@ -9370,11 +9374,11 @@ function updateNewOrderTotals() {
         try { managedSizes = typeof product.sizes === 'string' ? JSON.parse(product.sizes) : product.sizes; } catch (e) { managedSizes = null; }
         var sizeMatch = Array.isArray(managedSizes) ? managedSizes.find(function(s) { return s && s.label === size; }) : null;
         var basePrice = sizeMatch && sizeMatch.price != null ? Number(sizeMatch.price) : (product.price || 0);
-        // Wholesale takes the discount off the unit price. It does NOT multiply
-        // by the MOQ: the server counts quantity in pieces and only enforces a
-        // floor, so multiplying here quoted ten times the real price and then
-        // the order was rejected for being under the floor.
-        if (orderType === 'wholesale') {
+        // Wholesale takes the discount off the unit price from the MOQ up, and
+        // charges retail under it (ADR 0010). It does NOT multiply by the MOQ:
+        // the server counts quantity in pieces, so multiplying here quoted ten
+        // times the real price.
+        if (bulkApplies(orderType === 'wholesale', qty, wholesaleMoq)) {
             basePrice = basePrice * bulkFactor(product.price, product.wholesale_price, wholesaleDiscount);
         }
 
@@ -9554,19 +9558,10 @@ async function submitCreateOrder() {
             hasError = true;
             return;
         }
-        // The server enforces a pieces-per-item floor on wholesale. Say so here
-        // rather than letting it reject the whole form after it is filled in.
-        if (orderType === 'wholesale') {
-            var moqEl = document.getElementById('config-moq');
-            var moq = moqEl ? (parseInt(moqEl.value, 10) || 10) : 10;
-            if (qty < moq) {
-                showToast('Wholesale needs at least ' + moq + ' pieces per item', 'warning');
-                hasError = true;
-                return;
-            }
-            return;
-        }
-        
+        // A wholesale row under the MOQ is charged at retail by the server (the
+        // quote above shows it), so it goes through. (The check that stood here
+        // ended in a stray return that dropped every wholesale row, so no
+        // wholesale order could be taken at the counter.)
         items.push({
             id: parseInt(prodId),
             size: size,

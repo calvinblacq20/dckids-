@@ -128,11 +128,17 @@
     if (bulk > 0 && bulk < base) return bulk / base;
     return 1 - (Number(discountPercent) || 0) / 100;
   }
+  // Bulk price from the minimum, retail under it — must stay identical to the server's bulkApplies.
+  function bulkApplies(isWholesale, quantity, minimum) {
+    return !!isWholesale && Number(quantity) >= (Number(minimum) || 1);
+  }
 
-  // Server order: the bulk share of the base (or managed size) price, then the legacy size modifier.
-  function unitPrice(product, sizeLabel) {
+  // Server order: the bulk share of the base (or managed size) price, then the
+  // legacy size modifier. Without a quantity (a related card) it is the bulk price.
+  function unitPrice(product, sizeLabel, quantity) {
     const managed = getManagedSizes(product);
-    const factor = state.mode === 'wholesale' ? bulkFactor(product.price, product.wholesale_price, state.settings.wholesale_discount) : 1;
+    const pieces = quantity === undefined ? wholesaleMinimum() : quantity;
+    const factor = bulkApplies(state.mode === 'wholesale', pieces, wholesaleMinimum()) ? bulkFactor(product.price, product.wholesale_price, state.settings.wholesale_discount) : 1;
     let price;
     if (managed) {
       const match = managed.find((size) => String(size.label) === String(sizeLabel)) || managed[0];
@@ -218,8 +224,8 @@
     byId('selectedSizeText').textContent = state.selectedSize;
 
     renderGallery();
+    renderDetails(); // sets the starting quantity, which the price is drawn from
     renderPriceAndStock();
-    renderDetails();
     renderReviews();
     renderRelated();
     updateWishlistButtons();
@@ -243,9 +249,10 @@
 
   function renderPriceAndStock() {
     const product = state.product;
-    const price = unitPrice(product, state.selectedSize);
     const quantity = validQuantity();
+    const price = unitPrice(product, state.selectedSize, quantity);
     const total = price * quantity;
+    const bulk = bulkApplies(state.mode === 'wholesale', quantity, wholesaleMinimum());
     const priceElement = byId('productPrice');
     const addButton = byId('productAddToCart');
     const addLabel = addButton.querySelector('span');
@@ -259,7 +266,7 @@
       priceElement.innerHTML = `<span class="price-now">${money(price)}</span> <s class="price-was"><span class="sr-only">was </span>${money(price * was / base)}</s><span class="price-off">${saleOff}% off</span>`;
     } else if (price > 0) {
       priceElement.innerHTML = state.mode === 'wholesale'
-        ? `${money(total)}<small>${quantity} pieces at ${money(price)} each · wholesale</small>`
+        ? `${money(total)}<small>${quantity} ${quantity === 1 ? 'piece' : 'pieces'} at ${money(price)} each · ${bulk ? 'wholesale' : 'retail price'}</small>`
         : money(price);
     } else {
       priceElement.textContent = 'Price on request';
@@ -270,7 +277,7 @@
     // way round it instead of greying out.
     const block = buyBlock(product, price);
     state.block = block;
-    const soldOut = !!block && block.kind !== 'price' && block.kind !== 'retail';
+    const soldOut = !!block && block.kind !== 'price';
     const stock = byId('productStock');
     stock.className = 'product-stock';
     if (block) {
@@ -286,7 +293,7 @@
     }
     byId('assuranceStock').textContent = soldOut ? 'Ask us when this item will return' : (isPreorder ? 'Pre-order item' : 'Available to order');
     addButton.disabled = false;
-    addLabel.textContent = block ? block.button : (state.mode === 'wholesale' ? 'Add bulk to cart' : 'Add to cart');
+    addLabel.textContent = block ? block.button : (bulk ? 'Add bulk to cart' : 'Add to cart');
     mobilePrice.textContent = price > 0 ? money(total) : 'Price on request';
     mobileAdd.disabled = addButton.disabled;
     mobileAdd.textContent = addLabel.textContent;
@@ -296,8 +303,7 @@
   // Why this piece can't go in the cart as things stand, and what the main
   // button does instead. The same reasons, in the same words, as the shop's
   // quick view (buyBlock in app.js), and what the server refuses at checkout.
-  //   action 'ask'    — the button opens WhatsApp with msg
-  //   action 'retail' — the button switches to retail prices
+  //   action 'ask' — the button opens WhatsApp with msg
   function buyBlock(product, price) {
     const isPreorder = product.fulfillment_type === 'preorder';
     const ref = product.name + (product.sku ? ` (${product.sku})` : '');
@@ -319,36 +325,11 @@
         ? `Hi DC Sourcing & Logistics! I'd like to pre-order ${ref}${state.mode === 'wholesale' ? ` in bulk, ${moq} or more` : ''}. What is the ${state.mode === 'wholesale' ? 'bulk ' : ''}price? ${window.location.href}`
         : `Hello DC Kids! What is the price of ${ref}? ${window.location.href}`
     };
-    if (state.mode === 'wholesale' && !isPreorder && product.stock < moq) return {
-      kind: 'retail', button: 'Switch to Retail', action: 'retail',
-      note: `Only ${product.stock} left — fewer than the ${moq}-piece wholesale minimum. Switch to Retail to buy ${product.stock === 1 ? 'it' : 'them'}.`
-    };
     return null;
   }
 
   function runBlockAction() {
-    const block = state.block;
-    if (block.action === 'retail') return switchToRetail();
-    window.open(whatsAppHref(block.msg), '_blank', 'noopener');
-  }
-
-  // Retail prices here and in the shop (they share storeMode), with the cart
-  // re-priced so it shows what the shop will charge.
-  function switchToRetail() {
-    state.mode = 'retail';
-    localStorage.setItem('storeMode', 'retail');
-    state.cart.forEach((item) => {
-      const product = state.products.find((entry) => entry.id === Number(item.id)) || (state.product && state.product.id === Number(item.id) ? state.product : null);
-      if (product) item.price = unitPrice(product, item.size);
-      item.ws = 0;
-      item.qty = Math.min(Number(item.qty || 0), 100);
-    });
-    saveCart();
-    renderDetails();
-    renderPriceAndStock();
-    renderRelated();
-    updateWhatsAppLink();
-    showToast('Showing retail prices');
+    window.open(whatsAppHref(state.block.msg), '_blank', 'noopener');
   }
 
   function wholesaleMinimum() { return Math.max(1, Number(state.settings.wholesale_moq || 10)); }
@@ -356,6 +337,17 @@
   // How many of an in-stock piece there are to sell (0 when stock doesn't limit it).
   function stockCap(product) {
     return product && product.fulfillment_type !== 'preorder' && product.stock > 0 ? product.stock : 0;
+  }
+
+  // Fewer left than wholesale's minimum: they sell at the retail price.
+  function underBulkMinimum(product) {
+    const cap = stockCap(product);
+    return state.mode === 'wholesale' && cap > 0 && cap < wholesaleMinimum();
+  }
+
+  // Wholesale steps in whole minimums, unless there are fewer left than that.
+  function qtyStep(product) {
+    return state.mode === 'wholesale' && !underBulkMinimum(product) ? wholesaleMinimum() : 1;
   }
 
   function limitText(product) {
@@ -368,7 +360,9 @@
     const moq = wholesaleMinimum();
     const discountNote = !hasOwnBulkPrice(product) && state.settings.wholesale_discount ? ` · ${Number(state.settings.wholesale_discount)}% discount applied` : '';
     const parts = [];
-    if (state.mode === 'wholesale') parts.push(`Wholesale mode · minimum ${moq} pieces${discountNote}`);
+    const left = stockCap(product);
+    if (underBulkMinimum(product)) parts.push(`Only ${left} left — under the ${moq}-piece bulk minimum, so ${left === 1 ? 'it\'s' : 'they\'re'} at the retail price.`);
+    else if (state.mode === 'wholesale') parts.push(`Wholesale mode · bulk price from ${moq} pieces${discountNote}`);
     // Pressing + at the limit says what the limit is, rather than doing nothing.
     if (state.capped && stockCap(product) && !state.block) parts.push(limitText(product));
     byId('quantityHint').textContent = parts.join(' · ');
@@ -388,11 +382,12 @@
       ['Fulfilment', product.fulfillment_type === 'preorder' ? 'China pre-order' : 'In-stock order']
     ];
     byId('productDetails').innerHTML = details.map(([term, value]) => `<dt>${escapeHtml(term)}</dt><dd>${escapeHtml(value)}</dd>`).join('');
-    const moq = wholesaleMinimum();
+    const step = qtyStep(product);
     const quantity = byId('productQuantity');
-    quantity.min = state.mode === 'wholesale' ? String(moq) : '1';
-    quantity.step = state.mode === 'wholesale' ? String(moq) : '1';
-    quantity.value = state.mode === 'wholesale' ? String(moq) : '1';
+    quantity.min = String(step);
+    quantity.step = String(step);
+    // The minimum at wholesale, or every one left when there are fewer than that.
+    quantity.value = String(underBulkMinimum(product) ? stockCap(product) : step);
     state.capped = false;
     renderQuantityHint();
   }
@@ -437,12 +432,11 @@
   // there are in stock (checkout would refuse the rest).
   function validQuantity() {
     const input = byId('productQuantity');
-    const moq = wholesaleMinimum();
-    const step = state.mode === 'wholesale' ? moq : 1;
+    const step = qtyStep(state.product);
     const cap = stockCap(state.product) ? Math.min(999, stockCap(state.product)) : 999;
     const requested = Number.parseInt(input.value, 10) || step;
     const raw = Math.max(step, Math.min(cap, requested));
-    const value = Math.max(step, Math.min(cap, state.mode === 'wholesale' ? Math.ceil(raw / moq) * moq : raw));
+    const value = Math.max(Math.min(step, cap), Math.min(cap, Math.ceil(raw / step) * step));
     if (requested > cap) state.capped = true;
     else if (requested < cap) state.capped = false;
     input.value = String(value);
@@ -459,8 +453,7 @@
   function addToCart() {
     const product = state.product;
     if (product && state.block) return runBlockAction();
-    const price = unitPrice(product, state.selectedSize);
-    if (!product || price <= 0 || byId('productAddToCart').disabled) return;
+    if (!product || unitPrice(product, state.selectedSize) <= 0 || byId('productAddToCart').disabled) return;
     const quantity = validQuantity();
     // The whole cart shares one price mode (the shop re-fits it on a switch), so a
     // line is the same piece in the same size whatever mode it was added in.
@@ -474,6 +467,8 @@
       showToast(`Your cart already has all ${cap} of ${product.name}.`, 'error');
       return;
     }
+    // The line's whole quantity decides bulk or retail, as the server prices it.
+    const price = unitPrice(product, state.selectedSize, next);
     if (existing) Object.assign(existing, { qty: next, price, ws: wholesale });
     else state.cart.push({ id: product.id, name: product.name, size: state.selectedSize, price, qty: next, img: product.img, cat: product.cat, ws: wholesale });
     saveCart();
@@ -515,16 +510,18 @@
   function changeCartQuantity(index, direction) {
     const item = state.cart[index];
     if (!item) return;
-    const moq = state.mode === 'wholesale' ? wholesaleMinimum() : 1;
     const product = state.products.find((entry) => entry.id === Number(item.id));
+    const step = product ? qtyStep(product) : (state.mode === 'wholesale' ? wholesaleMinimum() : 1);
     const cap = stockCap(product);
     if (direction > 0 && cap && Number(item.qty || 0) >= cap) {
       showToast(limitText(product));
       return;
     }
-    item.qty = Number(item.qty || 0) + (direction * moq);
+    item.qty = Number(item.qty || 0) + (direction * step);
     if (cap) item.qty = Math.min(cap, item.qty);
-    if (item.qty < moq) state.cart.splice(index, 1);
+    if (item.qty < 1) state.cart.splice(index, 1);
+    // Under the minimum a wholesale line is charged at retail, so the price follows the quantity.
+    else if (product) item.price = unitPrice(product, item.size, item.qty);
     saveCart();
   }
 

@@ -99,6 +99,10 @@ function bulkFactor(price, bulkPrice, discountPercent) {
   if (bulk > 0 && bulk < base) return bulk / base;
   return 1 - (Number(discountPercent) || 0) / 100;
 }
+// Bulk price from the minimum, retail under it — must stay identical to the server's bulkApplies.
+function bulkApplies(isWholesale, quantity, minimum) {
+  return !!isWholesale && Number(quantity) >= (Number(minimum) || 1);
+}
 
 // Expand a legacy free-text size ("Size 25–35", "2Y – 8Y", "0 – 12M") into options.
 function parseSize(str) {
@@ -127,11 +131,13 @@ function sizesOf(p) {
   return managed ? managed.map((s) => s.label) : parseSize(p.size);
 }
 
-// Per-piece price for a size, computed the same way the server bills it.
-function unitPrice(p, size) {
+// Per-piece price for a size and quantity, computed the same way the server
+// bills it. Without a quantity (a card's price label) it is the bulk price.
+function unitPrice(p, size, qty) {
   const managed = getManagedSizes(p);
   const match = managed ? managed.find((s) => s.label === size) : null;
-  const factor = isWholesale() ? bulkFactor(p.price, p.wholesale_price, siteConfig.wholesale_discount) : 1;
+  const pieces = qty === undefined ? moq() : qty;
+  const factor = bulkApplies(isWholesale(), pieces, moq()) ? bulkFactor(p.price, p.wholesale_price, siteConfig.wholesale_discount) : 1;
   let unit;
   if (match) {
     unit = (match.price != null ? Number(match.price) : Number(p.price || 0)) * factor;
@@ -174,15 +180,23 @@ function maxQtyFor(p) {
   const cap = isWholesale() ? WHOLESALE_MAX_QTY : RETAIL_MAX_QTY;
   return (!isPreorder(p) && typeof p.stock === 'number' && p.stock > 0) ? Math.min(cap, p.stock) : cap;
 }
-// Fewer pieces left than wholesale's minimum: retail can still have them.
+// Fewer pieces left than wholesale's minimum: they sell at the retail price.
 function underBulkMinimum(p) { return isWholesale() && !isSoldOut(p) && maxQtyFor(p) < moq(); }
+// Wholesale steps in whole minimums, unless there are fewer left than that.
+function qtyStep(p) { return isWholesale() && !underBulkMinimum(p) ? moq() : 1; }
+// Says when a wholesale line is charged at retail because it is under the minimum.
+function retailUnderMinimumText(p, qty) {
+  if (!isWholesale() || qty >= moq()) return '';
+  return underBulkMinimum(p)
+    ? 'Only ' + maxQtyFor(p) + ' left — under the ' + moq() + '-piece bulk minimum, so ' + (maxQtyFor(p) === 1 ? 'it\'s' : 'they\'re') + ' at the retail price.'
+    : 'Under ' + moq() + ' pieces, so this is the retail price. Bulk prices start at ' + moq() + '.';
+}
 
 // Why a piece can't go in the cart as things stand, and what the shopper can
 // do instead. The quick view, the cart and checkout all read this one rule, so
 // a button is never greyed out without the reason on screen. It mirrors what
-// the server refuses (sold out, no price, under the wholesale minimum).
-//   action 'ask'    — the main button asks on WhatsApp (msg is the message)
-//   action 'retail' — the main button switches the shop to retail prices
+// the server refuses (sold out, no price).
+//   action 'ask' — the main button asks on WhatsApp (msg is the message)
 function buyBlock(p) {
   const ref = p.name + (p.sku ? ' (' + p.sku + ')' : '');
   if (isSoldOut(p)) return {
@@ -197,13 +211,6 @@ function buyBlock(p) {
       ? 'Hi DC Sourcing & Logistics! I\'d like to pre-order ' + ref + (isWholesale() ? ' in bulk, ' + moq() + ' or more' : '') + '. What is the ' + (isWholesale() ? 'bulk ' : '') + 'price?'
       : 'Hello DC Kids! What is the price of ' + ref + '?'
   };
-  if (underBulkMinimum(p)) {
-    const n = maxQtyFor(p);
-    return {
-      label: 'Retail only', button: 'Switch to Retail', action: 'retail',
-      note: 'Only ' + n + ' left — fewer than the ' + moq() + '-piece wholesale minimum. Switch to Retail to buy ' + (n === 1 ? 'it' : 'them') + '.'
-    };
-  }
   return null;
 }
 // What stops the quantity going higher, in words.
@@ -219,12 +226,7 @@ function lineIssue(line) {
   const p = byId.get(line.id);
   if (!p) return '';
   const block = buyBlock(p);
-  if (block && block.action === 'ask') return block.label + ' — remove it to check out.';
-  if (isWholesale() && line.qty < moq()) {
-    return (underBulkMinimum(p) ? 'Only ' + maxQtyFor(p) + ' left, under' : 'Under') +
-      ' the ' + moq() + '-piece wholesale minimum. Switch to Retail or remove it.';
-  }
-  return '';
+  return block ? block.label + ' — remove it to check out.' : '';
 }
 
 /* ============================================================ rendering */
@@ -427,11 +429,11 @@ function saveCart() {
   // name/price/img are a snapshot for display only — prices are recomputed live.
   localStorage.setItem(CART_KEY, JSON.stringify(cart.map((i) => {
     const p = byId.get(i.id) || {};
-    return { id: i.id, size: i.size, qty: i.qty, name: p.name, price: p.name ? unitPrice(p, i.size) : 0, img: p.img };
+    return { id: i.id, size: i.size, qty: i.qty, name: p.name, price: p.name ? unitPrice(p, i.size, i.qty) : 0, img: p.img };
   })));
 }
 function cartSubtotal() {
-  return cart.reduce((sum, i) => { const p = byId.get(i.id); return p ? sum + unitPrice(p, i.size) * i.qty : sum; }, 0);
+  return cart.reduce((sum, i) => { const p = byId.get(i.id); return p ? sum + unitPrice(p, i.size, i.qty) * i.qty : sum; }, 0);
 }
 function cartCount() { return cart.reduce((n, i) => n + i.qty, 0); }
 
@@ -455,9 +457,9 @@ function cartLineQty(index, dir) {
   const line = cart[index];
   if (!line) return;
   const p = byId.get(line.id);
-  const step = isWholesale() ? moq() : 1;
+  const step = p ? qtyStep(p) : 1;
   const next = line.qty + dir * step;
-  if (next < step) cart.splice(index, 1);
+  if (next < 1) cart.splice(index, 1);
   else {
     if (p && dir > 0 && line.qty >= maxQtyFor(p)) toast(limitText(p));
     line.qty = Math.min(p ? maxQtyFor(p) : next, next);
@@ -477,26 +479,29 @@ function renderCart() {
   } else {
     const hasPre = cart.some((i) => { const p = byId.get(i.id); return p && isPreorder(p); });
     const problems = cartProblems();
-    const bulkProblem = isWholesale() && cart.some((i) => byId.has(i.id) && i.qty < moq());
     itemsEl.innerHTML = cart.map((i, idx) => {
       const p = byId.get(i.id);
       if (!p) return '';
       const issue = lineIssue(i);
+      // A wholesale line under the minimum is fine, just at the retail price: say so.
+      const retailNote = !issue && isWholesale() && i.qty < moq()
+        ? (underBulkMinimum(p) ? 'Only ' + maxQtyFor(p) + ' left, so this is the retail price.' : 'Retail price — bulk prices start at ' + moq() + ' pieces.')
+        : '';
       return '<div class="citem' + (issue ? ' citem--issue' : '') + '">' +
           '<img class="citem__img" src="' + esc(imgOf(p)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(fallbackOf()) + '\'">' +
           '<div>' +
             '<div class="citem__name">' + esc(p.name) + '</div>' +
-            '<div class="citem__meta">Size ' + esc(i.size) + ' · GH₵ ' + gh(unitPrice(p, i.size)) + (isWholesale() ? ' / pc' : '') + '</div>' +
+            '<div class="citem__meta">Size ' + esc(i.size) + ' · GH₵ ' + gh(unitPrice(p, i.size, i.qty)) + (isWholesale() ? ' / pc' : '') + '</div>' +
             (issue ? '<div class="citem__issue">' + esc(issue) + '</div>' : '') +
+            (retailNote ? '<div class="citem__note">' + esc(retailNote) + '</div>' : '') +
             '<div class="citem__qty"><button type="button" onclick="cartLineQty(' + idx + ',-1)" aria-label="Decrease">&minus;</button><span>' + i.qty + '</span><button type="button" onclick="cartLineQty(' + idx + ',1)" aria-label="Increase">+</button></div>' +
             '<div><button class="citem__rm" type="button" onclick="removeLine(' + idx + ')">Remove</button></div>' +
           '</div>' +
-          '<div class="citem__price">GH₵ ' + gh(unitPrice(p, i.size) * i.qty) + '</div>' +
+          '<div class="citem__price">GH₵ ' + gh(unitPrice(p, i.size, i.qty) * i.qty) + '</div>' +
         '</div>';
     }).join('') + (hasPre ? '<p class="cart__hint">Includes China pre-order items. These are paid in full before we order them.</p>' : '') +
       (problems ? '<p class="cart__error" role="status">' +
-        (problems === 1 ? 'One item needs' : problems + ' items need') + ' sorting out before you can check out.' +
-        (bulkProblem ? ' <button type="button" class="cart__fix" onclick="switchPrices(\'retail\')">Switch to Retail</button>' : '') +
+        (problems === 1 ? 'One item needs' : problems + ' items need') + ' removing before you can check out.' +
       '</p>' : '');
   }
   $('cart-subtotal').textContent = 'GH₵ ' + gh(cartSubtotal());
@@ -747,13 +752,17 @@ function loadPdpGallery(p) {
     .catch(() => { /* offline: the main photo is already showing */ });
 }
 
+// One piece at retail; the minimum at wholesale, or every one left when there
+// are fewer than that.
+function pdpStartQty(p) { return underBulkMinimum(p) ? maxQtyFor(p) : Math.min(qtyStep(p), maxQtyFor(p)); }
+
 function openPdp(id) {
   const p = byId.get(Number(id));
   if (!p) return;
   const sizes = sizesOf(p);
   pdp.id = p.id;
   pdp.size = sizes[0];
-  pdp.qty = isWholesale() ? moq() : 1;
+  pdp.qty = pdpStartQty(p);
   pdp.capped = false;
 
   const img = $('pdp-img');
@@ -790,10 +799,10 @@ function updatePdp() {
   const off = priced ? salePercent(p) : 0;
   $('pdp-price').classList.toggle('is-sale', !!off);
   if (off) {
-    $('pdp-price').innerHTML = salePriceHTML(p, unitPrice(p, pdp.size), '') + '<span class="price-off">' + off + '% off</span>';
+    $('pdp-price').innerHTML = salePriceHTML(p, unitPrice(p, pdp.size, pdp.qty), '') + '<span class="price-off">' + off + '% off</span>';
   } else {
     $('pdp-price').textContent = priced
-      ? 'GH₵ ' + gh(unitPrice(p, pdp.size)) + (isWholesale() ? ' / pc' : '')
+      ? 'GH₵ ' + gh(unitPrice(p, pdp.size, pdp.qty)) + (isWholesale() ? ' / pc' : '')
       : (isPreorder(p) ? 'Price on request' : '');
   }
 
@@ -802,14 +811,16 @@ function updatePdp() {
   else if (isPreorder(p)) stock = 'China pre-order · paid in full up front · arrives in 3–4 weeks';
   else if (typeof p.stock === 'number' && p.stock <= 5) stock = 'Only ' + p.stock + ' left';
   else if (typeof p.stock === 'number') stock = p.stock + ' in stock';
-  if (isWholesale() && !isSoldOut(p)) stock += (stock ? ' · ' : '') + 'Minimum ' + moq() + ' pieces';
+  if (isWholesale() && !isSoldOut(p) && !underBulkMinimum(p)) stock += (stock ? ' · ' : '') + 'Bulk price from ' + moq() + ' pieces';
   $('pdp-stock').textContent = stock;
   $('pdp-qty').textContent = pdp.qty;
 
   // A piece that can't be bought says why, and the main button offers the way
-  // round it (ask on WhatsApp, or switch to retail) instead of greying out.
+  // round it (ask on WhatsApp) instead of greying out. A wholesale quantity
+  // under the minimum can be bought, at the retail price, and says so.
   const block = buyBlock(p);
-  const note = block ? block.note : (pdp.capped ? limitText(p) : '');
+  const note = block ? block.note
+    : [retailUnderMinimumText(p, pdp.qty), pdp.capped ? limitText(p) : ''].filter(Boolean).join(' ');
   $('pdp-note').textContent = note;
   $('pdp-note').hidden = !note;
   $('pdp-note').classList.toggle('is-block', !!block);
@@ -834,9 +845,9 @@ function updatePdp() {
 function pdpQty(dir) {
   const p = byId.get(pdp.id);
   if (!p) return;
-  const step = isWholesale() ? moq() : 1;
+  const step = qtyStep(p);
   const wanted = pdp.qty + dir * step;
-  pdp.qty = Math.max(step, Math.min(maxQtyFor(p), wanted));
+  pdp.qty = Math.max(Math.min(step, maxQtyFor(p)), Math.min(maxQtyFor(p), wanted));
   // Pressing + at the limit says what the limit is, rather than doing nothing.
   pdp.capped = dir > 0 && wanted > pdp.qty;
   updatePdp();
@@ -848,10 +859,6 @@ function pdpAdd(buyNow) {
   const action = buyNow ? $('pdp-buy').dataset.action : '';
   if (action === 'ask') {
     window.open($('pdp-ask').href, '_blank', 'noopener');
-    return;
-  }
-  if (action === 'retail') {
-    switchPrices('retail'); // updatePdp follows, and the piece can be bought
     return;
   }
   const added = addToCart(p.id, pdp.size, pdp.qty);
@@ -986,7 +993,7 @@ async function submitOrder(e) {
   // Pre-orders placed from the shop are the DC Kids picks, or bulk when bought at wholesale;
   // personal pre-orders are custom requests that start on WhatsApp.
   const preorderKind = hasPre ? (isWholesale() ? 'bulk' : 'shop') : null;
-  const lines = cart.map((i) => { const p = byId.get(i.id); return { name: p.name, size: i.size, qty: i.qty, price: unitPrice(p, i.size) }; });
+  const lines = cart.map((i) => { const p = byId.get(i.id); return { name: p.name, size: i.size, qty: i.qty, price: unitPrice(p, i.size, i.qty) }; });
   const where = [address.line1, address.line2, address.city, address.region].filter(Boolean).join(', ');
   const receipt = {
     orderType: orderType, preorderKind: preorderKind, customerName: name, phone: phone, email: email,
@@ -1201,11 +1208,12 @@ function switchPrices(mode) {
   if ((mode === 'wholesale') === isWholesale()) return;
   storeMode = mode;
   localStorage.setItem('storeMode', mode);
-  // Re-fit cart quantities to the new mode's rules (wholesale = MOQ multiples).
+  // Re-fit cart quantities to the new mode's caps. Quantities are never raised
+  // to the minimum behind the shopper's back: a wholesale line under it is
+  // simply charged at retail, and the cart says so.
   cart.forEach((i) => {
     const p = byId.get(i.id);
-    if (isWholesale()) i.qty = Math.max(moq(), Math.ceil(i.qty / moq()) * moq());
-    else i.qty = Math.min(i.qty, RETAIL_MAX_QTY);
+    if (!isWholesale()) i.qty = Math.min(i.qty, RETAIL_MAX_QTY);
     if (p) i.qty = Math.min(i.qty, maxQtyFor(p));
   });
   saveCart();
@@ -1214,8 +1222,8 @@ function switchPrices(mode) {
   renderShop();
   renderPreorders();
   renderCart();
-  if ($('pdp').classList.contains('open')) { pdp.qty = isWholesale() ? moq() : 1; pdp.capped = false; updatePdp(); }
-  toast(isWholesale() ? 'Wholesale prices — minimum ' + moq() + ' pieces per item' : 'Showing retail prices');
+  if ($('pdp').classList.contains('open')) { const p = byId.get(pdp.id); if (p) pdp.qty = pdpStartQty(p); pdp.capped = false; updatePdp(); }
+  toast(isWholesale() ? 'Wholesale prices from ' + moq() + ' pieces per item' : 'Showing retail prices');
 }
 
 /* ============================================================ hero slides */

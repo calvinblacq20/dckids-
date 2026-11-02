@@ -47,7 +47,7 @@ Status as of 2026-11-02 (master playbook run). [x] verified · [ ] open, with �
 - [ ] Monthly dependency update and quarterly restore drill: ❌ schedule them.
 
 ## Built to last
-- [x] ADRs for irreversible decisions (docs/decisions 0001–0009).
+- [x] ADRs for irreversible decisions (docs/decisions 0001–0010).
 - [x] RUNBOOK with backups/restore and degradation paths.
 - [x] Health endpoint (`/api/health`) proves SQLite readiness.
 - [x] Idempotency keys on order creation and Paystack starts.

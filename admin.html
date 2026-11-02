@@ -4987,7 +4987,8 @@
   <div class="form-row">
     <div class="form-group">
       <label for="config-moq">Wholesale MOQ (Minimum Order Quantity)</label>
-      <input type="number" inputmode="numeric" min="1" step="1" id="config-moq" class="form-input" placeholder="e.g. 10" aria-label="MOQ">
+      <input type="number" inputmode="numeric" min="1" step="1" id="config-moq" class="form-input" placeholder="e.g. 10" aria-label="MOQ" aria-describedby="config-moq-hint">
+      <p class="form-hint" id="config-moq-hint">Bulk prices start at this many pieces of an item. Fewer are charged at the retail price, so the last few of a piece still sell.</p>
     </div>
     <div class="form-group">
       <label for="config-discount">Wholesale Discount (%)</label>
@@ -6435,7 +6436,7 @@
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
   <script src="admin-demo.js?v=19"></script>
-  <script src="admin.js?v=190"></script>
+  <script src="admin.js?v=191"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).
