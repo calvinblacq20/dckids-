@@ -33,7 +33,7 @@
 
   <link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" as="image" type="image/webp" href="images/hero_shop_1.webp?v=2" imagesrcset="images/hero_shop_1-720.webp?v=2 720w, images/hero_shop_1.webp?v=2 1179w" imagesizes="100vw">
-  <link rel="stylesheet" href="store.css?v=32">
+  <link rel="stylesheet" href="store.css?v=33">
 
   <!-- Structured data: Organization + WebSite (SEO + Google rich results) -->
   <script type="application/ld+json">
@@ -473,6 +473,8 @@
         <div class="pdp__sizes" id="pdp-sizes" role="radiogroup" aria-label="Size"></div>
         <p class="pdp__desc" id="pdp-desc"></p>
         <div class="pdp__stock" id="pdp-stock"></div>
+        <!-- Why this piece can't be bought as it stands, or the quantity limit (updatePdp). -->
+        <p class="pdp__note" id="pdp-note" role="status" hidden></p>
         <div class="pdp__buy">
           <div class="qty" aria-label="Quantity">
             <button type="button" onclick="pdpQty(-1)" aria-label="Decrease">&minus;</button>
@@ -543,7 +545,7 @@
   <script src="receipt.js?v=2"></script>
   <!-- async: customer sign-in must never hold up the first paint of the shop -->
   <script type="module" async src="firebase-auth.js?v=6"></script>
-  <script src="app.js?v=53"></script>
+  <script src="app.js?v=54"></script>
   <script>
     if ('serviceWorker' in navigator) {
       // When an updated worker takes control, reload once so the page runs the

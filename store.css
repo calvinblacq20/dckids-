@@ -465,6 +465,10 @@ button.link-underline { background: none; border: 0; border-bottom: 1px solid va
 .citem__qty button { background: none; border: 0; font-size: 15px; color: var(--ink); padding: 2px 6px; }
 .citem__price { font-size: 15px; white-space: nowrap; }
 .citem__rm { background: none; border: 0; color: var(--muted); font-size: 12px; margin-top: 8px; text-decoration: underline; }
+/* A line checkout would refuse, with the reason under its size and price. */
+.citem--issue .citem__img { opacity: .55; }
+.citem__issue { margin-top: 6px; font-size: 13px; line-height: 1.4; color: #B42318; }
+.cart__fix { display: inline; padding: 0; background: none; border: 0; font: inherit; color: var(--green); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .cart__foot { padding: 22px 26px calc(22px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
 .cart__sub { display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 16px; }
 .cart__sub b { font-weight: 500; }
@@ -532,6 +536,9 @@ button.link-underline { background: none; border: 0; border-bottom: 1px solid va
 .size-chip.sel { background: var(--dark); color: #fff; border-color: var(--dark); }
 .pdp__desc { color: var(--ink-soft); font-size: 16px; margin: 22px 0 10px; max-width: 48ch; }
 .pdp__stock { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+/* The reason a piece can't be bought (is-block), or why the quantity stopped. */
+.pdp__note { margin: -8px 0 18px; padding: 11px 14px; font-size: 14px; line-height: 1.45; color: var(--ink); background: var(--sage-soft); border-left: 2px solid var(--green); }
+.pdp__note.is-block { background: var(--blush-soft); border-left-color: var(--sale); }
 .pdp__buy { display: grid; grid-template-columns: 120px 1fr; gap: 12px; margin-bottom: 12px; }
 .qty { display: inline-flex; align-items: center; justify-content: space-between; border: 1px solid var(--line); padding: 0 6px; }
 .qty button { background: none; border: 0; font-size: 18px; padding: 12px 10px; color: var(--ink); }
