@@ -174,6 +174,58 @@ function maxQtyFor(p) {
   const cap = isWholesale() ? WHOLESALE_MAX_QTY : RETAIL_MAX_QTY;
   return (!isPreorder(p) && typeof p.stock === 'number' && p.stock > 0) ? Math.min(cap, p.stock) : cap;
 }
+// Fewer pieces left than wholesale's minimum: retail can still have them.
+function underBulkMinimum(p) { return isWholesale() && !isSoldOut(p) && maxQtyFor(p) < moq(); }
+
+// Why a piece can't go in the cart as things stand, and what the shopper can
+// do instead. The quick view, the cart and checkout all read this one rule, so
+// a button is never greyed out without the reason on screen. It mirrors what
+// the server refuses (sold out, no price, under the wholesale minimum).
+//   action 'ask'    — the main button asks on WhatsApp (msg is the message)
+//   action 'retail' — the main button switches the shop to retail prices
+function buyBlock(p) {
+  const ref = p.name + (p.sku ? ' (' + p.sku + ')' : '');
+  if (isSoldOut(p)) return {
+    label: 'Sold out', button: 'Ask when it\'s back', action: 'ask',
+    note: 'Sold out right now. Ask us on WhatsApp and we\'ll tell you when it\'s back, or save it to your wishlist.',
+    msg: 'Hello DC Kids! ' + ref + ' shows as sold out. Will it be back in stock?'
+  };
+  if (!hasPrice(p)) return {
+    label: 'No price yet', button: 'Ask for price', action: 'ask',
+    note: 'This piece has no price online yet. Ask us on WhatsApp and we\'ll send it.',
+    msg: isPreorder(p)
+      ? 'Hi DC Sourcing & Logistics! I\'d like to pre-order ' + ref + (isWholesale() ? ' in bulk, ' + moq() + ' or more' : '') + '. What is the ' + (isWholesale() ? 'bulk ' : '') + 'price?'
+      : 'Hello DC Kids! What is the price of ' + ref + '?'
+  };
+  if (underBulkMinimum(p)) {
+    const n = maxQtyFor(p);
+    return {
+      label: 'Retail only', button: 'Switch to Retail', action: 'retail',
+      note: 'Only ' + n + ' left — fewer than the ' + moq() + '-piece wholesale minimum. Switch to Retail to buy ' + (n === 1 ? 'it' : 'them') + '.'
+    };
+  }
+  return null;
+}
+// What stops the quantity going higher, in words.
+function limitText(p) {
+  const max = maxQtyFor(p);
+  if (!isPreorder(p) && typeof p.stock === 'number' && p.stock === max) {
+    return max === 1 ? 'That\'s the last one we have.' : 'That\'s all we have — ' + max + ' in stock.';
+  }
+  return 'Up to ' + max + ' per item online. Message us on WhatsApp for more.';
+}
+// What checkout would refuse about a cart line, in words ('' when it's fine).
+function lineIssue(line) {
+  const p = byId.get(line.id);
+  if (!p) return '';
+  const block = buyBlock(p);
+  if (block && block.action === 'ask') return block.label + ' — remove it to check out.';
+  if (isWholesale() && line.qty < moq()) {
+    return (underBulkMinimum(p) ? 'Only ' + maxQtyFor(p) + ' left, under' : 'Under') +
+      ' the ' + moq() + '-piece wholesale minimum. Switch to Retail or remove it.';
+  }
+  return '';
+}
 
 /* ============================================================ rendering */
 function statusBadge(p) {
@@ -383,16 +435,21 @@ function cartSubtotal() {
 }
 function cartCount() { return cart.reduce((n, i) => n + i.qty, 0); }
 
+// Returns how many pieces went in: fewer than asked when the cart reaches the
+// stock, and 0 when the cart already holds every piece there is.
 function addToCart(id, size, qty) {
   const p = byId.get(id);
-  if (!p) return false;
+  if (!p) return 0;
   const line = cart.find((i) => i.id === id && i.size === size);
   const max = maxQtyFor(p);
-  if (line) line.qty = Math.min(max, line.qty + qty);
-  else cart.push({ id: id, size: size, qty: Math.min(max, qty) });
+  const had = line ? line.qty : 0;
+  const next = Math.min(max, had + qty);
+  if (next <= had) return 0;
+  if (line) line.qty = next;
+  else cart.push({ id: id, size: size, qty: next });
   saveCart();
   renderCart();
-  return true;
+  return next - had;
 }
 function cartLineQty(index, dir) {
   const line = cart[index];
@@ -401,7 +458,10 @@ function cartLineQty(index, dir) {
   const step = isWholesale() ? moq() : 1;
   const next = line.qty + dir * step;
   if (next < step) cart.splice(index, 1);
-  else line.qty = Math.min(p ? maxQtyFor(p) : next, next);
+  else {
+    if (p && dir > 0 && line.qty >= maxQtyFor(p)) toast(limitText(p));
+    line.qty = Math.min(p ? maxQtyFor(p) : next, next);
+  }
   saveCart();
   renderCart();
 }
@@ -416,25 +476,35 @@ function renderCart() {
     itemsEl.innerHTML = '<div class="cart__empty">Your cart is empty.<br><a href="#shop" class="link-underline" onclick="closeCart()" style="margin-top:14px">Start shopping</a></div>';
   } else {
     const hasPre = cart.some((i) => { const p = byId.get(i.id); return p && isPreorder(p); });
+    const problems = cartProblems();
+    const bulkProblem = isWholesale() && cart.some((i) => byId.has(i.id) && i.qty < moq());
     itemsEl.innerHTML = cart.map((i, idx) => {
       const p = byId.get(i.id);
       if (!p) return '';
-      return '<div class="citem">' +
+      const issue = lineIssue(i);
+      return '<div class="citem' + (issue ? ' citem--issue' : '') + '">' +
           '<img class="citem__img" src="' + esc(imgOf(p)) + '" alt="" onerror="this.onerror=null;this.src=\'' + esc(fallbackOf()) + '\'">' +
           '<div>' +
             '<div class="citem__name">' + esc(p.name) + '</div>' +
             '<div class="citem__meta">Size ' + esc(i.size) + ' · GH₵ ' + gh(unitPrice(p, i.size)) + (isWholesale() ? ' / pc' : '') + '</div>' +
+            (issue ? '<div class="citem__issue">' + esc(issue) + '</div>' : '') +
             '<div class="citem__qty"><button type="button" onclick="cartLineQty(' + idx + ',-1)" aria-label="Decrease">&minus;</button><span>' + i.qty + '</span><button type="button" onclick="cartLineQty(' + idx + ',1)" aria-label="Increase">+</button></div>' +
             '<div><button class="citem__rm" type="button" onclick="removeLine(' + idx + ')">Remove</button></div>' +
           '</div>' +
           '<div class="citem__price">GH₵ ' + gh(unitPrice(p, i.size) * i.qty) + '</div>' +
         '</div>';
-    }).join('') + (hasPre ? '<p class="cart__hint">Includes China pre-order items. These are paid in full before we order them.</p>' : '');
+    }).join('') + (hasPre ? '<p class="cart__hint">Includes China pre-order items. These are paid in full before we order them.</p>' : '') +
+      (problems ? '<p class="cart__error" role="status">' +
+        (problems === 1 ? 'One item needs' : problems + ' items need') + ' sorting out before you can check out.' +
+        (bulkProblem ? ' <button type="button" class="cart__fix" onclick="switchPrices(\'retail\')">Switch to Retail</button>' : '') +
+      '</p>' : '');
   }
   $('cart-subtotal').textContent = 'GH₵ ' + gh(cartSubtotal());
   renderCheckoutTotal();
-  $('checkout-btn').disabled = !cart.length;
+  // Checkout would refuse the whole order, so it waits until the marked lines are sorted.
+  $('checkout-btn').disabled = !cart.length || cartProblems() > 0;
 }
+function cartProblems() { return cart.filter((i) => lineIssue(i)).length; }
 
 /* ============================================================== overlays */
 function syncScrollLock() {
@@ -684,6 +754,7 @@ function openPdp(id) {
   pdp.id = p.id;
   pdp.size = sizes[0];
   pdp.qty = isWholesale() ? moq() : 1;
+  pdp.capped = false;
 
   const img = $('pdp-img');
   img.onerror = function () { this.onerror = null; this.src = fallbackOf(); };
@@ -700,11 +771,6 @@ function openPdp(id) {
     '<button type="button" class="size-chip' + (s === pdp.size ? ' sel' : '') + '" role="radio" aria-checked="' + (s === pdp.size) + '" data-size="' + esc(s) + '">' + esc(s) + '</button>'
   ).join('');
 
-  const ref = p.name + (p.sku ? ' (' + p.sku + ')' : '');
-  const bulk = isWholesale() ? ' in bulk, ' + moq() + ' or more' : '';
-  $('pdp-ask').href = waLink(isPreorder(p)
-    ? 'Hi DC Sourcing & Logistics! I\'d like to pre-order ' + ref + bulk + '. ' + (hasPrice(p) ? 'Is it still available?' : 'What is the ' + (bulk ? 'bulk ' : '') + 'price?')
-    : 'Hello DC Kids! I\'m interested in ' + ref + '.');
   $('pdp-more').href = '/product.html?id=' + p.id;
   updatePdp();
   paintWishlist();
@@ -740,12 +806,24 @@ function updatePdp() {
   $('pdp-stock').textContent = stock;
   $('pdp-qty').textContent = pdp.qty;
 
-  const blocked = isSoldOut(p) || !priced || (isWholesale() && maxQtyFor(p) < moq());
-  $('pdp-add').disabled = blocked;
-  $('pdp-buy').disabled = blocked;
-  $('pdp-buy').textContent = priced ? 'Buy Now' : 'Ask for price';
-  $('pdp-buy').disabled = isSoldOut(p) || (isWholesale() && maxQtyFor(p) < moq());
-  $('pdp-buy').dataset.ask = priced ? '' : '1';
+  // A piece that can't be bought says why, and the main button offers the way
+  // round it (ask on WhatsApp, or switch to retail) instead of greying out.
+  const block = buyBlock(p);
+  const note = block ? block.note : (pdp.capped ? limitText(p) : '');
+  $('pdp-note').textContent = note;
+  $('pdp-note').hidden = !note;
+  $('pdp-note').classList.toggle('is-block', !!block);
+  $('pdp-add').disabled = !!block;
+  $('pdp-add').textContent = block ? block.label : 'Add to Cart';
+  $('pdp-buy').disabled = false;
+  $('pdp-buy').textContent = block ? block.button : 'Buy Now';
+  $('pdp-buy').dataset.action = block ? block.action : '';
+
+  const ref = p.name + (p.sku ? ' (' + p.sku + ')' : '');
+  const bulk = isWholesale() ? ' in bulk, ' + moq() + ' or more' : '';
+  $('pdp-ask').href = waLink(block && block.msg ? block.msg : isPreorder(p)
+    ? 'Hi DC Sourcing & Logistics! I\'d like to pre-order ' + ref + bulk + '. Is it still available?'
+    : 'Hello DC Kids! I\'m interested in ' + ref + '.');
   $('pdp-sizes').querySelectorAll('.size-chip').forEach((b) => {
     const on = b.dataset.size === pdp.size;
     b.classList.toggle('sel', on);
@@ -757,23 +835,38 @@ function pdpQty(dir) {
   const p = byId.get(pdp.id);
   if (!p) return;
   const step = isWholesale() ? moq() : 1;
-  pdp.qty = Math.max(step, Math.min(maxQtyFor(p), pdp.qty + dir * step));
+  const wanted = pdp.qty + dir * step;
+  pdp.qty = Math.max(step, Math.min(maxQtyFor(p), wanted));
+  // Pressing + at the limit says what the limit is, rather than doing nothing.
+  pdp.capped = dir > 0 && wanted > pdp.qty;
   updatePdp();
 }
 
 function pdpAdd(buyNow) {
   const p = byId.get(pdp.id);
   if (!p) return;
-  if (buyNow && $('pdp-buy').dataset.ask) {
+  const action = buyNow ? $('pdp-buy').dataset.action : '';
+  if (action === 'ask') {
     window.open($('pdp-ask').href, '_blank', 'noopener');
     return;
   }
-  if (!addToCart(p.id, pdp.size, pdp.qty)) return;
+  if (action === 'retail') {
+    switchPrices('retail'); // updatePdp follows, and the piece can be bought
+    return;
+  }
+  const added = addToCart(p.id, pdp.size, pdp.qty);
+  if (!added && !buyNow) {
+    // The cart already holds every piece there is: say so and stay put.
+    toast('Your cart already has all ' + maxQtyFor(p) + ' of ' + p.name + '.');
+    return;
+  }
   closePdp();
   if (buyNow) {
     startCheckout();
   } else {
-    toast('Added to cart — ' + p.name);
+    toast(added < pdp.qty
+      ? 'Added ' + added + ' — your cart now has all we have of ' + p.name + '.'
+      : 'Added to cart — ' + p.name);
     openCart();
   }
 }
@@ -824,6 +917,8 @@ function renderSavedAddresses(selected) {
 
 function startCheckout() {
   if (!cart.length) { toast('Your cart is empty'); return; }
+  // Buy Now from the quick view comes straight here, past the cart's checks.
+  if (cartProblems()) { openCart('items'); toast('Sort out the items marked in your cart to check out.'); return; }
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(CUSTOMER_KEY) || '{}') || {}; } catch (e) { /* no saved details — fine */ }
   const account = customerState.customer || {};
@@ -926,7 +1021,7 @@ async function submitOrder(e) {
       const res = await fetch('/api/checkout/paystack', { method: 'POST', headers: headers, body: JSON.stringify(payload) });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.authorization_url) {
-        toast(data.error || 'We could not start the payment. Please try again.');
+        showCheckoutRefusal(data.error || 'We could not start the payment. Please try again.');
         return false;
       }
       // Remembered so the cart can drop what was paid for once we're back (see reconcilePaystack),
@@ -953,7 +1048,7 @@ async function submitOrder(e) {
     // and confirmed by the shop. A refusal (window closed, out of stock) is shown.
     const unsaved = !data || res.status >= 500;
     if (!unsaved && (!res.ok || !data.success)) {
-      toast(data.error || 'We could not place your order. Please try again.');
+      showCheckoutRefusal(data.error || 'We could not place your order. Please try again.');
       return false;
     }
     const total = unsaved ? Math.round(lines.reduce((sum, l) => sum + l.price * l.qty, 0) * 100) / 100 : data.total_amount;
@@ -1006,6 +1101,17 @@ async function submitOrder(e) {
     btn.textContent = label;
   }
   return false;
+}
+
+// The shop said no (sold out since, under a minimum, pre-orders closed...).
+// The reason stays on screen beside the form, not in a toast that fades in
+// three seconds, with WhatsApp as the way to finish the order regardless.
+function showCheckoutRefusal(message) {
+  const lines = cart.map((i) => { const p = byId.get(i.id); return p ? '• ' + i.qty + ' × ' + p.name + ' (' + i.size + ')' : ''; }).filter(Boolean);
+  const msg = 'Hello DC Kids! I tried to order on the website but it said: "' + message + '"\n\n' + lines.join('\n') + '\n\nCan you help me finish my order?';
+  $('co-error').innerHTML = esc(message) + ' <a class="cart__fix" href="' + esc(waLink(msg)) + '" target="_blank" rel="noopener">Send your order on WhatsApp instead</a>';
+  $('co-error').hidden = false;
+  $('co-error').scrollIntoView({ block: 'nearest' });
 }
 
 function openLastReceipt() {
@@ -1108,7 +1214,7 @@ function switchPrices(mode) {
   renderShop();
   renderPreorders();
   renderCart();
-  if ($('pdp').classList.contains('open')) { pdp.qty = isWholesale() ? moq() : 1; updatePdp(); }
+  if ($('pdp').classList.contains('open')) { pdp.qty = isWholesale() ? moq() : 1; pdp.capped = false; updatePdp(); }
   toast(isWholesale() ? 'Wholesale prices — minimum ' + moq() + ' pieces per item' : 'Showing retail prices');
 }
 
@@ -1661,10 +1767,22 @@ async function init() {
     return;
   }
 
-  // Drop cart lines whose product no longer exists (stale cart after a catalogue swap).
+  // Bring a saved cart up to date with today's shop, and say what changed:
+  // lines whose product has gone (sold through, or pre-orders closed) come out,
+  // and quantities above what's left come down to it.
   const before = cart.length;
   cart = cart.filter((i) => byId.has(i.id));
-  if (cart.length !== before) saveCart();
+  const dropped = before - cart.length;
+  let lowered = 0;
+  cart.forEach((i) => {
+    const max = maxQtyFor(byId.get(i.id));
+    if (i.qty > max) { i.qty = max; lowered++; }
+  });
+  if (dropped || lowered) {
+    saveCart();
+    if (dropped) toast(dropped === 1 ? 'An item in your cart is no longer in the shop, so we took it out.' : dropped + ' items in your cart are no longer in the shop, so we took them out.');
+    if (lowered) toast('We lowered ' + (lowered === 1 ? 'a quantity' : lowered + ' quantities') + ' in your cart to what we have in stock.');
+  }
 
   renderCart();
   renderBestsellers();

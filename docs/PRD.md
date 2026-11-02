@@ -28,7 +28,9 @@ Totals are always computed **server-side**. Wholesale (and bulk pre-orders) = th
 
 ## Edge cases (handled — keep it that way)
 - Fresh clone must boot: schema + full catalogue seed from `products.json`, serialized DDL, `whenReady` gate before listen.
-- Stale carts after a catalogue swap: prune items whose product no longer exists.
+- Stale carts after a catalogue swap: prune items whose product no longer exists, lower quantities above what's left, and say so.
+- Nothing is greyed out without a reason on screen. A piece that can't be bought (sold out, no price, fewer left than the wholesale minimum, pre-orders closed) names the reason, and its main button offers the way round it: ask on WhatsApp, or switch to Retail. The quick view (`buyBlock` in `app.js`) and the product page (`buyBlock` in `product.js`) give the same reasons in the same words.
+- Quantities stop at what's in stock and say so. Cart lines checkout would refuse are marked with the reason, and checkout waits until they're sorted. A refusal from the server stays on the checkout form with a WhatsApp fallback, not in a passing toast.
 - Wholesale quantity is PIECES, never packages — a 10-piece order must bill 10 pieces.
 - Sub-MOQ wholesale items rejected (400); quantities validated (integer, 1–100 retail / 1–1000 wholesale, ≤50 items).
 - A bulk price must sit below the selling price, and is dropped if the selling price later falls to it. With Wholesale switched off, the shop takes no wholesale or bulk pre-orders (staff at the counter still can).

@@ -345,6 +345,38 @@ async function run() {
         /function setMode\(mode\) \{\s*if \(preorderView\) showPreorders\(false\);\s*switchPrices\(mode\);/.test(appSource));
     check('a pre-order piece never shows as sold out because of its stock count',
         appSource.includes('function isSoldOut(p) { return !isPreorder(p) && p.stock === 0; }'));
+    // "Why can't I buy this?" — every block names its reason and offers a way round it.
+    const productScriptSource = fs.readFileSync(path.join(__dirname, '..', 'product.js'), 'utf8');
+    check('the quick view says why a piece cannot be bought, and its main button offers the way round it',
+        storefrontSource.includes('id="pdp-note" role="status" hidden') &&
+        appSource.includes('const block = buyBlock(p);') &&
+        appSource.includes("$('pdp-buy').dataset.action = block ? block.action : '';") &&
+        appSource.includes("if (action === 'retail') {") &&
+        !appSource.includes("$('pdp-buy').disabled = isSoldOut(p)"));
+    check('sold out, no price and under the wholesale minimum each have their own words in the shop and on the product page',
+        ['Sold out right now.', 'no price online yet', 'fewer than the', 'wholesale minimum. Switch to Retail to buy'].every((s) =>
+            appSource.includes(s) && productScriptSource.includes(s)) &&
+        productScriptSource.includes('China pre-orders are closed. Message us on WhatsApp'));
+    check('the product page main button acts on the reason instead of greying out',
+        productScriptSource.includes('if (product && state.block) return runBlockAction();') &&
+        productScriptSource.includes('addButton.disabled = false;') &&
+        productScriptSource.includes('function switchToRetail()'));
+    check('quantities stop at the stock and say so, in the quick view, the cart and the product page',
+        appSource.includes('pdp.capped = dir > 0 && wanted > pdp.qty;') &&
+        appSource.includes('if (p && dir > 0 && line.qty >= maxQtyFor(p)) toast(limitText(p));') &&
+        productScriptSource.includes('const cap = stockCap(state.product) ? Math.min(999, stockCap(state.product)) : 999;') &&
+        productScriptSource.includes("`Your cart already has all ${cap} of ${product.name}.`"));
+    check('cart lines checkout would refuse are marked, and checkout waits until they are sorted',
+        appSource.includes("(issue ? '<div class=\"citem__issue\">' + esc(issue) + '</div>' : '')") &&
+        appSource.includes("$('checkout-btn').disabled = !cart.length || cartProblems() > 0;") &&
+        appSource.includes('if (cartProblems()) { openCart(\'items\');'));
+    check('a saved cart is brought up to date with the shop, and the shopper is told what changed',
+        appSource.includes('if (i.qty > max) { i.qty = max; lowered++; }') &&
+        appSource.includes('no longer in the shop, so we took it out.'));
+    check('a checkout refusal stays on the form with a WhatsApp fallback instead of a fading toast',
+        appSource.includes('function showCheckoutRefusal(message)') &&
+        appSource.includes("showCheckoutRefusal(data.error || 'We could not place your order. Please try again.');") &&
+        !appSource.includes("toast(data.error || 'We could not place your order."));
     check('when the order service is not answering, checkout sends the order on WhatsApp instead of failing',
         appSource.includes('const unsaved = !data || res.status >= 500;') && storefrontSource.includes('id="done-ref-line"'));
     const authSource = fs.readFileSync(path.join(__dirname, '..', 'firebase-auth.js'), 'utf8');
