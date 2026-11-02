@@ -19,6 +19,9 @@ import {
 
 const state = {
   configured: false,
+  // True when this site offers no customer sign-in at all (no keys, or no API
+  // behind the static showcase), as opposed to a sign-in that failed to load.
+  unconfigured: false,
   initialized: false,
   loading: true,
   user: null,
@@ -34,6 +37,7 @@ const initialState = new Promise((resolve) => { resolveInitialState = resolve; }
 function snapshot() {
   return {
     configured: state.configured,
+    unconfigured: state.unconfigured,
     initialized: state.initialized,
     loading: state.loading,
     user: state.user,
@@ -137,8 +141,10 @@ async function initialize() {
   // Remove the retired local customer JWT if an older page left one behind.
   localStorage.removeItem('dcKidsCustomerToken');
   try {
-    const config = await parseResponse(await fetch('/api/customer/auth/config', { cache: 'no-store' }));
+    const response = await fetch('/api/customer/auth/config', { cache: 'no-store' });
+    const config = response.status === 404 ? {} : await parseResponse(response);
     if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId) {
+      state.unconfigured = true;
       throw new Error('Customer sign-in has not been configured yet.');
     }
     const firebaseApp = initializeApp(config);

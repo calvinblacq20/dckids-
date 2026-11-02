@@ -92,6 +92,14 @@ function getPriceModifier(sizeLabel) {
   return 0;
 }
 
+// Bulk piece price as a share of the selling price — must stay identical to the server's bulkFactor.
+function bulkFactor(price, bulkPrice, discountPercent) {
+  const base = Number(price) || 0;
+  const bulk = Number(bulkPrice) || 0;
+  if (bulk > 0 && bulk < base) return bulk / base;
+  return 1 - (Number(discountPercent) || 0) / 100;
+}
+
 // Expand a legacy free-text size ("Size 25–35", "2Y – 8Y", "0 – 12M") into options.
 function parseSize(str) {
   if (!str) return ['One Size'];
@@ -123,12 +131,12 @@ function sizesOf(p) {
 function unitPrice(p, size) {
   const managed = getManagedSizes(p);
   const match = managed ? managed.find((s) => s.label === size) : null;
-  const discount = isWholesale() ? Number(siteConfig.wholesale_discount || 0) : 0;
+  const factor = isWholesale() ? bulkFactor(p.price, p.wholesale_price, siteConfig.wholesale_discount) : 1;
   let unit;
   if (match) {
-    unit = (match.price != null ? Number(match.price) : Number(p.price || 0)) * (1 - discount / 100);
+    unit = (match.price != null ? Number(match.price) : Number(p.price || 0)) * factor;
   } else {
-    unit = Number(p.price || 0) * (1 - discount / 100) + getPriceModifier(size);
+    unit = Number(p.price || 0) * factor + getPriceModifier(size);
   }
   return Math.round(unit * 100) / 100;
 }
@@ -159,7 +167,8 @@ function salePriceHTML(p, amount, prefix) {
   return '<span class="price-now">' + prefix + 'GH₵ ' + gh(amount) + '</span>' +
     '<s class="price-was"><span class="sr-only">was </span>GH₵ ' + gh(wasPrice(p, amount)) + '</s>';
 }
-function isSoldOut(p) { return p.stock === 0; }
+// Pre-orders are sourced to order, so their stock count never sells them out.
+function isSoldOut(p) { return !isPreorder(p) && p.stock === 0; }
 function isPreorder(p) { return p.fulfillment_type === 'preorder'; }
 function maxQtyFor(p) {
   const cap = isWholesale() ? WHOLESALE_MAX_QTY : RETAIL_MAX_QTY;
@@ -692,8 +701,9 @@ function openPdp(id) {
   ).join('');
 
   const ref = p.name + (p.sku ? ' (' + p.sku + ')' : '');
+  const bulk = isWholesale() ? ' in bulk, ' + moq() + ' or more' : '';
   $('pdp-ask').href = waLink(isPreorder(p)
-    ? 'Hi DC Sourcing & Logistics! I\'d like to pre-order ' + ref + '. ' + (hasPrice(p) ? 'Is it still available?' : 'What is the price?')
+    ? 'Hi DC Sourcing & Logistics! I\'d like to pre-order ' + ref + bulk + '. ' + (hasPrice(p) ? 'Is it still available?' : 'What is the ' + (bulk ? 'bulk ' : '') + 'price?')
     : 'Hello DC Kids! I\'m interested in ' + ref + '.');
   $('pdp-more').href = '/product.html?id=' + p.id;
   updatePdp();
@@ -937,36 +947,55 @@ async function submitOrder(e) {
     }
 
     const res = await fetch('/api/orders', { method: 'POST', headers: headers, body: JSON.stringify(payload) });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.success) {
+    const data = await res.json().catch(() => null);
+    // No order service answering (the static showcase, or the server failing):
+    // the same order still reaches the shop as a WhatsApp message, priced here
+    // and confirmed by the shop. A refusal (window closed, out of stock) is shown.
+    const unsaved = !data || res.status >= 500;
+    if (!unsaved && (!res.ok || !data.success)) {
       toast(data.error || 'We could not place your order. Please try again.');
       return false;
     }
+    const total = unsaved ? Math.round(lines.reduce((sum, l) => sum + l.price * l.qty, 0) * 100) / 100 : data.total_amount;
 
-    let msg = 'Hello DC Kids! I\'d like to confirm my order.\n\n';
-    msg += '*Order Ref:* ' + data.order_number + '\n';
+    let msg = 'Hello DC Kids! I\'d like to ' + (unsaved ? 'place' : 'confirm') + ' my order.\n\n';
+    if (!unsaved) msg += '*Order Ref:* ' + data.order_number + '\n';
     msg += '*Name:* ' + name + '\n';
+    if (unsaved) msg += '*Phone:* ' + phone + '\n';
     if (where) msg += '*Delivery:* ' + where + (address.landmark ? ' (' + address.landmark + ')' : '') + '\n';
     msg += '\n*Items:*\n';
     lines.forEach((it) => { msg += '• ' + it.qty + ' × ' + it.name + ' (' + it.size + ') — GH₵ ' + gh(it.price * it.qty) + '\n'; });
-    if (data.welcome_discount) msg += '\n*Welcome offer:* ' + data.welcome_discount + '% off';
-    msg += '\n*Total:* GH₵ ' + gh(data.total_amount) + '\n';
+    if (!unsaved && data.welcome_discount) msg += '\n*Welcome offer:* ' + data.welcome_discount + '% off';
+    msg += '\n*Total:* GH₵ ' + gh(total) + (unsaved ? ' (please confirm)' : '') + '\n';
     if (notes) msg += '*Notes:* ' + notes + '\n';
     msg += '\n' + (orderType === 'preorder'
       ? 'This includes China pre-order items. Please send the payment details so I can pay in full before you order.'
       : 'Please let me know how to proceed with payment and delivery. Thank you!');
 
-    if (data.welcome_discount) markWelcomeUsed();
-    lastReceipt = Object.assign({}, receipt, {
-      orderNumber: data.order_number, total: data.total_amount, paymentMethod: 'WhatsApp', discountPercent: data.welcome_discount || 0,
-      status: data.status || (orderType === 'preorder' ? 'awaiting_payment' : 'pending') // a replayed retry carries no status
-    });
     checkoutIdemKey = null;
-    cart = [];
-    saveCart();
-    renderCart();
     $('co-notes').value = '';
-    $('done-ref').textContent = data.order_number;
+    if (unsaved) {
+      // Nothing was recorded online, so the cart stays until the message is sent.
+      lastReceipt = null;
+      $('done-wa').onclick = () => { cart = []; saveCart(); renderCart(); };
+    } else {
+      if (data.welcome_discount) markWelcomeUsed();
+      lastReceipt = Object.assign({}, receipt, {
+        orderNumber: data.order_number, total: data.total_amount, paymentMethod: 'WhatsApp', discountPercent: data.welcome_discount || 0,
+        status: data.status || (orderType === 'preorder' ? 'awaiting_payment' : 'pending') // a replayed retry carries no status
+      });
+      cart = [];
+      saveCart();
+      renderCart();
+      $('done-wa').onclick = null;
+      $('done-ref').textContent = data.order_number;
+    }
+    $('done-title').textContent = unsaved ? 'Send your order on WhatsApp' : 'Order received';
+    $('done-ref-line').hidden = unsaved;
+    $('done-hint').textContent = unsaved
+      ? 'We could not save it online just now. Send it on WhatsApp and we will confirm the total and delivery.'
+      : 'Send it to us on WhatsApp to confirm delivery and payment.';
+    $('done-receipt').hidden = unsaved;
     $('done-wa').href = waLink(msg);
     showCartView('done');
   } catch (err) {
@@ -1023,6 +1052,8 @@ async function applyCustomerState(state) {
   customerState = state || { user: null, customer: null };
   $('account-link').textContent = customerState.customer ? 'Account' : 'Sign in';
   $('m-account-link').textContent = customerState.customer ? 'My account' : 'Sign in';
+  // Where customer sign-in isn't offered, the account page has nothing to sign in to.
+  document.querySelectorAll('a[href="/account.html"]').forEach((a) => { a.hidden = !!customerState.unconfigured; });
   savedAddresses = [];
   if (catalogueLoaded) syncWishlist(); // signing in brings the account's saved pieces
   if (!isSignedIn()) return;
@@ -1044,9 +1075,22 @@ function updateModeBar() {
     b.classList.toggle('on', b.dataset.mode === active);
     b.setAttribute('aria-pressed', String(b.dataset.mode === active));
   });
+  // The pre-order tab's own Retail / Wholesale switch shows which prices are on screen.
+  const prices = isWholesale() ? 'wholesale' : 'retail';
+  document.querySelectorAll('[data-price-mode]').forEach((b) => {
+    b.classList.toggle('on', b.dataset.priceMode === prices);
+    b.setAttribute('aria-pressed', String(b.dataset.priceMode === prices));
+  });
+  document.querySelectorAll('.js-wholesale-only').forEach((el) => { el.hidden = !siteConfig.wholesale_enabled; });
 }
+// The top tabs: Retail and Wholesale leave the China Pre-Order tab.
 function setMode(mode) {
   if (preorderView) showPreorders(false);
+  switchPrices(mode);
+}
+// Retail or wholesale prices everywhere, the pre-order tab included, without
+// changing which tab is showing.
+function switchPrices(mode) {
   if (mode === 'wholesale' && !siteConfig.wholesale_enabled) return;
   if ((mode === 'wholesale') === isWholesale()) return;
   storeMode = mode;
@@ -1062,6 +1106,7 @@ function setMode(mode) {
   updateModeBar();
   renderBestsellers();
   renderShop();
+  renderPreorders();
   renderCart();
   if ($('pdp').classList.contains('open')) { pdp.qty = isWholesale() ? moq() : 1; updatePdp(); }
   toast(isWholesale() ? 'Wholesale prices — minimum ' + moq() + ' pieces per item' : 'Showing retail prices');
@@ -1218,7 +1263,19 @@ function renderPreorders() {
   }).join('') : '';
   const shown = preorderShelf.cat === 'all' ? items : items.filter((p) => catKey(p.cat) === preorderShelf.cat);
   $('pre-grid').innerHTML = shown.map((p, i) => cardHTML(p, i, false)).join('');
+  const note = isWholesale()
+    ? 'Wholesale prices per piece, at least ' + moq() + ' of each piece. Where there\'s no price yet, ask us on WhatsApp.'
+    : 'Tap a piece for more photos. Where there\'s no price yet, ask us on WhatsApp.';
+  // The note is announced when it changes, so a category tap must not rewrite it.
+  if ($('pre-finds-note').textContent !== note) $('pre-finds-note').textContent = note;
   observeReveals($('pre-grid'));
+}
+
+// "See bulk prices" on the Bulk card: wholesale prices, then the pieces themselves.
+function showBulkPrices() {
+  switchPrices('wholesale');
+  if ($('pre-finds').hidden) return;
+  window.scrollTo({ top: $('pre-finds').getBoundingClientRect().top + window.scrollY - $('nav').offsetHeight - 12, behavior: REDUCE_MOTION ? 'auto' : 'smooth' });
 }
 
 function initPromo() {
@@ -1396,6 +1453,13 @@ function applyWaLinks() {
     a.href = waLink(a.dataset.msg || 'Hello DC Kids!');
     a.target = '_blank';
     a.rel = 'noopener';
+  });
+  // The footer's call link follows the number set in admin too.
+  const digits = waNumber();
+  document.querySelectorAll('a[href="tel:+' + WA_DEFAULT + '"]').forEach((a) => {
+    if (digits === WA_DEFAULT) return;
+    a.href = 'tel:+' + digits;
+    if (/^233\d{9}$/.test(digits)) a.textContent = '+233 ' + digits.slice(3, 5) + ' ' + digits.slice(5, 8) + ' ' + digits.slice(8);
   });
 }
 

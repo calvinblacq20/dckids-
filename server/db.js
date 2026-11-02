@@ -565,6 +565,16 @@ const db = new sqlite3.Database(dbPath, (err) => {
                         else console.log("Migration: added products.compare_at_price");
                     });
                 }
+
+                // Migration: a product's own price per piece when bought in bulk
+                // (wholesale orders and bulk pre-orders). NULL keeps the
+                // store-wide wholesale discount, which is what every product had.
+                if (names.indexOf('wholesale_price') === -1) {
+                    db.run("ALTER TABLE products ADD COLUMN wholesale_price REAL", (er) => {
+                        if (er) console.error("Migration (products.wholesale_price) failed:", er.message);
+                        else console.log("Migration: added products.wholesale_price");
+                    });
+                }
             });
 
             // Seed products if empty. Prefer the live catalogue snapshot
@@ -586,14 +596,15 @@ const db = new sqlite3.Database(dbPath, (err) => {
                     if (snapshot) {
                         console.log(`Seeding catalogue from products.json (${snapshot.length} products)...`);
                         const snapStmt = db.prepare(`INSERT INTO products
-                            (id, name, sku, size, price, img, cat, stock, badge, description, fulfillment_type, sizes)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+                            (id, name, sku, size, price, img, cat, stock, badge, description, fulfillment_type, sizes, wholesale_price)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
                         snapshot.forEach(p => {
                             const sizes = (p.sizes && typeof p.sizes === 'object') ? JSON.stringify(p.sizes)
                                 : (typeof p.sizes === 'string' && p.sizes.trim() ? p.sizes : null);
                             snapStmt.run(p.id, p.name, p.sku || null, p.size || '', p.price, p.img || '', p.cat || '',
                                 Number.isFinite(Number(p.stock)) ? Number(p.stock) : 10, p.badge || '',
-                                p.description || null, p.fulfillment_type || 'in_stock', sizes);
+                                p.description || null, p.fulfillment_type || 'in_stock', sizes,
+                                Number(p.wholesale_price) > 0 ? Number(p.wholesale_price) : null);
                         });
                         snapStmt.finalize(() => console.log("Database seeded from catalogue snapshot."));
                         return;
@@ -907,6 +918,19 @@ const db = new sqlite3.Database(dbPath, (err) => {
                     db.run("ALTER TABLE orders ADD COLUMN preorder_kind TEXT", (er) => {
                         if (er) console.error("Migration (preorder_kind) failed:", er.message);
                         else console.log("Migration: added orders.preorder_kind");
+                    });
+                }
+                // When this order's in-stock pieces came off the shelf, so stock
+                // moves once each way however often the status changes. Orders
+                // already past 'paid' had theirs taken under the old rule.
+                if (names.indexOf('stock_deducted_at') === -1) {
+                    db.run("ALTER TABLE orders ADD COLUMN stock_deducted_at DATETIME", (er) => {
+                        if (er) { console.error("Migration (stock_deducted_at) failed:", er.message); return; }
+                        console.log("Migration: added orders.stock_deducted_at");
+                        db.run(`UPDATE orders SET stock_deducted_at = COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
+                                 WHERE lower(COALESCE(status, '')) IN ('paid', 'shipped', 'dispatched', 'delivered', 'completed')`, (er2) => {
+                            if (er2) console.error("Migration (stock_deducted_at backfill) failed:", er2.message);
+                        });
                     });
                 }
                 db.run("CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_idem ON orders(idempotency_key) WHERE idempotency_key IS NOT NULL");

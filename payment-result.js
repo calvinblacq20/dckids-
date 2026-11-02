@@ -61,7 +61,7 @@
       referenceValue.textContent = reference || 'Not available';
     }
     const supportMessage = encodeURIComponent('Hi DC Kids, I need help confirming Paystack payment ' + (reference || '(reference unavailable)') + '.');
-    supportLink.href = 'https://wa.me/233549193805?text=' + supportMessage;
+    supportLink.href = 'https://wa.me/' + ((window.DCShop && window.DCShop.number) || '233549193805') + '?text=' + supportMessage;
     card.focus({ preventScroll: true });
   }
 

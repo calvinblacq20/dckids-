@@ -238,6 +238,7 @@ button { font-family: inherit; cursor: pointer; }
   border-bottom: 1px solid var(--green); transition: letter-spacing .35s var(--ease), opacity .3s;
 }
 .link-underline:hover { letter-spacing: .04em; }
+button.link-underline { background: none; border: 0; border-bottom: 1px solid var(--green); padding: 0 0 4px; }
 
 /* ------------------------------------------------------------- SECTIONS --- */
 .section { padding: clamp(56px, 9vw, 130px) 0; }
@@ -359,9 +360,20 @@ button { font-family: inherit; cursor: pointer; }
 .pre__cta .btn { width: auto; min-width: 240px; }
 /* This window's pieces: the shop's own cards, with category filters above. */
 .pre__finds { margin: 0 0 clamp(40px, 6vw, 72px); }
-.pre__finds-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; }
+.pre__finds-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 6px 24px; }
 .pre__finds-head .pre__subhead { margin-bottom: 8px; }
 .pre__finds-note { margin: 0 0 16px; color: var(--ink-soft); font-size: 15px; }
+/* Retail / Wholesale inside the tab, the same pills as the tabs above it. */
+.pre__prices { display: inline-flex; gap: 2px; padding: 4px; margin-bottom: 16px; border-radius: 999px; background: var(--bg); }
+.pre__prices button {
+  min-height: 44px; padding: 0 20px; border: 0; border-radius: 999px; background: none;
+  font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); transition: all .3s;
+}
+.pre__prices button.on { background: var(--green); color: #fff; }
+.pre__kind-links { display: flex; flex-wrap: wrap; gap: 24px 22px; }
+/* The links read as text but take a full-size tap. */
+.pre__kind .link-underline { position: relative; }
+.pre__kind .link-underline::after { content: ''; position: absolute; inset: -12px -6px; }
 .pre__filters { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 18px; }
 .pre__filters:empty { display: none; }
 .pre__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }

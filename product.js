@@ -119,19 +119,32 @@
     return 0;
   }
 
-  // Server order: wholesale discount on the base (or managed size) price, then the legacy size modifier.
+  // Bulk piece price as a share of the selling price — must stay identical to the server's bulkFactor.
+  function bulkFactor(price, bulkPrice, discountPercent) {
+    const base = Number(price) || 0;
+    const bulk = Number(bulkPrice) || 0;
+    if (bulk > 0 && bulk < base) return bulk / base;
+    return 1 - (Number(discountPercent) || 0) / 100;
+  }
+
+  // Server order: the bulk share of the base (or managed size) price, then the legacy size modifier.
   function unitPrice(product, sizeLabel) {
     const managed = getManagedSizes(product);
-    const discount = state.mode === 'wholesale' ? Number(state.settings.wholesale_discount || 0) : 0;
+    const factor = state.mode === 'wholesale' ? bulkFactor(product.price, product.wholesale_price, state.settings.wholesale_discount) : 1;
     let price;
     if (managed) {
       const match = managed.find((size) => String(size.label) === String(sizeLabel)) || managed[0];
-      price = (match && match.price != null ? Number(match.price) : Number(product.price || 0)) * (1 - discount / 100);
+      price = (match && match.price != null ? Number(match.price) : Number(product.price || 0)) * factor;
     } else {
       price = Number(product.price || 0);
-      if (price) price = price * (1 - discount / 100) + getPriceModifier(sizeLabel);
+      if (price) price = price * factor + getPriceModifier(sizeLabel);
     }
     return Math.round(price * 100) / 100;
+  }
+
+  // The product's own bulk price applies (rather than the store-wide discount).
+  function hasOwnBulkPrice(product) {
+    return Number(product.wholesale_price) > 0 && Number(product.wholesale_price) < Number(product.price);
   }
 
   function resolveImage(product) {
@@ -292,9 +305,8 @@
     quantity.min = state.mode === 'wholesale' ? String(moq) : '1';
     quantity.step = state.mode === 'wholesale' ? String(moq) : '1';
     quantity.value = state.mode === 'wholesale' ? String(moq) : '1';
-    byId('quantityHint').textContent = state.mode === 'wholesale'
-      ? `Wholesale mode · minimum ${moq} pieces${state.settings.wholesale_discount ? ` · ${Number(state.settings.wholesale_discount)}% discount applied` : ''}`
-      : '';
+    const discountNote = !hasOwnBulkPrice(product) && state.settings.wholesale_discount ? ` · ${Number(state.settings.wholesale_discount)}% discount applied` : '';
+    byId('quantityHint').textContent = state.mode === 'wholesale' ? `Wholesale mode · minimum ${moq} pieces${discountNote}` : '';
   }
 
   function renderReviews() {
@@ -356,9 +368,11 @@
     const price = unitPrice(product, state.selectedSize);
     if (!product || price <= 0 || byId('productAddToCart').disabled) return;
     const quantity = validQuantity();
+    // The whole cart shares one price mode (the shop re-fits it on a switch), so a
+    // line is the same piece in the same size whatever mode it was added in.
     const wholesale = state.mode === 'wholesale' ? 1 : 0;
-    const existing = state.cart.find((item) => Number(item.id) === product.id && String(item.size || '') === state.selectedSize && Number(item.ws || 0) === wholesale);
-    if (existing) existing.qty = Number(existing.qty || 0) + quantity;
+    const existing = state.cart.find((item) => Number(item.id) === product.id && String(item.size || '') === state.selectedSize);
+    if (existing) Object.assign(existing, { qty: Number(existing.qty || 0) + quantity, price, ws: wholesale });
     else state.cart.push({ id: product.id, name: product.name, size: state.selectedSize, price, qty: quantity, img: product.img, cat: product.cat, ws: wholesale });
     saveCart();
     openCart();
@@ -386,7 +400,7 @@
       subtotal += total;
       return `<article class="product-cart-item">
         <img src="${escapeHtml(image.src)}" alt="${escapeHtml(item.name || '')}" data-category="${escapeHtml(item.cat || '')}">
-        <div><h3>${escapeHtml(item.name || '')}</h3><p>${escapeHtml(item.size || '')}${item.ws ? ' · Wholesale' : ''}</p><strong>${money(total)}</strong></div>
+        <div><h3>${escapeHtml(item.name || '')}</h3><p>${escapeHtml(item.size || '')}${state.mode === 'wholesale' ? ' · Wholesale' : ''}</p><strong>${money(total)}</strong></div>
         <div class="product-cart-item__controls"><button type="button" data-cart-minus="${index}" aria-label="Decrease ${escapeHtml(item.name || '')}">−</button><span>${Number(item.qty || 0)}</span><button type="button" data-cart-plus="${index}" aria-label="Increase ${escapeHtml(item.name || '')}">+</button><button type="button" class="product-cart-item__remove" data-cart-remove="${index}">Remove</button></div>
       </article>`;
     }).join('');
@@ -397,7 +411,7 @@
   function changeCartQuantity(index, direction) {
     const item = state.cart[index];
     if (!item) return;
-    const moq = item.ws ? Math.max(1, Number(state.settings.wholesale_moq || 10)) : 1;
+    const moq = state.mode === 'wholesale' ? Math.max(1, Number(state.settings.wholesale_moq || 10)) : 1;
     item.qty = Number(item.qty || 0) + (direction * moq);
     if (item.qty < moq) state.cart.splice(index, 1);
     saveCart();
@@ -624,6 +638,8 @@
     try {
       await window.DCKidsAuth.ready;
       state.auth = window.DCKidsAuth.getState();
+      // Where customer sign-in isn't offered, the account page has nothing to sign in to.
+      if (state.auth.unconfigured) document.querySelectorAll('a[href="/account.html"]').forEach((a) => { a.hidden = true; });
       window.DCKidsAuth.onChange((next) => { state.auth = next || state.auth; syncWishlist(); });
       await syncWishlist();
     } catch (error) {

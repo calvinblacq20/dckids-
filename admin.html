@@ -42,7 +42,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=102">
+  <link rel="stylesheet" href="admin-bridge.css?v=108">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -449,7 +449,7 @@
             <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='36' height='36'><rect width='36' height='36' rx='18' fill='%23fc4c7a'/><text x='18' y='23' font-family='sans-serif' font-size='14' font-weight='700' fill='white' text-anchor='middle'>AD</text></svg>" alt="User avatar" class="user-avatar" style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover;" />
             <div class="user-info" style="display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2;">
               <span id="user-display-name" class="user-name" style="font-weight: 600; font-size: 13px;">Admin</span>
-              <span id="user-role-badge" class="role-badge" style="background: none; padding: 0; color: var(--text-secondary); text-transform: capitalize; font-weight: 500; font-size: 11px;">Super Admin</span>
+              <span id="user-role-badge" class="role-badge" style="background: none; padding: 0; color: var(--text-secondary); text-transform: capitalize; font-weight: 500; font-size: 11px;">Owner</span>
             </div>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-secondary); margin-left: 4px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </div>
@@ -460,7 +460,7 @@
               <div class="admin-user-menu__avatar" id="aum-avatar">AD</div>
               <div class="admin-user-menu__id">
                 <div class="admin-user-menu__name" id="aum-name">Admin</div>
-                <div class="admin-user-menu__role" id="aum-role">Super Admin</div>
+                <div class="admin-user-menu__role" id="aum-role">Owner</div>
                 <div class="admin-user-menu__status"><span class="status-dot"></span>Online</div>
               </div>
             </div>
@@ -4206,7 +4206,7 @@
           <div class="stat-card stat-card-sm">
             <div class="stat-content">
               <span class="stat-value" id="staff-manager-count">0</span>
-              <span class="stat-label">Managers</span>
+              <span class="stat-label">Owner</span>
             </div>
           </div>
           <div class="stat-card stat-card-sm">
@@ -5189,6 +5189,12 @@
             </div>
 
             <div style="grid-column: span 1;">
+              <label for="modal-product-bulk" class="block text-sm font-medium text-gray-700 mb-1.5" style="display: block; margin-bottom: 6px;">Bulk price (GHS each) <span style="font-weight: 400; color: #6b7280;">optional</span></label>
+              <input type="number" inputmode="decimal" min="0" step="0.01" id="modal-product-bulk" placeholder="Price per piece for resellers" aria-describedby="modal-product-bulk-hint" class="w-full border border-solid border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-gray-900 shadow-sm" style="box-sizing: border-box; width: 100%; border-radius: 8px; padding: 10px 12px; font-size: 13px;" />
+              <p id="modal-product-bulk-hint" style="margin: 4px 0 0; font-size: 11px; color: #6b7280;">What one piece costs at wholesale and on bulk pre-orders. Leave empty to use the store-wide wholesale discount.</p>
+            </div>
+
+            <div style="grid-column: span 1;">
               <label for="modal-product-stock" class="block text-sm font-medium text-gray-700 mb-1.5" style="display: block; margin-bottom: 6px;">Stock Quantity</label>
               <input type="number" inputmode="numeric" min="0" step="1" id="modal-product-stock" value="45" class="w-full border border-solid border-gray-300 rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 text-gray-900 shadow-sm" style="box-sizing: border-box; width: 100%; border-radius: 8px; padding: 10px 12px; font-size: 13px;" />
             </div>
@@ -5439,6 +5445,12 @@
                 <label for="add-product-compare" class="block text-sm font-bold text-gray-900 mb-2">Was price (GHS) <span class="font-normal text-gray-500">optional</span></label>
                 <input type="number" id="add-product-compare" placeholder="Price before the sale" aria-describedby="add-product-compare-hint" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-gray-400 shadow-sm transition-shadow" inputmode="decimal" min="0" step="0.01" />
                 <p id="add-product-compare-hint" class="mt-1 text-xs text-gray-500">The shop shows "% off" with this price crossed out. Leave empty when it is not on sale.</p>
+              </div>
+
+              <div>
+                <label for="add-product-bulk" class="block text-sm font-bold text-gray-900 mb-2">Bulk price (GHS each) <span class="font-normal text-gray-500">optional</span></label>
+                <input type="number" id="add-product-bulk" placeholder="Price per piece for resellers" aria-describedby="add-product-bulk-hint" class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500 placeholder-gray-400 shadow-sm transition-shadow" inputmode="decimal" min="0" step="0.01" />
+                <p id="add-product-bulk-hint" class="mt-1 text-xs text-gray-500">What one piece costs at wholesale and on bulk pre-orders. Leave empty to use the store-wide wholesale discount.</p>
               </div>
 
               <div>
@@ -6101,13 +6113,7 @@
             <input type="email" id="add-staff-email" class="form-input" placeholder="name@example.com" autocomplete="off" required />
             <div style="font-size:11px;color:#888;margin-top:6px;">No password needed — they'll sign in with a 6-digit code emailed to this address.</div>
           </div>
-          <div class="form-group" style="margin-top:16px;">
-            <label for="add-staff-role">Role <span style="color:var(--danger);">*</span></label>
-            <select id="add-staff-role" class="form-select" required>
-              <option value="staff">Staff Member</option>
-              <option value="manager">Manager / Admin</option>
-            </select>
-          </div>
+          <p style="margin:16px 0 0;font-size:12px;color:#888;">They join as staff. Only the owner can change settings and products, manage staff, and delete records.</p>
         </form>
       </div>
       <div class="modal-footer">
@@ -6134,15 +6140,13 @@
         </div>
         <div class="form-group" style="margin-top:16px;">
           <label for="edit-staff-email">Email <span style="color:var(--danger);">*</span></label>
-          <input type="email" id="edit-staff-email" class="form-input" autocomplete="off" />
-          <div style="font-size:11px;color:#888;margin-top:6px;">This is their sign-in address — codes are emailed here.</div>
+          <input type="email" id="edit-staff-email" class="form-input" autocomplete="off" aria-describedby="edit-staff-email-hint" />
+          <div id="edit-staff-email-hint" style="font-size:11px;color:#888;margin-top:6px;">This is their sign-in address — codes are emailed here.</div>
         </div>
         <div class="form-group" style="margin-top:16px;">
-          <label for="edit-staff-role">Role</label>
-          <select id="edit-staff-role" class="form-select">
-            <option value="staff">Staff Member</option>
-            <option value="manager">Manager / Admin</option>
-          </select>
+          <span class="form-label" style="display:block;font-weight:600;">Role</span>
+          <p id="edit-staff-role" style="margin:4px 0 0;">Staff</p>
+          <div style="font-size:11px;color:#888;margin-top:4px;">The shop has one owner. Everyone else is staff.</div>
         </div>
       </div>
       <div class="modal-footer">
@@ -6430,8 +6434,8 @@
   <script src="image-resolver.js?v=2"></script>
   <script src="admin-recovery-view.js?v=1"></script>
   <!-- No-op unless the host is *.vercel.app or the URL carries ?demo=1 -->
-  <script src="admin-demo.js?v=15"></script>
-  <script src="admin.js?v=184"></script>
+  <script src="admin-demo.js?v=19"></script>
+  <script src="admin.js?v=190"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

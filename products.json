@@ -4604,6 +4604,7 @@
     "fulfillment_type": "preorder",
     "sizes": null,
     "compare_at_price": null,
+    "wholesale_price": 150,
     "images": [
       "images/preorders/h-strap-slides-1.webp",
       "images/preorders/h-strap-slides-2.webp",

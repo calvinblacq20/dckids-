@@ -232,14 +232,45 @@ app.use((req, res, next) => {
 
 app.use('/images', express.static(UPLOAD_DIR, { dotfiles: 'deny' }));
 
+// Product links travel on WhatsApp, whose link preview reads the page's Open
+// Graph tags without running any script, so the live site writes the product's
+// own name, price and photo into product.html before sending it.
+app.get('/product.html', (req, res, next) => {
+    const id = Number.parseInt(req.query.id, 10);
+    if (!Number.isInteger(id) || id <= 0) return next();
+    db.get('SELECT name, price, img, description FROM products WHERE id = ?', [id], (err, product) => {
+        if (err || !product) return next();
+        require('fs').readFile(path.join(__dirname, '..', 'product.html'), 'utf8', (readErr, html) => {
+            if (readErr) return next();
+            const origin = process.env.APP_URL ? APP_URL.replace(/\/+$/, '') : `${req.protocol}://${req.get('host')}`;
+            const price = Number(product.price) > 0 ? ` · GH₵ ${Number(product.price).toFixed(2)}` : '';
+            const img = String(product.img || 'icon.png');
+            const tags = [
+                ['og:type', 'product'],
+                ['og:site_name', 'DC Kids Brand'],
+                ['og:title', product.name + price],
+                ['og:description', String(product.description || 'Kids\' fashion, newborn essentials and China pre-orders from DC Kids Brand.').slice(0, 200)],
+                ['og:image', /^https?:\/\//.test(img) ? img : `${origin}/${img.replace(/^\/+/, '')}`],
+                ['og:url', `${origin}/product.html?id=${id}`]
+            ].map(([property, content]) => `<meta property="${property}" content="${escapeHtmlServer(content)}">`)
+                .concat('<meta name="twitter:card" content="summary_large_image">');
+            res.setHeader('Cache-Control', 'no-cache');
+            // A function, not a string: "$&" or "$'" in a product's text must stay literal.
+            const block = `<!-- og: this product's share preview -->\n  ${tags.join('\n  ')}\n  <!-- /og -->`;
+            res.type('html').send(html.replace(/<!-- og:[\s\S]*?<!-- \/og -->/, () => block));
+        });
+    });
+});
+
 app.use(express.static(path.join(__dirname, '..'), {
     dotfiles: 'deny',
     setHeaders: function (res, filePath) {
+        // Pages and code are checked with the server on every load (an
+        // unchanged file costs a 304, not a download), so a deploy reaches
+        // shoppers at once without re-sending every file over 3G.
         if (filePath.endsWith('.html') || filePath.endsWith('service-worker.js') ||
             filePath.endsWith('.css') || filePath.endsWith('.js')) {
-            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-            res.setHeader('Pragma', 'no-cache');
-            res.setHeader('Expires', '0');
+            res.setHeader('Cache-Control', 'no-cache');
         }
     }
 }));
@@ -412,9 +443,11 @@ async function generateInitialRecoveryCodes(userId, n = DEFAULT_RECOVERY_CODE_CO
     return recoveryCodes;
 }
 function notifyManagersOfRequest(name, mail) {
-    db.all(`SELECT email FROM users WHERE role = 'manager' AND status = 'active' AND email IS NOT NULL`, [], (e, rows) => {
+    db.all(`SELECT id, username, email, role, ${FIRST_MANAGER_SQL} AS first_manager_id FROM users
+             WHERE role = 'manager' AND status = 'active' AND email IS NOT NULL`, [], (e, rows) => {
         if (e || !rows) return;
-        rows.forEach((r) => sendEmail(
+        // Only the owner approves access, so only she hears about requests.
+        rows.filter((r) => isShopOwner(r, r.first_manager_id)).forEach((r) => sendEmail(
             r.email,
             'New DC Kids admin access request',
             `<p><strong>${escapeHtmlServer(name)}</strong> (${escapeHtmlServer(mail)}) has requested admin access.</p>
@@ -555,20 +588,37 @@ const authenticateToken = (req, res, next) => {
         // so a demoted manager loses manager routes on their next request.
         // Primary-key lookup: negligible cost at this scale. NULL status =
         // pre-migration account, treated as active.
-        db.get(`SELECT id, username, role, status FROM users WHERE id = ?`, [payload.id], (e, user) => {
+        db.get(`SELECT id, username, email, role, status, ${FIRST_MANAGER_SQL} AS first_manager_id FROM users WHERE id = ?`, [payload.id], (e, user) => {
             if (e) return serverError(res, e);
             if (!user || (user.status && user.status !== 'active')) {
                 return res.status(403).json({ error: 'This account is no longer active' });
             }
-            req.user = { id: user.id, username: user.username, role: user.role, issuedAt: Number(payload.iat) };
+            const role = isShopOwner(user, user.first_manager_id) ? 'manager' : 'staff';
+            req.user = { id: user.id, username: user.username, role, issuedAt: Number(payload.iat) };
             next();
         });
     });
 };
 
+// The shop has one owner: the account on OWNER_EMAIL (set it to her address
+// alone), or, without OWNER_EMAIL, the first sign-up, which is the earliest
+// active manager. Every other account is staff, even an older row that still
+// says manager, and nothing in the admin can make another owner.
+const FIRST_MANAGER_SQL = `(SELECT MIN(id) FROM users WHERE role = 'manager' AND (status IS NULL OR status = 'active'))`;
+function isShopOwner(user, firstManagerId) {
+    if (!user || user.role !== 'manager') return false;
+    if (OWNER_EMAILS.length) return OWNER_EMAILS.includes(String(user.email || user.username || '').toLowerCase());
+    return Number(user.id) === Number(firstManagerId);
+}
+async function shopRoleOf(user) {
+    const first = OWNER_EMAILS.length ? null : await dbGetAsync(`SELECT ${FIRST_MANAGER_SQL} AS id`);
+    return isShopOwner(user, first && first.id) ? 'manager' : 'staff';
+}
+const ONE_OWNER_MESSAGE = 'The shop has one owner. Everyone else is staff.';
+
 const requireManager = (req, res, next) => {
     if (req.user.role !== 'manager') {
-        return res.status(403).json({ error: 'Manager access required.' });
+        return res.status(403).json({ error: 'Only the shop owner can do this.' });
     }
     next();
 };
@@ -644,20 +694,16 @@ app.post('/api/admin/register', registerLimiter, (req, res) => {
                     }
                     return serverError(res, e2);
                 }
-                const userId = this.lastID;
                 if (isOwner) {
-                    try {
-                        const recoveryCodes = await generateInitialRecoveryCodes(userId);
-                        sendEmail(mail, 'Your DC Kids admin account is ready',
-                            `<p>Hi ${escapeHtmlServer(name)}, your owner account is active.</p><p>Sign in at <a href="${APP_URL}/admin.html">${APP_URL}/admin.html</a> — we'll email you a 6-digit code each time.</p>`);
-                        return res.status(201).json({
-                            success: true, owner: true,
-                            message: 'Your owner account is active. Save your recovery codes below, then sign in with an email code.',
-                            recoveryCodes
-                        });
-                    } catch (error) {
-                        return serverError(res, error);
-                    }
+                    // No recovery codes here: whoever sends this form has not yet
+                    // proved they own the inbox. They come with the first sign-in,
+                    // which needs the emailed code (or a Google-verified address).
+                    sendEmail(mail, 'Your DC Kids admin account is ready',
+                        `<p>Hi ${escapeHtmlServer(name)}, your owner account is active.</p><p>Sign in at <a href="${APP_URL}/admin.html">${APP_URL}/admin.html</a> — we'll email you a 6-digit code each time.</p>`);
+                    return res.status(201).json({
+                        success: true, owner: true,
+                        message: 'Your owner account is active. Sign in with the code we email you; your recovery codes come with that first sign-in.'
+                    });
                 }
                 sendEmail(mail, 'DC Kids admin access requested',
                     `<p>Hi ${escapeHtmlServer(name)}, we received your request for admin access.</p><p>A manager will review it, and you'll be able to sign in once you're approved.</p>`);
@@ -737,16 +783,16 @@ app.post('/api/auth/verify-code', loginLimiter, (req, res) => {
                 return res.status(400).json({ error: 'Incorrect code.' });
             }
             db.run(`DELETE FROM auth_codes WHERE user_id = ?`, [row.id]);
-            const accessToken = jwt.sign({ id: row.id, username: row.email, role: row.role }, JWT_SECRET, { expiresIn: '12h' });
+            let role;
             let recoveryCodes = null;
-            if (!row.recovery_shown) {
-                try {
-                    recoveryCodes = await generateInitialRecoveryCodes(row.id);
-                } catch (error) {
-                    return serverError(res, error);
-                }
+            try {
+                role = await shopRoleOf(row);
+                if (!row.recovery_shown) recoveryCodes = await generateInitialRecoveryCodes(row.id);
+            } catch (error) {
+                return serverError(res, error);
             }
-            res.json({ accessToken, role: row.role, recoveryCodes });
+            const accessToken = jwt.sign({ id: row.id, username: row.email, role }, JWT_SECRET, { expiresIn: '12h' });
+            res.json({ accessToken, role, recoveryCodes });
         }
     );
 });
@@ -762,8 +808,9 @@ app.post('/api/auth/recovery', loginLimiter, (req, res) => {
         try {
             const consumed = await consumeRecoveryCode({ db, bcrypt, userId: user.id, code: rc });
             if (!consumed) return res.status(400).json({ error: 'Invalid email or recovery code.' });
-            const accessToken = jwt.sign({ id: user.id, username: user.email, role: user.role }, JWT_SECRET, { expiresIn: '12h' });
-            return res.json({ accessToken, role: user.role });
+            const role = await shopRoleOf(user);
+            const accessToken = jwt.sign({ id: user.id, username: user.email, role }, JWT_SECRET, { expiresIn: '12h' });
+            return res.json({ accessToken, role });
         } catch (error) {
             return serverError(res, error);
         }
@@ -850,16 +897,16 @@ app.post('/api/auth/google', loginLimiter, async (req, res) => {
 
         if (sub && !user.google_sub) db.run(`UPDATE users SET google_sub = ? WHERE id = ?`, [sub, user.id]);
 
+        let role;
         let recoveryCodes = null;
-        if (!user.recovery_shown) {
-            try {
-                recoveryCodes = await generateInitialRecoveryCodes(user.id);
-            } catch (error) {
-                return serverError(res, error);
-            }
+        try {
+            role = await shopRoleOf(user);
+            if (!user.recovery_shown) recoveryCodes = await generateInitialRecoveryCodes(user.id);
+        } catch (error) {
+            return serverError(res, error);
         }
-        const accessToken = jwt.sign({ id: user.id, username: user.email, role: user.role }, JWT_SECRET, { expiresIn: '12h' });
-        res.json({ accessToken, role: user.role, recoveryCodes });
+        const accessToken = jwt.sign({ id: user.id, username: user.email, role }, JWT_SECRET, { expiresIn: '12h' });
+        res.json({ accessToken, role, recoveryCodes });
     });
 });
 
@@ -875,8 +922,9 @@ app.get('/api/admin/access-requests', authenticateToken, requireManager, (req, r
     );
 });
 
+// Approved requests join as staff: the shop has one owner.
 app.post('/api/admin/access-requests/:id/approve', authenticateToken, requireManager, (req, res) => {
-    const role = (req.body && req.body.role) === 'manager' ? 'manager' : 'staff';
+    const role = 'staff';
     db.run(
         `UPDATE users SET status = 'active', role = ? WHERE id = ? AND status = 'pending'`,
         [role, req.params.id],
@@ -998,11 +1046,15 @@ app.put('/api/settings', authenticateToken, requireManager, (req, res) => {
     if (preorderStarts && preorderEnds && preorderEnds < preorderStarts) {
         return res.status(400).json({ error: 'The pre-order window cannot close before it opens' });
     }
-    // Only a real group invite, so the shop never links shoppers somewhere unexpected.
-    const groupUrl = String(req.body.whatsapp_group_url || '').trim();
-    if (groupUrl && !/^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]{10,40}$/.test(groupUrl)) {
+    // Only a real group invite, so the shop never links shoppers somewhere
+    // unexpected. A link copied from WhatsApp's share sheet carries tracking
+    // (?s=cl&p=a…); only the invite itself is stored.
+    const groupInput = String(req.body.whatsapp_group_url || '').trim();
+    const groupInvite = /^https:\/\/chat\.whatsapp\.com\/([A-Za-z0-9]{10,40})\/?(?:\?[^\s#]*)?$/.exec(groupInput);
+    if (groupInput && !groupInvite) {
         return res.status(400).json({ error: 'The WhatsApp group link must be an invite link like https://chat.whatsapp.com/…' });
     }
+    const groupUrl = groupInvite ? 'https://chat.whatsapp.com/' + groupInvite[1] : '';
     db.run(
         `UPDATE store_settings
          SET whatsapp_number = ?, wholesale_enabled = ?, wholesale_moq = ?, wholesale_discount = ?, banner_enabled = ?, banner_text = ?,
@@ -1103,16 +1155,31 @@ function parseCompareAtPrice(value, price) {
     return { value: amount };
 }
 
+// A product's own price per piece when bought in bulk. Empty clears it, so the
+// store-wide wholesale discount applies; otherwise it must sit below the selling
+// price, or a reseller would pay more than a single shopper.
+function parseBulkPrice(value, price) {
+    if (value === undefined || value === null || String(value).trim() === '') return { value: null };
+    const amount = Math.round(Number(value) * 100) / 100;
+    if (!(Number(price) > 0)) return { error: 'Set a selling price before adding a bulk price' };
+    if (!isFinite(amount) || amount <= 0 || amount >= Number(price)) {
+        return { error: 'The bulk price must be lower than the selling price' };
+    }
+    return { value: amount };
+}
+
 // Add new product (Manager only)
 app.post('/api/products', authenticateToken, requireManager, (req, res) => {
     const { name, sku, size, price, img, cat, stock, badge, description, fulfillment_type, sizes } = req.body;
     const sizesJson = normalizeSizes(sizes);
     const compareAt = parseCompareAtPrice(req.body.compare_at_price, price);
     if (compareAt.error) return res.status(400).json({ error: compareAt.error });
+    const bulkPrice = parseBulkPrice(req.body.wholesale_price, price);
+    if (bulkPrice.error) return res.status(400).json({ error: bulkPrice.error });
     const insert = (finalSku) => {
         db.run(
-            `INSERT INTO products (name, sku, size, price, img, cat, stock, badge, description, fulfillment_type, sizes, compare_at_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [name, finalSku || null, size, price, img, cat, stock, badge, description || null, fulfillment_type || 'in_stock', sizesJson, compareAt.value],
+            `INSERT INTO products (name, sku, size, price, img, cat, stock, badge, description, fulfillment_type, sizes, compare_at_price, wholesale_price) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [name, finalSku || null, size, price, img, cat, stock, badge, description || null, fulfillment_type || 'in_stock', sizesJson, compareAt.value, bulkPrice.value],
             function (err) {
                 if (isDuplicateSku(err)) return res.status(409).json({ error: 'That SKU is already in use by another product.' });
                 if (err) return serverError(res, err);
@@ -1140,12 +1207,18 @@ app.put('/api/products/:id', authenticateToken, requireManager, (req, res) => {
     const sendsCompareAt = Object.prototype.hasOwnProperty.call(req.body, 'compare_at_price');
     const compareAt = parseCompareAtPrice(req.body.compare_at_price, price);
     if (sendsCompareAt && compareAt.error) return res.status(400).json({ error: compareAt.error });
+    // Same for the bulk price; one that no longer sits below a new selling price is dropped.
+    const sendsBulkPrice = Object.prototype.hasOwnProperty.call(req.body, 'wholesale_price');
+    const bulkPrice = parseBulkPrice(req.body.wholesale_price, price);
+    if (sendsBulkPrice && bulkPrice.error) return res.status(400).json({ error: bulkPrice.error });
     db.run(
         `UPDATE products SET name = ?, sku = ?, size = ?, price = ?, img = ?, cat = ?, stock = ?, badge = ?, description = ?, fulfillment_type = ?, sizes = ?,
             compare_at_price = CASE WHEN ? THEN ? WHEN compare_at_price > ? THEN compare_at_price ELSE NULL END,
+            wholesale_price = CASE WHEN ? THEN ? WHEN wholesale_price < ? THEN wholesale_price ELSE NULL END,
             updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
         [name, sku || null, size, price, img, cat, stock, badge, description || null, fulfillment_type || 'in_stock', sizesJson,
-            sendsCompareAt ? 1 : 0, compareAt.value, Number(price) || 0, req.params.id],
+            sendsCompareAt ? 1 : 0, compareAt.value, Number(price) || 0,
+            sendsBulkPrice ? 1 : 0, bulkPrice.value, Number(price) || 0, req.params.id],
         function (err) {
             if (isDuplicateSku(err)) return res.status(409).json({ error: 'That SKU is already in use by another product.' });
             if (err) return serverError(res, err);
@@ -1528,19 +1601,24 @@ app.put('/api/suppliers/:id', authenticateToken, requireManager, (req, res) => {
 
 // ---------------- USER MANAGEMENT ROUTES (Manager only) ---------------- //
 // List all users
+// Each account with the role it really has: the owner, or staff.
 app.get('/api/users', authenticateToken, requireManager, (req, res) => {
-    db.all(`SELECT id, username, role, email, full_name, phone, status FROM users`, [], (err, rows) => {
+    db.all(`SELECT id, username, role, email, full_name, phone, status, ${FIRST_MANAGER_SQL} AS first_manager_id FROM users`, [], (err, rows) => {
         if (err) return serverError(res, err);
-        res.json(rows);
+        res.json(rows.map(({ first_manager_id: firstManagerId, ...row }) => {
+            const owner = isShopOwner(row, firstManagerId);
+            return Object.assign(row, { role: owner ? 'manager' : 'staff', owner });
+        }));
     });
 });
 
-// Create new user (staff/manager). Passwordless: the account is identified by
-// email and immediately active — the person signs in with an emailed 6-digit
-// code (or Google), so no password is collected. This is the owner's direct
-// "add my staff" path; the public register endpoint is the request/approve one.
+// Create a staff account. Passwordless: the account is identified by email and
+// immediately active — the person signs in with an emailed 6-digit code (or
+// Google), so no password is collected. This is the owner's direct "add my
+// staff" path; the public register endpoint is the request/approve one. Every
+// account added here is staff: the shop has one owner.
 app.post('/api/users', authenticateToken, requireManager, (req, res) => {
-    const { full_name, email, role } = req.body || {};
+    const { full_name, email } = req.body || {};
     const mail = String(email || '').trim().toLowerCase();
     const name = String(full_name || '').trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail) || mail.length > 254) {
@@ -1549,7 +1627,7 @@ app.post('/api/users', authenticateToken, requireManager, (req, res) => {
     if (name.length < 2 || name.length > 100) {
         return res.status(400).json({ error: 'Please enter the person\'s full name' });
     }
-    const finalRole = role === 'manager' ? 'manager' : 'staff';
+    const finalRole = 'staff';
     db.run(
         `INSERT INTO users (username, password_hash, role, email, full_name, status, created_at)
          VALUES (?, NULL, ?, ?, ?, 'active', datetime('now'))`,
@@ -1671,6 +1749,19 @@ function getPriceModifier(sizeLabel) {
     return 0;
 }
 
+// What a bulk piece costs as a share of its selling price (wholesale orders and
+// bulk pre-orders). A product's own bulk price wins, and its other sizes move
+// by the same proportion; otherwise the store-wide wholesale discount applies.
+// The storefront, product page and admin repeat this exactly (the smoke test
+// fails if one drifts).
+function bulkFactor(price, bulkPrice, discountPercent) {
+    const base = Number(price) || 0;
+    const bulk = Number(bulkPrice) || 0;
+    if (bulk > 0 && bulk < base) return bulk / base;
+    return 1 - (Number(discountPercent) || 0) / 100;
+}
+const WHOLESALE_OFF_MESSAGE = 'Wholesale prices are switched off right now. Switch to Retail to order, or message us on WhatsApp.';
+
 // Create new order (Storefront)
 app.post('/api/orders', optionalCustomer, (req, res) => {
     const { customer_name, customer_phone, customer_email, order_type, items, payment_method, delivery_area, delivery_address, notes } = req.body;
@@ -1744,6 +1835,11 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
         
         const moq = settings ? settings.wholesale_moq : 10;
         const discount = settings ? settings.wholesale_discount : 0;
+        // The owner's Wholesale switch governs bulk pre-orders too. Staff at the
+        // counter can still sell in bulk.
+        if (isWholesale && !req.staff && settings && !Number(settings.wholesale_enabled)) {
+            return res.status(400).json({ error: WHOLESALE_OFF_MESSAGE });
+        }
 
         let total_amount = 0;
         const processedItems = [];
@@ -1772,12 +1868,12 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                     // charged a 10-piece wholesale order as 10 packages =
                     // 100 pieces: a 10× overcharge, and stock deducted 10×.)
                     let unitPrice;
+                    const factor = isWholesale ? bulkFactor(product.price, product.wholesale_price, discount) : 1;
                     if (sizeMatch) {
                         unitPrice = (sizeMatch.price != null) ? sizeMatch.price : (product.price || 0);
-                        if (isWholesale) unitPrice = unitPrice * (1 - (discount / 100));
+                        unitPrice = unitPrice * factor;
                     } else {
-                        unitPrice = product.price || 0;
-                        if (isWholesale) unitPrice = unitPrice * (1 - (discount / 100));
+                        unitPrice = (product.price || 0) * factor;
                         unitPrice += getPriceModifier(item.size);
                     }
                     unitPrice = Math.round(unitPrice * 100) / 100;
@@ -1990,13 +2086,14 @@ async function pricePaystackCheckout(checkout) {
     const settings = await dbGetAsync('SELECT * FROM store_settings WHERE id = 1');
     const minimumOrder = settings ? Number(settings.wholesale_moq || 10) : 10;
     const discount = settings ? Number(settings.wholesale_discount || 0) : 0;
+    if (checkout.isWholesale && settings && !Number(settings.wholesale_enabled)) throw paymentError(WHOLESALE_OFF_MESSAGE);
     const processedItems = await Promise.all(checkout.items.map(async (item) => {
         const product = await dbGetAsync('SELECT * FROM products WHERE id = ?', [Number(item.id)]);
         if (!product) throw paymentError(`Product ${item.id} not found`);
         const managedSizes = parseSizesJson(product.sizes);
         const sizeMatch = managedSizes ? managedSizes.find((size) => size.label === item.size) : null;
         let unitPrice = sizeMatch && sizeMatch.price != null ? Number(sizeMatch.price) : Number(product.price || 0);
-        if (checkout.isWholesale) unitPrice *= (1 - discount / 100);
+        if (checkout.isWholesale) unitPrice *= bulkFactor(product.price, product.wholesale_price, discount);
         if (!sizeMatch) unitPrice += getPriceModifier(item.size);
         unitPrice = Math.round(unitPrice * 100) / 100;
         const quantity = Number(item.quantity);
@@ -2126,6 +2223,27 @@ function paystackApiRequest(apiPath, method, payload) {
     });
 }
 
+// Statuses whose pieces have left the shelf. Reaching one takes an order's
+// in-stock pieces off once; leaving them (cancelled, deleted, or moved back to an
+// earlier step) puts them back once. orders.stock_deducted_at records which side
+// the order is on. Pre-order pieces are sourced on demand, so their stock never
+// moves. Call inside the transaction that changes the status.
+const STOCK_DEDUCTED_STATUSES = ['paid', 'shipped', 'dispatched', 'delivered', 'completed'];
+async function syncOrderStock(orderId, status) {
+    const order = await dbGetAsync('SELECT stock_deducted_at FROM orders WHERE id = ?', [orderId]);
+    if (!order) return;
+    const takeOff = STOCK_DEDUCTED_STATUSES.includes(String(status || '').toLowerCase());
+    if (takeOff === Boolean(order.stock_deducted_at)) return;
+    const items = await dbAllAsync('SELECT product_id, quantity FROM order_items WHERE order_id = ?', [orderId]);
+    for (const item of items) {
+        await dbRunAsync(takeOff
+            ? "UPDATE products SET stock = MAX(0, stock - ?) WHERE id = ? AND COALESCE(fulfillment_type, 'in_stock') <> 'preorder'"
+            : "UPDATE products SET stock = stock + ? WHERE id = ? AND COALESCE(fulfillment_type, 'in_stock') <> 'preorder'",
+            [Number(item.quantity || 0), item.product_id]);
+    }
+    await dbRunAsync(`UPDATE orders SET stock_deducted_at = ${takeOff ? 'CURRENT_TIMESTAMP' : 'NULL'} WHERE id = ?`, [orderId]);
+}
+
 async function markOrderPaid(orderId, paymentId, providerData) {
     let transactionOpen = false;
     try {
@@ -2135,11 +2253,8 @@ async function markOrderPaid(orderId, paymentId, providerData) {
         if (!order) throw paymentError('Order not found', 404);
         const becamePaid = String(order.status || '').toLowerCase() !== 'paid';
         if (becamePaid) {
-            const items = await dbAllAsync('SELECT product_id, quantity FROM order_items WHERE order_id = ?', [orderId]);
-            for (const item of items) {
-                await dbRunAsync('UPDATE products SET stock = MAX(0, stock - ?) WHERE id = ?', [Number(item.quantity || 0), item.product_id]);
-            }
             await dbRunAsync("UPDATE orders SET status = 'paid', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [orderId]);
+            await syncOrderStock(orderId, 'paid');
         }
         if (paymentId) {
             const data = providerData || {};
@@ -2606,6 +2721,7 @@ app.put('/api/orders/:id', authenticateToken, async (req, res) => {
         return res.status(400).json({ error: 'Invalid status. Allowed: ' + ORDER_STATUSES.join(', ') });
     }
 
+    let transactionOpen = false;
     try {
         const order = await dbGetAsync('SELECT status FROM orders WHERE id = ?', [orderId]);
         if (!order) return res.status(404).json({ error: 'Order not found' });
@@ -2614,31 +2730,48 @@ app.put('/api/orders/:id', authenticateToken, async (req, res) => {
             logAdminAction(req, 'update_status', 'order', orderId, `Marked order #${orderId} as paid`, { from: order.status, to: 'paid' });
             return res.json({ success: true, changes: result.becamePaid ? 1 : 0 });
         }
+        await dbRunAsync('BEGIN IMMEDIATE');
+        transactionOpen = true;
         const updated = await dbRunAsync('UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [normStatus, orderId]);
+        if (updated.changes) await syncOrderStock(orderId, normStatus);
+        await dbRunAsync('COMMIT');
+        transactionOpen = false;
         if (updated.changes && normStatus === 'cancelled') await releaseWelcomeClaim(orderId);
         if (updated.changes) logAdminAction(req, 'update_status', 'order', orderId, `Changed order #${orderId} to ${normStatus.replace(/_/g, ' ')}`, { from: order.status, to: normStatus });
         res.json({ success: true, changes: updated.changes });
-    } catch (error) { serverError(res, error); }
+    } catch (error) {
+        if (transactionOpen) {
+            try { await dbRunAsync('ROLLBACK'); } catch (rollbackError) { console.error('[Order status rollback]', rollbackError.message); }
+        }
+        serverError(res, error);
+    }
 });
 
-app.delete('/api/orders/:id', authenticateToken, (req, res) => {
+// Delete an order (Manager only): orders are the shop's financial record, so
+// staff cancel instead. Any pieces it had taken off the shelf go back first.
+app.delete('/api/orders/:id', authenticateToken, requireManager, async (req, res) => {
     const orderId = req.params.id;
-    db.get(`SELECT id FROM orders WHERE id = ?`, [orderId], (err, order) => {
-        if (err) return serverError(res, err);
+    let transactionOpen = false;
+    try {
+        const order = await dbGetAsync('SELECT id FROM orders WHERE id = ?', [orderId]);
         if (!order) return res.status(404).json({ error: 'Order not found' });
-        // Remove child rows first, then the order
-        db.run(`DELETE FROM order_items WHERE order_id = ?`, [orderId], (err) => {
-            if (err) return serverError(res, err);
-            db.run(`DELETE FROM payments WHERE order_id = ?`, [orderId], () => {
-                db.run(`DELETE FROM orders WHERE id = ?`, [orderId], function(err) {
-                    if (err) return serverError(res, err);
-                    releaseWelcomeClaim(orderId).catch((releaseErr) => console.error('[Welcome offer release]', releaseErr.message));
-                    logAdminAction(req, 'delete', 'order', orderId, `Deleted order #${orderId}`);
-                    res.json({ success: true, deleted: orderId });
-                });
-            });
-        });
-    });
+        await dbRunAsync('BEGIN IMMEDIATE');
+        transactionOpen = true;
+        await syncOrderStock(orderId, 'cancelled');
+        await dbRunAsync('DELETE FROM order_items WHERE order_id = ?', [orderId]);
+        await dbRunAsync('DELETE FROM payments WHERE order_id = ?', [orderId]);
+        await dbRunAsync('DELETE FROM orders WHERE id = ?', [orderId]);
+        await dbRunAsync('COMMIT');
+        transactionOpen = false;
+        releaseWelcomeClaim(orderId).catch((releaseErr) => console.error('[Welcome offer release]', releaseErr.message));
+        logAdminAction(req, 'delete', 'order', orderId, `Deleted order #${orderId}`);
+        res.json({ success: true, deleted: orderId });
+    } catch (error) {
+        if (transactionOpen) {
+            try { await dbRunAsync('ROLLBACK'); } catch (rollbackError) { console.error('[Order delete rollback]', rollbackError.message); }
+        }
+        serverError(res, error);
+    }
 });
 
 function dbAll(sql, params) {
@@ -3075,9 +3208,17 @@ function optionalCustomer(req, res, next) {
     jwt.verify(token, JWT_SECRET, (err, payload) => {
         if (!err && payload && payload.kind !== 'customer') {
             // A staff session. Record who placed it; leave req.customer unset
-            // so the order is not attached to a customer account.
-            req.staff = { id: payload.id, username: payload.username };
-            return next();
+            // so the order is not attached to a customer account. As in
+            // authenticateToken, the account is re-checked, so a deleted or
+            // rejected member's token loses counter discounts at once.
+            return db.get(`SELECT id, username, status FROM users WHERE id = ?`, [payload.id], (e, user) => {
+                if (e) return serverError(res, e);
+                if (!user || (user.status && user.status !== 'active')) {
+                    return res.status(403).json({ error: 'This account is no longer active' });
+                }
+                req.staff = { id: user.id, username: user.username };
+                next();
+            });
         }
         return authenticateCustomer(req, res, next);
     });
@@ -3624,31 +3765,43 @@ app.delete('/api/wishlist/:productId', authenticateCustomer, (req, res) => {
 // ===========================================================================
 // Passwordless accounts are edited by name, email (their sign-in identity —
 // username is kept in sync with it), and role. No password fields exist.
-app.put('/api/users/:id', authenticateToken, requireManager, (req, res) => {
+// The owner's own account keeps its role, and on OWNER_EMAIL its sign-in email
+// too, or she would lock herself out of the shop.
+app.put('/api/users/:id', authenticateToken, requireManager, async (req, res) => {
     const { full_name, email, role } = req.body || {};
+    if (role === 'manager') return res.status(400).json({ error: ONE_OWNER_MESSAGE });
     const updates = [];
     const values = [];
-    if (email) {
-        const mail = String(email).trim().toLowerCase();
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail) || mail.length > 254) {
-            return res.status(400).json({ error: 'Enter a valid email address' });
+    try {
+        const target = await dbGetAsync('SELECT id, username, email, role, status FROM users WHERE id = ?', [req.params.id]);
+        if (!target) return res.status(404).json({ error: 'User not found' });
+        const isOwner = (await shopRoleOf(target)) === 'manager';
+        if (email) {
+            const mail = String(email).trim().toLowerCase();
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail) || mail.length > 254) {
+                return res.status(400).json({ error: 'Enter a valid email address' });
+            }
+            if (isOwner && OWNER_EMAILS.length && mail !== String(target.email || '').toLowerCase()) {
+                return res.status(400).json({ error: 'The owner\'s sign-in email is set on the server (OWNER_EMAIL).' });
+            }
+            updates.push('email = ?', 'username = ?');
+            values.push(mail, mail);
         }
-        updates.push('email = ?', 'username = ?');
-        values.push(mail, mail);
-    }
-    if (full_name && String(full_name).trim()) { updates.push('full_name = ?'); values.push(String(full_name).trim()); }
-    if (role && ['manager', 'staff'].includes(role)) { updates.push('role = ?'); values.push(role); }
-    if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
-    values.push(req.params.id);
-    db.run(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, values, function(err) {
-        if (err) {
-            if (String(err.message).includes('UNIQUE')) return res.status(409).json({ error: 'That email is already in use' });
-            return serverError(res, err);
+        if (full_name && String(full_name).trim()) { updates.push('full_name = ?'); values.push(String(full_name).trim()); }
+        if (role === 'staff') {
+            if (isOwner) return res.status(400).json({ error: 'The owner stays the owner.' });
+            updates.push('role = ?');
+            values.push('staff');
         }
-        if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
+        if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
+        values.push(req.params.id);
+        await dbRunAsync(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`, values);
         logAdminAction(req, 'update', 'staff', req.params.id, `Updated staff account #${req.params.id}`);
         res.json({ success: true });
-    });
+    } catch (err) {
+        if (String(err && err.message).includes('UNIQUE')) return res.status(409).json({ error: 'That email is already in use' });
+        serverError(res, err);
+    }
 });
 
 // ===========================================================================
@@ -3848,6 +4001,12 @@ app.post('/api/products/bulk-update', authenticateToken, requireManager, (req, r
     const values = [];
     Object.keys(fields).forEach(k => { if (allowed.includes(k)) { updates.push(`${k} = ?`); values.push(fields[k]); } });
     if (updates.length === 0) return res.status(400).json({ error: 'No allowed fields supplied' });
+    // As in the single-product edit, a new price drops a bulk price that no longer
+    // sits below it; kept, it would quietly apply again after a later price rise.
+    if (Object.prototype.hasOwnProperty.call(fields, 'price')) {
+        updates.push('wholesale_price = CASE WHEN wholesale_price < ? THEN wholesale_price ELSE NULL END');
+        values.push(Number(fields.price) || 0);
+    }
     const placeholders = ids.map(() => '?').join(',');
     db.run(`UPDATE products SET ${updates.join(', ')} WHERE id IN (${placeholders})`, [...values, ...ids], function(err) {
         if (err) return serverError(res, err);
@@ -4078,6 +4237,14 @@ app.post('/api/upload-image', authenticateToken, requireManager, (req, res) => {
     } catch (e) {
         serverError(res, e);
     }
+});
+
+// Nothing matched. A shopper on an old or mistyped link gets the shop's own
+// "page not found" with a way back; API callers get JSON, as everywhere else.
+app.use((req, res) => {
+    if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Not found' });
+    if (req.accepts('html')) return res.status(404).sendFile(path.join(__dirname, '..', '404.html'));
+    res.status(404).end();
 });
 
 // Global error-handling middleware to catch JSON parsing syntax errors and other server errors

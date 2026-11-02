@@ -234,6 +234,17 @@ function openTab(tab) {
 }
 
 function renderAuthState(state) {
+  // A shop without customer sign-in: say what still works instead of showing a
+  // form that can't sign anyone in.
+  if (!state.loading && state.unconfigured) {
+    document.body.classList.remove('is-auth');
+    ['accountLoading', 'accountAuth', 'accountDashboard'].forEach((id) => setVisible(id, false));
+    $('accountRecoveryTitle').textContent = 'Accounts are coming soon';
+    $('accountRecoveryMessage').textContent = 'You can still shop, order on WhatsApp, and track any order with its reference and phone number.';
+    $('accountRecoveryRetry').hidden = true;
+    setVisible('accountRecovery', true);
+    return;
+  }
   // Signed out shows the full-screen sign-in; the page nav and footer only frame the dashboard.
   document.body.classList.toggle('is-auth', !state.loading && !state.customer);
   setVisible('accountLoading', state.loading);

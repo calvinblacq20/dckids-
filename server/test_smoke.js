@@ -150,6 +150,16 @@ async function run() {
     await compressedCatalogue.arrayBuffer();
     check('the catalogue is sent compressed for shoppers on mobile data',
         compressedCatalogue.headers.get('content-encoding') === 'gzip', `content-encoding ${compressedCatalogue.headers.get('content-encoding')}`);
+    const missingPage = await fetch(`${BASE}/no-such-page`, { headers: { Accept: 'text/html' } });
+    check('a mistyped link shows the shop\'s own page-not-found page',
+        missingPage.status === 404 && (await missingPage.text()).includes('We can\'t find that page'), `status ${missingPage.status}`);
+    const missingApi = await fetch(`${BASE}/api/no-such-thing`);
+    check('an unknown API path answers 404 in JSON', missingApi.status === 404 && (await missingApi.json()).error === 'Not found', `status ${missingApi.status}`);
+    const appScript = await fetch(`${BASE}/app.js`);
+    await appScript.arrayBuffer();
+    check('pages and code revalidate instead of downloading in full every visit',
+        appScript.headers.get('cache-control') === 'no-cache' && !!(appScript.headers.get('etag') || appScript.headers.get('last-modified')),
+        `cache-control ${appScript.headers.get('cache-control')}`);
 
     // ---- fresh-database boot: seeded from the products.json snapshot ----
     const products = await (await fetch(`${BASE}/api/products`)).json();
@@ -181,6 +191,11 @@ async function run() {
     const pieceDetail = await (await fetch(`${BASE}/api/products/${preorderPieces[0].id}`)).json();
     check('a fresh database gives a pre-order piece its own photos, in order',
         JSON.stringify(pieceDetail.images) === JSON.stringify(preorderPieces[0].images), JSON.stringify(pieceDetail.images));
+    const sharedPage = await (await fetch(`${BASE}/product.html?id=${preorderPieces[0].id}`)).text();
+    check('a product link shared on WhatsApp previews with its own name, price and photo',
+        sharedPage.includes(`<meta property="og:title" content="${preorderPieces[0].name} · GH₵ 180.00">`) &&
+        sharedPage.includes(`<meta property="og:image" content="${BASE}/${preorderPieces[0].img}">`) &&
+        (sharedPage.match(/property="og:title"/g) || []).length === 1);
     const categoryAssets = ['newborn','clothing','shoes','feeding','gear','bathcare','essentials','accessories','bedding'];
     const imageResolver = require('../image-resolver');
     check('the generated category artwork is gone from the repository',
@@ -258,6 +273,20 @@ async function run() {
         const drift = modifier ? sizeLabels.filter((s) => modifier(s) !== serverModifier(s)) : ['function not found'];
         check(`${file} adds the same size surcharge the server charges`, drift.length === 0, drift.join(', '));
     });
+    // The same for the bulk price rule: a product's own bulk price, else the store-wide discount.
+    const bulkRuleFrom = (file) => {
+        const source = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
+        const match = /function bulkFactor\(price, bulkPrice, discountPercent\) \{([\s\S]*?)\r?\n\s*\}\r?\n/.exec(source);
+        return match ? new Function('price', 'bulkPrice', 'discountPercent', match[1]) : null;
+    };
+    const serverBulkRule = bulkRuleFrom('server/server.js');
+    const bulkCases = [[180, 150, 20], [180, null, 20], [180, 180, 20], [180, 200, 20], [0, 150, 20], [60, 50, 0], [99, '', 15], ['45', '36', '20']];
+    check('the server has one bulk price rule', typeof serverBulkRule === 'function' && serverBulkRule(180, 150, 20) === 150 / 180);
+    ['app.js', 'product.js', 'admin.js'].forEach((file) => {
+        const rule = bulkRuleFrom(file);
+        const drift = rule ? bulkCases.filter((c) => rule(...c) !== serverBulkRule(...c)).map((c) => c.join('/')) : ['function not found'];
+        check(`${file} prices bulk pieces the way the server charges them`, drift.length === 0, drift.join(', '));
+    });
     const swSource = fs.readFileSync(path.join(__dirname, '..', 'service-worker.js'), 'utf8');
     check('service worker precaches the placeholder and no retired artwork',
         swSource.includes("/images/placeholder.svg") && !swSource.includes('category-fallbacks'));
@@ -310,6 +339,25 @@ async function run() {
         storefrontSource.includes('id="pre-grid"') && storefrontSource.includes('id="pre-filters"') &&
         appSource.includes('const items = products.filter(isPreorder);') &&
         appSource.includes('function inStockView(p) { return !isPreorder(p); }'));
+    check('the China Pre-Order tab switches between retail and wholesale prices without leaving it',
+        storefrontSource.includes('data-price-mode="wholesale" onclick="switchPrices(\'wholesale\')"') &&
+        /function switchPrices\(mode\) \{[\s\S]*?renderPreorders\(\);/.test(appSource) &&
+        /function setMode\(mode\) \{\s*if \(preorderView\) showPreorders\(false\);\s*switchPrices\(mode\);/.test(appSource));
+    check('a pre-order piece never shows as sold out because of its stock count',
+        appSource.includes('function isSoldOut(p) { return !isPreorder(p) && p.stock === 0; }'));
+    check('when the order service is not answering, checkout sends the order on WhatsApp instead of failing',
+        appSource.includes('const unsaved = !data || res.status >= 500;') && storefrontSource.includes('id="done-ref-line"'));
+    const authSource = fs.readFileSync(path.join(__dirname, '..', 'firebase-auth.js'), 'utf8');
+    check('without customer sign-in, the shop hides its account links and the account page says what still works',
+        authSource.includes('state.unconfigured = true;') && appSource.includes('a.hidden = !!customerState.unconfigured;') &&
+        fs.readFileSync(path.join(__dirname, '..', 'account.js'), 'utf8').includes("'Accounts are coming soon'"));
+    const trackSource = fs.readFileSync(path.join(__dirname, '..', 'track.html'), 'utf8');
+    check('tracking shows a paid order as moving and names statuses in words',
+        trackSource.includes("awaiting_payment: 'Awaiting payment'") && trackSource.includes("s === 'paid') return 2;"));
+    const contactPages = ['track.html', 'support.html', 'payment-result.html', 'account.html', 'privacy.html', 'terms.html'];
+    check('pages without the shop script follow the WhatsApp number set in admin',
+        contactPages.every((page) => fs.readFileSync(path.join(__dirname, '..', page), 'utf8').includes('shop-contact.js')) &&
+        !trackSource.includes("'https://wa.me/233549193805?text='"));
     const catLabelsBlock = (appSource.match(/const CAT_LABELS = \{([\s\S]*?)\};/) || [])[1] || '';
     const unlabelledCats = [...new Set(snapshot.map(p => p.cat))].filter(c => c && !new RegExp('\\b' + c + ':').test(catLabelsBlock));
     check('every catalogue category has a storefront name', unlabelledCats.length === 0, unlabelledCats.join(', '));
@@ -318,6 +366,14 @@ async function run() {
     const supportPageSource = fs.readFileSync(path.join(__dirname, '..', 'support.html'), 'utf8');
     const adminPageSource = fs.readFileSync(path.join(__dirname, '..', 'admin.html'), 'utf8');
     const adminSource = fs.readFileSync(path.join(__dirname, '..', 'admin.js'), 'utf8');
+    check('the admin offers no way to make a second owner', !adminPageSource.includes('value="manager"'));
+    check('the staff list keeps sign-up names and emails out of onclick handlers',
+        !adminSource.includes("onclick=\"openEditStaffModal(' + u.id") && !adminSource.includes("onclick=\"confirmDeleteStaff(' + u.id") &&
+        adminSource.includes('data-staff-edit="'));
+    check('a failed order delete is reported, never shown as done',
+        !adminSource.includes('.catch(function() { localRemove(); })') && adminSource.includes('the order was not deleted'));
+    check('admin\'s counter quote prices a size with its own price the way the server does',
+        adminSource.includes('var modifier = sizeMatch ? 0 : getPriceModifier(size);'));
     check('admin dashboard uses live metrics and exposes working overview controls',
         adminPageSource.includes('id="dashboard-refresh-btn"') &&
         // The period control moved into the page head when the dashboard was
@@ -372,6 +428,8 @@ async function run() {
         isDay(staticSettings.banner_starts) && isDay(staticSettings.banner_ends) && staticSettings.banner_starts <= staticSettings.banner_ends);
     check('settings.json carries a real China pre-order window for the static deploy',
         isDay(staticSettings.preorder_starts) && isDay(staticSettings.preorder_ends) && staticSettings.preorder_starts <= staticSettings.preorder_ends);
+    check('settings.json links the DC Sourcing WhatsApp group the way the storefront accepts it',
+        /^https:\/\/chat\.whatsapp\.com\/[A-Za-z0-9]{10,40}$/.test(staticSettings.whatsapp_group_url || ''));
     const workerSource = fs.readFileSync(path.join(__dirname, '..', 'service-worker.js'), 'utf8');
     check('the service worker fetches settings and the catalogue live, static copies included',
         workerSource.includes("['/api/settings', '/settings.json', '/api/products', '/products.json'].includes(url.pathname)"));
@@ -405,13 +463,14 @@ async function run() {
     r = await fetch(`${BASE}/api/admin/customers`);
     check('admin customer directory requires auth', r.status === 401, `status ${r.status}`);
 
-    // First sign-up bootstraps the owner and returns one-time recovery codes.
+    // First sign-up bootstraps the owner. Recovery codes wait for her first
+    // sign-in: the form alone doesn't prove the inbox is hers.
     r = await fetch(`${BASE}/api/admin/register`, json('POST', {
         full_name: 'Smoke Owner', email: 'owner@test.com', phone: '0241111111'
     }));
     const reg = await r.json();
     check('first sign-up becomes owner', r.status === 201 && reg.owner === true, `status ${r.status}`);
-    check('owner receives recovery codes', Array.isArray(reg.recoveryCodes) && reg.recoveryCodes.length > 0);
+    check('registering the owner\'s address hands out no recovery codes', reg.recoveryCodes === undefined);
 
     // Email OTP: request a code (captured from the console) and verify it.
     r = await fetch(`${BASE}/api/auth/request-code`, json('POST', { email: 'owner@test.com' }));
@@ -424,6 +483,8 @@ async function run() {
     r = await fetch(`${BASE}/api/auth/verify-code`, json('POST', { email: 'owner@test.com', code: lastOtp }));
     const login = await r.json();
     check('correct code issues session', r.status === 200 && !!login.accessToken, `status ${r.status}`);
+    check('owner receives recovery codes with her first emailed-code sign-in', Array.isArray(login.recoveryCodes) && login.recoveryCodes.length > 0);
+    const ownerCodes = login.recoveryCodes || [];
     const auth = { 'Authorization': `Bearer ${login.accessToken}` };
 
     r = await fetch(`${BASE}/api/orders`, { headers: auth });
@@ -534,8 +595,8 @@ async function run() {
     // may redeem it. This catches the race where both requests read the unused
     // row before either asynchronous UPDATE completes.
     const recoveryAttempts = await Promise.all([
-        fetch(`${BASE}/api/auth/recovery`, json('POST', { email: 'owner@test.com', code: reg.recoveryCodes[0] })),
-        fetch(`${BASE}/api/auth/recovery`, json('POST', { email: 'owner@test.com', code: reg.recoveryCodes[0] }))
+        fetch(`${BASE}/api/auth/recovery`, json('POST', { email: 'owner@test.com', code: ownerCodes[0] })),
+        fetch(`${BASE}/api/auth/recovery`, json('POST', { email: 'owner@test.com', code: ownerCodes[0] }))
     ]);
     const recoveryBodies = await Promise.all(recoveryAttempts.map((response) => response.json()));
     const recoverySuccesses = recoveryAttempts.filter((response) => response.status === 200).length;
@@ -543,7 +604,7 @@ async function run() {
     const rec = recoveryBodies.find((body) => body && body.accessToken) || {};
     check('recovery code signs in once under concurrent use', recoverySuccesses === 1 && recoveryRejections === 1 && !!rec.accessToken,
         `statuses ${recoveryAttempts.map((response) => response.status).join(', ')}`);
-    r = await fetch(`${BASE}/api/auth/recovery`, json('POST', { email: 'owner@test.com', code: reg.recoveryCodes[0] }));
+    r = await fetch(`${BASE}/api/auth/recovery`, json('POST', { email: 'owner@test.com', code: ownerCodes[0] }));
     check('consumed recovery code stays invalid', r.status === 400, `status ${r.status}`);
 
     r = await fetch(`${BASE}/api/admin/recovery-codes/status`);
@@ -571,7 +632,7 @@ async function run() {
     const regenerated = await r.json();
     check('authenticated admin can replace their recovery codes', r.status === 200 && regenerated.remaining === 8 &&
         Array.isArray(regenerated.recoveryCodes) && regenerated.recoveryCodes.length === 8, `status ${r.status}`);
-    r = await fetch(`${BASE}/api/auth/recovery`, json('POST', { email: 'owner@test.com', code: reg.recoveryCodes[1] }));
+    r = await fetch(`${BASE}/api/auth/recovery`, json('POST', { email: 'owner@test.com', code: ownerCodes[1] }));
     check('regeneration invalidates every code from the previous set', r.status === 400, `status ${r.status}`);
     r = await fetch(`${BASE}/api/auth/recovery`, json('POST', { email: 'owner@test.com', code: regenerated.recoveryCodes[0] }));
     const regeneratedLogin = await r.json();
@@ -611,6 +672,39 @@ async function run() {
     // Their still-unexpired JWT must be dead immediately (per-request re-check).
     r = await fetch(`${BASE}/api/orders`, { headers: { 'Authorization': `Bearer ${staffLogin.accessToken}` } });
     check('deleted staff token revoked instantly', r.status === 403, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Gone Staff', customer_phone: '0240000099', order_type: 'retail', discount_percent: 100,
+        items: [{ id: 1, quantity: 1, size: '6M' }]
+    }, { 'Authorization': `Bearer ${staffLogin.accessToken}` }));
+    check('a deleted staff member\'s token can no longer place counter orders or give discounts', r.status === 403, `status ${r.status}`);
+
+    // ---- one owner: everyone the owner adds or approves is staff ----
+    r = await fetch(`${BASE}/api/users`, json('POST', { full_name: 'Would Be Manager', email: 'second@test.com', role: 'manager' }, auth));
+    const second = await r.json();
+    check('an account the owner adds is staff even when manager is asked for',
+        r.status === 201 && second.role === 'staff' && (await dbGet("SELECT role FROM users WHERE email = 'second@test.com'")).role === 'staff');
+    r = await fetch(`${BASE}/api/users/${second.id}`, json('PUT', { role: 'manager' }, auth));
+    check('no one can be made a second owner', r.status === 400, `status ${r.status}`);
+    const pendingRequest = await dbGet("SELECT id FROM users WHERE email = 'staff@test.com'");
+    r = await fetch(`${BASE}/api/admin/access-requests/${pendingRequest.id}/approve`, json('POST', { role: 'manager' }, auth));
+    check('an approved request joins as staff', r.status === 200 && (await dbGet('SELECT role FROM users WHERE id = ?', [pendingRequest.id])).role === 'staff');
+    const ownerRow = await dbGet("SELECT id FROM users WHERE email = 'owner@test.com'");
+    r = await fetch(`${BASE}/api/users/${ownerRow.id}`, json('PUT', { role: 'staff' }, auth));
+    check('the owner cannot be demoted', r.status === 400, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/users/${ownerRow.id}`, json('PUT', { email: 'someone-else@test.com' }, auth));
+    check('the owner\'s sign-in email stays the one on OWNER_EMAIL', r.status === 400, `status ${r.status}`);
+    // An older row that still says manager only gets staff powers.
+    await dbRun("UPDATE users SET role = 'manager' WHERE id = ?", [second.id]);
+    await fetch(`${BASE}/api/auth/request-code`, json('POST', { email: 'second@test.com' }));
+    const secondLogin = await (await fetch(`${BASE}/api/auth/verify-code`, json('POST', { email: 'second@test.com', code: lastOtp }))).json();
+    check('a stray manager row signs in as staff', secondLogin.role === 'staff', `got ${secondLogin.role}`);
+    r = await fetch(`${BASE}/api/users`, { headers: { 'Authorization': `Bearer ${secondLogin.accessToken}` } });
+    check('a stray manager row cannot open owner-only pages', r.status === 403, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/users`, { headers: auth });
+    const accounts = await r.json();
+    check('the staff list shows exactly one owner, the one on OWNER_EMAIL',
+        accounts.filter(a => a.owner).length === 1 && accounts.find(a => a.owner).email === 'owner@test.com' &&
+        accounts.filter(a => a.role === 'manager').length === 1);
 
     // ---- guest checkout: retail, server-side total ----
     // Expected totals derive from the seeded product so the test tracks the
@@ -650,6 +744,28 @@ async function run() {
     const { compare_at_price: _ignored, ...withoutCompare } = Object.assign({}, p1, { stock: 200 });
     await fetch(`${BASE}/api/products/1`, json('PUT', withoutCompare, auth));
     check('an older admin page that omits the was price keeps it', close((await dbGet('SELECT compare_at_price FROM products WHERE id = 1')).compare_at_price, p1.price * 2));
+
+    // ---- a product's own bulk price (the slides: GH₵180 each, GH₵150 each from ten) ----
+    const slides = snapshot.find(p => p.sku === 'CN-0001');
+    const slidesRow = await dbGet('SELECT * FROM products WHERE id = ?', [slides.id]);
+    check('a fresh database carries the slides\' bulk price', close(slidesRow.wholesale_price, 150), `got ${slidesRow.wholesale_price}`);
+    const putSlides = (changes) => fetch(`${BASE}/api/products/${slides.id}`, json('PUT', Object.assign({}, slidesRow, changes), auth));
+    const storedBulk = async () => (await dbGet('SELECT wholesale_price FROM products WHERE id = ?', [slides.id])).wholesale_price;
+    r = await putSlides({ wholesale_price: slidesRow.price });
+    check('a bulk price at or above the selling price is refused', r.status === 400, `status ${r.status}`);
+    r = await putSlides({ wholesale_price: 140 });
+    check('a bulk price below the selling price is saved', r.status === 200 && close(await storedBulk(), 140), `status ${r.status}`);
+    const { wholesale_price: _bulkIgnored, ...slidesWithoutBulk } = slidesRow;
+    await fetch(`${BASE}/api/products/${slides.id}`, json('PUT', slidesWithoutBulk, auth));
+    check('an older admin page that omits the bulk price keeps it', close(await storedBulk(), 140));
+    await fetch(`${BASE}/api/products/${slides.id}`, json('PUT', Object.assign({}, slidesWithoutBulk, { price: 130 }), auth));
+    check('a bulk price is dropped once the selling price falls to it', (await storedBulk()) === null, `got ${await storedBulk()}`);
+    await putSlides({ wholesale_price: 140 });
+    r = await fetch(`${BASE}/api/products/bulk-update`, json('POST', { ids: [slides.id], fields: { price: 140 } }, auth));
+    check('repricing many products at once also drops a bulk price it no longer undercuts', r.status === 200 && (await storedBulk()) === null, `got ${await storedBulk()}`);
+    r = await putSlides({ wholesale_price: 150 });
+    check('the slides are back to GH₵180 with a GH₵150 bulk price',
+        r.status === 200 && close(await storedBulk(), 150) && close((await dbGet('SELECT price FROM products WHERE id = ?', [slides.id])).price, 180));
     const storeSettings = await (await fetch(`${BASE}/api/settings`)).json();
     check('the welcome offer starts on at 10%', Number(storeSettings.welcome_enabled) === 1 && Number(storeSettings.welcome_percent) === 10);
     r = await fetch(`${BASE}/api/whatsapp-signups`, json('POST', { phone: '12', consent: true }));
@@ -995,6 +1111,9 @@ async function run() {
     const openSettings = await (await fetch(`${BASE}/api/settings`)).json();
     check('the owner sets the window and group link in admin settings', r.status === 200 &&
         openSettings.preorder_ends === isoDay(20) && openSettings.whatsapp_group_url === 'https://chat.whatsapp.com/AbCdEfGhIjKlMnOpQrStUv');
+    r = await putSettings({ preorder_starts: isoDay(-1), preorder_ends: isoDay(20), whatsapp_group_url: 'https://chat.whatsapp.com/BS1xp5EZI5T9d7Pc6aMPmu?s=cl&p=a&mlu=4&ilr=4' });
+    check('a group link pasted from WhatsApp\'s share sheet is saved without its tracking', r.status === 200 &&
+        (await (await fetch(`${BASE}/api/settings`)).json()).whatsapp_group_url === 'https://chat.whatsapp.com/BS1xp5EZI5T9d7Pc6aMPmu');
 
     // ---- China pre-orders: paid in full up front, three kinds ----
     r = await fetch(`${BASE}/api/orders`, json('POST', {
@@ -1020,6 +1139,40 @@ async function run() {
     }));
     check('a bulk pre-order below the MOQ is rejected', r.status === 400, `status ${r.status}`);
 
+    const orderSlides = (kind, quantity, headers) => fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Slide Reseller', customer_phone: '0243333336', order_type: 'preorder', preorder_kind: kind,
+        items: [{ id: slides.id, quantity, size: slides.size }]
+    }, headers));
+    r = await orderSlides('bulk', moq);
+    const bulkSlides = await r.json();
+    check(`a piece's own bulk price wins over the store-wide discount (150 x ${moq})`,
+        r.status === 200 && close(bulkSlides.total_amount, 150 * moq), `got ${bulkSlides.total_amount}`);
+    r = await orderSlides('shop', 1);
+    const oneSlide = await r.json();
+    check('one piece still costs the selling price', r.status === 200 && close(oneSlide.total_amount, 180), `got ${oneSlide.total_amount}`);
+    const cardBulkSlides = Object.assign({}, directPayload, {
+        customer_phone: '0243333337', order_type: 'preorder', preorder_kind: 'bulk', items: [{ id: slides.id, quantity: moq, size: slides.size }]
+    });
+    r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', cardBulkSlides));
+    check(`paying by card charges the same bulk price (150 x ${moq})`,
+        r.status === 200 && Number(paystackInitializePayload.amount) === 150 * moq * 100, `got ${paystackInitializePayload && paystackInitializePayload.amount}`);
+    await dbRun('UPDATE store_settings SET wholesale_enabled = 0 WHERE id = 1');
+    try {
+        r = await orderSlides('bulk', moq);
+        check('with wholesale switched off, the shop takes no bulk pre-orders', r.status === 400, `status ${r.status}`);
+        r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', cardBulkSlides));
+        check('with wholesale switched off, card checkout takes no bulk pre-orders either', r.status === 400, `status ${r.status}`);
+        r = await fetch(`${BASE}/api/orders`, json('POST', {
+            customer_name: 'Bulk Buyer', customer_phone: '0242222222', order_type: 'wholesale', items: [{ id: 1, quantity: moq, size: sizeLabel }]
+        }));
+        check('with wholesale switched off, the shop takes no wholesale orders', r.status === 400, `status ${r.status}`);
+        r = await orderSlides('bulk', moq, auth);
+        check('staff can still sell in bulk at the counter with wholesale off', r.status === 200, `status ${r.status}`);
+    } finally {
+        // Back on even if a check above throws, so later wholesale checks report their own result.
+        await dbRun('UPDATE store_settings SET wholesale_enabled = 1 WHERE id = 1');
+    }
+
     r = await fetch(`${BASE}/api/orders`, json('POST', {
         customer_name: 'Retail Kind', customer_phone: '0243333335',
         order_type: 'retail', preorder_kind: 'bulk', items: [{ id: 1, quantity: 1, size: sizeLabel }]
@@ -1042,6 +1195,41 @@ async function run() {
     r = await fetch(`${BASE}/api/orders/${preRow.id}/preorder-kind`, json('PATCH', { preorder_kind: 'personal' }, auth));
     check('staff can tag a pre-order as personal',
         r.status === 200 && (await dbGet('SELECT preorder_kind FROM orders WHERE id = ?', [preRow.id])).preorder_kind === 'personal');
+
+    // ---- stock follows the order: off once when paid or later, back when it leaves those ----
+    r = await fetch(`${BASE}/api/products`, json('POST', { name: 'Stock Ledger Tee', price: 50, stock: 10, cat: 'clothing', size: 'One size', img: 'images/placeholder.svg' }, auth));
+    const ledgerId = (await r.json()).id;
+    const ledgerStock = async () => (await dbGet('SELECT stock FROM products WHERE id = ?', [ledgerId])).stock;
+    const ledgerOrder = async () => {
+        const placed = await (await fetch(`${BASE}/api/orders`, json('POST', {
+            customer_name: 'Ledger Buyer', customer_phone: '0243333340', order_type: 'retail', items: [{ id: ledgerId, quantity: 2, size: 'One size' }]
+        }))).json();
+        return (await dbGet('SELECT id FROM orders WHERE order_number = ?', [placed.order_number])).id;
+    };
+    const setOrderStatus = (id, status) => fetch(`${BASE}/api/orders/${id}`, json('PUT', { status }, auth));
+    const ledgerFirst = await ledgerOrder();
+    await setOrderStatus(ledgerFirst, 'paid');
+    check('marking an order paid takes its pieces off the shelf', (await ledgerStock()) === 8, `stock ${await ledgerStock()}`);
+    await setOrderStatus(ledgerFirst, 'shipped');
+    await setOrderStatus(ledgerFirst, 'paid');
+    check('setting a shipped order back to paid does not take its pieces twice', (await ledgerStock()) === 8, `stock ${await ledgerStock()}`);
+    await setOrderStatus(ledgerFirst, 'cancelled');
+    check('cancelling a paid order puts its pieces back', (await ledgerStock()) === 10, `stock ${await ledgerStock()}`);
+    const ledgerSecond = await ledgerOrder();
+    await setOrderStatus(ledgerSecond, 'delivered');
+    check('an order marked delivered without passing paid still takes its pieces', (await ledgerStock()) === 8, `stock ${await ledgerStock()}`);
+    await fetch(`${BASE}/api/users`, json('POST', { full_name: 'Counter Staff', email: 'counter@test.com', role: 'staff' }, auth));
+    await fetch(`${BASE}/api/auth/request-code`, json('POST', { email: 'counter@test.com' }));
+    const counterLogin = await (await fetch(`${BASE}/api/auth/verify-code`, json('POST', { email: 'counter@test.com', code: lastOtp }))).json();
+    r = await fetch(`${BASE}/api/orders/${ledgerSecond}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${counterLogin.accessToken}` } });
+    check('staff cannot delete an order; that needs a manager', r.status === 403, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/orders/${ledgerSecond}`, { method: 'DELETE', headers: auth });
+    check('deleting a delivered order puts its pieces back', r.status === 200 && (await ledgerStock()) === 10, `status ${r.status}, stock ${await ledgerStock()}`);
+    const slidesStockBefore = (await dbGet('SELECT stock FROM products WHERE id = ?', [slides.id])).stock;
+    const bulkSlidesRow = await dbGet('SELECT id FROM orders WHERE order_number = ?', [bulkSlides.order_number]);
+    await setOrderStatus(bulkSlidesRow.id, 'paid');
+    check('paying for a pre-order leaves the pre-order piece\'s count alone',
+        (await dbGet('SELECT stock FROM products WHERE id = ?', [slides.id])).stock === slidesStockBefore, `stock ${slidesStockBefore}`);
 
     // ---- checkout validation ----
     const badOrders = [

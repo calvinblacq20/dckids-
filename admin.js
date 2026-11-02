@@ -507,12 +507,10 @@ function handleRegister(e) {
             var emailEl = document.getElementById('login-email');
             if (emailEl) emailEl.value = email;
         };
-        if (r.data.owner && r.data.recoveryCodes) {
-            // First account = the owner: active immediately. Show recovery
-            // codes once, then drop them on the login step, email prefilled.
-            showRecoveryCodes(r.data.recoveryCodes, function () {
-                backToLogin('Your owner account is active — request a sign-in code below.');
-            });
+        if (r.data.owner) {
+            // The owner's account is active at once; her recovery codes come with
+            // the first sign-in, once the emailed code proves the address is hers.
+            backToLogin('Your owner account is active — request a sign-in code below.');
         } else {
             backToLogin('Request sent! You can sign in once a manager approves your account.');
         }
@@ -597,10 +595,12 @@ function showDashboard(role) {
     document.body.classList.add('is-authed');
     _startIdleTracking();
 
+    // The owner is the shop's one manager; everyone else signs in as staff.
+    var roleLabel = currentRole === 'manager' ? 'Owner' : 'Staff';
     var badge = document.getElementById('user-role-badge');
-    if (badge) {
-        badge.textContent = 'Super Admin';
-    }
+    if (badge) badge.textContent = roleLabel;
+    var menuRole = document.getElementById('aum-role');
+    if (menuRole) menuRole.textContent = roleLabel;
 
     if (typeof applyAdminProfileToHeader === 'function') applyAdminProfileToHeader();
 
@@ -2267,6 +2267,23 @@ function readWasPrice(inputId, price) {
     return was;
 }
 
+// The optional bulk price per piece: null when empty, undefined (after a toast)
+// when it would not undercut the selling price. The server applies the same rule.
+function readBulkPrice(inputId, price) {
+    var el = document.getElementById(inputId);
+    var raw = el ? el.value.trim() : '';
+    if (!raw) return null;
+    var bulk = Math.round(parseFloat(raw) * 100) / 100; // to the pesewa, as the server stores it
+    var problem = !(price > 0) ? 'Set a selling price before adding a bulk price'
+        : (isNaN(bulk) || bulk <= 0 || bulk >= price) ? 'The bulk price must be lower than the selling price' : '';
+    if (problem) {
+        showToast(problem, 'warning');
+        if (el) el.focus();
+        return undefined;
+    }
+    return bulk;
+}
+
 function openEditModal(id) {
     var modal = document.getElementById('modal-product');
     if (!modal) return;
@@ -2278,6 +2295,7 @@ function openEditModal(id) {
     var catEl = document.getElementById('modal-product-cat');
     var priceEl = document.getElementById('modal-product-price');
     var compareEl = document.getElementById('modal-product-compare');
+    var bulkEl = document.getElementById('modal-product-bulk');
     var stockEl = document.getElementById('modal-product-stock');
     var badgeEl = document.getElementById('modal-product-badge');
     var descEl = document.getElementById('modal-product-desc');
@@ -2297,6 +2315,7 @@ function openEditModal(id) {
             // 0 is a real price here ("price on request"); blanking it made the form refuse to save.
             if (priceEl) priceEl.value = p.price != null ? p.price : '';
             if (compareEl) compareEl.value = p.compare_at_price || '';
+            if (bulkEl) bulkEl.value = p.wholesale_price || '';
             if (stockEl) stockEl.value = p.stock != null ? p.stock : 0;
             if (badgeEl) badgeEl.value = p.badge || '';
             if (descEl) descEl.value = p.description || '';
@@ -2316,6 +2335,7 @@ function openEditModal(id) {
         if (catEl) catEl.value = 'clothing';
         if (priceEl) priceEl.value = '';
         if (compareEl) compareEl.value = '';
+        if (bulkEl) bulkEl.value = '';
         if (stockEl) stockEl.value = 0;
         if (badgeEl) badgeEl.value = '';
         if (descEl) descEl.value = '';
@@ -2604,6 +2624,8 @@ function saveProduct() {
     }
     var compareVal = readWasPrice('modal-product-compare', priceVal);
     if (compareVal === undefined) return;
+    var bulkVal = readBulkPrice('modal-product-bulk', priceVal);
+    if (bulkVal === undefined) return;
 
     var id = document.getElementById('modal-product-id').value;
     var isEditing = id !== '';
@@ -2618,6 +2640,7 @@ function saveProduct() {
         cat: document.getElementById('modal-product-cat').value,
         price: priceVal,
         compare_at_price: compareVal,
+        wholesale_price: bulkVal,
         stock: stockVal,
         badge: document.getElementById('modal-product-badge').value || null,
         img: document.getElementById('modal-product-img-src').value,
@@ -3640,7 +3663,7 @@ function deleteOrderConfirmed() {
             window.mobileBottomNav.updateOrderBadge();
         }
     }
-    // Local fallback (no backend / prototype mode): splice from in-memory orders.
+    // The showcase build has no server: there the order only leaves the screen.
     function localRemove() {
         var arr = window.adminOrders || [];
         var idx = arr.findIndex(function(o) { return o.id === orderNumber; });
@@ -3649,23 +3672,21 @@ function deleteOrderConfirmed() {
     }
 
     var token = localStorage.getItem('adminToken');
-    if (order.db_id && token) {
-        fetch(API_URL + '/orders/' + order.db_id, {
-            method: 'DELETE',
-            headers: { 'Authorization': 'Bearer ' + token }
-        })
-        .then(function(res) {
-            if (res.ok) {
-                if (typeof fetchOrdersFromServer === 'function') {
-                    fetchOrdersFromServer(function() { renderOrdersTable(); loadDashboard(); });
-                    finish();
-                } else { localRemove(); }
-            } else { localRemove(); }
-        })
-        .catch(function() { localRemove(); });
-    } else {
-        localRemove();
-    }
+    if (!order.db_id || !token || token.indexOf('fallback-token') === 0) return localRemove();
+    // A refusal or a dropped connection leaves the order in place, and says so,
+    // rather than hiding it until the next refresh brings it back.
+    fetch(API_URL + '/orders/' + order.db_id, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(res) {
+        if (!res.ok) return res.json().catch(function() { return {}; }).then(function(d) { throw new Error(d.error || 'The order could not be deleted'); });
+        fetchOrdersFromServer(function() { renderOrdersTable(); loadDashboard(); });
+        finish();
+    })
+    .catch(function(err) {
+        showToast((err && err.message && err.message !== 'Failed to fetch') ? err.message : 'No connection, so the order was not deleted. Try again when you are back online.', 'error');
+    });
 }
 
 function saveOrder() {
@@ -3820,6 +3841,9 @@ function loadCustomers() {
         })
         .catch(function(error) {
             if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#b42318;padding:40px;">Customer data could not be loaded. Refresh to try again.</td></tr>';
+            // The status line is what the page shows first; it must not keep saying "Loading".
+            var statusLine = document.getElementById('customers-status-line');
+            if (statusLine) statusLine.textContent = 'Customers could not be loaded. Check the connection and refresh.';
             console.warn('Customer directory unavailable:', error && error.message ? error.message : error);
         });
 }
@@ -4147,6 +4171,8 @@ function fetchSuppliers(callback) {
     .catch(function(err) {
         var tbody = document.getElementById('suppliers-tbody');
         if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#b42318;padding:40px;">Supplier data could not be loaded. Refresh to try again.</td></tr>';
+        var statusLine = document.getElementById('suppliers-status-line');
+        if (statusLine) statusLine.textContent = 'Suppliers could not be loaded. Check the connection and refresh.';
         console.warn('Supplier directory unavailable:', err.message);
         throw err;
     });
@@ -8115,7 +8141,7 @@ function loadStoreConfig() {
             if(whatsappInput) whatsappInput.value = data.whatsapp_number || '';
             if(wholesaleEnabledInput) wholesaleEnabledInput.checked = !!data.wholesale_enabled;
             if(moqInput) moqInput.value = data.wholesale_moq || '';
-            if(discountInput) discountInput.value = data.wholesale_discount || '';
+            if(discountInput) discountInput.value = data.wholesale_discount != null ? data.wholesale_discount : '';
             if(bannerEnabledInput) bannerEnabledInput.checked = !!data.banner_enabled;
             if(bannerTextInput) bannerTextInput.value = data.banner_text || '';
             const bannerStartsInput = document.getElementById('config-banner-starts');
@@ -8830,6 +8856,7 @@ function openAddProductModal() {
     document.getElementById('add-product-cat').value = '';
     document.getElementById('add-product-price').value = '';
     document.getElementById('add-product-compare').value = '';
+    document.getElementById('add-product-bulk').value = '';
     document.getElementById('add-product-stock').value = '';
     document.getElementById('add-product-status').value = 'in_stock';
     var addFulfillmentEl = document.getElementById('add-product-fulfillment');
@@ -8917,6 +8944,8 @@ function saveNewProduct() {
     }
     var compareVal = readWasPrice('add-product-compare', priceVal);
     if (compareVal === undefined) return;
+    var bulkVal = readBulkPrice('add-product-bulk', priceVal);
+    if (bulkVal === undefined) return;
 
     var addDescEl = document.getElementById('add-product-desc');
     var addFulfillmentEl = document.getElementById('add-product-fulfillment');
@@ -8927,6 +8956,7 @@ function saveNewProduct() {
         cat: catVal,
         price: priceVal,
         compare_at_price: compareVal,
+        wholesale_price: bulkVal,
         stock: stockVal,
         badge: document.getElementById('add-product-badge').value.trim() || null,
         img: document.getElementById('add-product-img-src').value,
@@ -9281,6 +9311,14 @@ function getPriceModifier(sizeLabel) {
     return 0;
 }
 
+// Bulk piece price as a share of the selling price — must stay identical to the server's bulkFactor.
+function bulkFactor(price, bulkPrice, discountPercent) {
+    const base = Number(price) || 0;
+    const bulk = Number(bulkPrice) || 0;
+    if (bulk > 0 && bulk < base) return bulk / base;
+    return 1 - (Number(discountPercent) || 0) / 100;
+}
+
 /* The reference puts a minus and a plus either side of the quantity rather
    than leaving a bare number field. */
 function stepOrderQty(btn, delta) {
@@ -9301,7 +9339,9 @@ function updateNewOrderTotals() {
     var moqEl = document.getElementById('config-moq');
     var discountEl = document.getElementById('config-discount');
     var wholesaleMoq = moqEl ? parseInt(moqEl.value) || 10 : 10;
-    var wholesaleDiscount = discountEl ? parseFloat(discountEl.value) || 20 : 20;
+    // A real 0% discount must stay 0; only a field that never loaded falls back to the default.
+    var parsedDiscount = discountEl ? parseFloat(discountEl.value) : NaN;
+    var wholesaleDiscount = isNaN(parsedDiscount) ? 20 : parsedDiscount;
     
     
     rows.forEach(function(tr) {
@@ -9324,16 +9364,21 @@ function updateNewOrderTotals() {
             return;
         }
         
-        var basePrice = product.price || 0;
+        // A size with its own price (managed sizes) replaces the base price and
+        // takes no legacy surcharge, exactly as the server charges it.
+        var managedSizes = null;
+        try { managedSizes = typeof product.sizes === 'string' ? JSON.parse(product.sizes) : product.sizes; } catch (e) { managedSizes = null; }
+        var sizeMatch = Array.isArray(managedSizes) ? managedSizes.find(function(s) { return s && s.label === size; }) : null;
+        var basePrice = sizeMatch && sizeMatch.price != null ? Number(sizeMatch.price) : (product.price || 0);
         // Wholesale takes the discount off the unit price. It does NOT multiply
         // by the MOQ: the server counts quantity in pieces and only enforces a
         // floor, so multiplying here quoted ten times the real price and then
         // the order was rejected for being under the floor.
         if (orderType === 'wholesale') {
-            basePrice = basePrice * (1 - (wholesaleDiscount / 100));
+            basePrice = basePrice * bulkFactor(product.price, product.wholesale_price, wholesaleDiscount);
         }
 
-        var modifier = getPriceModifier(size);
+        var modifier = sizeMatch ? 0 : getPriceModifier(size);
         var finalUnitPrice = basePrice + modifier;
         var lineTotal = finalUnitPrice * qty;
         
@@ -9902,7 +9947,7 @@ function loadAdmins() {
             tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No staff accounts found</td></tr>';
         } else {
             data.forEach(function(u) {
-                if (u.role === 'manager') managers++;
+                if (u.owner) managers++;
                 else staff++;
 
                 // Prevent deleting own account in UI
@@ -9920,37 +9965,50 @@ function loadAdmins() {
                     }
                 } catch(e) {}
 
+                // Buttons carry only the account id. Names and emails come from
+                // sign-up requests anyone can send, so they never go inside an
+                // onclick: the browser would decode &#39; back into a quote there.
                 var actionsHTML = '';
-                var editBtn = '<button class="action-icon edit" title="Edit Account" onclick="openEditStaffModal(' + u.id + ', \'' + escapeHtml(u.email || u.username) + '\', \'' + u.role + '\', \'' + escapeHtml(u.full_name || '') + '\')" style="background:none;border:none;cursor:pointer;color:var(--primary,#fc4c7a);margin-right:6px;"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>';
+                var editBtn = '<button type="button" class="action-icon edit" title="Edit Account" data-staff-edit="' + Number(u.id) + '" style="background:none;border:none;cursor:pointer;color:var(--primary,#fc4c7a);margin-right:6px;"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>';
                 if (isSelf) {
                     actionsHTML = editBtn + '<span style="font-size:11px;color:#888;font-style:italic;">You</span>';
                 } else {
                     actionsHTML = editBtn +
-                        '<button class="action-icon delete" title="Delete Account" onclick="confirmDeleteStaff(' + u.id + ', \'' + escapeHtml(u.username) + '\')" style="background:none;border:none;cursor:pointer;color:#dc2626;"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>';
+                        '<button type="button" class="action-icon delete" title="Delete Account" data-staff-delete="' + Number(u.id) + '" style="background:none;border:none;cursor:pointer;color:#dc2626;"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>';
                 }
 
                 var row = document.createElement('tr');
                 row.innerHTML = '<td class="table-card-header" data-label="ID">' + u.id + '</td>' +
                     '<td data-label="Account"><strong>' + escapeHtml(u.full_name || u.username) + '</strong>' +
                         (u.email ? '<div style="font-size:12px;color:#888;">' + escapeHtml(u.email) + '</div>' : '') + '</td>' +
-                    '<td data-label="Role"><span class="status-pill ' + (u.role === 'manager' ? 'active' : 'draft') + '">' + escapeHtml(u.role === 'manager' ? 'Manager' : 'Staff') + '</span></td>' +
+                    '<td data-label="Role"><span class="status-pill ' + (u.owner ? 'active' : 'draft') + '">' + (u.owner ? 'Owner' : 'Staff') + '</span></td>' +
                     '<td data-label="Actions" style="text-align: right;">' + actionsHTML + '</td>';
                 tbody.appendChild(row);
             });
         }
+        // One handler per load (assigned, not added, so reloads don't stack them).
+        tbody.onclick = function (event) {
+            var edit = event.target.closest && event.target.closest('[data-staff-edit]');
+            var remove = event.target.closest && event.target.closest('[data-staff-delete]');
+            var id = edit ? edit.getAttribute('data-staff-edit') : remove ? remove.getAttribute('data-staff-delete') : null;
+            var u = id && data.filter(function (x) { return String(x.id) === String(id); })[0];
+            if (!u) return;
+            if (edit) openEditStaffModal(u.id, u.email || u.username, u.owner ? 'owner' : 'staff', u.full_name || '');
+            else confirmDeleteStaff(u.id, u.username);
+        };
 
         fillAdmRows('staff-rows', data, function (u) {
             return {
                 id: u.id,
                 img: localInitialsAvatar(u.full_name || u.username),
                 title: u.full_name || u.username,
-                pill: u.role === 'manager' ? 'Manager' : 'Staff',
+                pill: u.owner ? 'Owner' : 'Staff',
                 meta: u.email || u.username,
                 value: ''
             };
         }, function (id) {
             var u = data.filter(function (x) { return String(x.id) === String(id); })[0];
-            if (u) openEditStaffModal(u.id, u.email || u.username, u.role, u.full_name || '');
+            if (u) openEditStaffModal(u.id, u.email || u.username, u.owner ? 'owner' : 'staff', u.full_name || '');
         });
 
         document.getElementById('staff-total-count').textContent = total;
@@ -9959,7 +10017,7 @@ function loadAdmins() {
 
         var staffStatus = document.getElementById('admins-status-line');
         if (staffStatus) {
-            staffStatus.textContent = total + ' accounts \u00b7 ' + managers + ' managers \u00b7 ' + staff + ' staff';
+            staffStatus.textContent = total + (total === 1 ? ' account' : ' accounts') + ' \u00b7 ' + managers + (managers === 1 ? ' owner' : ' owners') + ' \u00b7 ' + staff + ' staff';
         }
     })
     .catch(function(err) {
@@ -10033,7 +10091,7 @@ function approveAccessRequest(id) {
     .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })
     .then(function(r) {
         if (!r.ok) throw new Error(r.data.error || 'Approve failed');
-        showToast('Approved as Staff — change their role anytime via Edit', 'success');
+        showToast('Approved as staff', 'success');
         loadAdmins();
     })
     .catch(function(err) { showToast(err.message, 'error'); });
@@ -10090,7 +10148,6 @@ function refreshAccessRequestsBadge() {
 function openAddStaffModal() {
     document.getElementById('add-staff-name').value = '';
     document.getElementById('add-staff-email').value = '';
-    document.getElementById('add-staff-role').value = 'staff';
 
     // Clear validation borders
     document.getElementById('add-staff-name').style.borderColor = '';
@@ -10106,11 +10163,9 @@ function closeAddStaffModal() {
 function saveStaffUser() {
     var nameEl = document.getElementById('add-staff-name');
     var emailEl = document.getElementById('add-staff-email');
-    var roleEl = document.getElementById('add-staff-role');
 
     var fullName = nameEl.value.trim();
     var email = emailEl.value.trim().toLowerCase();
-    var role = roleEl.value;
 
     var valid = true;
     if (fullName.length < 2) { nameEl.style.borderColor = '#dc2626'; valid = false; }
@@ -10130,7 +10185,7 @@ function saveStaffUser() {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer ' + token
         },
-        body: JSON.stringify({ full_name: fullName, email: email, role: role })
+        body: JSON.stringify({ full_name: fullName, email: email })
     })
     .then(function(res) {
         if (res.status === 409) throw new Error('An account with this email already exists');
@@ -10183,13 +10238,20 @@ function deleteStaff(id) {
 // ============================================================
 //   Edit Staff
 // ============================================================
+// role is 'owner' or 'staff'. The owner's sign-in email lives on the server
+// (OWNER_EMAIL), so it is shown but not edited here.
 function openEditStaffModal(id, email, role, fullName) {
     var modal = document.getElementById('modal-edit-staff');
     if (!modal) return;
+    var isOwner = role === 'owner';
     document.getElementById('edit-staff-id').value = id;
     document.getElementById('edit-staff-name').value = fullName || '';
     document.getElementById('edit-staff-email').value = email || '';
-    document.getElementById('edit-staff-role').value = role || 'staff';
+    document.getElementById('edit-staff-email').readOnly = isOwner;
+    document.getElementById('edit-staff-email-hint').textContent = isOwner
+        ? 'The owner’s sign-in address is set on the server, so it can’t be changed here.'
+        : 'This is their sign-in address — codes are emailed here.';
+    document.getElementById('edit-staff-role').textContent = isOwner ? 'Owner' : 'Staff';
     ['edit-staff-name', 'edit-staff-email'].forEach(function(k) {
         var el = document.getElementById(k); if (el) el.style.borderColor = '';
     });
@@ -10202,15 +10264,13 @@ function saveEditStaffUser() {
     var id = document.getElementById('edit-staff-id').value;
     var nameEl = document.getElementById('edit-staff-name');
     var emailEl = document.getElementById('edit-staff-email');
-    var roleEl = document.getElementById('edit-staff-role');
     var fullName = nameEl.value.trim();
     var email = emailEl.value.trim().toLowerCase();
-    var role = roleEl.value;
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { emailEl.style.borderColor = '#dc2626'; showToast('Enter a valid email address', 'warning'); return; }
     emailEl.style.borderColor = '';
 
-    var body = { email: email, role: role };
+    var body = { email: email };
     if (fullName) body.full_name = fullName;
 
     var token = localStorage.getItem('adminToken');

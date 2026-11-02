@@ -183,10 +183,10 @@
         ];
 
         var demoStaff = [
-            { id: 1, username: 'owner@dckidsbrand.com', role: 'manager', email: 'owner@dckidsbrand.com', full_name: 'Store Owner',  phone: '0241000001', status: 'active' },
-            { id: 2, username: 'ama@dckidsbrand.com',   role: 'manager', email: 'ama@dckidsbrand.com',   full_name: 'Ama Boateng',   phone: '0241000002', status: 'active' },
-            { id: 3, username: 'kofi@dckidsbrand.com',  role: 'staff',   email: 'kofi@dckidsbrand.com',  full_name: 'Kofi Appiah',   phone: '0241000003', status: 'active' },
-            { id: 4, username: 'yaa@dckidsbrand.com',   role: 'staff',   email: 'yaa@dckidsbrand.com',   full_name: 'Yaa Serwaa',    phone: '0241000004', status: 'pending' }
+            { id: 1, username: 'owner@dckidsbrand.com', role: 'manager', owner: true,  email: 'owner@dckidsbrand.com', full_name: 'Store Owner',  phone: '0241000001', status: 'active' },
+            { id: 2, username: 'ama@dckidsbrand.com',   role: 'staff',   owner: false, email: 'ama@dckidsbrand.com',   full_name: 'Ama Boateng',   phone: '0241000002', status: 'active' },
+            { id: 3, username: 'kofi@dckidsbrand.com',  role: 'staff',   owner: false, email: 'kofi@dckidsbrand.com',  full_name: 'Kofi Appiah',   phone: '0241000003', status: 'active' },
+            { id: 4, username: 'yaa@dckidsbrand.com',   role: 'staff',   owner: false, email: 'yaa@dckidsbrand.com',   full_name: 'Yaa Serwaa',    phone: '0241000004', status: 'pending' }
         ];
 
         // Payments arrive on their own endpoint, so the showcase needs its

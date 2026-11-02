@@ -8,10 +8,18 @@
   <meta name="robots" content="index, follow">
   <title>Product details — DC Kids Brand</title>
   <link rel="canonical" href="https://dckids-production.up.railway.app/product.html">
+  <!-- og: the share preview. The live server replaces this block with the product's own name, photo and price. -->
+  <meta property="og:type" content="product">
+  <meta property="og:site_name" content="DC Kids Brand">
+  <meta property="og:title" content="DC Kids Brand — Ghana's kids' fashion store">
+  <meta property="og:description" content="Newborn to 12 years. Retail, wholesale &amp; China pre-orders. Nationwide delivery in Ghana.">
+  <meta property="og:image" content="https://dckidsbrand.com/icon.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <!-- /og -->
   <link rel="icon" href="icon.png" type="image/png">
   <link rel="manifest" href="/manifest.json">
   <link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="store.css?v=26">
+  <link rel="stylesheet" href="store.css?v=32">
   <link rel="stylesheet" href="product.css?v=6">
 </head>
 <body class="product-page">
@@ -192,7 +200,7 @@
 
   <script src="image-resolver.js?v=2"></script>
   <!-- not async: product.js reads window.DCKidsAuth at start-up for the wishlist -->
-  <script type="module" src="firebase-auth.js?v=2"></script>
-  <script src="product.js?v=9" defer></script>
+  <script type="module" src="firebase-auth.js?v=6"></script>
+  <script src="product.js?v=15" defer></script>
 </body>
 </html>

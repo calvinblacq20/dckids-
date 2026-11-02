@@ -33,7 +33,7 @@
 
   <link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" as="image" type="image/webp" href="images/hero_shop_1.webp?v=2" imagesrcset="images/hero_shop_1-720.webp?v=2 720w, images/hero_shop_1.webp?v=2 1179w" imagesizes="100vw">
-  <link rel="stylesheet" href="store.css?v=26">
+  <link rel="stylesheet" href="store.css?v=32">
 
   <!-- Structured data: Organization + WebSite (SEO + Google rich results) -->
   <script type="application/ld+json">
@@ -177,8 +177,15 @@
 
         <div class="pre__finds" id="pre-finds" hidden>
           <div class="pre__finds-head">
-            <h3 class="pre__subhead">This window's finds</h3>
-            <p class="pre__finds-note">Tap a piece for more photos. Where there's no price yet, ask us on WhatsApp.</p>
+            <div>
+              <h3 class="pre__subhead">This window's finds</h3>
+              <p class="pre__finds-note" id="pre-finds-note" aria-live="polite">Tap a piece for more photos. Where there's no price yet, ask us on WhatsApp.</p>
+            </div>
+            <!-- Prices for one piece or for resellers, without leaving the tab. -->
+            <div class="pre__prices js-wholesale-only" role="group" aria-label="Prices shown">
+              <button type="button" data-price-mode="retail" onclick="switchPrices('retail')">Retail</button>
+              <button type="button" data-price-mode="wholesale" onclick="switchPrices('wholesale')">Wholesale</button>
+            </div>
           </div>
           <div class="pre__filters" id="pre-filters" role="group" aria-label="Filter this window's finds"></div>
           <div class="product-grid pre__grid" id="pre-grid" aria-live="polite"></div>
@@ -213,7 +220,10 @@
             <p class="pre__kind-label">Bulk</p>
             <h3>For resellers</h3>
             <p>Wholesale quantities at wholesale prices, for your own shop or market stall.</p>
-            <a class="link-underline js-wa-link" href="#" data-msg="Hi DC Sourcing &amp; Logistics! I'd like to place a bulk China pre-order for resale.">Start a bulk order</a>
+            <div class="pre__kind-links">
+              <button type="button" class="link-underline js-wholesale-only" onclick="showBulkPrices()">See bulk prices</button>
+              <a class="link-underline js-wa-link" href="#" data-msg="Hi DC Sourcing &amp; Logistics! I'd like to place a bulk China pre-order for resale.">Start a bulk order on WhatsApp</a>
+            </div>
           </article>
         </div>
 
@@ -435,13 +445,13 @@
     <div class="cart__view" id="cart-view-done" hidden>
       <div class="cart__items cart__done">
         <div class="done__tick" aria-hidden="true">&#10003;</div>
-        <h4>Order received</h4>
-        <p>Reference <b id="done-ref">—</b></p>
-        <p class="cart__hint">Send it to us on WhatsApp to confirm delivery and payment.</p>
+        <h4 id="done-title">Order received</h4>
+        <p id="done-ref-line">Reference <b id="done-ref">—</b></p>
+        <p class="cart__hint" id="done-hint">Send it to us on WhatsApp to confirm delivery and payment.</p>
       </div>
       <div class="cart__foot">
         <a class="btn btn--wa" id="done-wa" href="#" target="_blank" rel="noopener">Send on WhatsApp</a>
-        <button class="btn btn--dark" type="button" onclick="openLastReceipt()">View receipt</button>
+        <button class="btn btn--dark" type="button" id="done-receipt" onclick="openLastReceipt()">View receipt</button>
         <button class="btn" type="button" onclick="closeCart()">Continue shopping</button>
       </div>
     </div>
@@ -532,8 +542,8 @@
   <script src="image-resolver.js?v=2"></script>
   <script src="receipt.js?v=2"></script>
   <!-- async: customer sign-in must never hold up the first paint of the shop -->
-  <script type="module" async src="firebase-auth.js?v=2"></script>
-  <script src="app.js?v=47"></script>
+  <script type="module" async src="firebase-auth.js?v=6"></script>
+  <script src="app.js?v=53"></script>
   <script>
     if ('serviceWorker' in navigator) {
       // When an updated worker takes control, reload once so the page runs the

@@ -9,7 +9,7 @@
   <link rel="icon" href="icon.png" type="image/png">
   <link rel="manifest" href="/manifest.json">
   <link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="store.css?v=26">
+  <link rel="stylesheet" href="store.css?v=32">
   <link rel="stylesheet" href="pages.css?v=3">
 </head>
 <body class="page tk-page">
@@ -92,6 +92,7 @@
     <span><a href="/support.html#faqs">Help</a> &middot; <a href="/privacy.html">Privacy</a> &middot; <a href="/terms.html">Terms</a></span>
   </footer>
 
+  <script src="shop-contact.js?v=1"></script>
   <script src="receipt.js?v=2"></script>
   <script>
     (function () {
@@ -137,21 +138,37 @@
         return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString('en-GH');
       }
 
+      // What each stored status means to the customer.
+      const STATUS_LABELS = {
+        pending: 'Placed', pending_deposit: 'Awaiting payment', awaiting_payment: 'Awaiting payment',
+        payment_review: 'Checking payment', payment_failed: 'Payment failed', processing: 'Processing',
+        paid: 'Paid', shipped: 'Dispatched', dispatched: 'Dispatched', delivered: 'Delivered',
+        completed: 'Completed', cancelled: 'Cancelled'
+      };
+      const KIND_LABELS = { bulk: 'bulk', personal: 'personal', shop: '' };
       function statusToStep(status) {
         const s = (status || '').toLowerCase();
         if (s.indexOf('cancel') >= 0) return -1;
         if (s.indexOf('deliver') >= 0 || s.indexOf('complete') >= 0) return 4;
         if (s.indexOf('dispatch') >= 0 || s.indexOf('shipped') >= 0) return 3;
-        if (s.indexOf('process') >= 0) return 2;
-        return 1; // pending / pending_deposit
+        if (s.indexOf('process') >= 0 || s === 'paid') return 2; // paid: being prepared
+        return 1; // placed, or waiting on payment
       }
       function statusClass(status) {
         const s = (status || '').toLowerCase();
-        if (s.indexOf('cancel') >= 0) return 'tk-status-cancelled';
+        if (s.indexOf('cancel') >= 0 || s === 'payment_failed') return 'tk-status-cancelled';
         if (s.indexOf('deliver') >= 0 || s.indexOf('complete') >= 0) return 'tk-status-delivered';
-        if (s.indexOf('process') >= 0 || s.indexOf('dispatch') >= 0) return 'tk-status-processing';
+        if (s.indexOf('process') >= 0 || s.indexOf('dispatch') >= 0 || s === 'shipped' || s === 'paid') return 'tk-status-processing';
         return 'tk-status-pending';
       }
+      function typeLabel(data) {
+        if (data.order_type === 'preorder') {
+          const kind = KIND_LABELS[data.preorder_kind] || '';
+          return 'China pre-order' + (kind ? ' · ' + kind : '');
+        }
+        return data.order_type === 'wholesale' ? 'Wholesale' : 'Retail';
+      }
+      function shopNumber() { return (window.DCShop && window.DCShop.number) || '233549193805'; }
       function renderSteps(currentIdx) {
         const steps = document.querySelectorAll('.tk-step');
         steps.forEach(function (st, i) {
@@ -169,12 +186,12 @@
       function render(data) {
         document.getElementById('tk-r-ref').textContent = data.order_number;
         const sEl = document.getElementById('tk-r-status');
-        sEl.textContent = data.status || 'pending';
+        sEl.textContent = STATUS_LABELS[String(data.status || '').toLowerCase()] || 'Placed';
         sEl.className = 'tk-status-pill ' + statusClass(data.status);
         document.getElementById('tk-r-name').textContent = data.customer_name || '—';
         document.getElementById('tk-r-date').textContent = fmtDate(data.created_at);
         document.getElementById('tk-r-updated').textContent = fmtDate(data.updated_at || data.created_at);
-        document.getElementById('tk-r-type').textContent = data.order_type || 'retail';
+        document.getElementById('tk-r-type').textContent = typeLabel(data);
         document.getElementById('tk-r-total').textContent = fmtMoney(data.total_amount);
 
         const itemsEl = document.getElementById('tk-r-items');
@@ -193,13 +210,13 @@
 
         // WhatsApp deep-link
         const msg = encodeURIComponent('Hello DC Kids, I have a question about order ' + data.order_number + '.');
-        document.getElementById('tk-whatsapp').href = 'https://wa.me/233549193805?text=' + msg;
+        document.getElementById('tk-whatsapp').href = 'https://wa.me/' + shopNumber() + '?text=' + msg;
 
         document.getElementById('tk-receipt').onclick = function () {
           window.DCReceipt.open({
             orderNumber: data.order_number, total: data.total_amount, discountPercent: data.discount_percent, status: data.status,
             createdAt: data.created_at, orderType: data.order_type, preorderKind: data.preorder_kind,
-            paymentMethod: data.payment_method, customerName: data.customer_name,
+            paymentMethod: data.payment_method, customerName: data.customer_name, shopPhone: shopNumber(),
             phone: lastLookup ? lastLookup.phone : '',
             items: (data.items || []).map(function (it) { return { name: it.product_name, qty: it.quantity, price: it.price_at_time }; })
           });
@@ -217,7 +234,7 @@
         clearError();
         setBusy(true);
         const supportMessage = encodeURIComponent('Hello DC Kids, I need help tracking order ' + order + '.');
-        document.getElementById('tk-error-support').href = 'https://wa.me/233549193805?text=' + supportMessage;
+        document.getElementById('tk-error-support').href = 'https://wa.me/' + shopNumber() + '?text=' + supportMessage;
         try {
           const response = await fetch('/api/orders/track', {
             method: 'POST',
