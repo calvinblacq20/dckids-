@@ -468,6 +468,8 @@ button.link-underline { background: none; border: 0; border-bottom: 1px solid va
 /* A line checkout would refuse, with the reason under its size and price. */
 .citem--issue .citem__img { opacity: .55; }
 .citem__issue { margin-top: 6px; font-size: 13px; line-height: 1.4; color: #B42318; }
+/* A wholesale line under the minimum: fine, at the retail price, and it says so. */
+.citem__note { margin-top: 6px; font-size: 13px; line-height: 1.4; color: var(--ink-soft); }
 .cart__fix { display: inline; padding: 0; background: none; border: 0; font: inherit; color: var(--green); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .cart__foot { padding: 22px 26px calc(22px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
 .cart__sub { display: flex; justify-content: space-between; font-size: 16px; margin-bottom: 16px; }

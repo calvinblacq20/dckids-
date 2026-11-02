@@ -287,6 +287,21 @@ async function run() {
         const drift = rule ? bulkCases.filter((c) => rule(...c) !== serverBulkRule(...c)).map((c) => c.join('/')) : ['function not found'];
         check(`${file} prices bulk pieces the way the server charges them`, drift.length === 0, drift.join(', '));
     });
+    // And where the bulk price starts: the minimum, with retail under it (ADR 0010).
+    const fromRuleFrom = (file) => {
+        const source = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
+        const match = /function bulkApplies\(isWholesale, quantity, minimum\) \{([\s\S]*?)\r?\n\s*\}\r?\n/.exec(source);
+        return match ? new Function('isWholesale', 'quantity', 'minimum', match[1]) : null;
+    };
+    const serverFromRule = fromRuleFrom('server/server.js');
+    const fromCases = [[true, 10, 10], [true, 9, 10], [true, 11, '10'], [false, 50, 10], [true, 1, null], [true, 0, 0], [1, '10', 10], [true, 4, 5]];
+    check('the server charges bulk from the minimum and retail under it',
+        typeof serverFromRule === 'function' && serverFromRule(true, 10, 10) === true && serverFromRule(true, 9, 10) === false && serverFromRule(false, 99, 10) === false);
+    ['app.js', 'product.js', 'admin.js'].forEach((file) => {
+        const rule = fromRuleFrom(file);
+        const drift = rule ? fromCases.filter((c) => rule(...c) !== serverFromRule(...c)).map((c) => c.join('/')) : ['function not found'];
+        check(`${file} starts the bulk price where the server does`, drift.length === 0, drift.join(', '));
+    });
     const swSource = fs.readFileSync(path.join(__dirname, '..', 'service-worker.js'), 'utf8');
     check('service worker precaches the placeholder and no retired artwork',
         swSource.includes("/images/placeholder.svg") && !swSource.includes('category-fallbacks'));
@@ -347,20 +362,28 @@ async function run() {
         appSource.includes('function isSoldOut(p) { return !isPreorder(p) && p.stock === 0; }'));
     // "Why can't I buy this?" — every block names its reason and offers a way round it.
     const productScriptSource = fs.readFileSync(path.join(__dirname, '..', 'product.js'), 'utf8');
+    const adminSourceEarly = fs.readFileSync(path.join(__dirname, '..', 'admin.js'), 'utf8');
     check('the quick view says why a piece cannot be bought, and its main button offers the way round it',
         storefrontSource.includes('id="pdp-note" role="status" hidden') &&
         appSource.includes('const block = buyBlock(p);') &&
         appSource.includes("$('pdp-buy').dataset.action = block ? block.action : '';") &&
-        appSource.includes("if (action === 'retail') {") &&
+        appSource.includes("if (action === 'ask') {") &&
         !appSource.includes("$('pdp-buy').disabled = isSoldOut(p)"));
-    check('sold out, no price and under the wholesale minimum each have their own words in the shop and on the product page',
-        ['Sold out right now.', 'no price online yet', 'fewer than the', 'wholesale minimum. Switch to Retail to buy'].every((s) =>
-            appSource.includes(s) && productScriptSource.includes(s)) &&
+    check('sold out and no price each have their own words in the shop and on the product page',
+        ['Sold out right now.', 'no price online yet'].every((s) => appSource.includes(s) && productScriptSource.includes(s)) &&
         productScriptSource.includes('China pre-orders are closed. Message us on WhatsApp'));
+    check('fewer left than the wholesale minimum is never a block: they sell at retail, and both pages say so',
+        !appSource.includes("action: 'retail'") && !productScriptSource.includes("action: 'retail'") &&
+        ['-piece bulk minimum, so', 'at the retail price.'].every((s) => appSource.includes(s) && productScriptSource.includes(s)) &&
+        appSource.includes("'Retail price — bulk prices start at '"));
+    check('switching to wholesale never raises cart quantities behind the shopper\'s back',
+        !appSource.includes('i.qty = Math.max(moq(), Math.ceil(i.qty / moq()) * moq())'));
     check('the product page main button acts on the reason instead of greying out',
         productScriptSource.includes('if (product && state.block) return runBlockAction();') &&
-        productScriptSource.includes('addButton.disabled = false;') &&
-        productScriptSource.includes('function switchToRetail()'));
+        productScriptSource.includes('addButton.disabled = false;'));
+    check('admin takes wholesale rows at the counter (no stray return drops them)',
+        !adminSourceEarly.includes("showToast('Wholesale needs at least ' + moq + ' pieces per item', 'warning');") &&
+        /\/\/ wholesale order could be taken at the counter\.\)\s*items\.push\(\{/.test(adminSourceEarly));
     check('quantities stop at the stock and say so, in the quick view, the cart and the product page',
         appSource.includes('pdp.capped = dir > 0 && wanted > pdp.qty;') &&
         appSource.includes('if (p && dir > 0 && line.qty >= maxQtyFor(p)) toast(limitText(p));') &&
@@ -1116,11 +1139,22 @@ async function run() {
     check(`wholesale total = discounted unit x MOQ (${unitWs} x ${moq})`,
         r.status === 200 && close(wsOrder.total_amount, unitWs * moq), `got ${wsOrder.total_amount}`);
 
+    // Under the MOQ the piece is charged at retail rather than refused (ADR 0010),
+    // so a buyer can take the last few of a piece and keep bulk prices on the rest.
     r = await fetch(`${BASE}/api/orders`, json('POST', {
         customer_name: 'Bulk Buyer', customer_phone: '0242222222',
         order_type: 'wholesale', items: [{ id: 1, quantity: moq - 1, size: sizeLabel }]
     }));
-    check('wholesale below MOQ rejected', r.status === 400, `status ${r.status}`);
+    const underMoq = await r.json();
+    check(`wholesale below MOQ is charged at retail, not refused (${unitRetail} x ${moq - 1})`,
+        r.status === 200 && close(underMoq.total_amount, unitRetail * (moq - 1)), `status ${r.status}, got ${underMoq.total_amount}`);
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Bulk Buyer', customer_phone: '0242222222',
+        order_type: 'wholesale', items: [{ id: 1, quantity: moq, size: sizeLabel }, { id: 1, quantity: 2, size: sizeLabel }]
+    }));
+    const mixedWs = await r.json();
+    check(`one wholesale order mixes bulk lines and retail lines (${unitWs} x ${moq} + ${unitRetail} x 2)`,
+        r.status === 200 && close(mixedWs.total_amount, unitWs * moq + unitRetail * 2), `status ${r.status}, got ${mixedWs.total_amount}`);
 
     // ---- the China pre-order window (DC Sourcing & Logistics) ----
     const isoDay = (offset) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
@@ -1169,7 +1203,9 @@ async function run() {
         customer_name: 'Pre Reseller', customer_phone: '0243333334',
         order_type: 'preorder', preorder_kind: 'bulk', items: [{ id: 1, quantity: moq - 1, size: sizeLabel }]
     }));
-    check('a bulk pre-order below the MOQ is rejected', r.status === 400, `status ${r.status}`);
+    const bulkPreUnder = await r.json();
+    check('a bulk pre-order line below the MOQ is charged at retail',
+        r.status === 200 && close(bulkPreUnder.total_amount, unitRetail * (moq - 1)), `status ${r.status}, got ${bulkPreUnder.total_amount}`);
 
     const orderSlides = (kind, quantity, headers) => fetch(`${BASE}/api/orders`, json('POST', {
         customer_name: 'Slide Reseller', customer_phone: '0243333336', order_type: 'preorder', preorder_kind: kind,
@@ -1188,6 +1224,11 @@ async function run() {
     r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', cardBulkSlides));
     check(`paying by card charges the same bulk price (150 x ${moq})`,
         r.status === 200 && Number(paystackInitializePayload.amount) === 150 * moq * 100, `got ${paystackInitializePayload && paystackInitializePayload.amount}`);
+    r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', Object.assign({}, cardBulkSlides, {
+        customer_phone: '0243333338', idempotency_key: 'card-under-moq-' + Date.now(), items: [{ id: slides.id, quantity: 3, size: slides.size }]
+    })));
+    check('paying by card under the MOQ charges the retail price (180 x 3)',
+        r.status === 200 && Number(paystackInitializePayload.amount) === 180 * 3 * 100, `status ${r.status}, got ${paystackInitializePayload && paystackInitializePayload.amount}`);
     await dbRun('UPDATE store_settings SET wholesale_enabled = 0 WHERE id = 1');
     try {
         r = await orderSlides('bulk', moq);

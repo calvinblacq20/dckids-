@@ -1760,6 +1760,14 @@ function bulkFactor(price, bulkPrice, discountPercent) {
     if (bulk > 0 && bulk < base) return bulk / base;
     return 1 - (Number(discountPercent) || 0) / 100;
 }
+// The bulk price starts at the minimum (ADR 0010). Fewer pieces of an item in
+// a wholesale order are charged the retail price instead of refusing the order,
+// so a buyer can still take the last few of a piece without losing the bulk
+// price on the rest of the cart. Repeated word for word in the storefront,
+// product page and admin (the smoke test fails if one drifts).
+function bulkApplies(isWholesale, quantity, minimum) {
+    return !!isWholesale && Number(quantity) >= (Number(minimum) || 1);
+}
 const WHOLESALE_OFF_MESSAGE = 'Wholesale prices are switched off right now. Switch to Retail to order, or message us on WhatsApp.';
 
 // Create new order (Storefront)
@@ -1861,14 +1869,15 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                         : null;
 
                     // PER-PIECE pricing for both modes. The storefront sends
-                    // quantity in pieces (its bulk dropdown lists "10 pcs",
-                    // "20 pcs", ...), so wholesale applies the discount to the
-                    // unit price and enforces the MOQ floor — it does NOT
-                    // multiply by MOQ again. (The old package-based math
-                    // charged a 10-piece wholesale order as 10 packages =
-                    // 100 pieces: a 10× overcharge, and stock deducted 10×.)
+                    // quantity in pieces, so wholesale applies the discount to
+                    // the unit price from the MOQ up — it does NOT multiply by
+                    // MOQ again. (The old package-based math charged a 10-piece
+                    // wholesale order as 10 packages = 100 pieces: a 10×
+                    // overcharge, and stock deducted 10×.) Under the MOQ the
+                    // piece is charged at retail rather than refused.
+                    const finalQty = Number(item.quantity) || 1; // pieces
                     let unitPrice;
-                    const factor = isWholesale ? bulkFactor(product.price, product.wholesale_price, discount) : 1;
+                    const factor = bulkApplies(isWholesale, finalQty, moq) ? bulkFactor(product.price, product.wholesale_price, discount) : 1;
                     if (sizeMatch) {
                         unitPrice = (sizeMatch.price != null) ? sizeMatch.price : (product.price || 0);
                         unitPrice = unitPrice * factor;
@@ -1877,13 +1886,6 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                         unitPrice += getPriceModifier(item.size);
                     }
                     unitPrice = Math.round(unitPrice * 100) / 100;
-
-                    const finalQty = Number(item.quantity) || 1; // pieces
-                    if (isWholesale && finalQty < moq) {
-                        const e = new Error(`Wholesale orders need at least ${moq} pieces per item`);
-                        e.status = 400;
-                        return reject(e);
-                    }
 
                     const acceptItem = () => {
                         total_amount += unitPrice * finalQty;
@@ -2018,8 +2020,8 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                 );
             })
             .catch(err => {
-                // err.status marks a deliberate validation failure (MOQ floor,
-                // unknown product) whose message is written for the shopper;
+                // err.status marks a deliberate validation failure (out of
+                // stock, pre-orders closed) whose message is written for the shopper;
                 // anything else is unexpected and stays generic.
                 if (err.status) return res.status(err.status).json({ error: err.message });
                 serverError(res, err);
@@ -2092,12 +2094,12 @@ async function pricePaystackCheckout(checkout) {
         if (!product) throw paymentError(`Product ${item.id} not found`);
         const managedSizes = parseSizesJson(product.sizes);
         const sizeMatch = managedSizes ? managedSizes.find((size) => size.label === item.size) : null;
+        const quantity = Number(item.quantity);
         let unitPrice = sizeMatch && sizeMatch.price != null ? Number(sizeMatch.price) : Number(product.price || 0);
-        if (checkout.isWholesale) unitPrice *= bulkFactor(product.price, product.wholesale_price, discount);
+        // The same rule as a WhatsApp order: bulk price from the minimum, retail under it.
+        if (bulkApplies(checkout.isWholesale, quantity, minimumOrder)) unitPrice *= bulkFactor(product.price, product.wholesale_price, discount);
         if (!sizeMatch) unitPrice += getPriceModifier(item.size);
         unitPrice = Math.round(unitPrice * 100) / 100;
-        const quantity = Number(item.quantity);
-        if (checkout.isWholesale && quantity < minimumOrder) throw paymentError(`Wholesale orders need at least ${minimumOrder} pieces per item`);
         if ((product.fulfillment_type === 'preorder' || checkout.orderType === 'preorder') && !preorderWindowOpen(settings)) {
             throw paymentError(PREORDER_CLOSED_MESSAGE);
         }
