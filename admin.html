@@ -43,7 +43,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=111">
+  <link rel="stylesheet" href="admin-bridge.css?v=114">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -74,7 +74,7 @@
   </style>
   <!-- Locally compiled Tailwind utilities; preflight stays disabled so it cannot reset the admin design system. -->
   <link rel="stylesheet" href="tailwind-admin.css?v=1">
-  <link rel="stylesheet" href="admin-system.css?v=11">
+  <link rel="stylesheet" href="admin-system.css?v=13">
   <!-- Sign-in + request-access screens share the storefront's look -->
   <link rel="stylesheet" href="auth.css?v=3">
   <style>
@@ -226,6 +226,12 @@
             <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-orders"><span class="adm-nav-hl" aria-hidden="true"></span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
               <span class="adm-nav-label">Orders</span>
+            </a>
+
+          <!-- 4b. Pre-orders -->
+            <a href="#" class="adm-nav-item sidebar-link" data-tab="tab-preorders"><span class="adm-nav-hl" aria-hidden="true"></span>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+              <span class="adm-nav-label">Pre-orders</span>
             </a>
           
           <!-- 5. Customers -->
@@ -3891,6 +3897,84 @@
           </div>
         </section>
 
+        <!-- ==================== TAB: PRE-ORDERS ==================== -->
+        <!-- China pre-orders in one place: the window the shop takes them in,
+             the orders waiting on each step, and the pieces on offer. -->
+        <section id="tab-preorders" class="tab-view" role="tabpanel" aria-label="China pre-orders" style="display: none;">
+          <div class="adm-head">
+            <div class="adm-head__titles">
+              <h1 class="adm-title">Pre-orders</h1>
+              <span class="adm-status"><i class="adm-dot" id="po-status-dot"></i><span id="preorders-status-line">Loading pre-orders&hellip;</span></span>
+            </div>
+            <div class="adm-head__actions">
+              <button type="button" class="adm-cta" onclick="openAddPreorderPiece()">
+                <span>Add pre-order piece</span><i aria-hidden="true">&rarr;</i>
+              </button>
+            </div>
+          </div>
+
+          <section class="adm-card po-window" id="po-window" aria-labelledby="po-window-title">
+            <div class="po-window__text">
+              <span class="po-window__label">China pre-order window</span>
+              <h2 id="po-window-title">&nbsp;</h2>
+              <p id="po-window-copy"></p>
+            </div>
+            <button type="button" class="adm-ghost" onclick="openPreorderWindowSettings()">Change dates</button>
+          </section>
+
+          <div class="po-tiles" role="group" aria-label="Pre-orders at each step">
+            <button type="button" class="po-tile" data-po-stage="payment">
+              <span class="po-tile__label">Waiting on payment</span>
+              <strong class="po-tile__value" id="po-tile-payment">0</strong>
+              <span class="po-tile__sub" id="po-tile-payment-sub">&nbsp;</span>
+            </button>
+            <button type="button" class="po-tile" data-po-stage="packing">
+              <span class="po-tile__label">Paid, to order from China</span>
+              <strong class="po-tile__value" id="po-tile-packing">0</strong>
+              <span class="po-tile__sub" id="po-tile-packing-sub">&nbsp;</span>
+            </button>
+            <button type="button" class="po-tile" data-po-stage="sending">
+              <span class="po-tile__label">On the way</span>
+              <strong class="po-tile__value" id="po-tile-sending">0</strong>
+              <span class="po-tile__sub">Shipped to customers</span>
+            </button>
+            <button type="button" class="po-tile" data-po-pieces="unpriced">
+              <span class="po-tile__label">Pieces on offer</span>
+              <strong class="po-tile__value" id="po-tile-pieces">0</strong>
+              <span class="po-tile__sub" id="po-tile-pieces-sub">&nbsp;</span>
+            </button>
+          </div>
+
+          <div class="po-grid">
+            <section class="po-orders" aria-labelledby="po-orders-title">
+              <div class="po-section-head">
+                <h2 id="po-orders-title">Pre-order orders <span class="adm-muted" id="po-orders-count"></span></h2>
+                <select id="po-kind-filter" class="filter-select" aria-label="Filter pre-orders by kind">
+                  <option value="">All kinds</option>
+                  <option value="shop">DC Kids pick</option>
+                  <option value="bulk">Bulk</option>
+                  <option value="personal">Personal</option>
+                </select>
+              </div>
+              <div class="pay-pills po-stages" id="po-stage-filters" role="group" aria-label="Filter pre-orders by step"></div>
+              <div class="res-list" id="po-orders-list" role="list"></div>
+              <div id="po-pagination" class="pagination" aria-label="Pre-orders pagination"></div>
+            </section>
+
+            <section class="adm-card po-pieces" aria-labelledby="po-pieces-title">
+              <div class="adm-card-head po-pieces__head">
+                <h2 id="po-pieces-title">Pieces on offer</h2>
+                <div class="pay-pills" id="po-pieces-filters" role="group" aria-label="Filter pre-order pieces">
+                  <button type="button" class="pay-pill is-on" data-po-pieces="">All</button>
+                  <button type="button" class="pay-pill" data-po-pieces="unpriced">No price yet</button>
+                </div>
+              </div>
+              <p class="po-pieces__hint" id="po-pieces-hint" hidden>Shoppers can only ask about a piece on WhatsApp until it has a price.</p>
+              <div class="adm-rows po-rows" id="po-pieces-rows"></div>
+            </section>
+          </div>
+        </section>
+
         <section id="tab-customers" class="tab-view" role="tabpanel" aria-label="Customer Management">
           <div class="adm-head">
             <div class="adm-head__titles">
@@ -4072,7 +4156,9 @@
               <span class="adm-status"><i class="adm-dot"></i><span id="admins-status-line">&nbsp;</span></span>
             </div>
             <div class="adm-head__actions">
-              <button type="button" class="adm-ghost" onclick="openAddStaffModal()">Add Staff Member</button>
+              <button type="button" class="adm-cta" onclick="openAddStaffModal()">
+                <span>Add staff member</span><i aria-hidden="true">&rarr;</i>
+              </button>
             </div>
           </div>
 
@@ -4284,10 +4370,11 @@
         <div class="pay-toolbar">
           <div class="pay-pills" id="pay-method-filters" role="group" aria-label="Filter by method">
             <button type="button" class="pay-pill is-on" data-method="">All</button>
-            <button type="button" class="pay-pill" data-method="Mobile Money">MoMo</button>
+            <button type="button" class="pay-pill" data-method="MoMo">MoMo</button>
             <button type="button" class="pay-pill" data-method="Cash">Cash</button>
-            <button type="button" class="pay-pill" data-method="Bank Transfer">Bank</button>
+            <button type="button" class="pay-pill" data-method="Bank">Bank</button>
             <button type="button" class="pay-pill" data-method="Card">Card</button>
+            <button type="button" class="pay-pill" data-method="WhatsApp">WhatsApp</button>
           </div>
           <label class="pay-search">
             <span class="sr-only">Search payments</span>
@@ -6306,7 +6393,7 @@
   <!-- Scripts -->
   <script src="vendor/chart.umd.js?v=4.5.1"></script>
   <script src="image-resolver.js?v=2"></script>
-  <script src="admin.js?v=197"></script>
+  <script src="admin.js?v=199"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

@@ -541,7 +541,9 @@ var navTargetMap = {
     'tab-inventory': 'Inventory',
     'tab-products': 'Products',
     'tab-orders': 'Orders',
+    'tab-preorders': 'Pre-orders',
     'tab-customers': 'Customers',
+    'tab-payments': 'Payments',
     'tab-suppliers': 'Suppliers',
     'tab-analytics': 'Sales Analytics',
     'tab-reports': 'Reports',
@@ -650,6 +652,7 @@ function switchTab(targetId) {
     else if (targetId === 'tab-inventory') loadInventory();
     else if (targetId === 'tab-products') loadProducts();
     else if (targetId === 'tab-orders') loadOrders();
+    else if (targetId === 'tab-preorders') loadPreorders();
     else if (targetId === 'tab-customers') loadCustomers();
     else if (targetId === 'tab-suppliers') loadSuppliers();
     else if (targetId === 'tab-analytics') loadAnalytics();
@@ -1560,8 +1563,9 @@ function renderInventoryTable() {
     var invStatus = document.getElementById('inventory-status-line');
     if (invStatus) {
         var invAll = (typeof globalProducts !== 'undefined' && Array.isArray(globalProducts)) ? globalProducts.length : totalItems;
-        var invLow = sorted.filter(function (p) { var n = Number(p.stock || 0); return n > 0 && n <= 5; }).length;
-        var invOut = sorted.filter(function (p) { return Number(p.stock || 0) <= 0; }).length;
+        // Pre-order pieces hold no stock, so they are never low or out.
+        var invLow = sorted.filter(function (p) { var n = Number(p.stock || 0); return !isPreorderProduct(p) && n > 0 && n <= 5; }).length;
+        var invOut = sorted.filter(function (p) { return !isPreorderProduct(p) && Number(p.stock || 0) <= 0; }).length;
         invStatus.textContent = totalItems + ' of ' + invAll + ' items \u00b7 ' + invLow + ' low \u00b7 ' + invOut + ' out of stock';
     }
     var start = (invCurrentPage - 1) * INV_PER_PAGE;
@@ -1589,13 +1593,14 @@ function renderInventoryTable() {
 
     fillAdmRows('inventory-rows', paged, function (p) {
         var stock = Number(p.stock || 0);
+        var pre = isPreorderProduct(p);
         return {
             id: p.id,
             img: resolveAdminProductImage(p).src,
             title: p.name || 'Unnamed',
-            pill: stock <= 0 ? 'Out of stock' : (stock <= 5 ? 'Low' : ''),
-            meta: [p.sku || '—', p.cat || 'Uncategorised', stock + ' in stock'].join(' · '),
-            value: 'GHS ' + Number(p.price || 0).toFixed(2)
+            pill: pre ? 'Pre-order' : (stock <= 0 ? 'Out of stock' : (stock <= 5 ? 'Low' : '')),
+            meta: [p.sku || '—', adminCategoryName(p.cat), pre ? 'China pre-order' : stock + ' in stock'].join(' · '),
+            value: Number(p.price) > 0 ? 'GHS ' + Number(p.price).toFixed(2) : 'No price yet'
         };
     }, function (id) { openProductDetail(Number(id)); });
 
@@ -1662,17 +1667,35 @@ function displaySku(p) {
     return (p && p.sku) ? p.sku : '#' + String(p.id).padStart(6, '0');
 }
 
+// A China pre-order piece is sourced on order: its stock count never moves
+// (ADR 0009) and it may not have a price yet, so its rows say "Pre-order" and
+// "No price yet" rather than "In Stock" and "GHS 0.00".
+function isPreorderProduct(p) { return String((p && p.fulfillment_type) || '').toLowerCase() === 'preorder'; }
+// The owner's name for a category key ("womens" -> "Women's fashion").
+function adminCategoryName(cat) {
+    var key = String(cat || '').trim().toLowerCase();
+    var list = typeof window.adminCategories === 'function' ? window.adminCategories() : [];
+    for (var i = 0; i < list.length; i++) if (list[i].id === key) return list[i].label;
+    return key ? key.charAt(0).toUpperCase() + key.slice(1) : 'Uncategorised';
+}
+function adminPriceCell(p) {
+    return Number(p && p.price) > 0 ? 'GHS ' + Number(p.price).toFixed(2) : '<span class="adm-muted">No price yet</span>';
+}
+function adminStockCell(p) {
+    if (isPreorderProduct(p)) return '<span class="adm-muted" title="Pre-order pieces are sourced to order">&mdash;</span>';
+    return String(p.stock != null ? p.stock : 0);
+}
+function adminStockStatus(p) {
+    if (isPreorderProduct(p)) return '<span class="status-pill preorder">Pre-order</span>';
+    var n = Number(p.stock || 0);
+    if (n <= 0) return '<span class="status-pill out-of-stock">Out of Stock</span>';
+    // Low at 5 or fewer: the same line the status count and the shop's "Only N left" use.
+    if (n <= 5) return '<span class="status-pill low-stock">Low Stock</span>';
+    return '<span class="status-pill in-stock">In Stock</span>';
+}
+
 function buildProductRow(p) {
-    var category = p.cat || 'Uncategorized';
-    var preorderHTML = p.fulfillment_type === 'preorder' ? ' <span class="status-pill preorder">Pre-Order</span>' : '';
-    var statusHTML;
-    if (p.stock <= 0) {
-        statusHTML = '<span class="status-pill out-of-stock">Out of Stock</span>';
-    } else if (p.stock < 5) {
-        statusHTML = '<span class="status-pill low-stock">Low Stock</span>';
-    } else {
-        statusHTML = '<span class="status-pill in-stock">In Stock</span>';
-    }
+    var statusHTML = adminStockStatus(p);
 
     var actionsHTML = '<div class="table-actions">';
 
@@ -1690,9 +1713,9 @@ function buildProductRow(p) {
         adminImageMarkup(p) +
         '<div class="table-product-info"><h4 onclick="openEditModal(' + p.id + ')">' + escapeHtml(p.name) + '</h4><p>Size: ' + escapeHtml(p.size || 'N/A') + '</p></div></div></td>' +
         '<td data-label="SKU" style="color:var(--admin-subtext);font-family:monospace;">' + escapeHtml(displaySku(p)) + '</td>' +
-        '<td data-label="Category">' + escapeHtml(category) + preorderHTML + '</td>' +
-        '<td data-label="Price" style="font-weight:600;">' + (p.price != null ? 'GHS ' + Number(p.price).toFixed(2) : 'GHS —') + '</td>' +
-        '<td data-label="Stock" style="font-weight:600;">' + (p.stock != null ? p.stock : 0) + '</td>' +
+        '<td data-label="Category">' + escapeHtml(adminCategoryName(p.cat)) + '</td>' +
+        '<td data-label="Price" style="font-weight:600;">' + adminPriceCell(p) + '</td>' +
+        '<td data-label="Stock" style="font-weight:600;">' + adminStockCell(p) + '</td>' +
         '<td data-label="Status">' + statusHTML + '</td>' +
         '<td data-label="Actions">' + actionsHTML + '</td>';
 }
@@ -1810,9 +1833,11 @@ function renderProductsGrid() {
     var pStatus = document.getElementById('products-status-line');
     if (pStatus) {
         var allP = (typeof globalProducts !== 'undefined' && Array.isArray(globalProducts)) ? globalProducts : [];
-        var lowP = allP.filter(function (x) { var n = Number(x.stock || 0); return n > 0 && n <= 5; }).length;
-        var outP = allP.filter(function (x) { return Number(x.stock || 0) <= 0; }).length;
-        pStatus.textContent = allP.length + ' products · ' + lowP + ' low · ' + outP + ' out of stock';
+        var held = allP.filter(function (x) { return !isPreorderProduct(x); });
+        var lowP = held.filter(function (x) { var n = Number(x.stock || 0); return n > 0 && n <= 5; }).length;
+        var outP = held.filter(function (x) { return Number(x.stock || 0) <= 0; }).length;
+        var preP = allP.length - held.length;
+        pStatus.textContent = allP.length + ' products · ' + lowP + ' low · ' + outP + ' out of stock' + (preP ? ' · ' + preP + ' pre-order' : '');
     }
     if (!tbody) {
         var grid = document.getElementById('products-grid');
@@ -1829,8 +1854,6 @@ function renderProductsGrid() {
             grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#888;padding:40px;">No products found</div>';
         } else {
             paged.forEach(function(p) {
-                var stockClass = p.stock <= 0 ? 'out-of-stock' : (p.stock < 5 ? 'low-stock' : 'in-stock');
-                var stockLabel = p.stock <= 0 ? 'Out of Stock' : (p.stock < 5 ? 'Low Stock' : 'In Stock');
                 var card = document.createElement('div');
                 card.className = 'product-card';
                 card.style.cssText = 'background:#fff;border:1px solid #eaeaea;border-radius:16px;overflow:hidden;transition:transform 0.2s;';
@@ -1847,12 +1870,11 @@ function renderProductsGrid() {
                     (p.badge ? '<span style="position:absolute;top:8px;right:8px;background:#F35E7A;color:#fff;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;">' + escapeHtml(p.badge) + '</span>' : '') +
                     '</div>' +
                     '<div style="padding:16px;">' +
-                    '<span style="font-size:11px;background:#f5f5f5;padding:4px 8px;border-radius:6px;color:#666;">' + escapeHtml(p.cat || '') + '</span>' +
-                    (p.fulfillment_type === 'preorder' ? ' <span class="status-pill preorder">Pre-Order</span>' : '') +
+                    '<span style="font-size:11px;background:#f5f5f5;padding:4px 8px;border-radius:6px;color:#666;">' + escapeHtml(adminCategoryName(p.cat)) + '</span>' +
                     '<h4 style="margin:8px 0 4px;font-size:15px;">' + escapeHtml(p.name) + '</h4>' +
                     '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-                    '<span style="font-weight:700;font-size:16px;">GHS ' + Number(p.price || 0).toFixed(2) + '</span>' +
-                    '<span class="status-pill ' + stockClass + '" style="font-size:11px;">' + stockLabel + '</span>' +
+                    '<span style="font-weight:700;font-size:16px;">' + adminPriceCell(p) + '</span>' +
+                    adminStockStatus(p) +
                     '</div>' +
                     actionsHtml +
                     '</div>';
@@ -1871,15 +1893,6 @@ function renderProductsGrid() {
         tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#888;padding:40px;">No products found</td></tr>';
     } else {
         products.forEach(function(p) {
-            var stockClass = p.stock <= 0 ? 'out-of-stock' : (p.stock < 5 ? 'low-stock' : 'in-stock');
-            var stockLabel = p.stock <= 0 ? 'Out of Stock' : (p.stock < 5 ? 'Low Stock' : 'In Stock');
-
-            function getStatusBadge(stock) {
-                if (stock > 10) return '<span class="status-pill in-stock">In Stock</span>';
-                if (stock > 0) return '<span class="status-pill low-stock">Low Stock</span>';
-                return '<span class="status-pill out-of-stock">Out of Stock</span>';
-            }
-
             function getBadge(badgeStr) {
                 if (!badgeStr) return '<span style="color:var(--admin-subtext);font-size:13px;font-weight:500;padding-left:12px;">—</span>';
                 if (badgeStr.toLowerCase() === 'best seller') return '<span class="status-pill" style="background:#FEF3C7;color:#D97706;border:1px solid #FDE68A;font-weight:600;font-size:11px;padding:4px 10px;border-radius:12px;">Best Seller</span>';
@@ -1912,11 +1925,11 @@ function renderProductsGrid() {
                 '</div>' +
                 '</td>' +
                 '<td data-label="SKU" style="color:var(--admin-subtext);font-family:monospace;">' + escapeHtml(displaySku(p)) + '</td>' +
-                '<td data-label="Category" style="text-transform:capitalize;">' + escapeHtml(p.cat) + (p.fulfillment_type === 'preorder' ? ' <span class="status-pill preorder" style="text-transform:none;">Pre-Order</span>' : '') + '</td>' +
-                '<td data-label="Price" style="font-weight:600;">' + (p.price != null ? 'GHS ' + Number(p.price).toFixed(2) : 'GHS —') + '</td>' +
-                '<td data-label="Stock" style="font-weight:600;">' + (p.stock != null ? p.stock : 0) + '</td>' +
+                '<td data-label="Category">' + escapeHtml(adminCategoryName(p.cat)) + '</td>' +
+                '<td data-label="Price" style="font-weight:600;">' + adminPriceCell(p) + '</td>' +
+                '<td data-label="Stock" style="font-weight:600;">' + adminStockCell(p) + '</td>' +
                 '<td data-label="Badge">' + getBadge(p.badge) + '</td>' +
-                '<td data-label="Status">' + getStatusBadge(p.stock) + '</td>' +
+                '<td data-label="Status">' + adminStockStatus(p) + '</td>' +
                 '<td data-label="Actions">' + actionsHtml + '</td>';
             tbody.appendChild(tr);
         });
@@ -1924,13 +1937,14 @@ function renderProductsGrid() {
 
     fillAdmRows('products-rows', products, function (p) {
         var stock = Number(p.stock || 0);
+        var pre = isPreorderProduct(p);
         return {
             id: p.id,
             img: resolveAdminProductImage(p).src,
             title: p.name || 'Unnamed',
-            pill: stock <= 0 ? 'Out of stock' : (stock <= 5 ? 'Low' : ''),
-            meta: [p.sku || '—', p.cat || 'Uncategorised', stock + ' in stock'].join(' · '),
-            value: p.price != null ? 'GHS ' + Number(p.price).toFixed(2) : 'GHS —'
+            pill: pre ? 'Pre-order' : (stock <= 0 ? 'Out of stock' : (stock <= 5 ? 'Low' : '')),
+            meta: [p.sku || '—', adminCategoryName(p.cat), pre ? 'China pre-order' : stock + ' in stock'].join(' · '),
+            value: Number(p.price) > 0 ? 'GHS ' + Number(p.price).toFixed(2) : 'No price yet'
         };
     }, function (id) { openProductDetail(Number(id)); });
 
@@ -2561,6 +2575,54 @@ function renderOrdersRail(all) {
     }).join('');
 }
 
+/* One order as a card, shared by the Orders and Pre-orders screens. */
+function orderCardHTML(o) {
+    var itemNames = o.items ? o.items.map(function (it) { return it.name; }).join(', ') : '';
+    var dateStr = o.date ? new Date(o.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '\u2014';
+    var phone = o.phone || '';
+    if (!phone) {
+        var found = (getCustomers() || []).find(function (c) { return c.name === o.customer; });
+        if (found && found.phone) phone = found.phone;
+    }
+    var st = String(o.status || 'pending');
+    var act = orderNextAction(o);
+    return '<article class="res-card" role="listitem" data-order-id="' + escapeHtml(o.id) + '">' +
+        '<div class="res-card__main">' +
+          '<div class="res-card__body">' +
+            '<h3 class="res-card__title">' + escapeHtml(o.customer || 'Guest customer') + '</h3>' +
+            '<p class="res-card__sub"><span class="t-mono">' + escapeHtml(o.id) + '</span>' +
+              (phone ? ' \u00b7 ' + escapeHtml(phone) : '') + '</p>' +
+            '<div class="res-card__meta">' +
+              '<span class="badge ' + orderBadgeTone(st) + '">' + escapeHtml(st.replace(/_/g, ' ')) + '</span>' +
+              '<span class="pill-tag">GHS ' + formatNumber(o.total || 0) + '</span>' +
+              (o.type ? '<span class="res-card__type">' + escapeHtml(orderTypeLabel(o)) + '</span>' : '') +
+            '</div>' +
+            (itemNames ? '<p class="res-card__snip">' + escapeHtml(itemNames) + '</p>' : '') +
+          '</div>' +
+          '<button type="button" class="res-card__more" title="WhatsApp update" onclick="event.stopPropagation();openWhatsAppUpdate(\'' + o.id + '\')" aria-label="Send a WhatsApp update">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/><path d="M17.5 14.4c-.3-.2-1.7-.9-2-1-.3-.1-.5-.2-.7.1-.2.3-.7 1-.9 1.2-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.5-.5c.1-.2.2-.3.3-.5 0-.2 0-.4 0-.5 0-.2-.7-1.6-.9-2.2-.2-.5-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.2.2 2.1 3.2 5.1 4.4.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3z"/></svg>' +
+          '</button>' +
+          '<button type="button" class="res-card__more" title="Receipt" onclick="openOrderReceipt(\'' + o.id + '\')" aria-label="Open receipt">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+          '</button>' +
+        '</div>' +
+        '<div class="res-card__foot">' +
+          '<span class="res-card__date">' + dateStr + '</span>' +
+          '<button type="button" class="quick-action" onclick="' + act.fn + '">' + act.label + ' \u2192</button>' +
+        '</div>' +
+      '</article>';
+}
+
+// The whole card opens the order; the quick action and icon stop that.
+function bindOrderCards(host) {
+    [].forEach.call(host.querySelectorAll('.res-card'), function (card) {
+        card.addEventListener('click', function (e) {
+            if (e.target.closest('button, a')) return;
+            openOrderDetail(card.getAttribute('data-order-id'));
+        });
+    });
+}
+
 function renderOrdersTable() {
     var host = document.getElementById('orders-tbody');
     if (!host) return;
@@ -2643,50 +2705,8 @@ function renderOrdersTable() {
     if (!paged.length) {
         host.innerHTML = '<p class="empty-line">No orders match these filters.</p>';
     } else {
-        host.innerHTML = paged.map(function (o) {
-            var itemNames = o.items ? o.items.map(function (it) { return it.name; }).join(', ') : '';
-            var dateStr = o.date ? new Date(o.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '\u2014';
-            var phone = o.phone || '';
-            if (!phone) {
-                var found = (getCustomers() || []).find(function (c) { return c.name === o.customer; });
-                if (found && found.phone) phone = found.phone;
-            }
-            var st = String(o.status || 'pending');
-            var act = orderNextAction(o);
-            return '<article class="res-card" role="listitem" data-order-id="' + escapeHtml(o.id) + '">' +
-                '<div class="res-card__main">' +
-                  '<div class="res-card__body">' +
-                    '<h3 class="res-card__title">' + escapeHtml(o.customer || 'Guest customer') + '</h3>' +
-                    '<p class="res-card__sub"><span class="t-mono">' + escapeHtml(o.id) + '</span>' +
-                      (phone ? ' \u00b7 ' + escapeHtml(phone) : '') + '</p>' +
-                    '<div class="res-card__meta">' +
-                      '<span class="badge ' + orderBadgeTone(st) + '">' + escapeHtml(st.replace(/_/g, ' ')) + '</span>' +
-                      '<span class="pill-tag">GHS ' + formatNumber(o.total || 0) + '</span>' +
-                      (o.type ? '<span class="res-card__type">' + escapeHtml(o.type) + '</span>' : '') +
-                    '</div>' +
-                    (itemNames ? '<p class="res-card__snip">' + escapeHtml(itemNames) + '</p>' : '') +
-                  '</div>' +
-                  '<button type="button" class="res-card__more" title="WhatsApp update" onclick="event.stopPropagation();openWhatsAppUpdate(\'' + o.id + '\')" aria-label="Send a WhatsApp update">' +
-                    '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2c-1.5 0-3-.4-4.3-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2z"/><path d="M17.5 14.4c-.3-.2-1.7-.9-2-1-.3-.1-.5-.2-.7.1-.2.3-.7 1-.9 1.2-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.5-.5c.1-.2.2-.3.3-.5 0-.2 0-.4 0-.5 0-.2-.7-1.6-.9-2.2-.2-.5-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.2.2 2.1 3.2 5.1 4.4.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.3z"/></svg>' +
-                  '</button>' +
-                  '<button type="button" class="res-card__more" title="Receipt" onclick="openOrderReceipt(\'' + o.id + '\')" aria-label="Open receipt">' +
-                    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
-                  '</button>' +
-                '</div>' +
-                '<div class="res-card__foot">' +
-                  '<span class="res-card__date">' + dateStr + '</span>' +
-                  '<button type="button" class="quick-action" onclick="' + act.fn + '">' + act.label + ' \u2192</button>' +
-                '</div>' +
-              '</article>';
-        }).join('');
-
-        // The whole card opens the order; the quick action and icon stop that.
-        [].forEach.call(host.querySelectorAll('.res-card'), function (card) {
-            card.addEventListener('click', function (e) {
-                if (e.target.closest('button, a')) return;
-                openOrderDetail(card.getAttribute('data-order-id'));
-            });
-        });
+        host.innerHTML = paged.map(orderCardHTML).join('');
+        bindOrderCards(host);
     }
 
     renderPagination('order-pagination', totalItems, orderCurrentPage, ORDER_PER_PAGE, function(page) {
@@ -2813,7 +2833,7 @@ var PREORDER_KIND_LABELS = { shop: 'DC Kids pick', bulk: 'Bulk', personal: 'Pers
 
 function orderTypeLabel(order) {
     var type = String(order.order_type || order.type || 'retail').toLowerCase();
-    if (type !== 'preorder') return type;
+    if (type !== 'preorder') return type.charAt(0).toUpperCase() + type.slice(1);
     return 'Pre-order · ' + (PREORDER_KIND_LABELS[order.preorderKind] || PREORDER_KIND_LABELS.shop);
 }
 
@@ -6529,7 +6549,7 @@ function renderCategoriesChart(currentOrders) {
         });
     });
 
-    var labels = Object.keys(catTotals);
+    var labels = Object.keys(catTotals).map(function (k) { return k === 'Other' ? k : adminCategoryName(k); });
     var data = Object.values(catTotals).map(Math.round);
 
     if (labels.length === 0) {
@@ -7874,6 +7894,8 @@ function saveStoreConfig(e) {
             showToast("Store settings saved successfully!", "success");
             // Re-sync the form from the server so it shows the canonical saved state.
             if (typeof loadStoreConfig === 'function') loadStoreConfig();
+            var preTab = document.getElementById('tab-preorders');
+            if (preTab && preTab.classList.contains('active')) loadPreorders();
         }
     })
     .catch(err => {
@@ -9618,7 +9640,7 @@ function loadAdmins() {
                 var actionsHTML = '';
                 var editBtn = '<button type="button" class="action-icon edit" title="Edit Account" data-staff-edit="' + Number(u.id) + '" style="background:none;border:none;cursor:pointer;color:var(--primary,#fc4c7a);margin-right:6px;"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>';
                 if (isSelf) {
-                    actionsHTML = editBtn + '<span style="font-size:11px;color:#888;font-style:italic;">You</span>';
+                    actionsHTML = editBtn + '<span style="font-size:11px;color:#888;font-style:italic;align-self:center;">You</span>';
                 } else {
                     actionsHTML = editBtn +
                         '<button type="button" class="action-icon delete" title="Delete Account" data-staff-delete="' + Number(u.id) + '" style="background:none;border:none;cursor:pointer;color:#dc2626;"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>';
@@ -9629,7 +9651,7 @@ function loadAdmins() {
                     '<td data-label="Account"><strong>' + escapeHtml(u.full_name || u.username) + '</strong>' +
                         (u.email ? '<div style="font-size:12px;color:#888;">' + escapeHtml(u.email) + '</div>' : '') + '</td>' +
                     '<td data-label="Role"><span class="status-pill ' + (u.owner ? 'active' : 'draft') + '">' + (u.owner ? 'Owner' : 'Staff') + '</span></td>' +
-                    '<td data-label="Actions" style="text-align: right;">' + actionsHTML + '</td>';
+                    '<td data-label="Actions" style="text-align: right;"><div class="table-actions" style="justify-content:flex-end;">' + actionsHTML + '</div></td>';
                 tbody.appendChild(row);
             });
         }
@@ -10471,6 +10493,7 @@ function downloadProductCsvTemplate() {
     orders: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
     inventory: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>',
     customers: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    preorders: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>',
     more: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
     products: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>',
     suppliers: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>',
@@ -10492,6 +10515,7 @@ function downloadProductCsvTemplate() {
 
   // Overflow sections live in the light "More" sheet.
   var MORE = [
+    { tab: 'tab-preorders', label: 'Pre-orders',      icon: ICON.preorders },
     { tab: 'tab-customers', label: 'Customers',       icon: ICON.customers },
     { tab: 'tab-products',  label: 'Products',        icon: ICON.products },
     { tab: 'tab-suppliers', label: 'Suppliers',       icon: ICON.suppliers },
@@ -11789,11 +11813,21 @@ function fillRailList(listId, emptyId, countId, rows, build) {
 var paymentsData = { payments: [], summary: null, by_method: [] };
 var paymentsMethodFilter = '';
 
-var PAYMENT_METHOD_SHORT = {
-    'Mobile Money': 'MoMo',
-    'Bank Transfer': 'Bank',
-    'Cash on Delivery': 'Cash'
-};
+// One method can be stored under several names: admin orders save 'cash',
+// 'momo' or 'card', the shop saves 'WhatsApp', and older rows say 'Mobile
+// Money' or 'Cash on Delivery'. Everything on the Payments screen — the
+// chips, the method breakdown and the table — goes through this, so a chip
+// finds every payment made that way whichever name it was saved under.
+function paymentMethodLabel(raw) {
+    var key = String(raw || '').trim().toLowerCase().replace(/[\s_-]+/g, ' ');
+    if (!key) return 'Other';
+    if (key === 'momo' || key.indexOf('mobile money') !== -1) return 'MoMo';
+    if (key.indexOf('cash') === 0) return 'Cash';
+    if (key.indexOf('bank') === 0) return 'Bank';
+    if (key.indexOf('card') === 0) return 'Card';
+    if (key === 'whatsapp') return 'WhatsApp';
+    return String(raw).trim();
+}
 
 function paymentsPeriod() {
     var el = document.getElementById('payments-period');
@@ -11846,7 +11880,7 @@ function filteredPayments() {
     var searchEl = document.getElementById('pay-search');
     var q = searchEl ? searchEl.value.trim().toLowerCase() : '';
     return paymentsData.payments.filter(function (p) {
-        var matchesMethod = !paymentsMethodFilter || p.method === paymentsMethodFilter;
+        var matchesMethod = !paymentsMethodFilter || paymentMethodLabel(p.method) === paymentsMethodFilter;
         if (!q) return matchesMethod;
         var hay = [p.customer_name, p.order_number, p.reference].join(' ').toLowerCase();
         return matchesMethod && hay.indexOf(q) !== -1;
@@ -11887,7 +11921,15 @@ function renderPayments() {
     var bar = document.getElementById('pay-method-bar');
     var list = document.getElementById('pay-method-list');
     var methodEmpty = document.getElementById('pay-method-empty');
-    var methods = paymentsData.by_method;
+    var merged = {};
+    paymentsData.by_method.forEach(function (m) {
+        var label = paymentMethodLabel(m.method);
+        if (!merged[label]) merged[label] = { method: label, count: 0, amount: 0 };
+        merged[label].count += Number(m.count || 0);
+        merged[label].amount += Number(m.amount || 0);
+    });
+    var methods = Object.keys(merged).map(function (k) { return merged[k]; })
+        .sort(function (a, b) { return b.amount - a.amount; });
     var methodTotal = methods.reduce(function (sum, m) { return sum + Number(m.amount || 0); }, 0);
     if (list) {
         if (!methods.length) {
@@ -11946,12 +11988,299 @@ function renderPayments() {
             '<td data-label="Reference" class="tabular">' + ref + '</td>' +
             '<td data-label="Client">' + escapeHtml(p.customer_name || '\u2014') + '</td>' +
             '<td data-label="Order" class="tabular">' + escapeHtml(p.order_number || '\u2014') + '</td>' +
-            '<td data-label="Method">' + escapeHtml(PAYMENT_METHOD_SHORT[p.method] || p.method) + '</td>' +
+            '<td data-label="Method">' + escapeHtml(paymentMethodLabel(p.method)) + '</td>' +
             '<td data-label="Type">' + escapeHtml(p.kind || '\u2014') + '</td>' +
             '<td data-label="Amount" class="is-num tabular">GHS ' + formatNumber(p.amount) + '</td>' +
             '<td data-label="Receipt">' + receiptCell + '</td>' +
             '</tr>';
     }).join('');
+}
+
+/* ============================================================
+   PRE-ORDERS — China pre-orders in one place
+   The window the shop takes them in, the pre-order orders at each step,
+   and the pieces on offer. The orders are the same records the Orders
+   screen shows; they open in the same order sheet.
+   ============================================================ */
+var PO_PER_PAGE = 10;
+var poState = { stage: 'open', kind: '', pieces: '', page: 1, settings: null };
+
+// The steps a pre-order moves through, in the words used for pre-orders.
+// 'open' is every step still in progress; 'all' includes finished ones.
+var PO_STAGE_CHIPS = [
+    { key: 'open',      label: 'In progress' },
+    { key: 'new',       label: 'New' },
+    { key: 'payment',   label: 'Waiting on payment' },
+    { key: 'packing',   label: 'To order from China' },
+    { key: 'sending',   label: 'On the way' },
+    { key: 'done',      label: 'Delivered' },
+    { key: 'cancelled', label: 'Cancelled' },
+    { key: 'all',       label: 'All' }
+];
+
+function preorderOrders() {
+    return (getOrders() || []).filter(function (o) {
+        return String(o.order_type || o.type || '').toLowerCase() === 'preorder';
+    });
+}
+
+function preorderPieces() {
+    return (Array.isArray(globalProducts) ? globalProducts : []).filter(isPreorderProduct);
+}
+
+function poStageMatches(o, key) {
+    var stage = orderStageKey(o);
+    if (key === 'all') return true;
+    if (key === 'open') return stage !== 'done' && stage !== 'cancelled';
+    return stage === key;
+}
+
+// Ghana runs on UTC, and the server and the shop both compare whole days in
+// UTC, so this screen does too: what it says is what shoppers get.
+function poTodayIso() { return new Date().toISOString().slice(0, 10); }
+
+function poDay(iso) {
+    var d = new Date(iso + 'T00:00:00Z');
+    return isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+}
+
+function poDaysBetween(fromIso, toIso) {
+    return Math.round((new Date(toIso + 'T00:00:00Z') - new Date(fromIso + 'T00:00:00Z')) / 86400000);
+}
+
+function preorderWindowState(settings) {
+    var starts = (settings && settings.preorder_starts) || '';
+    var ends = (settings && settings.preorder_ends) || '';
+    var today = poTodayIso();
+    if (!starts && !ends) return { state: 'unset', starts: starts, ends: ends, today: today };
+    if (starts && today < starts) return { state: 'upcoming', starts: starts, ends: ends, today: today };
+    if (ends && today > ends) return { state: 'ended', starts: starts, ends: ends, today: today };
+    return { state: 'open', starts: starts, ends: ends, today: today };
+}
+
+function loadPreorders() {
+    renderPreorders();
+    fetch(API_URL + '/settings')
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) { if (data) { poState.settings = data; renderPreorders(); } })
+        .catch(function () { /* the window card says it couldn't check */ });
+    fetchProducts().then(function (rows) { globalProducts = rows; renderPreorders(); })
+        .catch(function () { showToast('Failed to load products', 'error'); });
+    fetchOrdersFromServer(renderPreorders);
+}
+
+function renderPreorders() {
+    var tab = document.getElementById('tab-preorders');
+    if (!tab) return;
+    initPreorderControls();
+
+    var orders = preorderOrders();
+    var pieces = preorderPieces();
+    var win = poState.settings ? preorderWindowState(poState.settings) : null;
+    var set = function (id, text) { var el = document.getElementById(id); if (el) el.textContent = text; };
+
+    // The window: whether shoppers can order right now, and until when.
+    var title = ' ', copy = 'Checking the window…', live = false;
+    if (win) {
+        var group = /^https:\/\/chat\.whatsapp\.com\//.test(String(poState.settings.whatsapp_group_url || ''));
+        var groupNote = group ? ' The section links to your WhatsApp group.' : ' No WhatsApp group is linked.';
+        if (win.state === 'open') {
+            live = true;
+            var left = win.ends ? poDaysBetween(win.today, win.ends) : null;
+            title = win.ends ? 'Open until ' + poDay(win.ends) : 'Open, with no closing date';
+            copy = (left === null ? 'Shoppers can order pre-order pieces now.'
+                : left <= 0 ? 'Closes at the end of today.'
+                : left === 1 ? 'Closes tomorrow.'
+                : left + ' days left to order.') + groupNote;
+        } else if (win.state === 'upcoming') {
+            title = 'Opens ' + poDay(win.starts);
+            copy = 'Pre-order pieces stay hidden from the shop until then' + (win.ends ? ', and close on ' + poDay(win.ends) + '.' : '.') + groupNote;
+        } else if (win.state === 'ended') {
+            title = 'Closed on ' + poDay(win.ends);
+            copy = 'Pre-order pieces are hidden from the shop. Set new dates to open the next window.';
+        } else {
+            title = 'No window set';
+            copy = 'Pre-order pieces stay hidden from the shop until you set the dates shoppers can order between.';
+        }
+    }
+    set('po-window-title', title);
+    set('po-window-copy', copy);
+    var card = document.getElementById('po-window');
+    if (card) card.classList.toggle('is-open', live);
+    var dot = document.getElementById('po-status-dot');
+    if (dot) dot.classList.toggle('is-off', !!win && !live);
+
+    var inProgress = orders.filter(function (o) { return poStageMatches(o, 'open'); });
+    set('preorders-status-line',
+        (win ? (live ? 'Window open' : 'Window closed') + ' · ' : '') +
+        inProgress.length + (inProgress.length === 1 ? ' pre-order in progress' : ' pre-orders in progress') +
+        ' · ' + pieces.length + (pieces.length === 1 ? ' piece' : ' pieces'));
+
+    // The tiles: the steps that need the owner to do something.
+    var byStage = function (key) { return orders.filter(function (o) { return orderStageKey(o) === key; }); };
+    var sum = function (list) { return list.reduce(function (t, o) { return t + (Number(o.total) || 0); }, 0); };
+    var waiting = orders.filter(function (o) { var k = orderStageKey(o); return k === 'new' || k === 'payment'; });
+    var toOrder = byStage('packing');
+    var unpriced = pieces.filter(function (p) { return !(Number(p.price) > 0); });
+    set('po-tile-payment', String(waiting.length));
+    set('po-tile-payment-sub', waiting.length ? dashMoney(sum(waiting)) + ' to collect' : 'Nothing to collect');
+    set('po-tile-packing', String(toOrder.length));
+    var toOrderPieces = toOrder.reduce(function (t, o) {
+        return t + (o.items || []).reduce(function (n, it) { return n + (Number(it.qty) || 0); }, 0);
+    }, 0);
+    set('po-tile-packing-sub', toOrder.length ? toOrderPieces + (toOrderPieces === 1 ? ' piece to source' : ' pieces to source') : 'Nothing to source');
+    set('po-tile-sending', String(byStage('sending').length));
+    set('po-tile-pieces', String(pieces.length));
+    set('po-tile-pieces-sub', unpriced.length ? unpriced.length + ' without a price' : 'All priced');
+
+    renderPreorderStageChips(orders);
+    renderPreorderList(orders);
+    renderPreorderPieces(pieces, orders);
+}
+
+function renderPreorderStageChips(orders) {
+    var host = document.getElementById('po-stage-filters');
+    if (!host) return;
+    var scoped = orders.filter(function (o) { return !poState.kind || (o.preorderKind || 'shop') === poState.kind; });
+    host.innerHTML = PO_STAGE_CHIPS.map(function (chip) {
+        var n = scoped.filter(function (o) { return poStageMatches(o, chip.key); }).length;
+        return '<button type="button" class="pay-pill' + (chip.key === poState.stage ? ' is-on' : '') + '" data-po-stage="' + chip.key + '"' +
+            (chip.key === poState.stage ? ' aria-pressed="true"' : ' aria-pressed="false"') + '>' +
+            escapeHtml(chip.label) + ' <b class="po-chip-count">' + n + '</b></button>';
+    }).join('');
+}
+
+function renderPreorderList(orders) {
+    var host = document.getElementById('po-orders-list');
+    if (!host) return;
+    var rows = orders.filter(function (o) {
+        return poStageMatches(o, poState.stage) && (!poState.kind || (o.preorderKind || 'shop') === poState.kind);
+    }).sort(function (a, b) { return new Date(b.date || 0) - new Date(a.date || 0); });
+    var count = document.getElementById('po-orders-count');
+    if (count) count.textContent = '· ' + rows.length;
+    var pages = Math.max(1, Math.ceil(rows.length / PO_PER_PAGE));
+    if (poState.page > pages) poState.page = pages;
+    var start = (poState.page - 1) * PO_PER_PAGE;
+    var paged = rows.slice(start, start + PO_PER_PAGE);
+    if (!paged.length) {
+        host.innerHTML = '<p class="empty-line po-empty">' + (orders.length
+            ? 'No pre-orders at this step.'
+            : 'No pre-orders yet. They appear here as soon as a shopper orders a pre-order piece.') + '</p>';
+    } else {
+        host.innerHTML = paged.map(orderCardHTML).join('');
+        bindOrderCards(host);
+    }
+    renderPagination('po-pagination', rows.length, poState.page, PO_PER_PAGE, function (page) {
+        poState.page = page;
+        renderPreorderList(preorderOrders());
+    });
+}
+
+function renderPreorderPieces(pieces, orders) {
+    // How many of each piece shoppers have ordered and not cancelled, and how
+    // many of those are paid and still to be sourced.
+    var ordered = {}, toSource = {};
+    orders.forEach(function (o) {
+        var stage = orderStageKey(o);
+        if (stage === 'cancelled') return;
+        (o.items || []).forEach(function (it) {
+            var id = String(it.productId);
+            var q = Number(it.qty) || 0;
+            ordered[id] = (ordered[id] || 0) + q;
+            if (stage === 'packing') toSource[id] = (toSource[id] || 0) + q;
+        });
+    });
+    var unpriced = function (p) { return !(Number(p.price) > 0); };
+    var list = pieces.filter(function (p) { return poState.pieces !== 'unpriced' || unpriced(p); })
+        .sort(function (a, b) {
+            return (toSource[b.id] || 0) - (toSource[a.id] || 0) ||
+                (ordered[b.id] || 0) - (ordered[a.id] || 0) ||
+                (unpriced(b) ? 1 : 0) - (unpriced(a) ? 1 : 0) ||
+                String(a.name || '').localeCompare(String(b.name || ''));
+        });
+    var hint = document.getElementById('po-pieces-hint');
+    if (hint) hint.hidden = !pieces.some(unpriced);
+    var box = document.getElementById('po-pieces-rows');
+    if (box && !list.length) {
+        box.innerHTML = '<p class="adm-empty t-cap muted">' + (pieces.length
+            ? 'Every pre-order piece has a price.'
+            : 'No pre-order pieces yet. Add one, or set a product’s listing type to China Pre-Order.') + '</p>';
+        return;
+    }
+    fillAdmRows('po-pieces-rows', list, function (p) {
+        var meta = [p.sku || '—', adminCategoryName(p.cat)];
+        if (toSource[p.id]) meta.push(toSource[p.id] + ' to source');
+        else if (ordered[p.id]) meta.push(ordered[p.id] + ' ordered');
+        return {
+            id: p.id,
+            img: resolveAdminProductImage(p).src,
+            title: p.name || 'Unnamed',
+            pill: unpriced(p) ? 'No price yet' : '',
+            meta: meta.join(' · '),
+            value: unpriced(p) ? '' : 'GHS ' + Number(p.price).toFixed(2)
+        };
+    }, function (id) { openEditModal(Number(id)); });
+}
+
+function initPreorderControls() {
+    var tab = document.getElementById('tab-preorders');
+    if (!tab || tab.dataset.bound) return;
+    tab.dataset.bound = '1';
+    tab.addEventListener('click', function (e) {
+        var stageBtn = e.target.closest('[data-po-stage]');
+        if (stageBtn) {
+            poState.stage = stageBtn.getAttribute('data-po-stage');
+            poState.page = 1;
+            renderPreorders();
+            if (stageBtn.classList.contains('po-tile')) {
+                var list = document.getElementById('po-orders-title');
+                if (list) list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            return;
+        }
+        var piecesBtn = e.target.closest('[data-po-pieces]');
+        if (piecesBtn) {
+            poState.pieces = piecesBtn.getAttribute('data-po-pieces');
+            document.querySelectorAll('#po-pieces-filters .pay-pill').forEach(function (b) {
+                b.classList.toggle('is-on', b.getAttribute('data-po-pieces') === poState.pieces);
+            });
+            renderPreorderPieces(preorderPieces(), preorderOrders());
+            if (piecesBtn.classList.contains('po-tile')) {
+                var pieces = document.getElementById('po-pieces-title');
+                if (pieces) pieces.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    });
+    var kind = document.getElementById('po-kind-filter');
+    if (kind) kind.addEventListener('change', function () {
+        poState.kind = kind.value;
+        poState.page = 1;
+        renderPreorders();
+    });
+}
+
+// The window lives with the other storefront settings, which save together,
+// so it is changed in that form rather than a second copy of it here.
+function openPreorderWindowSettings() {
+    if (typeof loadStoreConfig === 'function') loadStoreConfig();
+    // The form is written inside the Settings tab, which is hidden here; an
+    // overlay belongs to the page, so it moves there before it opens.
+    var modal = document.getElementById('modal-settings-store');
+    if (modal && modal.parentElement !== document.body) document.body.appendChild(modal);
+    openModal('modal-settings-store');
+    setTimeout(function () {
+        var field = document.getElementById('config-preorder-starts');
+        if (field) field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+}
+
+// A new piece starts as a China pre-order with no stock to count.
+function openAddPreorderPiece() {
+    openAddProductModal();
+    var listing = document.getElementById('add-product-fulfillment');
+    if (listing) listing.value = 'preorder';
+    var stock = document.getElementById('add-product-stock');
+    if (stock) stock.value = '0';
 }
 
 function renderDashboardRail(products) {
