@@ -1510,6 +1510,41 @@ async function run() {
         splashLayers.every(name => swForSplash.includes(`/brand/splash-${name}.webp`)));
     check('motion is resolved before first paint, not left to the stylesheet alone',
         adminHtmlForSplash.includes('data-motion') && adminHtmlForSplash.includes('dck-splash-seen'));
+    // Image sizes read from the files themselves (PNG IHDR; lossless WebP VP8L header).
+    const imageSize = (file) => {
+        const b = fs.readFileSync(path.join(__dirname, '..', file));
+        if (b.slice(1, 4).toString() === 'PNG') return { w: b.readUInt32BE(16), h: b.readUInt32BE(20), alpha: b[25] === 6 };
+        if (b.slice(12, 16).toString() === 'VP8L') {
+            const bits = b.readUInt32LE(21);
+            return { w: (bits & 0x3fff) + 1, h: ((bits >> 14) & 0x3fff) + 1 };
+        }
+        return null;
+    };
+    const layerSizes = splashLayers.map((name) => imageSize(`brand/splash-${name}.webp`));
+    check('the launch screen layers share one canvas, so they stack exactly, at the size the admin declares',
+        layerSizes.every((s) => s && s.w === 1086 && s.h === 1378) &&
+        adminHtmlForSplash.includes('width="1086" height="1378"') && adminHtmlForSplash.includes('aspect-ratio: 543 / 689'),
+        JSON.stringify(layerSizes));
+    // A phone draws its own loading screen from the manifest's icons. Each must
+    // be the size it claims, square, and maskable icons separate from the plain
+    // ones (a maskable icon is cropped, so the logo has to sit in its safe zone).
+    ['manifest.json', 'admin.manifest.json'].forEach((file) => {
+        const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'));
+        const icons = manifest.icons || [];
+        const wrong = icons.filter((icon) => {
+            const size = fs.existsSync(path.join(__dirname, '..', icon.src)) ? imageSize(icon.src) : null;
+            return !size || `${size.w}x${size.h}` !== icon.sizes || size.w !== size.h;
+        }).map((icon) => icon.src);
+        check(`${file} lists square icons that exist at the sizes it claims`, icons.length > 0 && wrong.length === 0, wrong.join(', '));
+        check(`${file} keeps maskable icons apart from the plain ones`,
+            icons.some((icon) => icon.purpose === 'maskable') && icons.some((icon) => icon.purpose === 'any') &&
+            !icons.some((icon) => /any/.test(icon.purpose) && /maskable/.test(icon.purpose)));
+        check(`${file} gives the plain icons a transparent background and the maskable ones a solid one`,
+            icons.every((icon) => imageSize(icon.src).alpha === (icon.purpose === 'any')));
+    });
+    check('the home-screen icon on iPhone is a solid square',
+        ['index.html', 'admin.html'].every((page) => fs.readFileSync(path.join(__dirname, '..', page), 'utf8').includes('<link rel="apple-touch-icon" href="brand/apple-touch-icon.png">')) &&
+        (() => { const s = imageSize('brand/apple-touch-icon.png'); return s.w === 180 && s.h === 180 && !s.alpha; })());
 
     console.log(`\n${passed} passed, ${failed} failed`);
     cleanupDb();
