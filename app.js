@@ -1104,7 +1104,10 @@ async function customerAuthHeaders() {
 
 async function applyCustomerState(state) {
   customerState = state || { user: null, customer: null };
-  $('account-link').textContent = customerState.customer ? 'Account' : 'Sign in';
+  // The label hides on phones, where the icon stands alone, so the link carries its name too.
+  const accountLabel = customerState.customer ? 'Account' : 'Sign in';
+  $('account-label').textContent = accountLabel;
+  $('account-link').setAttribute('aria-label', accountLabel);
   $('m-account-link').textContent = customerState.customer ? 'My account' : 'Sign in';
   // Where customer sign-in isn't offered, the account page has nothing to sign in to.
   document.querySelectorAll('a[href="/account.html"]').forEach((a) => { a.hidden = !!customerState.unconfigured; });
