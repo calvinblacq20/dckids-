@@ -13,7 +13,7 @@ Status as of 2026-11-02 (master playbook run). [x] verified · [ ] open, with �
 - [x] `npm audit`: 0 high/critical. 13 moderate remain (eslint dev tooling; Google libraries under `firebase-admin`), fixable only with breaking upgrades. Handle in the monthly update.
 - [x] Dependencies added this cycle: none.
 - [ ] Logout: the session is re-checked on every request, so deleting or demoting an account ends it immediately. ⚠️ Signing out clears the device only; the 12-hour token is not revoked on the server.
-- [ ] Staging behind auth: ❌ no staging environment (the Vercel showcase is static, with no order data).
+- [ ] Staging behind auth: ❌ no staging environment (the Vercel preview is static: no order data, and no admin sign-in without the server).
 - [x] Header config in the repo: CSP (enforcing), nosniff, frame, referrer, permissions, `X-XSS-Protection: 0` (OWASP-correct, deliberate), HSTS in production; `vercel.json` carries the same for the showcase.
 - [ ] External scans: ⚠️ securityheaders.com and checkvibe.dev / vibelegit.io against the live domain after deploy.
 
@@ -47,7 +47,7 @@ Status as of 2026-11-02 (master playbook run). [x] verified · [ ] open, with �
 - [ ] Monthly dependency update and quarterly restore drill: ❌ schedule them.
 
 ## Built to last
-- [x] ADRs for irreversible decisions (docs/decisions 0001–0009).
+- [x] ADRs for irreversible decisions (docs/decisions 0001–0010).
 - [x] RUNBOOK with backups/restore and degradation paths.
 - [x] Health endpoint (`/api/health`) proves SQLite readiness.
 - [x] Idempotency keys on order creation and Paystack starts.

@@ -3,6 +3,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const compression = require('compression');
 const cors = require('cors');
+const { originAllowed } = require('./origin_policy');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { initializeApp: initializeFirebaseAdmin, applicationDefault, cert, getApps: getFirebaseApps } = require('firebase-admin/app');
@@ -128,12 +129,13 @@ app.use((req, res, next) => {
 
 // ----- CORS: strict in production, open in dev -----
 if (IS_PROD && ALLOWED_ORIGINS.length) {
-    app.use(cors({
-        origin: function (origin, cb) {
-            // allow same-origin / server-to-server (no Origin header) and whitelisted origins
-            if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-            return cb(new Error('Not allowed by CORS'));
-        }
+    // Same-origin requests (whatever hostname serves the shop) and listed
+    // origins pass; any other site is refused with a 403, never a 500.
+    app.use(cors((req, cb) => {
+        if (originAllowed(req.headers.origin, req.headers.host, ALLOWED_ORIGINS)) return cb(null, { origin: true });
+        const refused = new Error('Not allowed by CORS');
+        refused.corsRefused = true;
+        return cb(refused);
     }));
 } else {
     app.use(cors()); // dev: allow all
@@ -1760,6 +1762,14 @@ function bulkFactor(price, bulkPrice, discountPercent) {
     if (bulk > 0 && bulk < base) return bulk / base;
     return 1 - (Number(discountPercent) || 0) / 100;
 }
+// The bulk price starts at the minimum (ADR 0010). Fewer pieces of an item in
+// a wholesale order are charged the retail price instead of refusing the order,
+// so a buyer can still take the last few of a piece without losing the bulk
+// price on the rest of the cart. Repeated word for word in the storefront,
+// product page and admin (the smoke test fails if one drifts).
+function bulkApplies(isWholesale, quantity, minimum) {
+    return !!isWholesale && Number(quantity) >= (Number(minimum) || 1);
+}
 const WHOLESALE_OFF_MESSAGE = 'Wholesale prices are switched off right now. Switch to Retail to order, or message us on WhatsApp.';
 
 // Create new order (Storefront)
@@ -1861,14 +1871,15 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                         : null;
 
                     // PER-PIECE pricing for both modes. The storefront sends
-                    // quantity in pieces (its bulk dropdown lists "10 pcs",
-                    // "20 pcs", ...), so wholesale applies the discount to the
-                    // unit price and enforces the MOQ floor — it does NOT
-                    // multiply by MOQ again. (The old package-based math
-                    // charged a 10-piece wholesale order as 10 packages =
-                    // 100 pieces: a 10× overcharge, and stock deducted 10×.)
+                    // quantity in pieces, so wholesale applies the discount to
+                    // the unit price from the MOQ up — it does NOT multiply by
+                    // MOQ again. (The old package-based math charged a 10-piece
+                    // wholesale order as 10 packages = 100 pieces: a 10×
+                    // overcharge, and stock deducted 10×.) Under the MOQ the
+                    // piece is charged at retail rather than refused.
+                    const finalQty = Number(item.quantity) || 1; // pieces
                     let unitPrice;
-                    const factor = isWholesale ? bulkFactor(product.price, product.wholesale_price, discount) : 1;
+                    const factor = bulkApplies(isWholesale, finalQty, moq) ? bulkFactor(product.price, product.wholesale_price, discount) : 1;
                     if (sizeMatch) {
                         unitPrice = (sizeMatch.price != null) ? sizeMatch.price : (product.price || 0);
                         unitPrice = unitPrice * factor;
@@ -1877,13 +1888,6 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                         unitPrice += getPriceModifier(item.size);
                     }
                     unitPrice = Math.round(unitPrice * 100) / 100;
-
-                    const finalQty = Number(item.quantity) || 1; // pieces
-                    if (isWholesale && finalQty < moq) {
-                        const e = new Error(`Wholesale orders need at least ${moq} pieces per item`);
-                        e.status = 400;
-                        return reject(e);
-                    }
 
                     const acceptItem = () => {
                         total_amount += unitPrice * finalQty;
@@ -2018,8 +2022,8 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                 );
             })
             .catch(err => {
-                // err.status marks a deliberate validation failure (MOQ floor,
-                // unknown product) whose message is written for the shopper;
+                // err.status marks a deliberate validation failure (out of
+                // stock, pre-orders closed) whose message is written for the shopper;
                 // anything else is unexpected and stays generic.
                 if (err.status) return res.status(err.status).json({ error: err.message });
                 serverError(res, err);
@@ -2092,12 +2096,12 @@ async function pricePaystackCheckout(checkout) {
         if (!product) throw paymentError(`Product ${item.id} not found`);
         const managedSizes = parseSizesJson(product.sizes);
         const sizeMatch = managedSizes ? managedSizes.find((size) => size.label === item.size) : null;
+        const quantity = Number(item.quantity);
         let unitPrice = sizeMatch && sizeMatch.price != null ? Number(sizeMatch.price) : Number(product.price || 0);
-        if (checkout.isWholesale) unitPrice *= bulkFactor(product.price, product.wholesale_price, discount);
+        // The same rule as a WhatsApp order: bulk price from the minimum, retail under it.
+        if (bulkApplies(checkout.isWholesale, quantity, minimumOrder)) unitPrice *= bulkFactor(product.price, product.wholesale_price, discount);
         if (!sizeMatch) unitPrice += getPriceModifier(item.size);
         unitPrice = Math.round(unitPrice * 100) / 100;
-        const quantity = Number(item.quantity);
-        if (checkout.isWholesale && quantity < minimumOrder) throw paymentError(`Wholesale orders need at least ${minimumOrder} pieces per item`);
         if ((product.fulfillment_type === 'preorder' || checkout.orderType === 'preorder') && !preorderWindowOpen(settings)) {
             throw paymentError(PREORDER_CLOSED_MESSAGE);
         }
@@ -3224,13 +3228,6 @@ function optionalCustomer(req, res, next) {
     });
 }
 
-// Legacy local-password endpoints stay mounted only as an explicit retirement
-// response for older clients. Firebase handles registration, sign-in,
-// verification, and password reset from now on.
-const requireCustomerAccountsEnabled = (req, res) => {
-    res.status(410).json({ error: 'This sign-in method has been retired. Use the customer account page.' });
-};
-
 function logAdminAction(req, action, entityType, entityId, summary, details) {
     const actor = req && req.user ? req.user : {};
     let detailsJson = null;
@@ -3380,70 +3377,11 @@ app.post('/api/customer/session', loginLimiter, async (req, res) => {
     }
 });
 
-// Password Recovery - Request Reset (Forgot Password)
-app.post('/api/customer/forgot-password', requireCustomerAccountsEnabled, registerLimiter, (req, res) => {
-    const { email } = req.body || {};
-    if (!email) return res.status(400).json({ error: 'Email address is required' });
-    
-    db.get(`SELECT name FROM customer_accounts WHERE email = ?`, [email.trim().toLowerCase()], (err, user) => {
-        if (err) return serverError(res, err);
-        
-        // Return generic success even if user not found to prevent email scanning/enumeration
-        if (!user) {
-            return res.json({ success: true, message: 'If that email is registered, a password recovery link has been sent.' });
-        }
-        
-        // Generate a 1-hour secure reset token signed with the email and a reset flag
-        const token = jwt.sign(
-            { email: email.trim().toLowerCase(), reset: true },
-            JWT_SECRET,
-            { expiresIn: '1h' }
-        );
-        
-        // Construct reset link using host header to adapt to localhost or custom domains automatically
-        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-        const resetLink = `${protocol}://${req.headers.host}/account.html?email=${encodeURIComponent(email.trim().toLowerCase())}&resetToken=${token}`;
-        
-        console.log(`\n[PASSWORD RECOVERY] Generated reset link for customer: ${email.trim().toLowerCase()}\nLink: ${resetLink}\n`);
-        
-        // NOTE: No storefront login exists — this endpoint is unused in production.
-        
-        res.json({ success: true, message: 'If that email is registered, a password recovery link has been sent.' });
-    });
-});
-
-// Password Recovery - Reset Password (Reset Password Form Submission)
-app.post('/api/customer/reset-password', requireCustomerAccountsEnabled, registerLimiter, (req, res) => {
-    const { email, token, password } = req.body || {};
-    if (!email || !token || !password) {
-        return res.status(400).json({ error: 'Email, recovery token, and new password are required' });
-    }
-    if (password.length < 8) {
-        return res.status(400).json({ error: 'Password must be at least 8 characters' });
-    }
-
-    // Verify JWT signature and expiration
-    jwt.verify(token, JWT_SECRET, async (err, decoded) => {
-        if (err || !decoded || !decoded.reset || decoded.email !== email.trim().toLowerCase()) {
-            return res.status(400).json({ error: 'Invalid or expired password reset link. Please request a new link.' });
-        }
-
-        try {
-            const hash = await bcrypt.hash(password, 10);
-            db.run(
-                `UPDATE customer_accounts SET password_hash = ? WHERE email = ?`,
-                [hash, email.trim().toLowerCase()],
-                function(err) {
-                    if (err) return serverError(res, err);
-                    if (this.changes === 0) return res.status(404).json({ error: 'Account not found' });
-                    
-                    res.json({ success: true, message: 'Password has been reset successfully. You can now log in.' });
-                }
-            );
-        } catch (e) {
-            serverError(res, e);
-        }
-    });
+// The old customer email-and-password reset is retired: Firebase handles
+// customer registration, sign-in, verification and password reset. These two
+// paths only tell an older app so, rather than answering a bare 404.
+['/api/customer/forgot-password', '/api/customer/reset-password'].forEach((route) => {
+    app.post(route, (req, res) => res.status(410).json({ error: 'This sign-in method has been retired. Use the customer account page.' }));
 });
 
 app.get('/api/customer/me', authenticateCustomer, (req, res) => {
@@ -4252,6 +4190,9 @@ app.use((err, req, res, next) => {
     if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
         console.warn(`[JSON Parse Error] ${req.method} ${req.url} - ${err.message}`);
         return res.status(400).json({ error: 'Invalid JSON payload. Please verify your formatting.' });
+    }
+    if (err && err.corsRefused) {
+        return res.status(403).json({ error: 'Requests from this site are not allowed.' });
     }
     console.error('Unhandled Server Error:', err.stack);
     res.status(500).json({ error: 'Internal Server Error' });
