@@ -2637,9 +2637,10 @@ function rankCategories(orders) {
 function rankPayments(orders) {
     const map = {};
     orders.filter(revenueOrder).forEach((order) => {
-        const fallback = order.payments && order.payments.length ? order.payments : [{ payment_method: 'Mobile Money', amount: orderRevenue(order) }];
-        fallback.forEach((payment) => {
-            const method = payment.payment_method || 'Mobile Money';
+        const payments = order.payments && order.payments.length ? order.payments : [{ amount: orderRevenue(order) }];
+        payments.forEach((payment) => {
+            // A method nobody recorded is reported as such, never guessed.
+            const method = payment.payment_method || 'Not recorded';
             if (!map[method]) map[method] = { method, revenue: 0 };
             map[method].revenue += Number(payment.amount || orderRevenue(order));
         });

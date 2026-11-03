@@ -5009,6 +5009,28 @@ function renderSparkline(id, values, color, fill) {
     });
 }
 
+// An order with no method on record is counted as that, never assigned one.
+function topPaymentMethod(orders) {
+    var totals = {};
+    var all = 0;
+    orders.forEach(function(o) {
+        var method = o.paymentMethod || 'Not recorded';
+        var amount = Number(o.total || 0);
+        totals[method] = (totals[method] || 0) + amount;
+        all += amount;
+    });
+    var top = { label: 'No payments yet', share: 0 };
+    var topAmount = 0;
+    Object.keys(totals).forEach(function(method) {
+        if (totals[method] > topAmount) {
+            topAmount = totals[method];
+            top.label = method;
+        }
+    });
+    top.share = all > 0 ? Math.round((topAmount / all) * 100) : 0;
+    return top;
+}
+
 function buildLocalAnalytics(period) {
     var orders = getOrders().filter(isRevenueEligibleOrder);
     var now = new Date();
@@ -5072,7 +5094,7 @@ function buildLocalAnalytics(period) {
         insights: {
             bestDay: { label: bestDay.label, revenue: bestDay.revenue },
             bestCategory: { label: 'No category yet', share: 0 },
-            topPayment: { label: 'Mobile Money', share: total ? 100 : 0 }
+            topPayment: topPaymentMethod(filtered)
         },
         empty: filtered.length === 0
     };
@@ -5733,33 +5755,11 @@ function loadReports(filterType) {
     if (insightTopCat) insightTopCat.textContent = topCatName;
     if (insightTopCatShare) insightTopCatShare.textContent = topCatShare + '%';
 
-    var payTotals = {};
-    var totalPayVal = 0;
-    currentOrders.forEach(function(o) {
-        if (!isRevenueEligibleOrder(o)) return;
-        var method = o.paymentMethod || o.payment_method;
-        if (!method) {
-            var hash = (o.db_id || 0) + (o.total || 0);
-            if (hash % 3 === 0) method = 'Mobile Money';
-            else if (hash % 3 === 1) method = 'Cash';
-            else method = 'Card';
-        }
-        payTotals[method] = (payTotals[method] || 0) + (o.total || 0);
-        totalPayVal += (o.total || 0);
-    });
-    var topPayName = 'No transactions';
-    var topPayVal = 0;
-    Object.keys(payTotals).forEach(function(m) {
-        if (payTotals[m] > topPayVal) {
-            topPayVal = payTotals[m];
-            topPayName = m;
-        }
-    });
-    var topPayShare = totalPayVal > 0 ? Math.round((topPayVal / totalPayVal) * 100) : 0;
+    var topPay = topPaymentMethod(currentOrders.filter(isRevenueEligibleOrder));
     var insightTopPay = document.getElementById('insight-top-payment');
     var insightTopPayShare = document.getElementById('insight-top-payment-share');
-    if (insightTopPay) insightTopPay.textContent = topPayName;
-    if (insightTopPayShare) insightTopPayShare.textContent = topPayShare + '%';
+    if (insightTopPay) insightTopPay.textContent = topPay.label;
+    if (insightTopPayShare) insightTopPayShare.textContent = topPay.share + '%';
 
     var selectTrend = document.getElementById('reports-sales-trend-interval');
     var trendDays = selectTrend ? selectTrend.value : 30;

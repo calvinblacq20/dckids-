@@ -894,12 +894,30 @@ async function run() {
     check('a recorded payment counts as revenue',
         r.status === 200 && close(Number(paidAnalytics.kpis.totalRevenue || 0), momoOrder.total_amount),
         `got ${paidAnalytics.kpis && paidAnalytics.kpis.totalRevenue}`);
+    check('the top payment method is the one recorded on the payment',
+        paidAnalytics.insights.topPayment.label === 'WhatsApp', paidAnalytics.insights.topPayment.label);
     const stockAfterPayment = (await dbGet('SELECT stock FROM products WHERE id = 1')).stock;
     check('a recorded payment takes the piece off the shelf once',
         stockAfterPayment === Math.max(0, stockBeforePayment - 1), `${stockBeforePayment} -> ${stockAfterPayment}`);
     r = await fetch(`${BASE}/api/orders/${momoOrderId}`, json('PUT', { status: 'paid' }, auth));
     check('recording the same payment twice changes nothing',
         r.status === 200 && (await dbGet('SELECT stock FROM products WHERE id = 1')).stock === stockAfterPayment);
+    // A paid order whose payment row is missing (an import, a failed insert)
+    // still earns revenue; how it was paid is unknown and must be shown so.
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'No Record', customer_phone: '0249000008', order_type: 'retail', items: [{ id: 1, quantity: 1, size: sizeLabel }]
+    }));
+    const unrecordedNumber = (await r.json()).order_number;
+    const unrecordedId = (await dbGet('SELECT id FROM orders WHERE order_number = ?', [unrecordedNumber])).id;
+    await dbRun('DELETE FROM payments WHERE order_id = ?', [unrecordedId]);
+    await fetch(`${BASE}/api/orders/${unrecordedId}`, json('PUT', { status: 'paid' }, auth));
+    r = await fetch(`${BASE}/api/analytics/sales?period=week`, { headers: auth });
+    const reportedMethods = (await r.json()).paymentPerformance.map((p) => p.method);
+    check('a paid order with no payment on record is reported as not recorded',
+        reportedMethods.includes('Not recorded'), reportedMethods.join(','));
+    check('no payment method is reported that nobody recorded',
+        reportedMethods.every((method) => ['WhatsApp', 'Not recorded'].includes(method)), reportedMethods.join(','));
+    await fetch(`${BASE}/api/orders/${unrecordedId}`, json('PUT', { status: 'cancelled' }, auth));
     r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', {
         customer_name: 'Card Payer', customer_phone: '0249000009', order_type: 'retail', items: [{ id: 1, quantity: 1, size: sizeLabel }]
     }));
@@ -1475,6 +1493,30 @@ async function run() {
     check('every message is signed with the shop name',
         ['pending', 'paid', 'delivered', 'cancelled']
             .every(status => wa.buildOrderMessage(Object.assign({}, owing, { status })).endsWith('DC Kids Brand')));
+
+    // The admin's payment insight reads the method the server recorded, and an
+    // order with none on record is reported as such rather than given one.
+    const mapStart = adminSource.indexOf('function mapServerOrder');
+    const mapEnd = adminSource.indexOf('function fetchOrdersFromServer');
+    const rankStart = adminSource.indexOf('function topPaymentMethod');
+    const rankEnd = adminSource.indexOf('function buildLocalAnalytics');
+    check('admin.js still carries the order mapper and the payment-method ranking',
+        mapStart !== -1 && mapEnd > mapStart && rankStart !== -1 && rankEnd > rankStart);
+    const insight = {};
+    vm.createContext(insight);
+    vm.runInContext(adminSource.slice(mapStart, mapEnd) + adminSource.slice(rankStart, rankEnd), insight);
+    check('the admin keeps the payment method the server sends',
+        insight.mapServerOrder({ id: 1, order_number: 'ORD-1', payment: { payment_method: 'WhatsApp' }, items: [] }).paymentMethod === 'WhatsApp');
+    check('an order the server sends with no payment has no method in the admin',
+        !insight.mapServerOrder({ id: 1, order_number: 'ORD-1', payment: null, items: [] }).paymentMethod);
+    const noneRecorded = insight.topPaymentMethod([{ total: 100 }, { total: 50 }]);
+    check('orders with no recorded method are reported as not recorded',
+        noneRecorded.label === 'Not recorded' && noneRecorded.share === 100, JSON.stringify(noneRecorded));
+    const mixedMethods = insight.topPaymentMethod([{ total: 30, paymentMethod: 'Cash' }, { total: 70, paymentMethod: 'WhatsApp' }]);
+    check('the top payment method is the one carrying the most money',
+        mixedMethods.label === 'WhatsApp' && mixedMethods.share === 70, JSON.stringify(mixedMethods));
+    check('with no orders there is no top payment method',
+        insight.topPaymentMethod([]).label === 'No payments yet');
 
     // The launch screen's layers have to exist, or it plays to an empty black screen.
     const splashLayers = ['dc', 'mark', 'tagline'];
