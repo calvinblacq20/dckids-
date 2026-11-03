@@ -75,7 +75,9 @@ async function run() {
         child.stdout.on('data', (chunk) => { child.output += chunk.toString(); child.emit('output'); });
         child.stderr.on('data', (chunk) => { child.output += chunk.toString(); child.emit('output'); });
 
-        await waitForOutput(/Server running on port/);
+        // Boot loads every dependency and runs the migrations on a fresh database:
+        // 5-11 s on a Windows dev machine, more under the full test chain.
+        await waitForOutput(/Server running on port/, 30000);
         socket = net.createConnection({ host: '127.0.0.1', port: testPort });
         await new Promise((resolve, reject) => {
             socket.once('connect', resolve);

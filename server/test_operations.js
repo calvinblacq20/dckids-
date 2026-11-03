@@ -131,14 +131,17 @@ async function run() {
     check('backup passes SQLite integrity check', String(Object.values(integrity)[0]).toLowerCase() === 'ok');
     check('backup restores representative data', proof && proof.value === 'persistent-value');
 
+    const missingDb = path.join(TEST_ROOT, 'missing.db');
+    check('the database for the failure run really is missing', !fs.existsSync(missingDb));
     const beforeFailure = fs.readdirSync(BACKUP_DIR).sort().join('|');
     const failedRun = spawnSync(process.execPath, ['backup_db.js'], {
         cwd: __dirname,
-        env: Object.assign({}, backupEnv, { DB_PATH: path.join(TEST_ROOT, 'missing.db') }),
+        env: Object.assign({}, backupEnv, { DB_PATH: missingDb }),
         encoding: 'utf8'
     });
     const afterFailure = fs.readdirSync(BACKUP_DIR).sort().join('|');
-    check('missing database makes backup command fail', failedRun.status !== 0);
+    check('missing database makes backup command fail', failedRun.status !== 0,
+        `status ${failedRun.status}, signal ${failedRun.signal}, stdout ${failedRun.stdout}, stderr ${failedRun.stderr}`);
     check('failed backup leaves successful backups untouched', beforeFailure === afterFailure);
     check('failed backup leaves no temporary files', !fs.readdirSync(BACKUP_DIR).some((file) => file.includes('.tmp-')));
 
