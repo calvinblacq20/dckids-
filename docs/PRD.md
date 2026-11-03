@@ -37,7 +37,8 @@ Totals are always computed **server-side**. Wholesale (and bulk pre-orders) = th
 - Sold-out and low-stock (≤5) states on cards; pre-orders never show stock urgency.
 - Guest phone gates tracking (last-4 match); wrong phone → 403.
 - Duplicate order numbers impossible (derived from row id).
-- Empty categories hidden from nav; category search resets filters.
+- Empty categories hidden from nav; category search resets filters. Category names and order are the owner's (`categories` table, edited in admin); a category with products can't be deleted, and any category a product uses that the list lacks is still shown.
+- The admin's order list loads the full history once, then polls only for changes (`/api/orders?since=`), with a full refresh every 15 minutes; order items load in batches, so the history has no size limit.
 - Offline/flaky network: service worker (network-first), `products.json` fallback.
 - OTP: 10-min expiry, 5 attempts, one active code; recovery codes one-time; pending/rejected staff cannot sign in.
 

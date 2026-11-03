@@ -464,6 +464,14 @@ async function run() {
     check('where there is no server (the static preview), sign-in says so instead of failing',
         adminSource.includes('function showNoServerSignIn()') &&
         /if \(!\/json\/\.test\(res\.headers\.get\('content-type'\) \|\| ''\)\) \{\s*showNoServerSignIn\(\);/.test(adminSource));
+    check('the shop, the product page and the admin all use the owner\'s category list from the server',
+        appSource.includes("fetch('/api/categories')") && appSource.includes('catOrder = list.map(') &&
+        productScriptSource.includes("getJson('/api/categories', null)") &&
+        adminSourceEarly.includes("fetch(API_URL + '/categories'") && adminSourceEarly.includes("method: 'PUT'") &&
+        !adminSourceEarly.includes("localStorage.setItem('dcKidsCategories'") && !adminSourceEarly.includes('<option value="baby">Baby</option>'));
+    check('the admin\'s 45-second poll asks only for changes, with a full refresh every 15 minutes',
+        adminSourceEarly.includes("'/orders?since=' + encodeURIComponent(__ordersCursor)") &&
+        adminSourceEarly.includes('if (ticks % 20 === 0) fetchOrdersFromServer();') && adminSourceEarly.includes('else fetchOrderChanges();'));
     check('the docs describe the real sign-in, not the old admin password',
         ['README.md', 'DEPLOYMENT.md'].every((doc) => !/ADMIN_PASSWORD|admin123/.test(fs.readFileSync(path.join(__dirname, '..', doc), 'utf8'))));
     check('admin settings exposes accessible recovery-code management',
@@ -1129,6 +1137,58 @@ async function run() {
     await fetch(`${BASE}/api/customer/session`, json('POST', {}, { 'Authorization': 'Bearer verified-legacy' }));
     r = await fetch(`${BASE}/api/customer/orders`, { headers: { 'Authorization': 'Bearer verified-legacy' } });
     check('later phone changes never claim unrelated orders', !(await r.json()).some(item => item.order_number === laterPhoneOrder.order_number));
+
+    // ---- categories: the owner's names and order, on the server ----
+    r = await fetch(`${BASE}/api/categories`);
+    const seededCats = await r.json();
+    check('the shop\'s categories come from the server, seeded with the names and order shoppers saw before',
+        r.status === 200 && Array.isArray(seededCats) && seededCats.slice(0, 3).map((c) => c.label).join('|') === 'Newborn|Clothing|Shoes' &&
+        seededCats.every((c, i) => c.position === i), JSON.stringify(seededCats.slice(0, 3)));
+    const catPut = (list, headers) => fetch(`${BASE}/api/categories`, json('PUT', { categories: list }, headers));
+    r = await catPut(seededCats);
+    check('only a signed-in manager can change categories', r.status === 401, `status ${r.status}`);
+    const renamed = seededCats.map((c) => (c.id === 'clothing' ? { id: c.id, label: 'Kids wear' } : { id: c.id, label: c.label }));
+    const shoesFirst = [renamed.find((c) => c.id === 'shoes')].concat(renamed.filter((c) => c.id !== 'shoes'), [{ id: 'toys', label: 'Toys' }]);
+    r = await catPut(shoesFirst, auth);
+    const savedCats = await r.json();
+    const readBack = await (await fetch(`${BASE}/api/categories`)).json();
+    check('a manager renames, reorders and adds categories, and the shop reads them back',
+        r.status === 200 && readBack[0].id === 'shoes' && readBack.find((c) => c.id === 'clothing').label === 'Kids wear' &&
+        readBack[readBack.length - 1].id === 'toys' && savedCats.length === readBack.length, JSON.stringify(readBack.slice(0, 2)));
+    r = await catPut(shoesFirst.filter((c) => c.id !== 'clothing'), auth);
+    check('a category that still has products cannot be deleted', r.status === 400 && /Move or remove the \d+ products? in "Kids wear"/.test((await r.json()).error || ''), `status ${r.status}`);
+    r = await catPut(shoesFirst.filter((c) => c.id !== 'toys'), auth);
+    check('an empty category can be deleted', r.status === 200 && !(await r.json()).some((c) => c.id === 'toys'));
+    r = await catPut([{ id: 'Bad Key!', label: 'x' }], auth);
+    check('a malformed category key is refused', r.status === 400, `status ${r.status}`);
+    r = await catPut([{ id: 'shoes', label: 'A' }, { id: 'shoes', label: 'B' }], auth);
+    check('a category listed twice is refused', r.status === 400, `status ${r.status}`);
+    r = await catPut(seededCats.map((c) => ({ id: c.id, label: c.label })), auth);
+    check('the original categories are restored', r.status === 200 && (await r.json())[1].label === 'Clothing');
+
+    // ---- a product deleted after it went in a cart ----
+    r = await fetch(`${BASE}/api/orders`, json('POST', { customer_name: 'Gone Item', customer_phone: '0241110000', order_type: 'retail', items: [{ id: 999999, size: 'One Size', quantity: 1 }] }));
+    const goneBody = await r.json();
+    check('ordering a product that no longer exists says so (400), not a server error', r.status === 400 && /no longer sold/.test(goneBody.error || ''), `status ${r.status} ${goneBody.error}`);
+    r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', Object.assign({}, directPayload, { customer_phone: '0241110001', items: [{ id: 999999, size: 'One Size', quantity: 1 }] })));
+    check('card checkout says the same', r.status === 400 && /no longer sold/.test((await r.json()).error || ''), `status ${r.status}`);
+
+    // ---- the admin's order poll: only what changed ----
+    r = await fetch(`${BASE}/api/orders`, { headers: auth });
+    const cursor = r.headers.get('x-orders-cursor');
+    const fullCount = (await r.json()).length;
+    check('every orders response carries the cursor for the next poll', /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(cursor || ''), cursor);
+    r = await fetch(`${BASE}/api/orders?since=2099-01-01%2000:00:00`, { headers: auth });
+    check('nothing has changed since a future moment', r.status === 200 && (await r.json()).length === 0);
+    r = await fetch(`${BASE}/api/orders`, json('POST', { customer_name: 'Poll Check', customer_phone: '0241110002', order_type: 'retail', items: [{ id: 1, quantity: 1, size: sizeLabel }] }));
+    const polled = await r.json();
+    r = await fetch(`${BASE}/api/orders?since=${encodeURIComponent(cursor)}`, { headers: auth });
+    const changes = await r.json();
+    check('the poll returns the new order with its items, and only orders made or changed since the cursor',
+        changes.some((o) => o.order_number === polled.order_number && o.items.length === 1) &&
+        changes.every((o) => String(o.created_at) >= cursor || String(o.updated_at) >= cursor), `${changes.length} of ${fullCount + 1}`);
+    r = await fetch(`${BASE}/api/orders?since=yesterday`, { headers: auth });
+    check('a malformed poll cursor is refused', r.status === 400, `status ${r.status}`);
 
     // ---- wholesale: per-piece discount, MOQ floor ----
     const settings = await (await fetch(`${BASE}/api/settings`)).json();

@@ -984,6 +984,73 @@ app.get('/api/products', (req, res) => {
     });
 });
 
+// Product categories as the shop shows them, in order. Any category a product
+// uses that the list lacks (one set up before categories were editable) is
+// added at the end under its own key, so no product ever falls out of the shop.
+const CATEGORY_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const categoryLabelFor = (id) => id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' ');
+async function categoryList() {
+    const rows = await dbAllAsync('SELECT id, label, position FROM categories ORDER BY position, id', []);
+    const known = new Set(rows.map((r) => r.id));
+    const used = await dbAllAsync("SELECT DISTINCT LOWER(TRIM(cat)) AS id FROM products WHERE cat IS NOT NULL AND TRIM(cat) <> ''", []);
+    used.map((u) => u.id).filter((id) => !known.has(id) && CATEGORY_ID.test(id)).sort().forEach((id) => {
+        rows.push({ id, label: categoryLabelFor(id), position: rows.length });
+    });
+    return rows.map((r, i) => ({ id: r.id, label: r.label, position: i }));
+}
+
+app.get('/api/categories', async (req, res) => {
+    try {
+        res.json(await categoryList());
+    } catch (err) {
+        serverError(res, err);
+    }
+});
+
+// The owner (or a manager) saves the whole list at once, in display order:
+// adding, renaming, reordering and deleting are all one save. A category that
+// still has products can't be deleted; they have to move first.
+app.put('/api/categories', authenticateToken, requireManager, async (req, res) => {
+    const list = req.body && Array.isArray(req.body.categories) ? req.body.categories : null;
+    if (!list || !list.length || list.length > 60) return res.status(400).json({ error: 'Send between 1 and 60 categories' });
+    const clean = [];
+    const seen = new Set();
+    for (const entry of list) {
+        const id = String((entry && entry.id) || '').trim().toLowerCase();
+        const label = String((entry && entry.label) || '').trim();
+        if (!CATEGORY_ID.test(id) || id.length > 40) return res.status(400).json({ error: `"${id || '(blank)'}" is not a valid category key (lowercase letters, numbers and dashes)` });
+        if (!label || label.length > 40) return res.status(400).json({ error: 'Each category needs a name of up to 40 characters' });
+        if (seen.has(id)) return res.status(400).json({ error: `"${label}" appears twice` });
+        seen.add(id);
+        clean.push({ id, label });
+    }
+    try {
+        const before = await categoryList();
+        for (const old of before) {
+            if (seen.has(old.id)) continue;
+            const row = await dbGetAsync('SELECT COUNT(*) AS n FROM products WHERE LOWER(TRIM(cat)) = ?', [old.id]);
+            if (row && row.n > 0) {
+                return res.status(400).json({ error: `Move or remove the ${row.n} product${row.n === 1 ? '' : 's'} in "${old.label}" before deleting it` });
+            }
+        }
+        await dbRunAsync('BEGIN IMMEDIATE');
+        try {
+            await dbRunAsync('DELETE FROM categories');
+            for (let i = 0; i < clean.length; i++) {
+                await dbRunAsync('INSERT INTO categories (id, label, position) VALUES (?, ?, ?)', [clean[i].id, clean[i].label, i]);
+            }
+            await dbRunAsync('COMMIT');
+        } catch (writeErr) {
+            await dbRunAsync('ROLLBACK').catch(() => {});
+            throw writeErr;
+        }
+        logAdminAction(req, 'update_categories', 'categories', null, `Saved ${clean.length} categories`, { categories: clean });
+        res.json(await categoryList());
+    } catch (err) {
+        serverError(res, err);
+    }
+});
+
 app.get('/api/settings', (req, res) => {
     db.get(`SELECT * FROM store_settings WHERE id = 1`, (err, row) => {
         if (err) return serverError(res, err);
@@ -1295,43 +1362,6 @@ app.delete('/api/products/:id', authenticateToken, requireManager, (req, res) =>
                 });
             });
         });
-    });
-});
-
-// Deduct stock (Staff & Manager)
-app.put('/api/products/:id/deduct', authenticateToken, (req, res) => {
-    const productId = req.params.id;
-    const username = req.user.username; // Get the user who is making the request
-    
-    // Strict Backend Validation: Check current stock first
-    db.get(`SELECT stock FROM products WHERE id = ?`, [productId], (err, row) => {
-        if (err) return serverError(res, err);
-        if (!row) return res.status(404).json({ error: 'Product not found' });
-        
-        if (row.stock <= 0) {
-            return res.status(400).json({ error: 'Stock is already 0. Cannot deduct further.' });
-        }
-
-        // Proceed to deduct if stock > 0
-        db.run(
-            `UPDATE products SET stock = stock - 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-            [productId],
-            function (err) {
-                if (err) return serverError(res, err);
-                
-                // Log the transaction
-                db.run(
-                    `INSERT INTO transactions (product_id, username, action) VALUES (?, ?, ?)`,
-                    [productId, username, 'deduct'],
-                    (err) => {
-                        if (err) console.error("Error logging transaction:", err);
-                        logAdminAction(req, 'deduct_stock', 'product', productId, `Deducted one item from product #${productId}`);
-                        // We still return success even if logging fails
-                        res.json({ success: true, changes: this.changes });
-                    }
-                );
-            }
-        );
     });
 });
 
@@ -1770,6 +1800,7 @@ function bulkFactor(price, bulkPrice, discountPercent) {
 function bulkApplies(isWholesale, quantity, minimum) {
     return !!isWholesale && Number(quantity) >= (Number(minimum) || 1);
 }
+const GONE_PRODUCT_MESSAGE = 'An item in your cart is no longer sold. Remove it and try again, or message us on WhatsApp.';
 const WHOLESALE_OFF_MESSAGE = 'Wholesale prices are switched off right now. Switch to Retail to order, or message us on WhatsApp.';
 
 // Create new order (Storefront)
@@ -1860,7 +1891,12 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
             return new Promise((resolve, reject) => {
                 db.get(`SELECT * FROM products WHERE id = ?`, [item.id], (err, product) => {
                     if (err) return reject(err);
-                    if (!product) return reject(new Error(`Product ${item.id} not found`));
+                    // A product deleted since the shopper added it: their mistake to fix, not a server fault.
+                    if (!product) {
+                        const gone = new Error(GONE_PRODUCT_MESSAGE);
+                        gone.status = 400;
+                        return reject(gone);
+                    }
                     
                     // Determine the per-unit retail price for the chosen size.
                     // Managed sizes (admin-set absolute prices) are authoritative;
@@ -2093,7 +2129,7 @@ async function pricePaystackCheckout(checkout) {
     if (checkout.isWholesale && settings && !Number(settings.wholesale_enabled)) throw paymentError(WHOLESALE_OFF_MESSAGE);
     const processedItems = await Promise.all(checkout.items.map(async (item) => {
         const product = await dbGetAsync('SELECT * FROM products WHERE id = ?', [Number(item.id)]);
-        if (!product) throw paymentError(`Product ${item.id} not found`);
+        if (!product) throw paymentError(GONE_PRODUCT_MESSAGE);
         const managedSizes = parseSizesJson(product.sizes);
         const sizeMatch = managedSizes ? managedSizes.find((size) => size.label === item.size) : null;
         const quantity = Number(item.quantity);
@@ -2563,46 +2599,72 @@ app.post('/api/payments/paystack/webhook', async (req, res) => {
     }
 });
 
-// List orders (Admin)
-app.get('/api/orders', authenticateToken, (req, res) => {
-    // Optional server-side pagination keeps this fast no matter how many orders
-    // accumulate over the years. Default (no params) still returns the full array
-    // so the existing admin UI keeps working unchanged.
+// The admin's 45-second poll asks only for what changed: ?since= returns orders
+// created or updated at or after that moment (UTC, "YYYY-MM-DD HH:MM:SS"). Every
+// response carries X-Orders-Cursor for the next poll: now, less a few seconds so
+// a write landing in the same second is never missed (the admin merges by id, so
+// seeing an order twice is harmless).
+function ordersCursor() {
+    return new Date(Date.now() - 5000).toISOString().slice(0, 19).replace('T', ' ');
+}
+
+// Rows for many orders, a few hundred ids per query: SQLite allows 32,766 bound
+// variables in one statement, so one variable per order failed once the history
+// passed that many orders.
+async function rowsForOrders(table, ids, orderBy) {
+    const rows = [];
+    for (let i = 0; i < ids.length; i += 500) {
+        const chunk = ids.slice(i, i + 500);
+        const marks = chunk.map(() => '?').join(',');
+        rows.push(...await dbAllAsync(`SELECT * FROM ${table} WHERE order_id IN (${marks})${orderBy ? ' ORDER BY ' + orderBy : ''}`, chunk));
+    }
+    return rows;
+}
+
+// Get all orders (Admin / Staff)
+app.get('/api/orders', authenticateToken, async (req, res) => {
+    // Optional server-side pagination (?page=&limit=) and change feed (?since=).
+    // With neither, the full history comes back, as the admin's first load expects.
+    const since = String(req.query.since || '').trim();
+    if (since && !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(since)) {
+        return res.status(400).json({ error: 'since must be a UTC time as YYYY-MM-DD HH:MM:SS' });
+    }
     const hasPaging = req.query.page !== undefined || req.query.limit !== undefined;
-    let sql = `SELECT * FROM orders ORDER BY created_at DESC`;
+    let sql = 'SELECT * FROM orders';
     const params = [];
+    if (since) {
+        sql += ' WHERE created_at >= ? OR updated_at >= ?';
+        params.push(since, since);
+    }
+    sql += ' ORDER BY created_at DESC';
     if (hasPaging) {
         const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
         const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-        sql += ` LIMIT ? OFFSET ?`;
+        sql += ' LIMIT ? OFFSET ?';
         params.push(limit, (page - 1) * limit);
     }
 
-    db.all(sql, params, (err, orders) => {
-        if (err) return serverError(res, err);
+    try {
+        res.set('X-Orders-Cursor', ordersCursor());
+        const orders = await dbAllAsync(sql, params);
         if (!orders.length) return res.json([]);
-
-        // Single batched query for all items instead of one query per order (N+1).
-        const ids = orders.map(o => o.id);
-        const placeholders = ids.map(() => '?').join(',');
-        db.all(`SELECT * FROM order_items WHERE order_id IN (${placeholders})`, ids, (err2, allItems) => {
-            if (err2) return serverError(res, err2);
-            const byOrder = {};
-            (allItems || []).forEach(it => {
-                (byOrder[it.order_id] = byOrder[it.order_id] || []).push(it);
-            });
-            orders.forEach(o => { o.items = byOrder[o.id] || []; });
-            db.all(`SELECT * FROM payments WHERE order_id IN (${placeholders}) ORDER BY id DESC`, ids, (paymentErr, allPayments) => {
-                if (paymentErr) return serverError(res, paymentErr);
-                const paymentByOrder = {};
-                (allPayments || []).forEach((payment) => {
-                    if (!paymentByOrder[payment.order_id]) paymentByOrder[payment.order_id] = payment;
-                });
-                orders.forEach((order) => { order.payment = paymentByOrder[order.id] || null; });
-                res.json(orders);
-            });
+        const ids = orders.map((o) => o.id);
+        const byOrder = {};
+        (await rowsForOrders('order_items', ids)).forEach((it) => {
+            (byOrder[it.order_id] = byOrder[it.order_id] || []).push(it);
         });
-    });
+        const paymentByOrder = {};
+        (await rowsForOrders('payments', ids, 'id DESC')).forEach((payment) => {
+            if (!paymentByOrder[payment.order_id]) paymentByOrder[payment.order_id] = payment;
+        });
+        orders.forEach((order) => {
+            order.items = byOrder[order.id] || [];
+            order.payment = paymentByOrder[order.id] || null;
+        });
+        res.json(orders);
+    } catch (err) {
+        serverError(res, err);
+    }
 });
 
 // Get order item preview details (Admin)
@@ -3568,28 +3630,6 @@ app.get('/api/products/:id/reviews', (req, res) => {
     );
 });
 
-// Batch rating summary for the storefront grid — one round trip for the whole
-// page of cards instead of one fetch per product, so a slow connection or a
-// single failed request can't leave individual cards permanently unrated.
-app.get('/api/products/reviews-summary', (req, res) => {
-    const ids = String(req.query.ids || '').split(',').map(s => parseInt(s, 10)).filter(Number.isInteger);
-    if (!ids.length) return res.json({});
-    const placeholders = ids.map(() => '?').join(',');
-    db.all(
-        `SELECT product_id, COUNT(*) as count, AVG(rating) as average
-         FROM product_reviews WHERE product_id IN (${placeholders}) AND status = 'approved'
-         GROUP BY product_id`,
-        ids,
-        (err, rows) => {
-            if (err) return serverError(res, err);
-            const summaries = {};
-            ids.forEach(id => { summaries[id] = { count: 0, average: 0 }; });
-            rows.forEach(r => { summaries[r.product_id] = { count: r.count, average: Math.round(r.average * 10) / 10 }; });
-            res.json(summaries);
-        }
-    );
-});
-
 app.post('/api/products/:id/reviews', reviewLimiter, optionalCustomer, (req, res) => {
     const { rating, title, body, author_name } = req.body || {};
     const productId = req.params.id;
@@ -4064,7 +4104,7 @@ app.get('/api/products/image-health', authenticateToken, requireManager, (req, r
 });
 
 // Public product detail used by shareable product pages. This catch-all belongs
-// below named GET routes such as /image-health and /reviews-summary so those
+// below named GET routes such as /image-health and /next-sku so those
 // names can never be mistaken for product IDs.
 app.get('/api/products/:id', (req, res) => {
     const productId = Number.parseInt(req.params.id, 10);
