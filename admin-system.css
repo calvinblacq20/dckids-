@@ -1953,11 +1953,6 @@ a.adm-row:hover, button.adm-row:hover { background: var(--ground); }
 .check-row { display: flex; align-items: flex-start; gap: 12px; padding: 4px 2px; cursor: pointer; }
 .check-row input { flex: none; width: 20px; height: 20px; margin-top: 2px; accent-color: var(--ink); cursor: pointer; }
 
-/* Payment in progress (Paystack sheet) */
-.pay-wait { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 12px 0 4px; text-align: center; }
-.pay-wait-icon { display: grid; place-items: center; width: 64px; height: 64px; margin-bottom: 8px; border-radius: 50%; background: var(--lime); color: var(--ink); }
-.pay-wait-icon.is-failed { background: var(--ink-06); }
-
 /* Guest prompts: save orders to an optional account */
 .account-card { display: flex; flex-direction: column; gap: 10px; padding: 18px; border-radius: var(--r-16); background: var(--charcoal); color: #fff; }
 .account-card .muted { color: var(--white-75); }

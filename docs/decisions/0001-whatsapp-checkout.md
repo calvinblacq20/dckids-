@@ -1,6 +1,6 @@
 # ADR 0001 — Checkout completes over WhatsApp, no online card payments
 
-**Status:** superseded by [ADR 0005](0005-paystack-card-checkout.md) · **Date:** 2026-06 (recorded 2026-07-17, superseded 2026-08)
+**Status:** accepted, reinstated by [ADR 0011](0011-whatsapp-only-payments.md) · **Date:** 2026-06 (recorded 2026-07-17, superseded 2026-08, reinstated 2026-11)
 
 ## Decision
 Orders are placed on the site (name + phone + items; totals computed server-side) and confirmed/paid via WhatsApp — mobile money or cash on delivery. No card gateway is integrated.
@@ -25,3 +25,7 @@ the provider. What changed is that payment state is now automatic for the card
 path, through webhooks and a reconciliation CLI.
 
 See ADR 0005 for the current position.
+
+## Reinstated
+The card checkout was retired in 2026-11 ([ADR 0011](0011-whatsapp-only-payments.md)).
+The decision above stands again as written.

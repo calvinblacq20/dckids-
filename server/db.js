@@ -183,8 +183,10 @@ function backfillUpdatedAt(table, migration, done) {
     });
 }
 
-// Paystack/direct-checkout migration. Keep this additive so existing WhatsApp
-// orders and analytics rows remain intact on long-lived production databases.
+// Commerce migration: delivery-address and payment-provider columns. The
+// provider columns came with the retired card checkout and stay so older
+// payment rows remain readable. Keep this additive so existing orders and
+// analytics rows remain intact on long-lived production databases.
 function migrateCommerceSchema(done) {
     const ensureColumns = (table, definitions, callback) => {
         db.all(`PRAGMA table_info(${table})`, [], (err, columns) => {

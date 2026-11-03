@@ -423,12 +423,10 @@
         </div>
         <label class="field"><span>Landmark <em>(optional)</em></span><input id="co-landmark" maxlength="200" placeholder="e.g. Opposite ECOWAS Plaza"></label>
         <label class="field"><span>Notes <em>(optional)</em></span><textarea id="co-notes" rows="3" maxlength="1000"></textarea></label>
-        <p class="cart__hint" id="co-pay-note" hidden>Online payment covers your items. We'll contact you to confirm the delivery charge.</p>
       </div>
       <div class="cart__foot">
         <div class="cart__sub cart__welcome" id="co-welcome" hidden><span>Welcome offer (<span id="co-welcome-pct">10</span>% off)</span><b id="co-welcome-amt">&minus;GH₵ 0.00</b></div>
         <div class="cart__sub"><span>Total</span><b id="cart-total-2">GH₵ 0.00</b></div>
-        <button class="btn btn--dark" type="submit" name="method" value="paystack" id="pay-btn" hidden>Pay securely with Paystack</button>
         <button class="btn btn--wa" type="submit" name="method" value="whatsapp" id="place-btn">Order on WhatsApp</button>
       </div>
     </form>
@@ -542,10 +540,10 @@
   </button>
 
   <script src="image-resolver.js?v=2"></script>
-  <script src="receipt.js?v=2"></script>
+  <script src="receipt.js?v=3"></script>
   <!-- async: customer sign-in must never hold up the first paint of the shop -->
   <script type="module" async src="firebase-auth.js?v=6"></script>
-  <script src="app.js?v=56"></script>
+  <script src="app.js?v=57"></script>
   <script>
     if ('serviceWorker' in navigator) {
       // When an updated worker takes control, reload once so the page runs the

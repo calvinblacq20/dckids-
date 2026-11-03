@@ -141,27 +141,19 @@ if (IS_PROD && ALLOWED_ORIGINS.length) {
     app.use(cors()); // dev: allow all
 }
 
-app.use(express.json({
-    limit: '8mb',
-    verify: (req, res, buffer) => {
-        if (String(req.originalUrl || '').startsWith('/api/payments/paystack/webhook')) {
-            req.rawBody = Buffer.from(buffer);
-        }
-    }
-}));
+app.use(express.json({ limit: '8mb' }));
 app.use(express.urlencoded({ limit: '8mb', extended: true }));
 
 // Railway cannot pause public ingress without replacing the running container.
 // During a storage cutover, keep reads available while every state-changing
-// request returns a retriable 503. Paystack will safely retry its webhook.
+// request returns a retriable 503.
 app.use(createMaintenanceMiddleware());
 
 // Authenticated and customer-account responses contain private data and must
 // never be retained by browsers, CDNs, or the service worker.
 app.use((req, res, next) => {
     const pathName = String(req.path || '');
-    if (req.headers.authorization || pathName.startsWith('/api/customer/') || pathName.startsWith('/api/wishlist') ||
-        pathName.startsWith('/api/payments/') || pathName.startsWith('/api/checkout/paystack')) {
+    if (req.headers.authorization || pathName.startsWith('/api/customer/') || pathName.startsWith('/api/wishlist')) {
         res.setHeader('Cache-Control', 'private, no-store, max-age=0');
         res.setHeader('Pragma', 'no-cache');
     }
@@ -351,10 +343,6 @@ const crypto = require('crypto');
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const RESEND_FROM = process.env.RESEND_FROM || 'DC Kids Admin <onboarding@resend.dev>';
 const APP_URL = process.env.APP_URL || 'http://localhost:3001';
-const SHOP_NOTIFY_EMAIL = String(process.env.SHOP_NOTIFY_EMAIL || '').trim();
-const PAYSTACK_SECRET_KEY = String(process.env.PAYSTACK_SECRET_KEY || '').trim();
-const PAYSTACK_AKUA_WEBHOOK_URL = String(process.env.PAYSTACK_AKUA_WEBHOOK_URL || 'https://akua-pos.vercel.app/api/payments/paystack/webhook').trim();
-const PAYSTACK_LEGACY_WEBHOOK_URL = String(process.env.PAYSTACK_LEGACY_WEBHOOK_URL || '').trim();
 
 // Google Sign-In (optional). When GOOGLE_CLIENT_ID is set, the admin login page
 // shows a "Continue with Google" button; when unset, the button is hidden and
@@ -1822,7 +1810,6 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
     // Idempotency: the storefront sends a random key per checkout attempt. A
     // retry (double-tap, dropped connection + resubmit) carrying a key we have
     // already fulfilled returns that order instead of creating a second one.
-    // With Paystack attached, this is also what prevents a duplicate charge.
     const idemKey = typeof req.body.idempotency_key === 'string' && /^[\w-]{8,64}$/.test(req.body.idempotency_key)
         ? req.body.idempotency_key : null;
     const authoritativeEmail = req.customer && req.customer.email
@@ -2051,7 +2038,7 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                             [order_id, payment_method || 'WhatsApp', total_amount, 'pending']
                         );
 
-                        notifyStaffOfOrder({ order_number, customer_name, order_type, total_amount }, false);
+                        notifyStaffOfOrder({ order_number, customer_name, order_type, total_amount });
 
                         res.json({ success: true, order_number, total_amount, status: initialStatus, welcome_discount: welcomePercent });
                     }
@@ -2071,196 +2058,6 @@ function paymentError(message, status) {
     const error = new Error(message);
     error.status = status || 400;
     return error;
-}
-
-function normalizePaystackCheckout(body, customer) {
-    const source = body || {};
-    const items = source.items;
-    if (!Array.isArray(items) || items.length === 0) throw paymentError('Order must contain items');
-    if (items.length > 50) throw paymentError('Too many items in one order (max 50)');
-    const orderType = String(source.order_type || 'retail').toLowerCase();
-    const preorderKind = normalizePreorderKind(orderType, source.preorder_kind);
-    const isWholesale = orderType === 'wholesale' || preorderKind === 'bulk';
-    const quantityCap = isWholesale ? 1000 : 100;
-    items.forEach((item) => {
-        if (!Number.isInteger(Number(item.id)) || Number(item.id) < 1) throw paymentError('Invalid product id in order');
-        if (!Number.isInteger(Number(item.quantity)) || Number(item.quantity) < 1 || Number(item.quantity) > quantityCap) {
-            throw paymentError(`Quantity must be a whole number between 1 and ${quantityCap}`);
-        }
-    });
-
-    const customerName = String(source.customer_name || '').trim();
-    const customerPhone = String(source.customer_phone || '').trim();
-    const customerEmail = customer && customer.email
-        ? String(customer.email).trim().toLowerCase()
-        : String(source.customer_email || '').trim().toLowerCase();
-    const address = source.delivery_address && typeof source.delivery_address === 'object' ? source.delivery_address : {};
-    const normalizedAddress = {
-        line1: String(address.line1 || '').trim(),
-        line2: String(address.line2 || '').trim(),
-        city: String(address.city || source.delivery_area || '').trim(),
-        region: String(address.region || '').trim(),
-        landmark: String(address.landmark || '').trim()
-    };
-    const notes = String(source.notes || '').trim();
-
-    if (!customerName) throw paymentError('Customer name is required');
-    if (!customerPhone) throw paymentError('Phone number is required');
-    if (customerName.length > 100) throw paymentError('Name is too long');
-    if (customerPhone.length > 30) throw paymentError('Phone number is too long');
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail) || customerEmail.length > 254) throw paymentError('Enter a valid email address');
-    if (!normalizedAddress.line1 || !normalizedAddress.city || !normalizedAddress.region) {
-        throw paymentError('Full delivery address, city or area, and region are required for Paystack');
-    }
-    [['Address', normalizedAddress.line1, 200], ['Address line 2', normalizedAddress.line2, 200],
-        ['City or area', normalizedAddress.city, 100], ['Region', normalizedAddress.region, 100],
-        ['Landmark', normalizedAddress.landmark, 200]].forEach(([label, value, max]) => {
-        if (value.length > max) throw paymentError(`${label} is too long`);
-    });
-    if (notes.length > 1000) throw paymentError('Notes are too long (max 1000 characters)');
-
-    return { items, orderType, preorderKind, isWholesale, customerName, customerPhone, customerEmail, address: normalizedAddress, notes };
-}
-
-async function pricePaystackCheckout(checkout) {
-    const settings = await dbGetAsync('SELECT * FROM store_settings WHERE id = 1');
-    const minimumOrder = settings ? Number(settings.wholesale_moq || 10) : 10;
-    const discount = settings ? Number(settings.wholesale_discount || 0) : 0;
-    if (checkout.isWholesale && settings && !Number(settings.wholesale_enabled)) throw paymentError(WHOLESALE_OFF_MESSAGE);
-    const processedItems = await Promise.all(checkout.items.map(async (item) => {
-        const product = await dbGetAsync('SELECT * FROM products WHERE id = ?', [Number(item.id)]);
-        if (!product) throw paymentError(GONE_PRODUCT_MESSAGE);
-        const managedSizes = parseSizesJson(product.sizes);
-        const sizeMatch = managedSizes ? managedSizes.find((size) => size.label === item.size) : null;
-        const quantity = Number(item.quantity);
-        let unitPrice = sizeMatch && sizeMatch.price != null ? Number(sizeMatch.price) : Number(product.price || 0);
-        // The same rule as a WhatsApp order: bulk price from the minimum, retail under it.
-        if (bulkApplies(checkout.isWholesale, quantity, minimumOrder)) unitPrice *= bulkFactor(product.price, product.wholesale_price, discount);
-        if (!sizeMatch) unitPrice += getPriceModifier(item.size);
-        unitPrice = Math.round(unitPrice * 100) / 100;
-        if ((product.fulfillment_type === 'preorder' || checkout.orderType === 'preorder') && !preorderWindowOpen(settings)) {
-            throw paymentError(PREORDER_CLOSED_MESSAGE);
-        }
-
-        // The card path priced an order without ever checking stock, so it could
-        // take payment for pieces already promised to earlier orders. Refusing
-        // here is cheaper than refunding later. Pre-orders are sourced on demand.
-        if (product.fulfillment_type !== 'preorder') {
-            const held = await dbGetAsync(
-                `SELECT COALESCE(SUM(oi.quantity), 0) AS reserved
-                   FROM order_items oi
-                   JOIN orders o ON o.id = oi.order_id
-                  WHERE oi.product_id = ? AND o.status IN (${STOCK_HOLDING_PLACEHOLDERS})`,
-                [product.id, ...STOCK_HOLDING_STATUSES]
-            );
-            const available = Number(product.stock || 0) - Number((held && held.reserved) || 0);
-            if (quantity > available) {
-                throw paymentError(available > 0
-                    ? `Only ${available} of "${product.name}" ${available === 1 ? 'is' : 'are'} still available. Reduce the quantity and try again.`
-                    : `"${product.name}" is out of stock right now.`);
-            }
-        }
-
-        return {
-            product_id: product.id,
-            product_name: `${product.name} (${item.size || 'Standard'})`,
-            quantity,
-            price_at_time: unitPrice
-        };
-    }));
-    const totalAmount = Math.round(processedItems.reduce((sum, item) => sum + item.price_at_time * item.quantity, 0) * 100) / 100;
-    return { processedItems, totalAmount };
-}
-
-async function createPaystackOrder(checkout, priced, customer) {
-    let transactionOpen = false;
-    try {
-        await dbRunAsync('BEGIN IMMEDIATE');
-        transactionOpen = true;
-        // Claimed inside the transaction, so a failed order rolls the claim back too.
-        const welcomePercent = await claimWelcomeDiscount(checkout.customerPhone, checkout.isWholesale);
-        const totalAmount = welcomePercent
-            ? Math.round(priced.totalAmount * (1 - welcomePercent / 100) * 100) / 100
-            : priced.totalAmount;
-        const temporaryNumber = `TMP-${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
-        const inserted = await dbRunAsync(
-            `INSERT INTO orders (order_number, customer_name, customer_phone, customer_email, order_type, total_amount, status,
-                delivery_area, delivery_address_line1, delivery_address_line2, delivery_city, delivery_region,
-                delivery_landmark, notes, customer_account_id, source, preorder_kind, discount_percent)
-             VALUES (?, ?, ?, ?, ?, ?, 'awaiting_payment', ?, ?, ?, ?, ?, ?, ?, ?, 'storefront', ?, ?)`,
-            [temporaryNumber, checkout.customerName, checkout.customerPhone, checkout.customerEmail, checkout.orderType,
-                totalAmount, checkout.address.city, checkout.address.line1, checkout.address.line2 || null,
-                checkout.address.city, checkout.address.region, checkout.address.landmark || null, checkout.notes || null,
-                customer ? customer.cid : null, checkout.preorderKind, welcomePercent]
-        );
-        const orderId = inserted.lastID;
-        const orderNumber = `ORD-${10000 + orderId}`;
-        const reference = `DCK-${orderId}-${crypto.randomBytes(10).toString('hex')}`;
-        await dbRunAsync('UPDATE orders SET order_number = ? WHERE id = ?', [orderNumber, orderId]);
-        if (welcomePercent) await linkWelcomeClaim(checkout.customerPhone, orderId);
-        for (const item of priced.processedItems) {
-            await dbRunAsync(
-                'INSERT INTO order_items (order_id, product_id, product_name, quantity, price_at_time) VALUES (?, ?, ?, ?, ?)',
-                [orderId, item.product_id, item.product_name, item.quantity, item.price_at_time]
-            );
-        }
-        await dbRunAsync(
-            `INSERT INTO customers
-                (name, phone, email, address, city, country, status, customer_account_id, updated_at)
-             VALUES (?, ?, ?, ?, ?, 'Ghana', 'active', ?, CURRENT_TIMESTAMP)
-             ON CONFLICT(phone) DO UPDATE SET
-                name = excluded.name, email = COALESCE(excluded.email, customers.email),
-                address = excluded.address, city = excluded.city,
-                customer_account_id = COALESCE(excluded.customer_account_id, customers.customer_account_id),
-                status = 'active', updated_at = CURRENT_TIMESTAMP`,
-            [checkout.customerName, checkout.customerPhone, checkout.customerEmail, checkout.address.line1,
-                checkout.address.city, customer ? customer.cid : null]
-        );
-        const payment = await dbRunAsync(
-            `INSERT INTO payments (order_id, payment_method, amount, status, provider, provider_reference, currency)
-             VALUES (?, 'Paystack', ?, 'pending', 'paystack', ?, 'GHS')`,
-            [orderId, totalAmount, reference]
-        );
-        await dbRunAsync('COMMIT');
-        transactionOpen = false;
-        return { orderId, orderNumber, paymentId: payment.lastID, reference, totalAmount, welcomePercent };
-    } catch (error) {
-        if (transactionOpen) {
-            try { await dbRunAsync('ROLLBACK'); } catch (rollbackError) { console.error('[Paystack order rollback]', rollbackError.message); }
-        }
-        throw error;
-    }
-}
-
-function paystackApiRequest(apiPath, method, payload) {
-    const injected = app.get('paystackApiRequest');
-    if (typeof injected === 'function') return injected(apiPath, method, payload);
-    return new Promise((resolve, reject) => {
-        const body = payload ? JSON.stringify(payload) : '';
-        const request = https.request({
-            hostname: 'api.paystack.co', path: apiPath, method,
-            headers: {
-                Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`,
-                'Content-Type': 'application/json',
-                ...(body ? { 'Content-Length': Buffer.byteLength(body) } : {})
-            },
-            timeout: 12000
-        }, (response) => {
-            let responseBody = '';
-            response.on('data', (chunk) => { responseBody += chunk; });
-            response.on('end', () => {
-                try {
-                    const parsed = JSON.parse(responseBody || '{}');
-                    if (response.statusCode >= 200 && response.statusCode < 300 && parsed.status) return resolve(parsed.data);
-                    reject(paymentError(parsed.message || 'Paystack request failed', response.statusCode >= 500 ? 502 : 400));
-                } catch (error) { reject(paymentError('Paystack returned an invalid response', 502)); }
-            });
-        });
-        request.on('timeout', () => request.destroy(new Error('Paystack request timed out')));
-        request.on('error', (error) => reject(paymentError(error.message || 'Could not reach Paystack', 502)));
-        if (body) request.write(body);
-        request.end();
-    });
 }
 
 // Statuses whose pieces have left the shelf. Reaching one takes an order's
@@ -2284,7 +2081,7 @@ async function syncOrderStock(orderId, status) {
     await dbRunAsync(`UPDATE orders SET stock_deducted_at = ${takeOff ? 'CURRENT_TIMESTAMP' : 'NULL'} WHERE id = ?`, [orderId]);
 }
 
-async function markOrderPaid(orderId, paymentId, providerData) {
+async function markOrderPaid(orderId) {
     let transactionOpen = false;
     try {
         await dbRunAsync('BEGIN IMMEDIATE');
@@ -2296,22 +2093,11 @@ async function markOrderPaid(orderId, paymentId, providerData) {
             await dbRunAsync("UPDATE orders SET status = 'paid', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [orderId]);
             await syncOrderStock(orderId, 'paid');
         }
-        if (paymentId) {
-            const data = providerData || {};
-            await dbRunAsync(
-                `UPDATE payments SET status = 'paid', provider_transaction_id = COALESCE(?, provider_transaction_id),
-                    channel = COALESCE(?, channel), gateway_response = COALESCE(?, gateway_response),
-                    paid_at = COALESCE(?, paid_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-                [data.id != null ? String(data.id) : null, data.channel || null, data.gateway_response || null,
-                    data.paid_at || data.paidAt || null, paymentId]
-            );
-        } else {
-            await dbRunAsync(
-                `UPDATE payments SET status = 'paid', paid_at = COALESCE(paid_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP
-                  WHERE id = (SELECT id FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1)`,
-                [orderId]
-            );
-        }
+        await dbRunAsync(
+            `UPDATE payments SET status = 'paid', paid_at = COALESCE(paid_at, CURRENT_TIMESTAMP), updated_at = CURRENT_TIMESTAMP
+              WHERE id = (SELECT id FROM payments WHERE order_id = ? ORDER BY id DESC LIMIT 1)`,
+            [orderId]
+        );
         await dbRunAsync('COMMIT');
         transactionOpen = false;
         return { becamePaid };
@@ -2321,97 +2107,6 @@ async function markOrderPaid(orderId, paymentId, providerData) {
         }
         throw error;
     }
-}
-
-async function sendPaidOrderOwnerEmail(orderId, paymentId) {
-    if (!SHOP_NOTIFY_EMAIL) return { skipped: true };
-    const claimed = await dbRunAsync(
-        'UPDATE payments SET owner_notified_at = CURRENT_TIMESTAMP WHERE id = ? AND owner_notified_at IS NULL',
-        [paymentId]
-    );
-    if (!claimed.changes) return { duplicate: true };
-    const order = await dbGetAsync('SELECT * FROM orders WHERE id = ?', [orderId]);
-    const items = await dbAllAsync('SELECT * FROM order_items WHERE order_id = ? ORDER BY id', [orderId]);
-    const itemRows = items.map((item) => `<tr><td style="padding:7px 0">${escapeHtmlServer(item.product_name)}</td><td>${Number(item.quantity || 0)}</td><td>GHS ${Number(item.price_at_time || 0).toFixed(2)}</td></tr>`).join('');
-    const address = [order.delivery_address_line1, order.delivery_address_line2, order.delivery_city, order.delivery_region, order.delivery_landmark]
-        .filter(Boolean).map(escapeHtmlServer).join(', ');
-    const html = `<h2>Paid DC Kids order ${escapeHtmlServer(order.order_number)}</h2>
-        <p><strong>Customer:</strong> ${escapeHtmlServer(order.customer_name)}<br>
-        <strong>Phone:</strong> ${escapeHtmlServer(order.customer_phone)}<br>
-        <strong>Email:</strong> ${escapeHtmlServer(order.customer_email)}<br>
-        <strong>Delivery address:</strong> ${address || 'Not supplied'}</p>
-        <table style="width:100%;border-collapse:collapse"><thead><tr><th align="left">Item</th><th align="left">Qty</th><th align="left">Unit price</th></tr></thead><tbody>${itemRows}</tbody></table>
-        <p><strong>Products paid:</strong> GHS ${Number(order.total_amount || 0).toFixed(2)}</p>
-        <p><strong>Delivery is not included.</strong> Contact the customer to confirm and collect the delivery charge.</p>`;
-    try {
-        const injected = app.get('sendOrderNotificationEmail');
-        const result = typeof injected === 'function'
-            ? await injected({ to: SHOP_NOTIFY_EMAIL, subject: `Paid order ${order.order_number}`, html, order, items })
-            : await sendEmail(SHOP_NOTIFY_EMAIL, `Paid order ${order.order_number}`, html);
-        if (result && result.ok === false) await dbRunAsync('UPDATE payments SET owner_notified_at = NULL WHERE id = ?', [paymentId]);
-        return result;
-    } catch (error) {
-        await dbRunAsync('UPDATE payments SET owner_notified_at = NULL WHERE id = ?', [paymentId]);
-        throw error;
-    }
-}
-
-async function processPaystackSuccess(data) {
-    const reference = String(data && data.reference || '');
-    const payment = await dbGetAsync(
-        `SELECT p.*, o.order_number, o.status AS order_status FROM payments p
-          JOIN orders o ON o.id = p.order_id WHERE p.provider_reference = ?`,
-        [reference]
-    );
-    if (!payment) throw paymentError('Unknown DC Kids payment reference', 404);
-    const metadata = data.metadata && typeof data.metadata === 'object' ? data.metadata : {};
-    const mismatched = String(data.status || '').toLowerCase() !== 'success' ||
-        Number(data.amount) !== Math.round(Number(payment.amount || 0) * 100) ||
-        String(data.currency || '').toUpperCase() !== 'GHS' ||
-        (metadata.source_app && metadata.source_app !== 'dckids') ||
-        (metadata.order_number && metadata.order_number !== payment.order_number);
-    if (mismatched) {
-        await dbRunAsync("UPDATE payments SET status = 'review', gateway_response = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            ['Paystack amount, currency, status, or metadata did not match the order', payment.id]);
-        await dbRunAsync("UPDATE orders SET status = 'payment_review', updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status <> 'paid'", [payment.order_id]);
-        return { status: 'review' };
-    }
-    const result = await markOrderPaid(payment.order_id, payment.id, data);
-    await sendPaidOrderOwnerEmail(payment.order_id, payment.id);
-    // Only on the first confirmation: Paystack retries webhooks and status checks repeat.
-    if (result.becamePaid) notifyStaffOfPaidOrder(payment.order_id);
-    return { status: 'paid', becamePaid: result.becamePaid };
-}
-
-function validPaystackSignature(rawBody, signature) {
-    if (!PAYSTACK_SECRET_KEY || !rawBody || !signature) return false;
-    const expected = crypto.createHmac('sha512', PAYSTACK_SECRET_KEY).update(rawBody).digest('hex');
-    const supplied = String(signature).trim().toLowerCase();
-    if (expected.length !== supplied.length) return false;
-    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(supplied));
-}
-
-async function forwardPaystackEvent(rawBody, signature, targetUrl, destination, injectedHandler) {
-    const injected = app.get(injectedHandler);
-    if (typeof injected === 'function') return injected(rawBody, signature);
-    if (!targetUrl) throw paymentError(`${destination} Paystack webhook forwarding is not configured`, 503);
-    const target = new URL(targetUrl);
-    if (IS_PROD && target.protocol !== 'https:') throw paymentError(`${destination} Paystack webhook must use HTTPS`, 503);
-    const response = await fetch(target, {
-        method: 'POST', body: rawBody,
-        headers: { 'Content-Type': 'application/json', 'x-paystack-signature': signature },
-        signal: globalThis.AbortSignal.timeout(10000)
-    });
-    if (!response.ok) throw paymentError(`${destination} webhook returned ${response.status}`, 502);
-    return { ok: true };
-}
-
-function forwardAkuaPaystackEvent(rawBody, signature) {
-    return forwardPaystackEvent(rawBody, signature, PAYSTACK_AKUA_WEBHOOK_URL, 'Akua', 'forwardAkuaPaystackWebhook');
-}
-
-function forwardLegacyPaystackEvent(rawBody, signature) {
-    return forwardPaystackEvent(rawBody, signature, PAYSTACK_LEGACY_WEBHOOK_URL, 'Legacy', 'forwardLegacyPaystackWebhook');
 }
 
 /* The money that actually arrived, which is a different question from what
@@ -2498,11 +2193,6 @@ app.get('/api/admin/payments', authenticateToken, async (req, res) => {
     } catch (error) { serverError(res, error); }
 });
 
-app.get('/api/payments/paystack/config', (req, res) => {
-    res.setHeader('Cache-Control', 'no-store');
-    res.json({ enabled: Boolean(PAYSTACK_SECRET_KEY), akua_forwarding: Boolean(PAYSTACK_AKUA_WEBHOOK_URL) });
-});
-
 // Deliberately small: platform health checks need to know that the schema-ready
 // process can still query SQLite, but must never disclose filesystem paths,
 // credentials, record counts, or payment configuration.
@@ -2513,90 +2203,6 @@ app.get('/api/health', (req, res) => {
         }
         res.json({ status: 'ok', database: 'ready', persistentStorage: Boolean(VOLUME_PATH) });
     });
-});
-
-app.post('/api/checkout/paystack', optionalCustomer, async (req, res) => {
-    res.setHeader('Cache-Control', 'no-store');
-    if (!PAYSTACK_SECRET_KEY && typeof app.get('paystackApiRequest') !== 'function') {
-        return res.status(503).json({ error: 'Paystack checkout is not configured' });
-    }
-    let created = null;
-    try {
-        const checkout = normalizePaystackCheckout(req.body, req.customer);
-        const priced = await pricePaystackCheckout(checkout);
-        created = await createPaystackOrder(checkout, priced, req.customer);
-        const callbackUrl = `${APP_URL.replace(/\/$/, '')}/payment-result.html`;
-        const initialized = await paystackApiRequest('/transaction/initialize', 'POST', {
-            email: checkout.customerEmail,
-            amount: String(Math.round(created.totalAmount * 100)),
-            currency: 'GHS', reference: created.reference, callback_url: callbackUrl,
-            metadata: { source_app: 'dckids', order_number: created.orderNumber, cancel_action: callbackUrl }
-        });
-        if (!initialized || !initialized.authorization_url || initialized.reference !== created.reference) {
-            throw paymentError('Paystack did not initialize the payment correctly', 502);
-        }
-        res.json({ order_number: created.orderNumber, reference: created.reference, authorization_url: initialized.authorization_url,
-            total_amount: created.totalAmount, welcome_discount: created.welcomePercent });
-    } catch (error) {
-        if (created) {
-            try {
-                await dbRunAsync("UPDATE orders SET status = 'payment_failed', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [created.orderId]);
-                await releaseWelcomeClaim(created.orderId);
-                await dbRunAsync("UPDATE payments SET status = 'failed', gateway_response = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-                    [String(error.message || 'Paystack initialization failed').slice(0, 500), created.paymentId]);
-            } catch (updateError) { console.error('[Paystack initialization cleanup]', updateError.message); }
-        }
-        if (error.status) return res.status(error.status).json({ error: error.message });
-        serverError(res, error);
-    }
-});
-
-app.get('/api/payments/paystack/status/:reference', async (req, res) => {
-    res.setHeader('Cache-Control', 'no-store');
-    const reference = String(req.params.reference || '');
-    if (!/^DCK-[0-9]+-[a-f0-9]{20}$/i.test(reference)) return res.status(400).json({ error: 'Invalid payment reference' });
-    try {
-        let payment = await dbGetAsync(
-            `SELECT p.status AS payment_status, o.status AS order_status, o.order_number
-               FROM payments p JOIN orders o ON o.id = p.order_id WHERE p.provider_reference = ?`, [reference]
-        );
-        if (!payment) return res.status(404).json({ error: 'Payment not found' });
-        if (payment.payment_status === 'pending' && PAYSTACK_SECRET_KEY) {
-            try {
-                const verified = await paystackApiRequest(`/transaction/verify/${encodeURIComponent(reference)}`, 'GET');
-                if (verified && verified.status === 'success') await processPaystackSuccess(verified);
-                payment = await dbGetAsync(
-                    `SELECT p.status AS payment_status, o.status AS order_status, o.order_number
-                       FROM payments p JOIN orders o ON o.id = p.order_id WHERE p.provider_reference = ?`, [reference]
-                );
-            } catch (error) { console.warn('[Paystack status verification]', error.message); }
-        }
-        res.json({ order_number: payment.order_number, payment_status: payment.payment_status, order_status: payment.order_status });
-    } catch (error) { serverError(res, error); }
-});
-
-app.post('/api/payments/paystack/webhook', async (req, res) => {
-    res.setHeader('Cache-Control', 'no-store');
-    const signature = String(req.headers['x-paystack-signature'] || '');
-    if (!validPaystackSignature(req.rawBody, signature)) return res.status(401).json({ error: 'Invalid Paystack signature' });
-    const event = req.body || {};
-    const reference = String(event.data && event.data.reference || '');
-    try {
-        if (reference.startsWith('AKUA-')) {
-            await forwardAkuaPaystackEvent(req.rawBody, signature);
-            return res.json({ received: true, forwarded: true, destination: 'akua' });
-        }
-        if (!reference.startsWith('DCK-')) {
-            await forwardLegacyPaystackEvent(req.rawBody, signature);
-            return res.json({ received: true, forwarded: true, destination: 'legacy' });
-        }
-        if (event.event === 'charge.success') await processPaystackSuccess(event.data);
-        res.json({ received: true });
-    } catch (error) {
-        if (error.status === 404) return res.status(404).json({ error: error.message });
-        console.error('[Paystack webhook]', error.message);
-        res.status(error.status || 500).json({ error: 'Paystack webhook could not be processed' });
-    }
 });
 
 // The admin's 45-second poll asks only for what changed: ?since= returns orders
@@ -2792,7 +2398,7 @@ app.put('/api/orders/:id', authenticateToken, async (req, res) => {
         const order = await dbGetAsync('SELECT status FROM orders WHERE id = ?', [orderId]);
         if (!order) return res.status(404).json({ error: 'Order not found' });
         if (normStatus === 'paid') {
-            const result = await markOrderPaid(orderId, null, null);
+            const result = await markOrderPaid(orderId);
             logAdminAction(req, 'update_status', 'order', orderId, `Marked order #${orderId} as paid`, { from: order.status, to: 'paid' });
             return res.json({ success: true, changes: result.becamePaid ? 1 : 0 });
         }
@@ -2937,8 +2543,8 @@ function completedOrder(status) {
 
 function revenueOrder(order) {
     // Revenue is recognized only after payment has been verified or the order
-    // has advanced into fulfilment. Pending WhatsApp orders and unpaid Paystack
-    // attempts must never inflate sales reporting.
+    // has advanced into fulfilment. Pending WhatsApp orders must never inflate
+    // sales reporting.
     return ['paid', 'processing', 'shipped', 'dispatched', 'delivered', 'completed']
         .includes(String(order.status || '').toLowerCase());
 }
@@ -3845,20 +3451,14 @@ async function pushToStaff(message, userId) {
     return sent;
 }
 
-function notifyStaffOfOrder(order, paidOnline) {
+function notifyStaffOfOrder(order) {
     const type = order.order_type === 'preorder' ? 'China pre-order' : order.order_type === 'wholesale' ? 'Wholesale' : 'Retail';
     pushToStaff({
-        title: (paidOnline ? 'Paid online · ' : 'New order · ') + order.order_number,
+        title: 'New order · ' + order.order_number,
         body: [order.customer_name || 'Guest', 'GH₵ ' + Number(order.total_amount || 0).toFixed(2), type].join(' · '),
         url: '/admin.html',
         tag: 'order-' + order.order_number
     }).catch((err) => console.warn('[Order alerts]', err.message));
-}
-
-function notifyStaffOfPaidOrder(orderId) {
-    dbGetAsync('SELECT order_number, customer_name, order_type, total_amount FROM orders WHERE id = ?', [orderId])
-        .then((order) => { if (order) notifyStaffOfOrder(order, true); })
-        .catch((err) => console.warn('[Order alerts]', err.message));
 }
 
 app.get('/api/push/config', authenticateToken, (req, res) => {

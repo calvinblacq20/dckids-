@@ -150,11 +150,11 @@ async function runTests() {
             assert.strictEqual(orderCustomer && orderCustomer.name, 'Order Customer');
         });
 
-        // The statement the Paystack verification path runs once a charge succeeds.
+        // The statement the admin runs when it marks an order paid.
         await run(sqlite, `UPDATE payments SET status = 'paid', paid_at = COALESCE(paid_at, CURRENT_TIMESTAMP),
             updated_at = CURRENT_TIMESTAMP WHERE id = 1`);
         const paidPayment = await get(sqlite, 'SELECT status FROM payments WHERE id = 1');
-        check('Paystack payment update succeeds on a migrated legacy database', () => {
+        check('marking a payment paid succeeds on a migrated legacy database', () => {
             assert.strictEqual(paidPayment.status, 'paid');
         });
 

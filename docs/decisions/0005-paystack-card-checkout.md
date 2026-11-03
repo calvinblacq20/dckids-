@@ -1,6 +1,6 @@
 # ADR 0005 — Online card payments via Paystack, alongside WhatsApp
 
-**Status:** accepted · **Date:** 2026-08 (recorded 2026-10-08 from the code)
+**Status:** superseded by [ADR 0011](0011-whatsapp-only-payments.md) · **Date:** 2026-08 (recorded 2026-10-08 from the code, superseded 2026-11-03)
 
 > **Rationale needs the author.** This record was reconstructed by reading the
 > implementation, so the Decision and Consequences describe what the code does
