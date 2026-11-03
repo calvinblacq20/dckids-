@@ -1365,43 +1365,6 @@ app.delete('/api/products/:id', authenticateToken, requireManager, (req, res) =>
     });
 });
 
-// Deduct stock (Staff & Manager)
-app.put('/api/products/:id/deduct', authenticateToken, (req, res) => {
-    const productId = req.params.id;
-    const username = req.user.username; // Get the user who is making the request
-    
-    // Strict Backend Validation: Check current stock first
-    db.get(`SELECT stock FROM products WHERE id = ?`, [productId], (err, row) => {
-        if (err) return serverError(res, err);
-        if (!row) return res.status(404).json({ error: 'Product not found' });
-        
-        if (row.stock <= 0) {
-            return res.status(400).json({ error: 'Stock is already 0. Cannot deduct further.' });
-        }
-
-        // Proceed to deduct if stock > 0
-        db.run(
-            `UPDATE products SET stock = stock - 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-            [productId],
-            function (err) {
-                if (err) return serverError(res, err);
-                
-                // Log the transaction
-                db.run(
-                    `INSERT INTO transactions (product_id, username, action) VALUES (?, ?, ?)`,
-                    [productId, username, 'deduct'],
-                    (err) => {
-                        if (err) console.error("Error logging transaction:", err);
-                        logAdminAction(req, 'deduct_stock', 'product', productId, `Deducted one item from product #${productId}`);
-                        // We still return success even if logging fails
-                        res.json({ success: true, changes: this.changes });
-                    }
-                );
-            }
-        );
-    });
-});
-
 // ---------------- CUSTOMER DIRECTORY + AUDIT ROUTES ---------------- //
 const ADMIN_CUSTOMER_SELECT = `
     SELECT c.id, c.name, COALESCE(ca.email, c.email, '') AS email,
@@ -3667,28 +3630,6 @@ app.get('/api/products/:id/reviews', (req, res) => {
     );
 });
 
-// Batch rating summary for the storefront grid — one round trip for the whole
-// page of cards instead of one fetch per product, so a slow connection or a
-// single failed request can't leave individual cards permanently unrated.
-app.get('/api/products/reviews-summary', (req, res) => {
-    const ids = String(req.query.ids || '').split(',').map(s => parseInt(s, 10)).filter(Number.isInteger);
-    if (!ids.length) return res.json({});
-    const placeholders = ids.map(() => '?').join(',');
-    db.all(
-        `SELECT product_id, COUNT(*) as count, AVG(rating) as average
-         FROM product_reviews WHERE product_id IN (${placeholders}) AND status = 'approved'
-         GROUP BY product_id`,
-        ids,
-        (err, rows) => {
-            if (err) return serverError(res, err);
-            const summaries = {};
-            ids.forEach(id => { summaries[id] = { count: 0, average: 0 }; });
-            rows.forEach(r => { summaries[r.product_id] = { count: r.count, average: Math.round(r.average * 10) / 10 }; });
-            res.json(summaries);
-        }
-    );
-});
-
 app.post('/api/products/:id/reviews', reviewLimiter, optionalCustomer, (req, res) => {
     const { rating, title, body, author_name } = req.body || {};
     const productId = req.params.id;
@@ -4163,7 +4104,7 @@ app.get('/api/products/image-health', authenticateToken, requireManager, (req, r
 });
 
 // Public product detail used by shareable product pages. This catch-all belongs
-// below named GET routes such as /image-health and /reviews-summary so those
+// below named GET routes such as /image-health and /next-sku so those
 // names can never be mistaken for product IDs.
 app.get('/api/products/:id', (req, res) => {
     const productId = Number.parseInt(req.params.id, 10);

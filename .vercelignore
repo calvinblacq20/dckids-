@@ -16,7 +16,5 @@ docs/
 Dockerfile
 railway.json
 tailwind.*.config.js
-tailwind.config.js
 tailwind.input.css
-tailwind.store.css
 eslint.config.js

@@ -215,9 +215,6 @@ function startOrderNotificationPolling() {
     }, 45000);
 }
 
-function saveOrders(orders) {
-    // Deprecated for direct API saving
-}
 window.adminCustomers = [];
 
 function getCustomers() {
@@ -945,26 +942,6 @@ function closeModal(id) {
             modal.style.display = 'none';
         }, 180);
     }
-}
-
-/* ============================================================
-   SECTION 7: LOADING / SKELETON
-   ============================================================ */
-function showLoading() {
-    var overlay = document.getElementById('loading-overlay');
-    if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'loading-overlay';
-        overlay.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,0.7);z-index:9998;display:flex;align-items:center;justify-content:center;';
-        overlay.innerHTML = '<div style="width:40px;height:40px;border:4px solid #eee;border-top-color:#F35E7A;border-radius:50%;animation:spin 0.8s linear infinite;"></div>';
-        document.body.appendChild(overlay);
-    }
-    overlay.style.display = 'flex';
-}
-
-function hideLoading() {
-    var overlay = document.getElementById('loading-overlay');
-    if (overlay) overlay.style.display = 'none';
 }
 
 // Inline SVG glyph for entity types (product, order, customer, supplier, system, default).
@@ -2452,23 +2429,6 @@ function wireSkuSuggest(catSelectId, skuInputId) {
         })
         .catch(function() {});
     });
-}
-
-function updateDescriptionCount(val) {
-    var countEl = document.getElementById('modal-product-desc-count');
-    if (countEl) {
-        countEl.textContent = (val ? val.length : 0) + ' / 500';
-    }
-}
-
-function autoUpdateProductStatus(val) {
-    var stock = parseInt(val);
-    var statusEl = document.getElementById('modal-product-status');
-    if (statusEl && !isNaN(stock)) {
-        if (stock > 10) statusEl.value = 'in_stock';
-        else if (stock > 0) statusEl.value = 'low_stock';
-        else statusEl.value = 'out_of_stock';
-    }
 }
 
 /* Shared: resize+compress an image File in the browser (canvas), then upload it
@@ -5431,13 +5391,6 @@ function drpApply() {
     loadAnalytics(null, { start: drpFormat(drpState.start), end: drpFormat(drpState.end) });
 }
 
-// Backwards-compatible helper retained for any external callers.
-function selectAnalyticsPeriod(period) {
-    var menu = document.getElementById('analytics-date-menu');
-    if (menu) menu.classList.remove('open');
-    loadAnalytics(period);
-}
-
 function exportAnalyticsCSV() {
     var data = analyticsState.data;
     if (!data) {
@@ -5947,11 +5900,6 @@ function rdrpApply() {
     // Clear filter tab highlight (custom range doesn't match a preset tab)
     document.querySelectorAll('.reports-filter-tab').forEach(function(t) { t.classList.remove('active'); });
     loadReports('custom');
-}
-
-function applyCustomDateRange() {
-    // Legacy compat — forward to the new picker apply
-    rdrpApply();
 }
 
 /* ============================================================
@@ -7181,10 +7129,6 @@ function populateAdminUserMenu() {
     } catch (e) {}
 }
 
-function adminMenuToggleDark(checked) {
-    // Dark mode removed — no-op.
-}
-
 function adminMenuGoto(target) {
     closeAdminUserMenu();
     switch (target) {
@@ -7751,29 +7695,6 @@ function deleteProduct(id) {
     })
     .catch(function(err) {
         showToast(err.message || 'Failed to delete product', 'error');
-    });
-}
-
-function deductStock(id) {
-    var token = localStorage.getItem('adminToken');
-    if (!token) return;
-
-    fetch(API_URL + '/products/' + id + '/deduct', {
-        method: 'PUT',
-        headers: { 'Authorization': 'Bearer ' + token }
-    })
-    .then(function(res) {
-        if (!res.ok) return res.json().then(function(d) { throw new Error(d.error || 'Deduct failed'); });
-        return res.json();
-    })
-    .then(function() {
-        showToast('Stock deducted', 'success');
-        loadDashboard();
-        var invTab = document.getElementById('tab-inventory');
-        if (invTab && invTab.classList.contains('active')) loadInventory();
-    })
-    .catch(function(err) {
-        showToast(err.message || 'Failed to deduct stock', 'error');
     });
 }
 
@@ -11357,7 +11278,6 @@ function downloadProductCsvTemplate() {
   }
 
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeAll(); });
-  window.enhanceFilterSelects = function () { ensureBackdrop(); enhanceAll(); };
 
   document.addEventListener('DOMContentLoaded', function () { ensureBackdrop(); enhanceAll(); });
   // Catch dynamically-rendered selects (products/orders tabs) for a while.
