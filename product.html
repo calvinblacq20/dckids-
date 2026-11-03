@@ -29,7 +29,7 @@
     <a class="nav__logo" href="/" aria-label="DC Kids home"><img class="nav__mark" src="images/logo-mark.webp" alt="" width="159" height="144"><span>DC Kids</span></a>
     <nav class="nav__right" aria-label="Product page navigation">
       <a class="nav__text-link nav__text-link--wide" href="/#shop">Shop</a>
-      <a class="nav__text-link nav__text-link--wide" href="/account.html">Account</a>
+      <a class="nav__text-link nav__text-link--wide" href="/account.html" hidden>Account</a>
       <button id="headerWishlist" class="nav__text-link product-nav-save" type="button" aria-label="Save this item">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21.2l7.8-7.8a5.5 5.5 0 0 0 1-6.8Z"/></svg>
         <span class="product-nav-save__label">Save</span>
@@ -201,6 +201,6 @@
   <script src="image-resolver.js?v=2"></script>
   <!-- not async: product.js reads window.DCKidsAuth at start-up for the wishlist -->
   <script type="module" src="firebase-auth.js?v=6"></script>
-  <script src="product.js?v=18" defer></script>
+  <script src="product.js?v=19" defer></script>
 </body>
 </html>

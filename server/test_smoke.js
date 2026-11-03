@@ -368,8 +368,15 @@ async function run() {
         appSource.includes('const unsaved = !data || res.status >= 500;') && storefrontSource.includes('id="done-ref-line"'));
     const authSource = fs.readFileSync(path.join(__dirname, '..', 'firebase-auth.js'), 'utf8');
     check('without customer sign-in, the shop hides its account links and the account page says what still works',
-        authSource.includes('state.unconfigured = true;') && appSource.includes('a.hidden = !!customerState.unconfigured;') &&
+        authSource.includes('state.unconfigured = true;') && appSource.includes('a.hidden = !customerState.configured;') &&
         fs.readFileSync(path.join(__dirname, '..', 'account.js'), 'utf8').includes("'Accounts are coming soon'"));
+    // Shown first and hidden once the sign-in library arrived, they flickered on phones.
+    const accountAnchors = (html) => [...html.matchAll(/<a\b[^>]*href="\/account\.html"[^>]*>/g)].map((m) => m[0]);
+    const productPageHtml = fs.readFileSync(path.join(__dirname, '..', 'product.html'), 'utf8');
+    check('the shop and product page account links start hidden until customer sign-in loads',
+        accountAnchors(storefrontSource).length === 3 && accountAnchors(productPageHtml).length === 1 &&
+        [...accountAnchors(storefrontSource), ...accountAnchors(productPageHtml)].every((tag) => /\shidden[\s>]/.test(tag)) &&
+        fs.readFileSync(path.join(__dirname, '..', 'product.js'), 'utf8').includes('a.hidden = !state.auth.configured;'));
     // Phones used to lose the account link from the top bar altogether.
     check('the shop\'s top bar keeps an account icon on every screen size, the word only where it fits',
         storefrontSource.includes('<span class="nav__account-label" id="account-label">') &&

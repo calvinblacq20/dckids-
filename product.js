@@ -753,8 +753,9 @@
     try {
       await window.DCKidsAuth.ready;
       state.auth = window.DCKidsAuth.getState();
-      // Where customer sign-in isn't offered, the account page has nothing to sign in to.
-      if (state.auth.unconfigured) document.querySelectorAll('a[href="/account.html"]').forEach((a) => { a.hidden = true; });
+      // The account link starts hidden and appears once customer sign-in has
+      // loaded, rather than showing and then vanishing where there is none.
+      document.querySelectorAll('a[href="/account.html"]').forEach((a) => { a.hidden = !state.auth.configured; });
       window.DCKidsAuth.onChange((next) => { state.auth = next || state.auth; syncWishlist(); });
       await syncWishlist();
     } catch (error) {
