@@ -370,6 +370,11 @@ async function run() {
     check('without customer sign-in, the shop hides its account links and the account page says what still works',
         authSource.includes('state.unconfigured = true;') && appSource.includes('a.hidden = !!customerState.unconfigured;') &&
         fs.readFileSync(path.join(__dirname, '..', 'account.js'), 'utf8').includes("'Accounts are coming soon'"));
+    // Phones used to lose the account link from the top bar altogether.
+    check('the shop\'s top bar keeps an account icon on every screen size, the word only where it fits',
+        storefrontSource.includes('<span class="nav__account-label" id="account-label">') &&
+        appSource.includes("$('account-label').textContent = accountLabel;") &&
+        !/\.nav__account(?![\w-])[^{]*\{\s*display:\s*none/.test(storeStylesSource));
     const trackSource = fs.readFileSync(path.join(__dirname, '..', 'track.html'), 'utf8');
     check('tracking shows a paid order as moving and names statuses in words',
         trackSource.includes("awaiting_payment: 'Awaiting payment'") && trackSource.includes("s === 'paid') return 2;"));

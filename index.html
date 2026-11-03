@@ -33,7 +33,7 @@
 
   <link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" as="image" type="image/webp" href="images/hero_shop_1.webp?v=2" imagesrcset="images/hero_shop_1-720.webp?v=2 720w, images/hero_shop_1.webp?v=2 1179w" imagesizes="100vw">
-  <link rel="stylesheet" href="store.css?v=34">
+  <link rel="stylesheet" href="store.css?v=35">
 
   <!-- Structured data: Organization + WebSite (SEO + Google rich results) -->
   <script type="application/ld+json">
@@ -85,7 +85,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>
         <span class="nav__search-label">Search</span>
       </button>
-      <a class="nav__account" id="account-link" href="/account.html">Sign in</a>
+      <a class="nav__account" id="account-link" href="/account.html" aria-label="Sign in">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+        <span class="nav__account-label" id="account-label">Sign in</span>
+      </a>
       <button class="nav__cart nav__saved" type="button" onclick="openSaved()" aria-label="Open wishlist">Wishlist <b id="saved-count">0</b></button>
       <button class="nav__cart" type="button" onclick="openCart()" aria-label="Open cart">Cart <b id="cart-count">0</b></button>
       <button class="nav__menu" type="button" onclick="toggleMenu(true)" aria-label="Open menu">Menu</button>
@@ -543,7 +546,7 @@
   <script src="receipt.js?v=3"></script>
   <!-- async: customer sign-in must never hold up the first paint of the shop -->
   <script type="module" async src="firebase-auth.js?v=6"></script>
-  <script src="app.js?v=57"></script>
+  <script src="app.js?v=58"></script>
   <script>
     if ('serviceWorker' in navigator) {
       // When an updated worker takes control, reload once so the page runs the
