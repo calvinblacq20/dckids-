@@ -27,7 +27,6 @@ DCKids/
 ├── pages.css           Customer care, order tracking, payment result
 ├── track.html          Order tracking page
 ├── support.html        Customer care / FAQs
-├── payment-result.html Paystack return page
 ├── fonts/              Self-hosted Jost (SIL OFL)
 ├── admin.html          Admin panel (single-page)
 ├── admin.js            Admin logic
@@ -111,7 +110,7 @@ Set these in `server/.env` (see `DEPLOYMENT.md` for the full table):
 | `RESEND_API_KEY` / `RESEND_FROM` | **Required in production.** Sends the admin sign-in codes (from a verified sender). |
 | `PORT` | Listening port (default 3000; most hosts inject this). |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Optional order alerts as device notifications from the installed admin app (`npx web-push generate-vapid-keys`). |
-| `SHOP_NOTIFY_EMAIL`, `SMTP_*` | Optional transactional email. |
+| `SMTP_*` | Optional transactional email. |
 | `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_APP_ID` | Public Firebase web-app configuration for customer authentication. |
 | `GOOGLE_APPLICATION_CREDENTIALS`, `FIREBASE_SERVICE_ACCOUNT_JSON` | External service-account path or sealed JSON value when the host does not provide Application Default Credentials. |
 
@@ -125,7 +124,6 @@ node server/backup_db.js       # write a backup copy of inventory.db
 node server/verify_assets.js   # sanity-check referenced assets exist
 npm --prefix server test       # every test suite (what CI runs)
 npm --prefix server run export:products     # refresh products.json for the static build
-npm --prefix server run reconcile:paystack  # match Paystack payments to orders
 ```
 
 ---

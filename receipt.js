@@ -1,6 +1,6 @@
 /* DC Kids — customer receipt. The same document the admin prints (brand,
    amount, paid stamp, facts, items, total), shown to shoppers after checkout,
-   after a Paystack payment, on the tracking page and in their account.
+   on the tracking page and in their account.
 
    DCReceipt.open({
      orderNumber, total, discountPercent, status, createdAt, orderType, paymentMethod, preorderKind,

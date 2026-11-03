@@ -9,7 +9,7 @@
    - Images + fonts: cache-first.
    - Bumping VERSION wipes old caches on activate.
 */
-const VERSION = 'dckids-v315';
+const VERSION = 'dckids-v316';
 const STATIC_CACHE = 'dckids-static-' + VERSION;
 const RUNTIME_CACHE = 'dckids-runtime-' + VERSION;
 
@@ -22,7 +22,6 @@ const APP_SHELL = [
   '/account.html',
   '/product.html',
   '/support.html',
-  '/payment-result.html',
   '/store.css',
   '/auth.css',
   '/account.css',
@@ -51,7 +50,6 @@ const APP_SHELL = [
   '/admin-recovery-view.js',
   '/account.js',
   '/product.js',
-  '/payment-result.js',
   '/firebase-auth.js',
   '/manifest.json',
   '/icon.png',
@@ -126,7 +124,6 @@ self.addEventListener('fetch', (event) => {
   const isApi = url.pathname.startsWith('/api/');
   const carriesIdentity = req.headers.has('authorization');
   const isPrivateCustomerApi = url.pathname.startsWith('/api/customer/') || url.pathname.startsWith('/api/wishlist');
-  const isPaymentApi = url.pathname.startsWith('/api/payments/') || url.pathname.startsWith('/api/checkout/paystack');
   const isCode = url.pathname.endsWith('.js') || url.pathname.endsWith('.css');
   const isImage = req.destination === 'image' || /\.(?:png|jpe?g|gif|svg|webp|avif)$/i.test(url.pathname);
 
@@ -151,7 +148,7 @@ self.addEventListener('fetch', (event) => {
   // does not isolate users by Authorization header, so an offline fallback
   // could otherwise expose the previous customer's private data on a shared
   // device. Authenticated storefront calls (orders/reviews) follow this rule too.
-  if (isApi && (carriesIdentity || isPrivateCustomerApi || isPaymentApi)) {
+  if (isApi && (carriesIdentity || isPrivateCustomerApi)) {
     event.respondWith(fetch(req).catch(() => new Response(
       JSON.stringify({ error: 'Account data is unavailable while offline' }),
       { status: 503, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }

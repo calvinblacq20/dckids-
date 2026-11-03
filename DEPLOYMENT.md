@@ -53,12 +53,9 @@ is up to your host:
 | `UPLOAD_DIR` | Railway production | `/data/uploads` (optional only because it is the default when the volume is configured). |
 | `BACKUP_DIR` | Railway production | `/data/backups` (optional only because it is the default when the volume is configured). |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | no | Order alerts as phone/desktop notifications from the installed admin app. Generate the pair once with `npx web-push generate-vapid-keys` (from `server/`) and keep it: a new pair silently ends every existing device's alerts. `VAPID_SUBJECT` is a contact, e.g. `mailto:info@dckidsbrand.com`. Each device then turns alerts on in admin **Settings → Order alerts on this device**; on iPhone the admin must first be added to the Home Screen (iOS 16.4+). |
-| `SHOP_NOTIFY_EMAIL`, `SMTP_*` | no | Optional transactional email. |
+| `SMTP_*` | no | Optional transactional email. |
 | `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_APP_ID` | **yes** | Public Firebase web-app configuration used by the customer account page. |
 | `GOOGLE_APPLICATION_CREDENTIALS` / `FIREBASE_SERVICE_ACCOUNT_JSON` | production* | Use an external service-account file path, workload identity, or a sealed JSON environment value on Railway-style hosts. Never expose or commit the JSON. |
-| `PAYSTACK_SECRET_KEY` | direct payments | Server-only Paystack test/live secret. Never expose it to browser code or Git. |
-| `PAYSTACK_AKUA_WEBHOOK_URL` | shared Paystack integration | Akua POS webhook. DC Kids forwards valid `AKUA-` events with the original raw body and Paystack signature. Defaults to the verified Akua production endpoint. |
-| `PAYSTACK_LEGACY_WEBHOOK_URL` | shared Paystack integration | Existing app's webhook. Valid references that are neither `DCK-` nor `AKUA-` continue to this fixed URL. |
 
 ## 3. First admin account (passwordless)
 
@@ -93,15 +90,20 @@ Customer accounts use Firebase Authentication; the existing admin Google/OTP/rec
 
 Restart the server after changing configuration. `GET /api/customer/auth/config` intentionally exposes only the four public web fields. Customer profile, orders, addresses, wishlist, and reviews require a verified Firebase email and a valid bearer ID token.
 
-## 5. Paystack direct checkout
+## 5. Payments (WhatsApp)
 
-1. Configure `PAYSTACK_SECRET_KEY` with a test secret, verify `PAYSTACK_AKUA_WEBHOOK_URL`, and preserve `PAYSTACK_LEGACY_WEBHOOK_URL` for the existing app.
-2. Deploy DC Kids over HTTPS, then set the Paystack test webhook to `https://dckidsbrand.com/api/payments/paystack/webhook`.
-3. Complete one `DCK-` test transaction, one `AKUA-` transaction, and one transaction from the existing app. Confirm DC Kids processes only `DCK-`, Akua receives only `AKUA-`, and the existing app continues receiving its events unchanged.
-4. Configure `SHOP_NOTIFY_EMAIL`, `RESEND_API_KEY`, and a verified `RESEND_FROM` so paid-order details reach the owner.
-5. Only after all three test paths pass, switch to the live secret and live webhook. Paystack charges products only; delivery is confirmed separately.
+Customers pay on WhatsApp: mobile money, bank transfer or cash on delivery. The
+site takes no payments itself and holds no payment-provider keys.
 
-The callback page is not payment authority. Signed Paystack webhooks and server-side verification update orders. Direct checkout remains hidden while the secret is absent.
+1. The customer places the order on the site. It is saved as **Pending**
+   (pre-orders as **Awaiting payment**) with an unpaid WhatsApp payment, and the
+   installed admin app gets a "New order" alert.
+2. WhatsApp opens with the order reference and total; the shop sends the
+   payment details there.
+3. When the money arrives, open the order in the admin and set it to **Paid**.
+   That marks the payment paid with the time, takes the pieces off the shelf
+   once, and counts the order on the Payments page and in revenue. Use
+   **Payment review** while a payment is being checked.
 
 ## 6. Data & backups
 
@@ -138,8 +140,8 @@ could start the service against an empty database.
    download the verified snapshot and a complete copy of the existing uploaded
    product images to off-platform storage.
 3. Query the old database and record independently checkable evidence: known
-   table counts plus several recent order numbers and Paystack references. Keep
-   the backup timestamp, integrity result, counts, and references in the cutover
+   table counts plus several recent order numbers. Keep
+   the backup timestamp, integrity result, counts, and order numbers in the cutover
    record. Do not proceed if any capture or verification is incomplete.
 4. Only after those artifacts are safely captured, stop the sole service and
    wait for its 15-second drain to finish. Keep public ingress closed.
@@ -163,41 +165,6 @@ sole service after draining. Preserve the current database plus `-wal`/`-shm` as
 an incident copy, restore the verified snapshot and uploads while stopped, and
 remove only stale sidecars belonging to that stopped database before step 7.
 
-### Paystack reconciliation after the 2026-08-19 incident
-
-The recovery window begins **2026-08-19 00:00 Africa/Lagos**. Obtain a verified
-Paystack transaction export for that window directly from Paystack; do not use
-browser callback data, screenshots, forwarded JSON, or an unverified third-party
-copy. Before any apply run, create a fresh `node server/backup_db.js` snapshot,
-confirm its integrity check passed, and retain an off-platform copy.
-
-The reconciliation command uses the configured `DB_PATH`, accepts either a JSON
-array or `{ "data": [...] }`, and always writes a PII-masked JSON report. The
-report's parent directory must already exist, and the report file itself must be
-new: the command refuses existing files, links, storage/input aliases, and never
-overwrites a prior report. Run it against the verified export first without
-`--apply`:
-
-```powershell
-npm --prefix server run reconcile:paystack -- --input C:\secure\paystack-export.json --report C:\secure\paystack-dry-run-report.json
-```
-
-Review every `wouldRestore`, `alreadyPresent`, and `rejected` entry. Only then
-run apply with both required attestations:
-
-```powershell
-npm --prefix server run reconcile:paystack -- --input C:\secure\paystack-export.json --report C:\secure\paystack-apply-report.json --apply --verified-export --backup-confirmed
-```
-
-Apply restores only successful GHS `DCK-` records compatible with DC Kids. Each
-new recovery order remains in `payment_review`; product and delivery details
-must be confirmed manually. The tool creates no order items, changes no stock,
-recognizes no revenue, sends no notification, and makes no Paystack request.
-Re-running the same export is safe: existing provider references are reported as
-`alreadyPresent` instead of being inserted again. Keep both reports with the
-incident record; although they mask email and omit raw metadata, they still
-contain payment references and transaction IDs and should be access-controlled.
-
 ## 7. Production checklist
 
 - [ ] `NODE_ENV=production` set on the host
@@ -219,10 +186,7 @@ contain payment references and transaction IDs and should be access-controlled.
 - [ ] Firebase verification/reset templates and 8-character password policy configured
 - [ ] All four `FIREBASE_*` public values set
 - [ ] Firebase Admin uses ADC/workload identity or an external service-account file
-- [ ] Paystack test checkout and `DCK-` webhook processing verified
-- [ ] Non-`DCK-` webhook forwarding verified against the existing app
-- [ ] Live Paystack secret and webhook configured only after test-mode sign-off
-- [ ] `SHOP_NOTIFY_EMAIL` receives an itemised paid-order message
+- [ ] A test order placed on WhatsApp, then set to Paid in the admin, shows on the Payments page and in revenue
 
 ## 8. Admin Google Sign-In setup (optional but recommended)
 

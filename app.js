@@ -9,7 +9,6 @@ const RETAIL_MAX_QTY = 100;
 const WHOLESALE_MAX_QTY = 1000;
 const CART_KEY = 'dcKidsCart';
 const CUSTOMER_KEY = 'dcKidsCustomer';
-const PAYSTACK_PENDING_KEY = 'dcKidsPendingPaystackCheckout';
 const WISHLIST_KEY = 'dcKidsGuestWishlist'; // the same list product.html and the account page use
 const HEART_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.2-9.3C1.7 8 3.6 4.5 7.1 4.5c2 0 3.6 1.1 4.9 2.9 1.3-1.8 2.9-2.9 4.9-2.9 3.5 0 5.4 3.5 4.3 6.7-1.7 4.7-9.2 9.3-9.2 9.3z"/></svg>';
 const WELCOME_KEY = 'dcKidsWelcome';                 // { phone, percent } once joined
@@ -39,11 +38,9 @@ let cart = [];
 let wishlist = new Set();
 let preorderView = false;
 let checkoutIdemKey = null;
-let checkoutIdemMethod = null;
 let lastReceipt = null;
 let revealObserver = null;
 let pdpFromNav = false;
-let paystackEnabled = false;
 // Filled by firebase-auth.js (loaded async) through the dckids-auth-change event.
 let customerState = { user: null, customer: null };
 let savedAddresses = [];
@@ -952,11 +949,6 @@ function startCheckout() {
   }
 
   $('co-error').hidden = true;
-  $('pay-btn').hidden = !paystackEnabled;
-  $('co-pay-note').hidden = !paystackEnabled;
-  $('co-hint').textContent = paystackEnabled
-    ? 'Pay online with Paystack, or finish your order on WhatsApp.'
-    : 'Your order completes on WhatsApp. We\'ll confirm delivery and payment there.';
   renderCheckoutTotal();
   openCart('details');
   setTimeout(() => $(!$('co-name').value ? 'co-name' : !$('co-phone').value ? 'co-phone' : 'co-name').focus(), 450);
@@ -966,8 +958,6 @@ function fieldError(id, bad) { $(id).closest('.field').classList.toggle('err', b
 
 async function submitOrder(e) {
   e.preventDefault();
-  const method = (e.submitter && e.submitter.value) || 'whatsapp';
-  const online = method === 'paystack';
   const val = (id) => $(id).value.trim();
   const name = val('co-name');
   const phone = val('co-phone');
@@ -975,14 +965,11 @@ async function submitOrder(e) {
   const notes = val('co-notes');
   const address = { line1: val('co-line1'), line2: val('co-line2'), city: val('co-city'), region: val('co-region'), landmark: val('co-landmark') };
 
-  // Paystack needs a receipt email and a full address; WhatsApp only needs a way to reach you.
+  // WhatsApp only needs a way to reach you.
   const checks = [
     ['co-name', name.length < 2, 'Please enter your full name.'],
     ['co-phone', phone.replace(/\D/g, '').length < 9, 'Please enter your phone or WhatsApp number.'],
-    ['co-email', (online || !!email) && !EMAIL_RE.test(email), online ? 'Enter a valid email address to pay with Paystack.' : 'Please check your email address.'],
-    ['co-line1', online && !address.line1, 'Please enter your delivery address to pay with Paystack.'],
-    ['co-city', online && !address.city, 'Please enter your city or area to pay with Paystack.'],
-    ['co-region', online && !address.region, 'Please enter your region to pay with Paystack.']
+    ['co-email', !!email && !EMAIL_RE.test(email), 'Please check your email address.']
   ];
   checks.forEach((c) => fieldError(c[0], c[1]));
   const firstBad = checks.find((c) => c[1]);
@@ -1004,8 +991,7 @@ async function submitOrder(e) {
     address: where, items: lines, shopPhone: waNumber(), createdAt: new Date().toISOString()
   };
 
-  // A failed Paystack start must not be replayed as the WhatsApp order, so each method keeps its own key.
-  if (!checkoutIdemKey || checkoutIdemMethod !== method) { checkoutIdemKey = newIdemKey(); checkoutIdemMethod = method; }
+  if (!checkoutIdemKey) checkoutIdemKey = newIdemKey();
   const payload = {
     customer_name: name,
     customer_phone: phone,
@@ -1022,36 +1008,12 @@ async function submitOrder(e) {
     localStorage.setItem(CUSTOMER_KEY, JSON.stringify({ name: name, phone: phone, email: email, line1: address.line1, city: address.city, region: address.region }));
   } catch (err) { /* storage full/blocked */ }
 
-  const btn = online ? $('pay-btn') : $('place-btn');
+  const btn = $('place-btn');
   const label = btn.textContent;
   btn.disabled = true;
-  btn.textContent = online ? 'Opening Paystack…' : 'Placing order…';
+  btn.textContent = 'Placing order…';
   try {
     const headers = await customerAuthHeaders();
-    if (online) {
-      const res = await fetch('/api/checkout/paystack', { method: 'POST', headers: headers, body: JSON.stringify(payload) });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.authorization_url) {
-        showCheckoutRefusal(data.error || 'We could not start the payment. Please try again.');
-        return false;
-      }
-      // Remembered so the cart can drop what was paid for once we're back (see reconcilePaystack),
-      // and so payment-result.html can show the receipt.
-      try {
-        localStorage.setItem(PAYSTACK_PENDING_KEY, JSON.stringify({
-          reference: data.reference, order_number: data.order_number, created_at: new Date().toISOString(),
-          items: cart.map((i) => ({ id: i.id, size: i.size, qty: i.qty })),
-          receipt: Object.assign({}, receipt, {
-            orderNumber: data.order_number, paymentMethod: 'Paystack', discountPercent: data.welcome_discount || 0,
-            total: data.total_amount != null ? data.total_amount : Math.round(lines.reduce((sum, l) => sum + l.price * l.qty, 0) * 100) / 100
-          })
-        }));
-      } catch (err) { /* storage blocked: the cart just keeps the items */ }
-      if (data.welcome_discount) markWelcomeUsed();
-      window.location.assign(data.authorization_url);
-      return false;
-    }
-
     const res = await fetch('/api/orders', { method: 'POST', headers: headers, body: JSON.stringify(payload) });
     const data = await res.json().catch(() => null);
     // No order service answering (the static showcase, or the server failing):
@@ -1127,31 +1089,6 @@ function showCheckoutRefusal(message) {
 
 function openLastReceipt() {
   if (lastReceipt && window.DCReceipt) window.DCReceipt.open(lastReceipt);
-}
-
-// Back from Paystack: once the payment is confirmed, take the paid-for items out of the cart.
-async function reconcilePaystack() {
-  let pending = null;
-  try { pending = JSON.parse(localStorage.getItem(PAYSTACK_PENDING_KEY) || 'null'); } catch (e) { return; }
-  if (!pending || !pending.reference) return;
-  try {
-    const res = await fetch('/api/payments/paystack/status/' + encodeURIComponent(pending.reference), { cache: 'no-store' });
-    if (!res.ok) return;
-    const status = await res.json();
-    if (status.payment_status === 'paid' || status.order_status === 'paid') {
-      (pending.items || []).forEach((bought) => {
-        const line = cart.find((i) => i.id === Number(bought.id) && String(i.size) === String(bought.size));
-        if (line) line.qty -= Number(bought.qty) || 0;
-      });
-      cart = cart.filter((i) => i.qty > 0);
-      saveCart();
-      renderCart();
-      localStorage.removeItem(PAYSTACK_PENDING_KEY);
-      toast('Payment confirmed. Thank you! Order ' + (status.order_number || pending.order_number));
-    } else if (['failed', 'review'].includes(status.payment_status) || ['payment_failed', 'payment_review'].includes(status.order_status)) {
-      localStorage.removeItem(PAYSTACK_PENDING_KEY);
-    }
-  } catch (e) { /* offline: keep the snapshot for the next visit */ }
 }
 
 /* =============================================================== account */
@@ -1756,17 +1693,12 @@ async function init() {
   $('bestsellers-grid').innerHTML = skeletonHTML(6);
   $('product-grid').innerHTML = skeletonHTML(6);
 
-  // Settings, the Paystack switch and the catalogue don't depend on each
-  // other, so they load side by side: on 3G each round trip costs a second.
+  // Settings, categories and the catalogue don't depend on each other, so
+  // they load side by side: on 3G each round trip costs a second.
   const catalogueReady = loadCatalogue();
-  const paystackReady = fetch('/api/payments/paystack/config', { cache: 'no-store' })
-    .then((res) => (res.ok ? res.json() : {}))
-    .then((cfg) => cfg.enabled === true)
-    .catch(() => false); // WhatsApp checkout still works
   const categoriesReady = loadCategories();
   siteConfig = await loadSettings();
   await categoriesReady;
-  paystackEnabled = await paystackReady;
   if (!siteConfig.wholesale_enabled && storeMode === 'wholesale') {
     storeMode = 'retail';
     localStorage.setItem('storeMode', 'retail');
@@ -1821,7 +1753,6 @@ async function init() {
 
   if (/^#product-\d+$/.test(location.hash) || location.hash === '#preorders') onHashChange();
   applyUrlParams();
-  reconcilePaystack();
 }
 
 document.addEventListener('DOMContentLoaded', init);

@@ -25,7 +25,7 @@ Status as of 2026-11-02 (master playbook run). [x] verified · [ ] open, with �
 - [x] Mobile verified on real devices (owner and external reviewer); new screens checked at phone width.
 - [ ] SEO: robots.txt and sitemap.xml present. ⚠️ Connect Google Search Console and Bing Webmaster at launch, and submit the sitemap.
 - [ ] Image licensing: ❌ several China pre-order photos carry stock-site watermarks (Alamy, iStock, Vecteezy, Storyblocks, Adobe Stock) or brand logos (LV, Hermès). Replace them in admin before promoting the window.
-- [x] Payments: WhatsApp checkout with totals computed server-side; Paystack (when on) priced by the same rule and reconciled by webhook (tests).
+- [x] Payments: WhatsApp checkout with totals computed server-side; staff record each payment as Paid in the admin, which updates takings, revenue and stock (tests).
 
 ## Deploy safety
 - [x] Env vars fail loudly: production refuses to start without JWT_SECRET or RESEND_API_KEY.
@@ -50,7 +50,7 @@ Status as of 2026-11-02 (master playbook run). [x] verified · [ ] open, with �
 - [x] ADRs for irreversible decisions (docs/decisions 0001–0010).
 - [x] RUNBOOK with backups/restore and degradation paths.
 - [x] Health endpoint (`/api/health`) proves SQLite readiness.
-- [x] Idempotency keys on order creation and Paystack starts.
+- [x] Idempotency keys on order creation.
 - [x] Append-only admin audit log on sensitive actions.
 - [x] E-commerce domain module: stock holds for open orders, stock moving once each way with order status (ADR 0009), whitelisted statuses, pre-orders sourced on demand.
 - [ ] Data export/deletion: by request on WhatsApp or email (privacy policy). ⚠️ No self-serve flow while customer accounts are off.

@@ -4,7 +4,6 @@
 // anywhere Node runs, including a fresh clone with only `npm install` done.
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 
 const TEST_PORT = 3041;
@@ -23,10 +22,6 @@ process.env.FIREBASE_API_KEY = 'smoke-public-api-key';
 process.env.FIREBASE_AUTH_DOMAIN = 'smoke-test.firebaseapp.com';
 process.env.FIREBASE_PROJECT_ID = 'smoke-test';
 process.env.FIREBASE_APP_ID = '1:123:web:smoke';
-process.env.PAYSTACK_SECRET_KEY = 'paystack-smoke-secret';
-process.env.PAYSTACK_AKUA_WEBHOOK_URL = 'https://akua.example.test/api/payments/paystack/webhook';
-process.env.PAYSTACK_LEGACY_WEBHOOK_URL = 'https://legacy.example.test/paystack';
-process.env.SHOP_NOTIFY_EMAIL = 'shop@test.com';
 process.env.JWT_SECRET = 'smoke-jwt-secret-used-only-by-tests';
 process.env.VAPID_PUBLIC_KEY = '';           // push sends go through an injected recorder
 process.env.VAPID_PRIVATE_KEY = '';
@@ -95,43 +90,9 @@ async function run() {
         }
         return firebaseTokens[token];
     });
-    let paystackInitializePayload = null;
-    let ownerPaymentEmails = 0;
-    let forwardedAkuaWebhookBody = '';
-    let forwardedAkuaWebhookSignature = '';
-    let akuaForwardingShouldFail = false;
-    let forwardedWebhookBody = '';
-    let forwardingShouldFail = false;
-    app.set('paystackApiRequest', async (apiPath, method, payload) => {
-        if (apiPath === '/transaction/initialize' && method === 'POST') {
-            paystackInitializePayload = payload;
-            return { authorization_url: `https://checkout.paystack.test/${payload.reference}`, reference: payload.reference, access_code: 'access-smoke' };
-        }
-        return { status: 'pending' };
-    });
-    app.set('sendOrderNotificationEmail', async () => { ownerPaymentEmails++; return { ok: true }; });
-    app.set('forwardAkuaPaystackWebhook', async (rawBody, signature) => {
-        if (akuaForwardingShouldFail) throw new Error('Akua unavailable');
-        forwardedAkuaWebhookBody = rawBody.toString('utf8');
-        forwardedAkuaWebhookSignature = signature;
-        return { ok: true };
-    });
-    app.set('forwardLegacyPaystackWebhook', async (rawBody) => {
-        if (forwardingShouldFail) throw new Error('legacy unavailable');
-        forwardedWebhookBody = rawBody.toString('utf8');
-        return { ok: true };
-    });
     const db = require('./db');
     const dbRun = (sql, params) => new Promise((resolve, reject) => db.run(sql, params || [], function(err) { err ? reject(err) : resolve(this); }));
     const dbGet = (sql, params) => new Promise((resolve, reject) => db.get(sql, params || [], (err, row) => err ? reject(err) : resolve(row)));
-
-    async function postPaystackWebhook(event, signatureOverride) {
-        const raw = JSON.stringify(event);
-        const signature = signatureOverride || crypto.createHmac('sha512', process.env.PAYSTACK_SECRET_KEY).update(raw).digest('hex');
-        return fetch(`${BASE}/api/payments/paystack/webhook`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'x-paystack-signature': signature }, body: raw
-        });
-    }
 
     const up = await waitForServer(30);
     if (!up) { console.error('FATAL: server did not start'); process.exit(1); }
@@ -325,8 +286,11 @@ async function run() {
         customerAuthSource.indexOf('onIdTokenChanged(auth') < customerAuthSource.indexOf('getRedirectResult(auth)'));
     check('checkout includes visible validation feedback and back navigation',
         storefrontSource.includes('id="co-error" role="alert"') && storefrontSource.includes('onclick="showCartView(\'items\')"'));
-    check('Paystack validation returns customers to their missing details',
-        appSource.includes('$(firstBad[0]).focus()') && appSource.includes('Enter a valid email address to pay with Paystack.'));
+    check('checkout validation returns customers to their missing details',
+        appSource.includes('$(firstBad[0]).focus()'));
+    check('checkout offers WhatsApp as the only way to pay',
+        storefrontSource.includes('id="place-btn"') && !storefrontSource.includes('id="pay-btn"') &&
+        !appSource.includes('/api/checkout/') && !fs.existsSync(path.join(__dirname, '..', 'payment-result.html')));
     const storeStylesSource = fs.readFileSync(path.join(__dirname, '..', 'store.css'), 'utf8');
     check('no storefront surface still references the retired artwork',
         !appSource.includes('category-fallbacks') && !storeStylesSource.includes('card__image-label') &&
@@ -409,7 +373,7 @@ async function run() {
     const trackSource = fs.readFileSync(path.join(__dirname, '..', 'track.html'), 'utf8');
     check('tracking shows a paid order as moving and names statuses in words',
         trackSource.includes("awaiting_payment: 'Awaiting payment'") && trackSource.includes("s === 'paid') return 2;"));
-    const contactPages = ['track.html', 'support.html', 'payment-result.html', 'account.html', 'privacy.html', 'terms.html'];
+    const contactPages = ['track.html', 'support.html', 'account.html', 'privacy.html', 'terms.html'];
     check('pages without the shop script follow the WhatsApp number set in admin',
         contactPages.every((page) => fs.readFileSync(path.join(__dirname, '..', page), 'utf8').includes('shop-contact.js')) &&
         !trackSource.includes("'https://wa.me/233549193805?text='"));
@@ -489,9 +453,9 @@ async function run() {
         !storefrontSource.includes('<a href="#" class="hover:text-white transition-colors">') &&
         !storefrontSource.includes('+233 59 123 4567') &&
         storefrontSource.includes('tel:+233549193805'));
-    check('customers can open a receipt after checkout, after paying, when tracking and in their account',
+    check('customers can open a receipt after checkout, when tracking and in their account',
         storefrontSource.includes('src="receipt.js') && appSource.includes('function openLastReceipt') &&
-        ['track.html', 'account.html', 'payment-result.html'].every((page) =>
+        ['track.html', 'account.html'].every((page) =>
             fs.readFileSync(path.join(__dirname, '..', page), 'utf8').includes('src="receipt.js')));
     // Vercel serves the site without the API; settings.json stands in for /api/settings.
     const staticSettings = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'settings.json'), 'utf8'));
@@ -903,64 +867,45 @@ async function run() {
     check('a new order alerts subscribed staff devices',
         await waitForPush((p) => p.message.title === 'New order · ' + alertOrder.order_number && p.message.body.includes('Alert Buyer')));
 
-    // ---- Paystack direct checkout and shared webhook router ----
-    r = await fetch(`${BASE}/api/payments/paystack/config`);
-    const publicPaystackConfig = await r.json();
-    check('Paystack availability and Akua routing are public without exposing keys',
-        r.status === 200 && publicPaystackConfig.enabled === true && publicPaystackConfig.akua_forwarding === true &&
-        !publicPaystackConfig.secret && !publicPaystackConfig.webhook_url);
-    r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', {
-        customer_name: 'Direct Guest', customer_phone: '0249000000', customer_email: '',
-        order_type: 'retail', items: [{ id: 1, quantity: 1, size: sizeLabel }]
+    // ---- a WhatsApp payment, recorded by staff ----
+    // The money arrives on WhatsApp (mobile money or bank), so an order is paid
+    // only when staff record it. That one step must settle everything payment
+    // implies: the payment row, the takings, revenue and the shelf.
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'MoMo Payer', customer_phone: '0249000000', order_type: 'retail', items: [{ id: 1, quantity: 1, size: sizeLabel }]
     }));
-    check('Paystack checkout requires email and full address', r.status === 400, `status ${r.status}`);
-
-    const directPayload = {
-        customer_name: 'Direct Guest', customer_phone: '0249000000', customer_email: 'direct@test.com',
-        order_type: 'retail', amount: 1,
-        delivery_address: { line1: '10 Test Avenue', city: 'Kasoa', region: 'Central Region', landmark: 'Near the market' },
-        items: [{ id: 1, quantity: 1, size: sizeLabel }]
-    };
-    r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', directPayload));
-    const directOrder = await r.json();
-    check('guest Paystack checkout initializes', r.status === 200 && /^DCK-\d+-[a-f0-9]{20}$/.test(directOrder.reference || ''));
-    check('Paystack amount is server-calculated in pesewas', Number(paystackInitializePayload.amount) === Math.round(unitRetail * 100), `got ${paystackInitializePayload && paystackInitializePayload.amount}`);
-    const directDbOrder = await dbGet('SELECT * FROM orders WHERE order_number = ?', [directOrder.order_number]);
-    check('Paystack order stores address snapshot before payment', directDbOrder.status === 'awaiting_payment' && directDbOrder.delivery_address_line1 === '10 Test Avenue' && directDbOrder.customer_email === 'direct@test.com');
-
-    r = await postPaystackWebhook({ event: 'charge.success', data: { reference: directOrder.reference } }, 'bad-signature');
-    check('Paystack webhook rejects invalid signature', r.status === 401, `status ${r.status}`);
-    r = await postPaystackWebhook({ event: 'charge.success', data: {
-        id: 1001, reference: directOrder.reference, status: 'success', amount: 1, currency: 'GHS', channel: 'card',
-        metadata: { source_app: 'dckids', order_number: directOrder.order_number }
-    }});
-    check('Paystack amount mismatch is acknowledged for manual review', r.status === 200, `status ${r.status}`);
-    check('mismatched Paystack order is not marked paid', (await dbGet('SELECT status FROM orders WHERE id = ?', [directDbOrder.id])).status === 'payment_review');
-
-    r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', Object.assign({}, directPayload, { customer_email: 'paid@test.com' })));
-    const paidOrder = await r.json();
-    const paidDbOrder = await dbGet('SELECT * FROM orders WHERE order_number = ?', [paidOrder.order_number]);
+    const momoOrder = await r.json();
+    const momoOrderId = (await dbGet('SELECT id FROM orders WHERE order_number = ?', [momoOrder.order_number])).id;
+    const momoBefore = await dbGet('SELECT payment_method, status FROM payments WHERE order_id = ?', [momoOrderId]);
+    check('a WhatsApp order waits as an unpaid WhatsApp payment',
+        momoBefore.payment_method === 'WhatsApp' && momoBefore.status === 'pending', JSON.stringify(momoBefore));
     const stockBeforePayment = (await dbGet('SELECT stock FROM products WHERE id = 1')).stock;
-    const successEvent = { event: 'charge.success', data: {
-        id: 1002, reference: paidOrder.reference, status: 'success', amount: Math.round(unitRetail * 100), currency: 'GHS',
-        channel: 'mobile_money', gateway_response: 'Successful', paid_at: new Date().toISOString(),
-        metadata: { source_app: 'dckids', order_number: paidOrder.order_number }
-    }};
-    r = await postPaystackWebhook(successEvent);
-    check('signed Paystack success marks the order paid', r.status === 200 && (await dbGet('SELECT status FROM orders WHERE id = ?', [paidDbOrder.id])).status === 'paid');
+    r = await fetch(`${BASE}/api/orders/${momoOrderId}`, json('PUT', { status: 'paid' }, auth));
+    check('staff can record a WhatsApp payment', r.status === 200, `status ${r.status}`);
+    const momoPaid = await dbGet('SELECT status, paid_at FROM payments WHERE order_id = ?', [momoOrderId]);
+    check('recording it marks the payment paid, with the time it landed',
+        momoPaid.status === 'paid' && !!momoPaid.paid_at, JSON.stringify(momoPaid));
+    r = await fetch(`${BASE}/api/admin/payments?period=7`, { headers: auth });
+    const takings = await r.json();
+    check('the recorded payment shows in the admin payments as WhatsApp, for the order total',
+        takings.payments.some((p) => p.order_number === momoOrder.order_number && p.method === 'WhatsApp' && close(p.amount, momoOrder.total_amount)));
     r = await fetch(`${BASE}/api/analytics/sales?period=week`, { headers: auth });
     const paidAnalytics = await r.json();
-    check('verified Paystack payment appears in recognized revenue',
-        r.status === 200 && close(Number(paidAnalytics.kpis.totalRevenue || 0), unitRetail),
+    check('a recorded payment counts as revenue',
+        r.status === 200 && close(Number(paidAnalytics.kpis.totalRevenue || 0), momoOrder.total_amount),
         `got ${paidAnalytics.kpis && paidAnalytics.kpis.totalRevenue}`);
     const stockAfterPayment = (await dbGet('SELECT stock FROM products WHERE id = 1')).stock;
-    check('successful Paystack payment deducts stock once', stockAfterPayment === Math.max(0, stockBeforePayment - 1), `${stockBeforePayment} -> ${stockAfterPayment}`);
-    r = await postPaystackWebhook(successEvent);
-    check('duplicate Paystack webhook is idempotent', r.status === 200 && (await dbGet('SELECT stock FROM products WHERE id = 1')).stock === stockAfterPayment);
-    check('owner receives one itemized paid-order email', ownerPaymentEmails === 1, `got ${ownerPaymentEmails}`);
-    await waitForPush((p) => p.message.title === 'Paid online · ' + paidOrder.order_number);
-    check('an order paid online alerts staff once, however often Paystack confirms it',
-        pushed.filter((p) => p.message.title === 'Paid online · ' + paidOrder.order_number).length === 1);
+    check('a recorded payment takes the piece off the shelf once',
+        stockAfterPayment === Math.max(0, stockBeforePayment - 1), `${stockBeforePayment} -> ${stockAfterPayment}`);
+    r = await fetch(`${BASE}/api/orders/${momoOrderId}`, json('PUT', { status: 'paid' }, auth));
+    check('recording the same payment twice changes nothing',
+        r.status === 200 && (await dbGet('SELECT stock FROM products WHERE id = 1')).stock === stockAfterPayment);
+    r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', {
+        customer_name: 'Card Payer', customer_phone: '0249000009', order_type: 'retail', items: [{ id: 1, quantity: 1, size: sizeLabel }]
+    }));
+    check('there is no card checkout to start', r.status === 404, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/payments/paystack/webhook`, json('POST', { event: 'charge.success', data: { reference: 'DCK-1-x' } }));
+    check('nothing answers a payment-provider webhook', r.status === 404, `status ${r.status}`);
 
     const laptop = Object.assign({}, device, { endpoint: 'https://updates.push.services.mozilla.com/wpush/v2/smoke-laptop' });
     await fetch(`${BASE}/api/push/subscribe`, json('POST', laptop, auth));
@@ -976,36 +921,6 @@ async function run() {
     check('a device the browser dropped is removed from order alerts',
         (await dbGet('SELECT COUNT(*) AS count FROM push_subscriptions')).count === 0);
     app.set('webPushSender', undefined);
-    r = await fetch(`${BASE}/api/payments/paystack/status/${paidOrder.reference}`);
-    const paidStatus = await r.json();
-    check('payment status endpoint returns no PII', r.status === 200 && paidStatus.payment_status === 'paid' && !paidStatus.customer_email && !paidStatus.items);
-
-    const legacyEvent = { event: 'charge.success', data: { reference: 'OTHER-APP-123', status: 'success', amount: 5000, currency: 'GHS' } };
-    const akuaEvent = { event: 'charge.success', data: {
-        reference: 'AKUA-1786580096715-b599fee8fef6', status: 'success', amount: 2200, currency: 'GHS',
-        metadata: { source_app: 'akua_inventory', sale_id: 'sale-smoke' }
-    }};
-    const akuaRaw = JSON.stringify(akuaEvent);
-    const akuaSignature = crypto.createHmac('sha512', process.env.PAYSTACK_SECRET_KEY).update(akuaRaw).digest('hex');
-    r = await postPaystackWebhook(akuaEvent);
-    const akuaForwardResult = await r.json();
-    check('AKUA webhook is routed to its isolated destination',
-        r.status === 200 && akuaForwardResult.destination === 'akua' && forwardedWebhookBody === '');
-    check('AKUA forwarding preserves raw body and Paystack signature',
-        forwardedAkuaWebhookBody === akuaRaw && forwardedAkuaWebhookSignature === akuaSignature);
-    akuaForwardingShouldFail = true;
-    r = await postPaystackWebhook(akuaEvent);
-    check('AKUA forwarding failure remains retriable', r.status === 500 || r.status === 502, `status ${r.status}`);
-    akuaForwardingShouldFail = false;
-
-    r = await postPaystackWebhook(legacyEvent);
-    const legacyForwardResult = await r.json();
-    check('non-DCK and non-AKUA webhook keeps legacy forwarding unchanged',
-        r.status === 200 && legacyForwardResult.destination === 'legacy' && forwardedWebhookBody === JSON.stringify(legacyEvent));
-    forwardingShouldFail = true;
-    r = await postPaystackWebhook(legacyEvent);
-    check('legacy forwarding failure remains retriable', r.status === 500 || r.status === 502, `status ${r.status}`);
-    forwardingShouldFail = false;
 
     // ---- Firebase customer identity and protected account data ----
     const customerAuth = { 'Authorization': 'Bearer verified-new' };
@@ -1089,14 +1004,14 @@ async function run() {
     r = await fetch(`${BASE}/api/customer/orders`, { headers: customerAuth });
     const customerOrders = await r.json();
     check('authenticated order is attached with its items', r.status === 200 && customerOrders.some(item => item.order_number === customerOrder.order_number && item.items.length === 1));
-    r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', {
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
         customer_name: 'Updated Customer', customer_phone: '0244444444', customer_email: 'spoofed@test.com',
-        order_type: 'retail', delivery_address: { line1: '1 Test Street', city: 'Accra', region: 'Greater Accra' },
-        items: [{ id: 1, quantity: 1, size: sizeLabel }]
+        order_type: 'retail', items: [{ id: 1, quantity: 1, size: sizeLabel }]
     }, customerAuth));
-    const signedInDirectOrder = await r.json();
-    const signedInDirectDb = await dbGet('SELECT customer_account_id, customer_email FROM orders WHERE order_number = ?', [signedInDirectOrder.order_number]);
-    check('signed-in Paystack order uses verified account identity', r.status === 200 && signedInDirectDb.customer_account_id === customerId && signedInDirectDb.customer_email === 'new.customer@test.com');
+    const signedInOrder = await r.json();
+    const signedInDb = await dbGet('SELECT customer_account_id, customer_email FROM orders WHERE order_number = ?', [signedInOrder.order_number]);
+    check('a signed-in order uses the verified account identity, not the typed email',
+        r.status === 200 && signedInDb.customer_account_id === customerId && signedInDb.customer_email === 'new.customer@test.com');
     const orderCountBeforeInvalidToken = (await dbGet(`SELECT COUNT(*) AS count FROM orders`)).count;
     r = await fetch(`${BASE}/api/orders`, json('POST', {
         customer_name: 'Invalid Token', customer_phone: '0245555555',
@@ -1170,8 +1085,6 @@ async function run() {
     r = await fetch(`${BASE}/api/orders`, json('POST', { customer_name: 'Gone Item', customer_phone: '0241110000', order_type: 'retail', items: [{ id: 999999, size: 'One Size', quantity: 1 }] }));
     const goneBody = await r.json();
     check('ordering a product that no longer exists says so (400), not a server error', r.status === 400 && /no longer sold/.test(goneBody.error || ''), `status ${r.status} ${goneBody.error}`);
-    r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', Object.assign({}, directPayload, { customer_phone: '0241110001', items: [{ id: 999999, size: 'One Size', quantity: 1 }] })));
-    check('card checkout says the same', r.status === 400 && /no longer sold/.test((await r.json()).error || ''), `status ${r.status}`);
 
     // ---- the admin's order poll: only what changed ----
     r = await fetch(`${BASE}/api/orders`, { headers: auth });
@@ -1296,23 +1209,10 @@ async function run() {
     r = await orderSlides('shop', 1);
     const oneSlide = await r.json();
     check('one piece still costs the selling price', r.status === 200 && close(oneSlide.total_amount, 180), `got ${oneSlide.total_amount}`);
-    const cardBulkSlides = Object.assign({}, directPayload, {
-        customer_phone: '0243333337', order_type: 'preorder', preorder_kind: 'bulk', items: [{ id: slides.id, quantity: moq, size: slides.size }]
-    });
-    r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', cardBulkSlides));
-    check(`paying by card charges the same bulk price (150 x ${moq})`,
-        r.status === 200 && Number(paystackInitializePayload.amount) === 150 * moq * 100, `got ${paystackInitializePayload && paystackInitializePayload.amount}`);
-    r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', Object.assign({}, cardBulkSlides, {
-        customer_phone: '0243333338', idempotency_key: 'card-under-moq-' + Date.now(), items: [{ id: slides.id, quantity: 3, size: slides.size }]
-    })));
-    check('paying by card under the MOQ charges the retail price (180 x 3)',
-        r.status === 200 && Number(paystackInitializePayload.amount) === 180 * 3 * 100, `status ${r.status}, got ${paystackInitializePayload && paystackInitializePayload.amount}`);
     await dbRun('UPDATE store_settings SET wholesale_enabled = 0 WHERE id = 1');
     try {
         r = await orderSlides('bulk', moq);
         check('with wholesale switched off, the shop takes no bulk pre-orders', r.status === 400, `status ${r.status}`);
-        r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', cardBulkSlides));
-        check('with wholesale switched off, card checkout takes no bulk pre-orders either', r.status === 400, `status ${r.status}`);
         r = await fetch(`${BASE}/api/orders`, json('POST', {
             customer_name: 'Bulk Buyer', customer_phone: '0242222222', order_type: 'wholesale', items: [{ id: 1, quantity: moq, size: sizeLabel }]
         }));
