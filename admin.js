@@ -336,7 +336,7 @@ function requestLoginCode(e) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email })
     })
-    .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, data: d }; }); })
+    .then(function (res) { return res.json().catch(function () { return {}; }).then(function (d) { return { ok: res.ok, data: d }; }); })
     .then(function (r) {
         if (!r.ok) throw new Error(r.data.error || 'Could not send a code.');
         _loginEmail = email;
@@ -397,7 +397,7 @@ function verifyLoginCode(e) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: _loginEmail, code: code })
     })
-    .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, data: d }; }); })
+    .then(function (res) { return res.json().catch(function () { return {}; }).then(function (d) { return { ok: res.ok, data: d }; }); })
     .then(function (r) {
         if (!r.ok) throw new Error(r.data.error || 'Incorrect code.');
         _finishLogin(r.data);
@@ -418,7 +418,7 @@ function recoveryLogin(e) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email, code: code })
     })
-    .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, data: d }; }); })
+    .then(function (res) { return res.json().catch(function () { return {}; }).then(function (d) { return { ok: res.ok, data: d }; }); })
     .then(function (r) {
         if (!r.ok) throw new Error(r.data.error || 'Invalid recovery code.');
         _finishLogin(r.data);
@@ -493,7 +493,7 @@ function handleRegister(e) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ full_name: name, email: email, phone: phone })
     })
-    .then(function(res) { return res.json().then(function(d) { return { ok: res.ok, data: d }; }); })
+    .then(function(res) { return res.json().catch(function() { return {}; }).then(function(d) { return { ok: res.ok, data: d }; }); })
     .then(function(r) {
         if (!r.ok) throw new Error(r.data.error || 'Could not submit request');
         ['signup-name', 'signup-email', 'signup-phone'].forEach(function(id) {
@@ -527,9 +527,31 @@ function handleRegister(e) {
 // Self-gating: asks the server whether a Google client id is configured. If not,
 // the button stays hidden and email-OTP is the only path — nothing breaks.
 var _gisScriptLoaded = false;
+// A static copy of the site (the Vercel preview) has no server behind it, so
+// sign-in can only fail there. Say so on the sign-in screen instead.
+function showNoServerSignIn() {
+    var status = document.getElementById('login-email-status');
+    if (status) status.textContent = 'Sign-in needs the shop\'s server, and this copy of the site has none. Open the admin at the shop\'s own address.';
+    var input = document.getElementById('login-email');
+    if (input) input.disabled = true;
+    var btn = document.getElementById('login-send-code-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.setAttribute('aria-disabled', 'true');
+        btn.textContent = 'Sign-in unavailable here';
+    }
+}
+
 function initGoogleSignIn() {
     fetch(API_URL + '/auth/config')
-    .then(function (res) { return res.json(); })
+    .then(function (res) {
+        // No API answers with a page, not JSON (a static host's 404).
+        if (!/json/.test(res.headers.get('content-type') || '')) {
+            showNoServerSignIn();
+            return Promise.reject(new Error('no-server'));
+        }
+        return res.json();
+    })
     .then(function (cfg) {
         var emailAvailable = !cfg || cfg.emailCodeAvailable !== false;
         var emailStatus = document.getElementById('login-email-status');
@@ -574,7 +596,7 @@ function handleGoogleCredential(response) {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ credential: response.credential })
     })
-    .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, data: d }; }); })
+    .then(function (res) { return res.json().catch(function () { return {}; }).then(function (d) { return { ok: res.ok, data: d }; }); })
     .then(function (r) {
         if (!r.ok) throw new Error(r.data.error || 'Google sign-in failed.');
         _finishLogin(r.data);
@@ -1615,9 +1637,9 @@ function renderDashboardRecentProducts(products) {
     tbody.innerHTML = '';
 
     // Show the newest real catalogue records so image provenance stays honest.
-    var demoProducts = (products || []).slice().sort(function(a, b) { return (b.id || 0) - (a.id || 0); }).slice(0, 5);
+    var newestProducts = (products || []).slice().sort(function(a, b) { return (b.id || 0) - (a.id || 0); }).slice(0, 5);
 
-    demoProducts.forEach(function(p) {
+    newestProducts.forEach(function(p) {
         var statusHTML;
         if (p.stock <= 0) {
             statusHTML = '<span class="status-pill out-of-stock">Out of Stock</span>';
@@ -3663,7 +3685,7 @@ function deleteOrderConfirmed() {
             window.mobileBottomNav.updateOrderBadge();
         }
     }
-    // The showcase build has no server: there the order only leaves the screen.
+    // An order that never reached the server (a draft) only leaves the screen.
     function localRemove() {
         var arr = window.adminOrders || [];
         var idx = arr.findIndex(function(o) { return o.id === orderNumber; });
@@ -3672,7 +3694,7 @@ function deleteOrderConfirmed() {
     }
 
     var token = localStorage.getItem('adminToken');
-    if (!order.db_id || !token || token.indexOf('fallback-token') === 0) return localRemove();
+    if (!order.db_id || !token) return localRemove();
     // A refusal or a dropped connection leaves the order in place, and says so,
     // rather than hiding it until the next refresh brings it back.
     fetch(API_URL + '/orders/' + order.db_id, {
@@ -4676,7 +4698,7 @@ function loadAnalytics(period, customRange) {
     showAnalyticsError('');
 
     var token = localStorage.getItem('adminToken');
-    if (!token || token.indexOf('fallback-token') === 0) {
+    if (!token) {
         var localData = buildLocalAnalytics(analyticsState.period);
         if (analyticsState.customRange && localData && localData.range) {
             localData.range.start = analyticsState.customRange.start;
@@ -5375,7 +5397,7 @@ function exportAnalyticsCSV() {
     }
 
     var token = localStorage.getItem('adminToken');
-    if (token && token.indexOf('fallback-token') !== 0) {
+    if (token) {
         fetch(API_URL + '/analytics/sales/export?period=' + encodeURIComponent(analyticsState.period), {
             headers: { 'Authorization': 'Bearer ' + token }
         })
@@ -6793,7 +6815,7 @@ window.adminReviews = [];
 
 function loadReviews() {
     var token = localStorage.getItem('adminToken');
-    if (!token || token.indexOf('fallback-token') === 0) {
+    if (!token) {
         renderReviewsTable();
         return;
     }
@@ -8806,13 +8828,10 @@ document.addEventListener('DOMContentLoaded', function() {
     initGoogleSignIn();
 
     // Check if already logged in — verify token is still valid
+    // Only a session the server confirms opens the dashboard. (A token from the
+    // retired demo mode fails this check, is cleared, and lands on sign-in.)
     var token = localStorage.getItem('adminToken');
-    if (token && token.indexOf('fallback-token') === 0) {
-        // Offline/showcase token (see admin-demo.js) — the convention this
-        // file already uses elsewhere. There is no real session to verify.
-        showDashboard(localStorage.getItem('adminRole') || 'manager');
-        loadStoreConfig();
-    } else if (token) {
+    if (token) {
         fetch(API_URL + '/me', {
             headers: { 'Authorization': 'Bearer ' + token }
         })
@@ -10029,7 +10048,7 @@ function loadAdmins() {
 /* ── Access requests (sign-ups awaiting the owner's approval) ── */
 function loadAccessRequests() {
     var token = localStorage.getItem('adminToken');
-    if (!token || token.indexOf('fallback-token') === 0) return;
+    if (!token) return;
 
     fetch(API_URL + '/admin/access-requests', {
         headers: { 'Authorization': 'Bearer ' + token }
@@ -10112,7 +10131,7 @@ function rejectAccessRequest(id) {
 // drop a bell notification + toast when NEW requests arrived since last seen.
 function refreshAccessRequestsBadge() {
     var token = localStorage.getItem('adminToken');
-    if (!token || token.indexOf('fallback-token') === 0) return;
+    if (!token) return;
     if (currentRole !== 'manager' && currentRole !== 'admin') return;
 
     fetch(API_URL + '/admin/access-requests', {

@@ -68,8 +68,8 @@ code printed to the server log). The first owner is claimed like this:
 
 - Set **`OWNER_EMAIL`** to the address(es) that should be owners
   (comma-separated) — e.g. your email plus the store owner's. Anyone signing up
-  with a listed email is **auto-activated as owner (manager)** and shown one-time
-  **recovery codes**; **everyone else lands in `pending`** and must be approved
+  with a listed email is **auto-activated as owner (manager)**, and their one-time
+  **recovery codes** come with the first emailed-code sign-in; **everyone else lands in `pending`** and must be approved
   from **Manage Staff → Access Requests**.
 - If `OWNER_EMAIL` is unset, the **very first sign-up becomes owner** — fine for
   local dev, but set `OWNER_EMAIL` before exposing the admin publicly so a
