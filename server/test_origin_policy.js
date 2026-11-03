@@ -54,8 +54,7 @@ async function live() {
             APP_URL: 'https://dckidsbrand.com',
             OWNER_EMAIL: 'owner@dckidsbrand.com',
             RESEND_API_KEY: 're_test_placeholder',
-            RESEND_FROM: 'DC Kids <orders@dckidsbrand.com>',
-            ADMIN_PASSWORD: 'origin-policy-test-admin'
+            RESEND_FROM: 'DC Kids <orders@dckidsbrand.com>'
         },
         stdio: ['ignore', 'pipe', 'pipe']
     });

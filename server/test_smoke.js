@@ -453,6 +453,19 @@ async function run() {
         !adminPageSource.includes('New order #1042 received') &&
         !adminSource.includes('function seedDemoDataForPreview()') &&
         adminSource.includes("localStorage.setItem('dcKidsDemoSeedsRetired', 'true')"));
+    // No demo anywhere: the admin opens only through the real sign-in.
+    check('the demo mode and demo data script are gone',
+        !fs.existsSync(path.join(__dirname, '..', 'admin-demo.js')) && !fs.existsSync(path.join(__dirname, 'seed_demo.js')) &&
+        !adminPageSource.includes('admin-demo.js') && !adminPageSource.includes("get('demo')") &&
+        !fs.readFileSync(path.join(__dirname, '..', 'admin-bridge.css'), 'utf8').includes('demo-banner'));
+    check('no fake token opens the admin: every session is checked with the server',
+        !adminSource.includes('fallback-token') &&
+        /var token = localStorage\.getItem\('adminToken'\);\s*if \(token\) \{\s*fetch\(API_URL \+ '\/me'/.test(adminSource));
+    check('where there is no server (the static preview), sign-in says so instead of failing',
+        adminSource.includes('function showNoServerSignIn()') &&
+        /if \(!\/json\/\.test\(res\.headers\.get\('content-type'\) \|\| ''\)\) \{\s*showNoServerSignIn\(\);/.test(adminSource));
+    check('the docs describe the real sign-in, not the old admin password',
+        ['README.md', 'DEPLOYMENT.md'].every((doc) => !/ADMIN_PASSWORD|admin123/.test(fs.readFileSync(path.join(__dirname, '..', doc), 'utf8'))));
     check('admin settings exposes accessible recovery-code management',
         adminPageSource.includes('id="recovery-security-card"') &&
         adminPageSource.includes('id="recovery-code-status" role="status" aria-live="polite"') &&
@@ -1007,6 +1020,11 @@ async function run() {
     check('customer session provisioning is idempotent', r.status === 200 && repeatedSession.created === false && repeatedSession.customer.id === customerId);
     r = await fetch(`${BASE}/api/customer/session`, json('POST', {}, { 'Authorization': 'Bearer verified-conflict' }));
     check('conflicting verified identity is rejected', r.status === 409, `status ${r.status}`);
+    // The old email-and-password reset is retired: Firebase owns customer passwords.
+    for (const route of ['forgot-password', 'reset-password']) {
+        r = await fetch(`${BASE}/api/customer/${route}`, json('POST', { email: 'new.customer@test.com', token: 'x', password: 'whatever-long' }));
+        check(`the old customer ${route} route says it is retired`, r.status === 410 && /retired/i.test((await r.json()).error || ''), `status ${r.status}`);
+    }
 
     r = await fetch(`${BASE}/api/customer/me`, { headers: customerAuth });
     const initialProfile = await r.json();

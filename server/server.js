@@ -3228,13 +3228,6 @@ function optionalCustomer(req, res, next) {
     });
 }
 
-// Legacy local-password endpoints stay mounted only as an explicit retirement
-// response for older clients. Firebase handles registration, sign-in,
-// verification, and password reset from now on.
-const requireCustomerAccountsEnabled = (req, res) => {
-    res.status(410).json({ error: 'This sign-in method has been retired. Use the customer account page.' });
-};
-
 function logAdminAction(req, action, entityType, entityId, summary, details) {
     const actor = req && req.user ? req.user : {};
     let detailsJson = null;
@@ -3384,70 +3377,11 @@ app.post('/api/customer/session', loginLimiter, async (req, res) => {
     }
 });
 
-// Password Recovery - Request Reset (Forgot Password)
-app.post('/api/customer/forgot-password', requireCustomerAccountsEnabled, registerLimiter, (req, res) => {
-    const { email } = req.body || {};
-    if (!email) return res.status(400).json({ error: 'Email address is required' });
-    
-    db.get(`SELECT name FROM customer_accounts WHERE email = ?`, [email.trim().toLowerCase()], (err, user) => {
-        if (err) return serverError(res, err);
-        
-        // Return generic success even if user not found to prevent email scanning/enumeration
-        if (!user) {
-            return res.json({ success: true, message: 'If that email is registered, a password recovery link has been sent.' });
-        }
-        
-        // Generate a 1-hour secure reset token signed with the email and a reset flag
-        const token = jwt.sign(
-            { email: email.trim().toLowerCase(), reset: true },
-            JWT_SECRET,
-            { expiresIn: '1h' }
-        );
-        
-        // Construct reset link using host header to adapt to localhost or custom domains automatically
-        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-        const resetLink = `${protocol}://${req.headers.host}/account.html?email=${encodeURIComponent(email.trim().toLowerCase())}&resetToken=${token}`;
-        
-        console.log(`\n[PASSWORD RECOVERY] Generated reset link for customer: ${email.trim().toLowerCase()}\nLink: ${resetLink}\n`);
-        
-        // NOTE: No storefront login exists — this endpoint is unused in production.
-        
-        res.json({ success: true, message: 'If that email is registered, a password recovery link has been sent.' });
-    });
-});
-
-// Password Recovery - Reset Password (Reset Password Form Submission)
-app.post('/api/customer/reset-password', requireCustomerAccountsEnabled, registerLimiter, (req, res) => {
-    const { email, token, password } = req.body || {};
-    if (!email || !token || !password) {
-        return res.status(400).json({ error: 'Email, recovery token, and new password are required' });
-    }
-    if (password.length < 8) {
-        return res.status(400).json({ error: 'Password must be at least 8 characters' });
-    }
-
-    // Verify JWT signature and expiration
-    jwt.verify(token, JWT_SECRET, async (err, decoded) => {
-        if (err || !decoded || !decoded.reset || decoded.email !== email.trim().toLowerCase()) {
-            return res.status(400).json({ error: 'Invalid or expired password reset link. Please request a new link.' });
-        }
-
-        try {
-            const hash = await bcrypt.hash(password, 10);
-            db.run(
-                `UPDATE customer_accounts SET password_hash = ? WHERE email = ?`,
-                [hash, email.trim().toLowerCase()],
-                function(err) {
-                    if (err) return serverError(res, err);
-                    if (this.changes === 0) return res.status(404).json({ error: 'Account not found' });
-                    
-                    res.json({ success: true, message: 'Password has been reset successfully. You can now log in.' });
-                }
-            );
-        } catch (e) {
-            serverError(res, e);
-        }
-    });
+// The old customer email-and-password reset is retired: Firebase handles
+// customer registration, sign-in, verification and password reset. These two
+// paths only tell an older app so, rather than answering a bare 404.
+['/api/customer/forgot-password', '/api/customer/reset-password'].forEach((route) => {
+    app.post(route, (req, res) => res.status(410).json({ error: 'This sign-in method has been retired. Use the customer account page.' }));
 });
 
 app.get('/api/customer/me', authenticateCustomer, (req, res) => {

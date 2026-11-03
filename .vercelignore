@@ -1,5 +1,6 @@
-# The Vercel build is a static showcase: it serves the storefront and the
-# admin shell so the UI can be walked through, and nothing else runs there.
+# The Vercel build is a static preview: the storefront runs on products.json
+# and settings.json (checkout hands orders to WhatsApp), and the admin shows
+# its sign-in, which says it needs the shop's server. Nothing else runs there.
 # Everything below is either server-side, tooling, or documentation, and on a
 # static host it would simply be published as readable files. Keeping it out
 # of the upload is the difference between shipping a site and shipping the
