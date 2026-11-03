@@ -89,10 +89,9 @@ The server prints the port it's listening on (default **3000**). Then open:
 - Admin: <http://localhost:3000/admin.html>
 - Customer account: <http://localhost:3000/account.html>
 
-> **Admin sign-in has no password.** Set `OWNER_EMAIL` to the owner's address, request
-> access at `/admin.html` with it, then sign in with the 6-digit code emailed to it
-> (printed in the server log when `RESEND_API_KEY` is unset), with Google, or with a
-> one-time recovery code. Everyone else requests access and the owner approves them.
+> **Admin sign-in has no password.** Set `OWNER_EMAIL` to the owner's address and
+> `GOOGLE_CLIENT_ID` (DEPLOYMENT.md §8), then sign in at `/admin.html` with Continue
+> with Google. Anyone else who signs in becomes an access request the owner approves.
 > Customers sign in on `/account.html` through Firebase.
 
 ---
@@ -107,7 +106,8 @@ Set these in `server/.env` (see `DEPLOYMENT.md` for the full table):
 | `JWT_SECRET` | **Required.** Strong random string for signing sessions. The server refuses to start in production on the built-in fallback. |
 | `ALLOWED_ORIGINS` | Comma-separated origins allowed by CORS in production. |
 | `OWNER_EMAIL` | **Required in production.** The shop owner's email: the only account with owner powers. |
-| `RESEND_API_KEY` / `RESEND_FROM` | **Required in production.** Sends the admin sign-in codes (from a verified sender). |
+| `GOOGLE_CLIENT_ID` | **Required.** The admin's only sign-in (Continue with Google). See DEPLOYMENT.md §8. |
+| `RESEND_API_KEY` / `RESEND_FROM` | Optional. Notification emails: access requests to the owner, notes to new staff (from a verified sender). |
 | `PORT` | Listening port (default 3000; most hosts inject this). |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Optional order alerts as device notifications from the installed admin app (`npx web-push generate-vapid-keys`). |
 | `SMTP_*` | Optional transactional email. |
@@ -142,13 +142,13 @@ npm --prefix server run export:products     # refresh products.json for the stat
 
 See **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full checklist. In short: serve over
 **HTTPS**, set `NODE_ENV=production`, a fresh `JWT_SECRET`, `ALLOWED_ORIGINS`, `APP_URL`,
-`OWNER_EMAIL`, `RESEND_API_KEY`/`RESEND_FROM`, and persist the database.
+`OWNER_EMAIL`, `GOOGLE_CLIENT_ID`, and persist the database.
 
 ---
 
 ## Tech notes
 
-- **Security:** Firebase bearer ID tokens for verified customer accounts, separate admin JWT auth (emailed codes, Google, bcrypt-hashed recovery codes), parameterized
+- **Security:** Firebase bearer ID tokens for verified customer accounts, separate admin JWT auth (Google sign-in only), parameterized
   SQL throughout, server-side order pricing (never trusts client-sent prices),
   manual security headers, in-memory rate limiting, MIME-validated image uploads.
 - **PWA:** separate storefront/admin manifests + a service worker (network-first for

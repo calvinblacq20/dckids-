@@ -56,6 +56,7 @@ function buildConfig(env = process.env, options = {}) {
     const jwtSecret = String(env.JWT_SECRET || DEFAULT_JWT_SECRET);
     const resendApiKey = String(env.RESEND_API_KEY || '').trim();
     const resendFrom = String(env.RESEND_FROM || DEFAULT_RESEND_FROM).trim();
+    const googleClientId = String(env.GOOGLE_CLIENT_ID || '').trim();
     const portRaw = String(env.PORT || '3001').trim();
     const port = Number(portRaw);
     const errors = [];
@@ -73,8 +74,9 @@ function buildConfig(env = process.env, options = {}) {
         if (!appOrigin) errors.push('APP_URL must be a valid HTTPS origin');
         else if (!normalizedOrigins.includes(appOrigin)) errors.push('APP_URL must also appear in ALLOWED_ORIGINS');
         if (!ownerEmails.length || ownerEmails.some((email) => !isEmail(email))) errors.push('OWNER_EMAIL must contain at least one valid email address');
-        if (!resendApiKey) errors.push('RESEND_API_KEY is required in production');
-        if (!resendFrom || /onboarding@resend\.dev/i.test(resendFrom) || !/@[^>\s]+/.test(resendFrom)) errors.push('RESEND_FROM must be a verified, non-default sender address');
+        // Google is the only way into the admin. Email only carries notifications.
+        if (!googleClientId) errors.push('GOOGLE_CLIENT_ID is required in production');
+        if (resendApiKey && (!resendFrom || /onboarding@resend\.dev/i.test(resendFrom) || !/@[^>\s]+/.test(resendFrom))) errors.push('RESEND_FROM must be a verified, non-default sender address');
     }
 
     if (errors.length) throw new ConfigurationError(errors);
@@ -100,7 +102,7 @@ function buildConfig(env = process.env, options = {}) {
         jwtSecret,
         resendApiKey,
         resendFrom,
-        googleClientId: String(env.GOOGLE_CLIENT_ID || '').trim(),
+        googleClientId,
         customerAccountsEnabled: String(env.CUSTOMER_ACCOUNTS_ENABLED || '').toLowerCase() === 'true'
     });
 }

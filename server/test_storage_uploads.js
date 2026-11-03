@@ -91,6 +91,25 @@ function json(method, body, headers) {
     };
 }
 
+// The owner's account as her first Google sign-in would create it. Google
+// can't be reached from a test, so the session token below is signed directly.
+function insertOwner() {
+    return new Promise((resolve, reject) => {
+        const database = new sqlite3.Database(dbPath, (openError) => {
+            if (openError) return reject(openError);
+            database.run(`INSERT INTO users (username, role, email, full_name, status, created_at)
+                VALUES ('storage-owner@test.com', 'manager', 'storage-owner@test.com', 'Storage Owner', 'active', datetime('now'))`, function (runError) {
+                const ownerId = this && this.lastID;
+                database.close((closeError) => {
+                    if (runError) reject(runError);
+                    else if (closeError) reject(closeError);
+                    else resolve(ownerId);
+                });
+            });
+        });
+    });
+}
+
 function setProductImage(productId, imagePath) {
     return new Promise((resolve, reject) => {
         const database = new sqlite3.Database(dbPath, (openError) => {
@@ -111,11 +130,8 @@ async function run() {
     baseUrl = `http://127.0.0.1:${port}`;
     startServer();
     await waitForServer();
-    const registered = await fetch(`${baseUrl}/api/admin/register`, json('POST', {
-        full_name: 'Storage Owner', email: 'storage-owner@test.com', phone: '0241111111'
-    }));
-    assert.strictEqual(registered.status, 201, 'test owner should register');
-    const auth = { Authorization: `Bearer ${jwt.sign({ id: 1 }, secret, { expiresIn: '5m' })}` };
+    const ownerId = await insertOwner();
+    const auth = { Authorization: `Bearer ${jwt.sign({ id: ownerId }, secret, { expiresIn: '5m' })}` };
     const upload = await fetch(`${baseUrl}/api/upload-image`, json('POST', { dataUrl: tinyPng }, auth));
     const uploaded = await upload.json();
     assert.strictEqual(upload.status, 200, JSON.stringify(uploaded));

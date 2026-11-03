@@ -411,8 +411,8 @@ const db = new sqlite3.Database(dbPath, (err) => {
 
             // Migration: access-request workflow columns. status drives access:
             // 'active' may sign in, 'pending' awaits approval, 'rejected' is
-            // refused. Admin auth is passwordless (email 6-digit OTP), so
-            // password_hash is unused for admins and stays NULL.
+            // refused. Admins sign in with Google, so password_hash is unused
+            // and stays NULL.
             db.all("PRAGMA table_info(users)", (e, cols) => {
                 if (e || !cols) return;
                 const names = cols.map(c => c.name);
@@ -425,10 +425,6 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 if (names.indexOf('phone') === -1) addCol("phone TEXT", "phone");
                 if (names.indexOf('status') === -1) addCol("status TEXT", "status");
                 if (names.indexOf('created_at') === -1) addCol("created_at TEXT", "created_at");
-                // recovery_shown: set to 1 once the user's one-time recovery codes
-                // have been displayed (owner at sign-up, staff at first login), so
-                // we never re-show them or keep them in plaintext.
-                if (names.indexOf('recovery_shown') === -1) addCol("recovery_shown INTEGER DEFAULT 0", "recovery_shown");
                 // google_sub: the Google account's stable subject id, bound on
                 // first "Continue with Google" sign-in. We authenticate by
                 // verified email; this is stored for audit and to detect an email
@@ -439,34 +435,19 @@ const db = new sqlite3.Database(dbPath, (err) => {
                 });
             });
 
-            // No default admin is seeded. The very first person to complete the
-            // sign-up form is auto-activated as the owner (manager); everyone
-            // after them goes through the pending -> approve flow. See
-            // /api/admin/register in server.js.
+            // No default admin is seeded. The owner is the OWNER_EMAIL address,
+            // or without it the first person to sign in with Google; everyone
+            // else goes through the pending -> approve flow. See
+            // /api/auth/google in server.js.
         });
 
-        // Short-lived email sign-in codes (OTP). One active code per user; the
-        // request endpoint clears old codes before inserting a fresh one.
-        db.run(`CREATE TABLE IF NOT EXISTS auth_codes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            code_hash TEXT NOT NULL,
-            expires_at TEXT NOT NULL,
-            attempts INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        )`, (err) => { if (err) console.error("Error creating auth_codes table", err); });
-
-        // One-time recovery codes: the account's backup way in if email fails.
-        // Stored hashed; marked used_at once redeemed.
-        db.run(`CREATE TABLE IF NOT EXISTS recovery_codes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            code_hash TEXT NOT NULL,
-            used_at TEXT,
-            created_at TEXT DEFAULT (datetime('now')),
-            FOREIGN KEY (user_id) REFERENCES users (id)
-        )`, (err) => { if (err) console.error("Error creating recovery_codes table", err); });
+        // Admins sign in with Google only (ADR 0012). The emailed sign-in codes
+        // and one-time recovery codes went with the old sign-in; dropping their
+        // tables means a rollback to that code cannot bring the old codes back
+        // to life (it recreates the tables empty). users.recovery_shown is left
+        // on older databases, unused.
+        db.run(`DROP TABLE IF EXISTS auth_codes`, (err) => { if (err) console.error("Error dropping auth_codes table", err); });
+        db.run(`DROP TABLE IF EXISTS recovery_codes`, (err) => { if (err) console.error("Error dropping recovery_codes table", err); });
 
         // Create products table
         db.run(`CREATE TABLE IF NOT EXISTS products (

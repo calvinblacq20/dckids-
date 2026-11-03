@@ -43,8 +43,9 @@ is up to your host:
 | `NODE_ENV` | **yes (production)** | Set to `production` to enable strict CORS, HSTS, and tight rate limiting. Unset = dev mode (open CORS, no HSTS). |
 | `JWT_SECRET` | **yes** | Secret for signing admin/customer sessions. Use a long random string (32+ chars). Never commit it. |
 | `ALLOWED_ORIGINS` | production | Comma-separated origins permitted by CORS, e.g. `https://dckidsbrand.com,https://www.dckidsbrand.com`. The shop's own pages are always allowed on whatever hostname serves them (same-origin), so this list is for other sites that call the API; it must still name the main domain, which `APP_URL` must match. Any other site gets a 403. |
-| `OWNER_EMAIL` | recommended | Comma-separated emails auto-activated as owner (manager) on sign-up. Everyone else lands in `pending` and must be approved. Unset = the very first sign-up becomes owner. See §3. |
-| `RESEND_API_KEY` / `RESEND_FROM` | optional | Sends admin sign-in codes and notification emails via Resend. Unset in production = storefront checkout continues, while admin email-code sign-in and email notifications are disabled; Google/recovery sign-in remains available. In local development, codes are printed to the server log. |
+| `OWNER_EMAIL` | **yes (production)** | The owner's email, made owner (manager) on its first Google sign-in. Set it to her address alone: every listed address is an owner (ADR 0007). Everyone else lands in `pending` and must be approved. Unset = the first person to sign in becomes owner. See §3. |
+| `GOOGLE_CLIENT_ID` | **yes** | The admin's only sign-in ("Continue with Google"). Unset = nobody can sign in to the admin, while the storefront keeps selling. Setup in §8. |
+| `RESEND_API_KEY` / `RESEND_FROM` | optional | Notification emails via Resend: new access requests to the owner, and a note to staff the owner adds. Unset = those emails are skipped (and logged); sign-in and checkout are unaffected. |
 | `APP_URL` | recommended | Public base URL used in emails (e.g. `https://dckidsbrand.com`). |
 | `PORT` | no | Listening port (default 3000). Most hosts inject this automatically. |
 | `RAILWAY_VOLUME_MOUNT_PATH` | Railway production | Railway injects `/data` when the Volume is mounted there. Never create or edit this variable manually. The app refuses Railway production without it. |
@@ -57,28 +58,27 @@ is up to your host:
 | `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_APP_ID` | **yes** | Public Firebase web-app configuration used by the customer account page. |
 | `GOOGLE_APPLICATION_CREDENTIALS` / `FIREBASE_SERVICE_ACCOUNT_JSON` | production* | Use an external service-account file path, workload identity, or a sealed JSON environment value on Railway-style hosts. Never expose or commit the JSON. |
 
-## 3. First admin account (passwordless)
+## 3. First admin account (Google sign-in)
 
-There is **no seeded admin and no default password**. Admin sign-in is
-passwordless: entering an email sends a **6-digit code** (via Resend; unset key =
-code printed to the server log). The first owner is claimed like this:
+There is **no seeded admin and no password**. The admin's only sign-in is
+**Continue with Google**, so set that up first (§8). The owner is claimed like this:
 
-- Set **`OWNER_EMAIL`** to the address(es) that should be owners
-  (comma-separated) — e.g. your email plus the store owner's. Anyone signing up
-  with a listed email is **auto-activated as owner (manager)**, and their one-time
-  **recovery codes** come with the first emailed-code sign-in; **everyone else lands in `pending`** and must be approved
-  from **Manage Staff → Access Requests**.
-- If `OWNER_EMAIL` is unset, the **very first sign-up becomes owner** — fine for
-  local dev, but set `OWNER_EMAIL` before exposing the admin publicly so a
+- Set **`OWNER_EMAIL`** to the owner's address alone (ADR 0007). The first time
+  that address signs in with Google it becomes the **owner (manager)**;
+  **everyone else lands in `pending`** and must be approved from
+  **Manage Staff → Access Requests**.
+- If `OWNER_EMAIL` is unset, the **first person to sign in becomes owner** — fine
+  for local dev, but set `OWNER_EMAIL` before exposing the admin publicly so a
   stranger can't claim it first.
-- Only **managers** can approve requests (staff cannot), and the approver picks
-  each person's role — so approval power only spreads if you grant it.
-- **Recovery codes** are the backup sign-in if email is ever unavailable; each
-  works once.
+- Only the owner approves requests, and everyone approved or added joins as
+  **staff**. Staff the owner adds under Manage Staff can sign in straight away
+  with the Google account for their email.
+- There are no backup codes. If the owner loses her Google account, recover it
+  through Google, or set `OWNER_EMAIL` to her new address on the host and restart.
 
 ## 4. Firebase customer authentication
 
-Customer accounts use Firebase Authentication; the existing admin Google/OTP/recovery-code system remains separate.
+Customer accounts use Firebase Authentication; the admin's Google sign-in (§8) is a separate system.
 
 1. Create a Firebase project and register a **Web app** for DC Kids.
 2. In **Authentication > Sign-in method**, enable **Email/Password** and **Google**.
@@ -170,8 +170,9 @@ remove only stale sidecars belonging to that stopped database before step 7.
 - [ ] `NODE_ENV=production` set on the host
 - [ ] `JWT_SECRET` is a fresh long random value
 - [ ] `ALLOWED_ORIGINS` lists your real domain(s)
-- [ ] `OWNER_EMAIL` set to your owner address(es) — so a stranger can't claim owner
-- [ ] `RESEND_API_KEY` + `RESEND_FROM` set (and a domain verified in Resend) so sign-in codes actually email
+- [ ] `OWNER_EMAIL` set to the owner's address alone — so a stranger can't claim owner
+- [ ] `GOOGLE_CLIENT_ID` set, with the live address in its Authorized JavaScript origins (§8) — the admin's only sign-in
+- [ ] Optional: `RESEND_API_KEY` + `RESEND_FROM` (with a domain verified in Resend) for access-request and new-staff emails
 - [ ] `APP_URL` set to your public URL (used in emails)
 - [ ] Exactly one Railway replica has a Volume mounted at `/data`
 - [ ] Railway injected `RAILWAY_VOLUME_MOUNT_PATH=/data` and `RAILWAY_VOLUME_NAME`; neither was created manually
@@ -188,13 +189,12 @@ remove only stale sidecars belonging to that stopped database before step 7.
 - [ ] Firebase Admin uses ADC/workload identity or an external service-account file
 - [ ] A test order placed on WhatsApp, then set to Paid in the admin, shows on the Payments page and in revenue
 
-## 8. Admin Google Sign-In setup (optional but recommended)
+## 8. Admin Google Sign-In setup (required)
 
-"Continue with Google" is the fastest everyday login. It replaces the OTP *step*
-but keeps the same approve/reject gate — Google proves identity, your `users`
-table still decides access. Email-OTP and recovery codes remain as fallbacks.
+"Continue with Google" is the admin's only sign-in. Google proves who someone
+is; your `users` table still decides access (approve or reject under Manage Staff).
 
-To turn it on:
+To set it up:
 
 1. Go to <https://console.cloud.google.com/> → create (or pick) a project.
 2. **APIs & Services → OAuth consent screen**: set User type **External**, add an
@@ -207,9 +207,10 @@ To turn it on:
      production. (No redirect URI is needed — this uses the ID-token flow.)
 4. Copy the generated **Client ID** and set it in `server/.env`:
    `GOOGLE_CLIENT_ID=xxxxxxxx.apps.googleusercontent.com`
-5. Restart the server. The button appears automatically; if the id is ever unset
-   or wrong, the page silently falls back to email-OTP.
+5. Restart the server. The button appears on the admin sign-in page. If the id is
+   unset, the page says sign-in isn't set up; if the id is wrong or the page's
+   address isn't an authorized origin, Google's button shows an error instead.
 
 First Google sign-in from a new email creates a `pending` access request (unless
-the email is in `OWNER_EMAIL`), which an owner approves under **Manage Staff →
-Access Requests** — same as the email flow.
+the email is in `OWNER_EMAIL`), which the owner approves under **Manage Staff →
+Access Requests**.

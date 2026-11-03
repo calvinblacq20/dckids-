@@ -151,13 +151,13 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 }
 
 /* ---------- Modals, as the reference sheet ---------- */
-.modal-overlay, .rc-overlay, .loading-overlay {
+.modal-overlay, .loading-overlay {
   position: fixed; inset: 0; z-index: var(--z-overlay);
   display: grid; place-items: center; padding: 24px;
   background: rgba(36, 36, 38, .45);
   overflow: auto;
 }
-.modal-content, .modal-box, .modal-panel, .rc-modal {
+.modal-content, .modal-box, .modal-panel {
   position: relative; width: min(100%, 560px); max-height: 90dvh; overflow-y: auto;
   background: var(--surface); border: 0; border-radius: var(--r-24);
   box-shadow: var(--sh-deep); padding: 0;
@@ -431,7 +431,7 @@ body, .dashboard-container { background: var(--page); }
 }
 
 /* The one dark card per screen: ink ground, accent action. */
-.dash-hero, .alert-card, .dashboard-recovery-alert {
+.dash-hero, .alert-card {
   background: var(--ink);
   border: 0;
   color: #fff;
@@ -939,12 +939,6 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
 .quick-actions-section { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 16px; background: var(--surface); border: 1px solid var(--ink-06); border-radius: var(--r-16); }
 .quick-actions-grid { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 
-/* ---------- Recovery codes overlay ---------- */
-.rc-modal { padding: 24px; }
-.rc-title { font-size: 20px; font-weight: 500; margin: 0 0 8px; }
-.rc-codes { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin: 16px 0; }
-.rc-code { padding: 10px; border-radius: var(--r-12); background: var(--ground); font-family: var(--mono); font-size: 14px; text-align: center; }
-
 /* Nothing in the admin renders an image at its natural size. */
 .admin-main img, .modal-content img, .adm-side img { max-height: 320px; }
 
@@ -958,15 +952,15 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
    Cards and rows, as the reference states them: a white surface with a
    hairline, rows at 52px with an icon square, title and description. */
 .settings-sections { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
-.settings-account-card, .settings-recovery-card, .settings-card, .settings-section {
+.settings-account-card, .settings-alerts-card, .settings-card, .settings-section {
   background: var(--surface); border: 1px solid var(--ink-06);
   border-radius: var(--r-16); padding: 16px 20px;
 }
 .settings-account-card { display: flex; align-items: center; gap: 12px; grid-column: 1 / -1; }
-.settings-recovery-card { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.settings-recovery-card__copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.settings-recovery-card__copy strong, .settings-section__title { font-size: 16px; font-weight: 500; color: var(--ink); }
-.settings-recovery-card__copy span { font-size: 13px; color: var(--ink-75); }
+.settings-alerts-card { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.settings-alerts-card__copy { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.settings-section__title { font-size: 16px; font-weight: 500; color: var(--ink); }
+.settings-alerts-card__copy span { font-size: 13px; color: var(--ink-75); }
 .settings-list { display: flex; flex-direction: column; }
 .settings-row {
   display: flex; align-items: center; gap: 12px;
@@ -1142,7 +1136,7 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
 
 /* Some overlays are set to flex elsewhere, which left-aligns the sheet because
    no justification comes with it. Centre either way. */
-.modal-overlay, .rc-overlay, .detail-overlay {
+.modal-overlay, .detail-overlay {
   justify-content: center;
   align-items: center;
 }
@@ -1151,9 +1145,9 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
    tablet, or a desktop window dragged narrow — gets a dialog that floats
    clear of all four edges, so you can see it is a dialog. */
 @media (max-width: 599.98px) {
-  .modal-overlay, .rc-overlay, .detail-overlay { align-items: flex-end; }
+  .modal-overlay, .detail-overlay { align-items: flex-end; }
   .modal-overlay { padding: 0; place-items: end stretch; }
-  .modal-content, .rc-modal { width: 100%; max-height: 92dvh; border-radius: var(--r-24) var(--r-24) 0 0; }
+  .modal-content { width: 100%; max-height: 92dvh; border-radius: var(--r-24) var(--r-24) 0 0; }
 }
 
 /* WhatsApp keeps its own green: it is a platform affordance, not a brand
@@ -1423,9 +1417,6 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
 }
 .dash-hero__search-results:empty { display: none; }
 .dashboard-livebar__button--store { margin-left: auto; }
-.dashboard-recovery-alert__icon { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: var(--r-12); background: rgba(255,255,255,.12); }
-.dashboard-recovery-alert__copy { flex: 1; min-width: 0; }
-.dashboard-recovery-alert__action { flex: none; }
 
 .qa-btn-pink, .qa-btn-purple, .qa-btn-blue, .qa-btn-green {
   display: flex; align-items: center; gap: 10px; padding: 12px 14px;
@@ -1616,11 +1607,9 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
 .settings-account-card__name { font-size: 16px; font-weight: 500; color: var(--ink); }
 .settings-account-card__sub { font-size: 13px; color: var(--ink-50); }
 .settings-account-card__logout { flex: none; }
-.settings-recovery-card__icon { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: var(--r-12); background: #f6ecdf; color: var(--warning-ink); }
-.settings-recovery-card__warning { font-size: 13px; color: var(--warning-ink); }
-.settings-recovery-card__actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-.settings-recovery-card__label { font-size: 11px; color: var(--ink-50); text-transform: uppercase; letter-spacing: .04em; }
-.settings-recovery-card__status { margin-top: 10px; font-weight: 500; color: var(--ink); }
+.settings-alerts-card__icon { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: var(--r-12); background: #f6ecdf; color: var(--warning-ink); }
+.settings-alerts-card__actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.settings-alerts-card__status { margin-top: 10px; font-weight: 500; color: var(--ink); }
 .whatsapp-row { display: flex; align-items: center; gap: 10px; cursor: default; }
 .whatsapp-row .rail-row__name { display: flex; flex-direction: column; gap: 1px; min-width: 0; text-decoration: none; }
 .whatsapp-row .rail-row__name em { font-style: normal; font-size: 11px; color: var(--ink-50); }
@@ -2153,6 +2142,11 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 @media (min-width: 810px) {
   .mobile-bottom-nav { display: none; }
 }
+/* The bar and its "More" sheet are the signed-in app's navigation: nothing on
+   the sign-in and request-access screens. */
+body:not(.is-authed) .mobile-bottom-nav,
+body:not(.is-authed) .mbn-sheet,
+body:not(.is-authed) .mbn-sheet-scrim { display: none !important; }
 
 /* Reports date-range trigger. Recovered with the picker it opens. */
 .reports-header-actions { position: relative; }
@@ -2871,12 +2865,11 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 .aum-item-icon,
 .aum-stat-icon,
 .settings-row__ic,
-.settings-recovery-card__icon,
+.settings-alerts-card__icon,
 .supplier-modal__icon,
 .supplier-logo-upload__icon,
 .confirm-icon,
-.mbn-sheet__icon,
-.dashboard-recovery-alert__icon {
+.mbn-sheet__icon {
   background: none;
   box-shadow: none;
   width: auto;
@@ -2903,7 +2896,7 @@ input:checked + .payment-radio-circle::after, .is-selected > .payment-radio-circ
 .analytics-insight__icon--lavender { color: var(--label-lilac); }
 .analytics-insight__icon--gold     { color: var(--warning-ink); }
 .confirm-icon { color: var(--danger); }
-.settings-recovery-card__icon { color: var(--warning-ink); }
+.settings-alerts-card__icon { color: var(--warning-ink); }
 .supplier-modal__icon { color: var(--label-lime); }
 
 /* Insight cards were tinted to match their icon; the card is a card. */

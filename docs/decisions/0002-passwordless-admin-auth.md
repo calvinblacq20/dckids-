@@ -1,6 +1,6 @@
 # ADR 0002 — Passwordless admin auth (email OTP + recovery codes + optional Google)
 
-**Status:** accepted · **Date:** 2026-07-15 (recorded 2026-07-17)
+**Status:** superseded by [ADR 0012](0012-google-only-admin-sign-in.md) (2026-11-03) · **Date:** 2026-07-15 (recorded 2026-07-17)
 
 > **Scope:** this record covers **staff** sign-in only. Shopper accounts are a
 > separate system — see [ADR 0006](0006-firebase-customer-accounts.md).

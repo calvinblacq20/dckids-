@@ -10,7 +10,7 @@ Shoppers can hold accounts, authenticated by **Firebase Auth** — email/passwor
 with verification, password reset, and Google sign-in (popup-first, with a
 redirect fallback). Staff authentication is untouched and remains as recorded
 in [ADR 0002](0002-passwordless-admin-auth.md): emailed codes, recovery codes,
-no passwords stored.
+no passwords stored. (Staff sign-in is now Google only: [ADR 0012](0012-google-only-admin-sign-in.md).)
 
 - `firebase-auth.js` loads the SDK from gstatic and reads its public config
   from `/api/customer/auth/config`; the config values are public identifiers,
