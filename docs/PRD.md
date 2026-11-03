@@ -21,16 +21,18 @@ Give DC Kids Brand (Ghanaian kids' fashion, ages 0–12) a storefront where pare
 ## Data model (SQLite, WAL)
 `products` (sizes JSON overrides base price) · `orders` → `order_items` (name/price snapshotted) · `payments` · `customers` · `users` (role: manager/staff; status: active/pending/rejected) · `auth_codes` / `recovery_codes` (hashed, FK → users) · `suppliers` · `product_images` · `product_reviews` · `wishlist_items` · `customer_accounts`/`customer_addresses` (flag-gated, off) · `store_settings` (WhatsApp number, MOQ, discount, banner) · `transactions` (audit).
 
-Totals are always computed **server-side**. Wholesale (and bulk pre-orders) = the product's own bulk price per piece (`products.wholesale_price`; differently priced sizes move by the same proportion), else per-piece price × (1 − discount%), with an MOQ floor per item. Stock deducts when an order turns `paid`.
+Totals are always computed **server-side**. Wholesale (and bulk pre-orders) = the product's own bulk price per piece (`products.wholesale_price`; differently priced sizes move by the same proportion), else per-piece price × (1 − discount%), from the MOQ per item; a line under the MOQ is charged retail (ADR 0010). Stock deducts when an order turns `paid`.
 
 ## Order lifecycle
 `pending` (retail) / `pending_deposit` (pre-order) → `processing` → `paid` (stock deducts) → `shipped`/`dispatched` → `delivered` → `completed`, or `cancelled`. Status values are whitelisted server-side.
 
 ## Edge cases (handled — keep it that way)
 - Fresh clone must boot: schema + full catalogue seed from `products.json`, serialized DDL, `whenReady` gate before listen.
-- Stale carts after a catalogue swap: prune items whose product no longer exists.
+- Stale carts after a catalogue swap: prune items whose product no longer exists, lower quantities above what's left, and say so.
+- Nothing is greyed out without a reason on screen. A piece that can't be bought (sold out, no price, pre-orders closed) names the reason, and its main button offers the way round it on WhatsApp. Fewer left than the wholesale minimum is not a block: they sell at retail, and the page says so. The quick view (`buyBlock` in `app.js`) and the product page (`buyBlock` in `product.js`) give the same reasons in the same words.
+- Quantities stop at what's in stock and say so. Cart lines checkout would refuse are marked with the reason, and checkout waits until they're sorted. A refusal from the server stays on the checkout form with a WhatsApp fallback, not in a passing toast.
 - Wholesale quantity is PIECES, never packages — a 10-piece order must bill 10 pieces.
-- Sub-MOQ wholesale items rejected (400); quantities validated (integer, 1–100 retail / 1–1000 wholesale, ≤50 items).
+- Sub-MOQ wholesale lines are charged at retail, never refused and never raised to the MOQ behind the shopper's back; quantities validated (integer, 1–100 retail / 1–1000 wholesale, ≤50 items).
 - A bulk price must sit below the selling price, and is dropped if the selling price later falls to it. With Wholesale switched off, the shop takes no wholesale or bulk pre-orders (staff at the counter still can).
 - Sold-out and low-stock (≤5) states on cards; pre-orders never show stock urgency.
 - Guest phone gates tracking (last-4 match); wrong phone → 403.

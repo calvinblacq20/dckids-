@@ -91,10 +91,11 @@ The server prints the port it's listening on (default **3000**). Then open:
 - Admin: <http://localhost:3000/admin.html>
 - Customer account: <http://localhost:3000/account.html>
 
-> **First-boot admin account:** username `admin`. On a fresh database the password is
-> taken from the `ADMIN_PASSWORD` env var, or a strong random one is generated and
-> **printed once** in the server log. (The bundled local dev database uses `admin123` —
-> change it before deploying.)
+> **Admin sign-in has no password.** Set `OWNER_EMAIL` to the owner's address, request
+> access at `/admin.html` with it, then sign in with the 6-digit code emailed to it
+> (printed in the server log when `RESEND_API_KEY` is unset), with Google, or with a
+> one-time recovery code. Everyone else requests access and the owner approves them.
+> Customers sign in on `/account.html` through Firebase.
 
 ---
 
@@ -107,7 +108,8 @@ Set these in `server/.env` (see `DEPLOYMENT.md` for the full table):
 | `NODE_ENV` | Set to `production` to enable strict CORS, HSTS, and tight rate limits. |
 | `JWT_SECRET` | **Required.** Strong random string for signing sessions. The server refuses to start in production on the built-in fallback. |
 | `ALLOWED_ORIGINS` | Comma-separated origins allowed by CORS in production. |
-| `ADMIN_PASSWORD` | First-boot admin password (else a random one is printed once). |
+| `OWNER_EMAIL` | **Required in production.** The shop owner's email: the only account with owner powers. |
+| `RESEND_API_KEY` / `RESEND_FROM` | **Required in production.** Sends the admin sign-in codes (from a verified sender). |
 | `PORT` | Listening port (default 3000; most hosts inject this). |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Optional order alerts as device notifications from the installed admin app (`npx web-push generate-vapid-keys`). |
 | `SHOP_NOTIFY_EMAIL`, `SMTP_*` | Optional transactional email. |
@@ -140,14 +142,14 @@ node server/verify_assets.js   # sanity-check referenced assets exist
 ## Deployment
 
 See **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full checklist. In short: serve over
-**HTTPS**, set `NODE_ENV=production`, a fresh `JWT_SECRET`, `ALLOWED_ORIGINS`, an
-`ADMIN_PASSWORD`, and persist the database.
+**HTTPS**, set `NODE_ENV=production`, a fresh `JWT_SECRET`, `ALLOWED_ORIGINS`, `APP_URL`,
+`OWNER_EMAIL`, `RESEND_API_KEY`/`RESEND_FROM`, and persist the database.
 
 ---
 
 ## Tech notes
 
-- **Security:** Firebase bearer ID tokens for verified customer accounts, separate admin JWT auth, bcrypt password hashing for legacy/admin records, parameterized
+- **Security:** Firebase bearer ID tokens for verified customer accounts, separate admin JWT auth (emailed codes, Google, bcrypt-hashed recovery codes), parameterized
   SQL throughout, server-side order pricing (never trusts client-sent prices),
   manual security headers, in-memory rate limiting, MIME-validated image uploads.
 - **PWA:** separate storefront/admin manifests + a service worker (network-first for

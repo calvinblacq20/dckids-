@@ -287,6 +287,21 @@ async function run() {
         const drift = rule ? bulkCases.filter((c) => rule(...c) !== serverBulkRule(...c)).map((c) => c.join('/')) : ['function not found'];
         check(`${file} prices bulk pieces the way the server charges them`, drift.length === 0, drift.join(', '));
     });
+    // And where the bulk price starts: the minimum, with retail under it (ADR 0010).
+    const fromRuleFrom = (file) => {
+        const source = fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
+        const match = /function bulkApplies\(isWholesale, quantity, minimum\) \{([\s\S]*?)\r?\n\s*\}\r?\n/.exec(source);
+        return match ? new Function('isWholesale', 'quantity', 'minimum', match[1]) : null;
+    };
+    const serverFromRule = fromRuleFrom('server/server.js');
+    const fromCases = [[true, 10, 10], [true, 9, 10], [true, 11, '10'], [false, 50, 10], [true, 1, null], [true, 0, 0], [1, '10', 10], [true, 4, 5]];
+    check('the server charges bulk from the minimum and retail under it',
+        typeof serverFromRule === 'function' && serverFromRule(true, 10, 10) === true && serverFromRule(true, 9, 10) === false && serverFromRule(false, 99, 10) === false);
+    ['app.js', 'product.js', 'admin.js'].forEach((file) => {
+        const rule = fromRuleFrom(file);
+        const drift = rule ? fromCases.filter((c) => rule(...c) !== serverFromRule(...c)).map((c) => c.join('/')) : ['function not found'];
+        check(`${file} starts the bulk price where the server does`, drift.length === 0, drift.join(', '));
+    });
     const swSource = fs.readFileSync(path.join(__dirname, '..', 'service-worker.js'), 'utf8');
     check('service worker precaches the placeholder and no retired artwork',
         swSource.includes("/images/placeholder.svg") && !swSource.includes('category-fallbacks'));
@@ -345,6 +360,46 @@ async function run() {
         /function setMode\(mode\) \{\s*if \(preorderView\) showPreorders\(false\);\s*switchPrices\(mode\);/.test(appSource));
     check('a pre-order piece never shows as sold out because of its stock count',
         appSource.includes('function isSoldOut(p) { return !isPreorder(p) && p.stock === 0; }'));
+    // "Why can't I buy this?" — every block names its reason and offers a way round it.
+    const productScriptSource = fs.readFileSync(path.join(__dirname, '..', 'product.js'), 'utf8');
+    const adminSourceEarly = fs.readFileSync(path.join(__dirname, '..', 'admin.js'), 'utf8');
+    check('the quick view says why a piece cannot be bought, and its main button offers the way round it',
+        storefrontSource.includes('id="pdp-note" role="status" hidden') &&
+        appSource.includes('const block = buyBlock(p);') &&
+        appSource.includes("$('pdp-buy').dataset.action = block ? block.action : '';") &&
+        appSource.includes("if (action === 'ask') {") &&
+        !appSource.includes("$('pdp-buy').disabled = isSoldOut(p)"));
+    check('sold out and no price each have their own words in the shop and on the product page',
+        ['Sold out right now.', 'no price online yet'].every((s) => appSource.includes(s) && productScriptSource.includes(s)) &&
+        productScriptSource.includes('China pre-orders are closed. Message us on WhatsApp'));
+    check('fewer left than the wholesale minimum is never a block: they sell at retail, and both pages say so',
+        !appSource.includes("action: 'retail'") && !productScriptSource.includes("action: 'retail'") &&
+        ['-piece bulk minimum, so', 'at the retail price.'].every((s) => appSource.includes(s) && productScriptSource.includes(s)) &&
+        appSource.includes("'Retail price — bulk prices start at '"));
+    check('switching to wholesale never raises cart quantities behind the shopper\'s back',
+        !appSource.includes('i.qty = Math.max(moq(), Math.ceil(i.qty / moq()) * moq())'));
+    check('the product page main button acts on the reason instead of greying out',
+        productScriptSource.includes('if (product && state.block) return runBlockAction();') &&
+        productScriptSource.includes('addButton.disabled = false;'));
+    check('admin takes wholesale rows at the counter (no stray return drops them)',
+        !adminSourceEarly.includes("showToast('Wholesale needs at least ' + moq + ' pieces per item', 'warning');") &&
+        /\/\/ wholesale order could be taken at the counter\.\)\s*items\.push\(\{/.test(adminSourceEarly));
+    check('quantities stop at the stock and say so, in the quick view, the cart and the product page',
+        appSource.includes('pdp.capped = dir > 0 && wanted > pdp.qty;') &&
+        appSource.includes('if (p && dir > 0 && line.qty >= maxQtyFor(p)) toast(limitText(p));') &&
+        productScriptSource.includes('const cap = stockCap(state.product) ? Math.min(999, stockCap(state.product)) : 999;') &&
+        productScriptSource.includes("`Your cart already has all ${cap} of ${product.name}.`"));
+    check('cart lines checkout would refuse are marked, and checkout waits until they are sorted',
+        appSource.includes("(issue ? '<div class=\"citem__issue\">' + esc(issue) + '</div>' : '')") &&
+        appSource.includes("$('checkout-btn').disabled = !cart.length || cartProblems() > 0;") &&
+        appSource.includes('if (cartProblems()) { openCart(\'items\');'));
+    check('a saved cart is brought up to date with the shop, and the shopper is told what changed',
+        appSource.includes('if (i.qty > max) { i.qty = max; lowered++; }') &&
+        appSource.includes('no longer in the shop, so we took it out.'));
+    check('a checkout refusal stays on the form with a WhatsApp fallback instead of a fading toast',
+        appSource.includes('function showCheckoutRefusal(message)') &&
+        appSource.includes("showCheckoutRefusal(data.error || 'We could not place your order. Please try again.');") &&
+        !appSource.includes("toast(data.error || 'We could not place your order."));
     check('when the order service is not answering, checkout sends the order on WhatsApp instead of failing',
         appSource.includes('const unsaved = !data || res.status >= 500;') && storefrontSource.includes('id="done-ref-line"'));
     const authSource = fs.readFileSync(path.join(__dirname, '..', 'firebase-auth.js'), 'utf8');
@@ -398,6 +453,19 @@ async function run() {
         !adminPageSource.includes('New order #1042 received') &&
         !adminSource.includes('function seedDemoDataForPreview()') &&
         adminSource.includes("localStorage.setItem('dcKidsDemoSeedsRetired', 'true')"));
+    // No demo anywhere: the admin opens only through the real sign-in.
+    check('the demo mode and demo data script are gone',
+        !fs.existsSync(path.join(__dirname, '..', 'admin-demo.js')) && !fs.existsSync(path.join(__dirname, 'seed_demo.js')) &&
+        !adminPageSource.includes('admin-demo.js') && !adminPageSource.includes("get('demo')") &&
+        !fs.readFileSync(path.join(__dirname, '..', 'admin-bridge.css'), 'utf8').includes('demo-banner'));
+    check('no fake token opens the admin: every session is checked with the server',
+        !adminSource.includes('fallback-token') &&
+        /var token = localStorage\.getItem\('adminToken'\);\s*if \(token\) \{\s*fetch\(API_URL \+ '\/me'/.test(adminSource));
+    check('where there is no server (the static preview), sign-in says so instead of failing',
+        adminSource.includes('function showNoServerSignIn()') &&
+        /if \(!\/json\/\.test\(res\.headers\.get\('content-type'\) \|\| ''\)\) \{\s*showNoServerSignIn\(\);/.test(adminSource));
+    check('the docs describe the real sign-in, not the old admin password',
+        ['README.md', 'DEPLOYMENT.md'].every((doc) => !/ADMIN_PASSWORD|admin123/.test(fs.readFileSync(path.join(__dirname, '..', doc), 'utf8'))));
     check('admin settings exposes accessible recovery-code management',
         adminPageSource.includes('id="recovery-security-card"') &&
         adminPageSource.includes('id="recovery-code-status" role="status" aria-live="polite"') &&
@@ -952,6 +1020,11 @@ async function run() {
     check('customer session provisioning is idempotent', r.status === 200 && repeatedSession.created === false && repeatedSession.customer.id === customerId);
     r = await fetch(`${BASE}/api/customer/session`, json('POST', {}, { 'Authorization': 'Bearer verified-conflict' }));
     check('conflicting verified identity is rejected', r.status === 409, `status ${r.status}`);
+    // The old email-and-password reset is retired: Firebase owns customer passwords.
+    for (const route of ['forgot-password', 'reset-password']) {
+        r = await fetch(`${BASE}/api/customer/${route}`, json('POST', { email: 'new.customer@test.com', token: 'x', password: 'whatever-long' }));
+        check(`the old customer ${route} route says it is retired`, r.status === 410 && /retired/i.test((await r.json()).error || ''), `status ${r.status}`);
+    }
 
     r = await fetch(`${BASE}/api/customer/me`, { headers: customerAuth });
     const initialProfile = await r.json();
@@ -1084,11 +1157,22 @@ async function run() {
     check(`wholesale total = discounted unit x MOQ (${unitWs} x ${moq})`,
         r.status === 200 && close(wsOrder.total_amount, unitWs * moq), `got ${wsOrder.total_amount}`);
 
+    // Under the MOQ the piece is charged at retail rather than refused (ADR 0010),
+    // so a buyer can take the last few of a piece and keep bulk prices on the rest.
     r = await fetch(`${BASE}/api/orders`, json('POST', {
         customer_name: 'Bulk Buyer', customer_phone: '0242222222',
         order_type: 'wholesale', items: [{ id: 1, quantity: moq - 1, size: sizeLabel }]
     }));
-    check('wholesale below MOQ rejected', r.status === 400, `status ${r.status}`);
+    const underMoq = await r.json();
+    check(`wholesale below MOQ is charged at retail, not refused (${unitRetail} x ${moq - 1})`,
+        r.status === 200 && close(underMoq.total_amount, unitRetail * (moq - 1)), `status ${r.status}, got ${underMoq.total_amount}`);
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Bulk Buyer', customer_phone: '0242222222',
+        order_type: 'wholesale', items: [{ id: 1, quantity: moq, size: sizeLabel }, { id: 1, quantity: 2, size: sizeLabel }]
+    }));
+    const mixedWs = await r.json();
+    check(`one wholesale order mixes bulk lines and retail lines (${unitWs} x ${moq} + ${unitRetail} x 2)`,
+        r.status === 200 && close(mixedWs.total_amount, unitWs * moq + unitRetail * 2), `status ${r.status}, got ${mixedWs.total_amount}`);
 
     // ---- the China pre-order window (DC Sourcing & Logistics) ----
     const isoDay = (offset) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
@@ -1137,7 +1221,9 @@ async function run() {
         customer_name: 'Pre Reseller', customer_phone: '0243333334',
         order_type: 'preorder', preorder_kind: 'bulk', items: [{ id: 1, quantity: moq - 1, size: sizeLabel }]
     }));
-    check('a bulk pre-order below the MOQ is rejected', r.status === 400, `status ${r.status}`);
+    const bulkPreUnder = await r.json();
+    check('a bulk pre-order line below the MOQ is charged at retail',
+        r.status === 200 && close(bulkPreUnder.total_amount, unitRetail * (moq - 1)), `status ${r.status}, got ${bulkPreUnder.total_amount}`);
 
     const orderSlides = (kind, quantity, headers) => fetch(`${BASE}/api/orders`, json('POST', {
         customer_name: 'Slide Reseller', customer_phone: '0243333336', order_type: 'preorder', preorder_kind: kind,
@@ -1156,6 +1242,11 @@ async function run() {
     r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', cardBulkSlides));
     check(`paying by card charges the same bulk price (150 x ${moq})`,
         r.status === 200 && Number(paystackInitializePayload.amount) === 150 * moq * 100, `got ${paystackInitializePayload && paystackInitializePayload.amount}`);
+    r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', Object.assign({}, cardBulkSlides, {
+        customer_phone: '0243333338', idempotency_key: 'card-under-moq-' + Date.now(), items: [{ id: slides.id, quantity: 3, size: slides.size }]
+    })));
+    check('paying by card under the MOQ charges the retail price (180 x 3)',
+        r.status === 200 && Number(paystackInitializePayload.amount) === 180 * 3 * 100, `status ${r.status}, got ${paystackInitializePayload && paystackInitializePayload.amount}`);
     await dbRun('UPDATE store_settings SET wholesale_enabled = 0 WHERE id = 1');
     try {
         r = await orderSlides('bulk', moq);
@@ -1437,6 +1528,41 @@ async function run() {
         splashLayers.every(name => swForSplash.includes(`/brand/splash-${name}.webp`)));
     check('motion is resolved before first paint, not left to the stylesheet alone',
         adminHtmlForSplash.includes('data-motion') && adminHtmlForSplash.includes('dck-splash-seen'));
+    // Image sizes read from the files themselves (PNG IHDR; lossless WebP VP8L header).
+    const imageSize = (file) => {
+        const b = fs.readFileSync(path.join(__dirname, '..', file));
+        if (b.slice(1, 4).toString() === 'PNG') return { w: b.readUInt32BE(16), h: b.readUInt32BE(20), alpha: b[25] === 6 };
+        if (b.slice(12, 16).toString() === 'VP8L') {
+            const bits = b.readUInt32LE(21);
+            return { w: (bits & 0x3fff) + 1, h: ((bits >> 14) & 0x3fff) + 1 };
+        }
+        return null;
+    };
+    const layerSizes = splashLayers.map((name) => imageSize(`brand/splash-${name}.webp`));
+    check('the launch screen layers share one canvas, so they stack exactly, at the size the admin declares',
+        layerSizes.every((s) => s && s.w === 1086 && s.h === 1378) &&
+        adminHtmlForSplash.includes('width="1086" height="1378"') && adminHtmlForSplash.includes('aspect-ratio: 543 / 689'),
+        JSON.stringify(layerSizes));
+    // A phone draws its own loading screen from the manifest's icons. Each must
+    // be the size it claims, square, and maskable icons separate from the plain
+    // ones (a maskable icon is cropped, so the logo has to sit in its safe zone).
+    ['manifest.json', 'admin.manifest.json'].forEach((file) => {
+        const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'));
+        const icons = manifest.icons || [];
+        const wrong = icons.filter((icon) => {
+            const size = fs.existsSync(path.join(__dirname, '..', icon.src)) ? imageSize(icon.src) : null;
+            return !size || `${size.w}x${size.h}` !== icon.sizes || size.w !== size.h;
+        }).map((icon) => icon.src);
+        check(`${file} lists square icons that exist at the sizes it claims`, icons.length > 0 && wrong.length === 0, wrong.join(', '));
+        check(`${file} keeps maskable icons apart from the plain ones`,
+            icons.some((icon) => icon.purpose === 'maskable') && icons.some((icon) => icon.purpose === 'any') &&
+            !icons.some((icon) => /any/.test(icon.purpose) && /maskable/.test(icon.purpose)));
+        check(`${file} gives the plain icons a transparent background and the maskable ones a solid one`,
+            icons.every((icon) => imageSize(icon.src).alpha === (icon.purpose === 'any')));
+    });
+    check('the home-screen icon on iPhone is a solid square',
+        ['index.html', 'admin.html'].every((page) => fs.readFileSync(path.join(__dirname, '..', page), 'utf8').includes('<link rel="apple-touch-icon" href="brand/apple-touch-icon.png">')) &&
+        (() => { const s = imageSize('brand/apple-touch-icon.png'); return s.w === 180 && s.h === 180 && !s.alpha; })());
 
     console.log(`\n${passed} passed, ${failed} failed`);
     cleanupDb();
