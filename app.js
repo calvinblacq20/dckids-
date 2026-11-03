@@ -1109,8 +1109,10 @@ async function applyCustomerState(state) {
   $('account-label').textContent = accountLabel;
   $('account-link').setAttribute('aria-label', accountLabel);
   $('m-account-link').textContent = customerState.customer ? 'My account' : 'Sign in';
-  // Where customer sign-in isn't offered, the account page has nothing to sign in to.
-  document.querySelectorAll('a[href="/account.html"]').forEach((a) => { a.hidden = !!customerState.unconfigured; });
+  // The account links start hidden and appear once customer sign-in has loaded.
+  // Shown first and hidden after, they flickered on phones, where the sign-in
+  // library takes seconds to arrive and most sites here have no sign-in at all.
+  document.querySelectorAll('a[href="/account.html"]').forEach((a) => { a.hidden = !customerState.configured; });
   savedAddresses = [];
   if (catalogueLoaded) syncWishlist(); // signing in brings the account's saved pieces
   if (!isSignedIn()) return;

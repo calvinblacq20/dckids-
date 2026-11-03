@@ -85,7 +85,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>
         <span class="nav__search-label">Search</span>
       </button>
-      <a class="nav__account" id="account-link" href="/account.html" aria-label="Sign in">
+      <a class="nav__account" id="account-link" href="/account.html" aria-label="Sign in" hidden>
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
         <span class="nav__account-label" id="account-label">Sign in</span>
       </a>
@@ -102,7 +102,7 @@
     <a href="#preorders" class="js-preorder-link" onclick="toggleMenu(false)" hidden>China Pre-Orders</a>
     <a href="#about" onclick="toggleMenu(false)">About</a>
     <a href="#wishlist" onclick="toggleMenu(false); openSaved(); return false;">Wishlist <span class="m-menu__count" id="m-saved-count"></span></a>
-    <a href="/account.html" id="m-account-link">Sign in</a>
+    <a href="/account.html" id="m-account-link" hidden>Sign in</a>
     <a href="track.html">Track order</a>
   </div>
 
@@ -366,7 +366,7 @@
         </div>
         <div class="footer__col">
           <h4>Help</h4>
-          <a href="/account.html">My account</a>
+          <a href="/account.html" hidden>My account</a>
           <a href="/track.html">Track order</a>
           <a href="/support.html#faqs">FAQs</a>
           <a href="/support.html#shipping">Shipping &amp; delivery</a>
@@ -546,7 +546,7 @@
   <script src="receipt.js?v=3"></script>
   <!-- async: customer sign-in must never hold up the first paint of the shop -->
   <script type="module" async src="firebase-auth.js?v=6"></script>
-  <script src="app.js?v=58"></script>
+  <script src="app.js?v=59"></script>
   <script>
     if ('serviceWorker' in navigator) {
       // When an updated worker takes control, reload once so the page runs the
