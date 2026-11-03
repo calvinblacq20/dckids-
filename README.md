@@ -36,14 +36,13 @@ DCKids/
 ├── manifest.json       Storefront PWA manifest
 ├── admin.manifest.json Admin PWA manifest
 ├── service-worker.js   PWA service worker (offline shell + caching)
-├── gradient.js         Decorative background
 ├── images/             Product & promo images (optimized, ≤1000px)
 ├── vendor/             Self-hosted fonts, Font Awesome and Chart.js
 └── server/
     ├── server.js       Express API + static file server
     ├── db.js           SQLite schema, migrations, seed data
     ├── backup_db.js    One-off database backup script
-    ├── test_flow_runner.js  Integration test (register → reset → login)
+    ├── test_*.js        Test suites (npm test; CI runs them all)
     ├── verify_assets.js     Asset sanity check
     ├── inventory.db    SQLite database (gitignored — holds real data)
     └── .env            Secrets & config (gitignored)
@@ -123,8 +122,10 @@ Set these in `server/.env` (see `DEPLOYMENT.md` for the full table):
 ```bash
 node server/server.js          # start the app (API + static site)
 node server/backup_db.js       # write a backup copy of inventory.db
-node server/test_flow_runner.js  # run the auth/reset integration flow
 node server/verify_assets.js   # sanity-check referenced assets exist
+npm --prefix server test       # every test suite (what CI runs)
+npm --prefix server run export:products     # refresh products.json for the static build
+npm --prefix server run reconcile:paystack  # match Paystack payments to orders
 ```
 
 ---
@@ -167,4 +168,4 @@ Products without genuine photography reuse clearly labelled category artwork fro
 The product catalogue CSV export/import includes both `sku` and `img`. Use **Image health** to find missing images, missing or duplicate SKUs, invalid image paths, and unused uploaded files.
 ## Tailwind CSS build
 
-Tailwind is compiled locally rather than loaded from the development CDN. From `server/`, run `npm run build:css` after changing utility classes in `index.html`, `app.js`, `admin.html`, or `admin.js`. The command regenerates `tailwind-storefront.css` and `tailwind-admin.css`; the admin bundle intentionally disables Tailwind preflight so it does not reset `admin-system.css`.
+Only the admin uses Tailwind (the storefront has its own `store.css`). It is compiled locally rather than loaded from the development CDN: from `server/`, run `npm run build:css` after changing utility classes in `admin.html` or `admin.js`. The command regenerates `tailwind-admin.css`, which intentionally disables Tailwind preflight so it does not reset `admin-system.css`.
