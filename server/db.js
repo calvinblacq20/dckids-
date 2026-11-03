@@ -800,6 +800,27 @@ const db = new sqlite3.Database(dbPath, (err) => {
             if (err) console.error('Error creating push_subscriptions table', err);
         });
 
+        // Product categories as shoppers see them: the name on the shop and the
+        // order the shop lists them in. The owner edits them in admin; a product
+        // belongs to one by its products.cat. Seeded with the names and order the
+        // shop showed before they became editable, so nothing changes until then.
+        db.run(`CREATE TABLE IF NOT EXISTS categories (
+            id TEXT PRIMARY KEY,
+            label TEXT NOT NULL,
+            position INTEGER NOT NULL DEFAULT 0
+        )`, (err) => {
+            if (err) return console.error('Error creating categories table', err);
+            db.get('SELECT COUNT(*) AS n FROM categories', (e, row) => {
+                if (e || !row || row.n > 0) return;
+                const defaults = [['newborn', 'Newborn'], ['clothing', 'Clothing'], ['shoes', 'Shoes'], ['essentials', 'Essentials'],
+                    ['feeding', 'Feeding'], ['gear', 'Baby gear'], ['bathcare', 'Bath & care'], ['bedding', 'Bedding'],
+                    ['accessories', 'Accessories'], ['womens', "Women's fashion"], ['home', 'Home'], ['cars', 'Cars']];
+                defaults.forEach(([id, label], position) => {
+                    db.run('INSERT OR IGNORE INTO categories (id, label, position) VALUES (?, ?, ?)', [id, label, position]);
+                });
+            });
+        });
+
         // Shoppers who joined the WhatsApp list from the storefront pop-up, with
         // their consent time. phone is digits only, country code first
         // (233241234567). The welcome discount is claimed by setting

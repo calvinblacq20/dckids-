@@ -24,6 +24,10 @@ const CAT_LABELS = {
   womens: "Women's fashion", home: 'Home', cars: 'Cars'
 };
 const CAT_ORDER = ['newborn', 'clothing', 'shoes', 'essentials', 'feeding', 'gear', 'bathcare', 'bedding', 'accessories', 'womens', 'home', 'cars'];
+// The names and order the owner sets in admin (/api/categories) replace the
+// built-in ones above, which stay for the static build that has no API.
+let catLabels = Object.assign({}, CAT_LABELS);
+let catOrder = CAT_ORDER.slice();
 
 let products = [];
 let catalogueLoaded = false;
@@ -59,7 +63,7 @@ function waLink(text) { return 'https://wa.me/' + waNumber() + '?text=' + encode
 function catKey(c) { return String(c || '').trim().toLowerCase(); }
 function catLabel(c) {
   const k = catKey(c);
-  return CAT_LABELS[k] || (k ? k.charAt(0).toUpperCase() + k.slice(1) : 'Other');
+  return catLabels[k] || (k ? k.charAt(0).toUpperCase() + k.slice(1) : 'Other');
 }
 const CATEGORY_TILES = ['clothing', 'shoes', 'accessories', 'feeding', 'gear', 'bathcare', 'newborn', 'bedding', 'essentials'];
 function categoryTileImage(cat) {
@@ -319,7 +323,7 @@ function categoryCounts() {
   return counts;
 }
 function orderedCats(counts) {
-  const pos = (c) => { const i = CAT_ORDER.indexOf(c); return i === -1 ? 99 : i; };
+  const pos = (c) => { const i = catOrder.indexOf(c); return i === -1 ? 99 : i; };
   return Object.keys(counts).sort((a, b) => pos(a) - pos(b) || a.localeCompare(b));
 }
 
@@ -1702,6 +1706,19 @@ function normalizeProducts(list) {
 // The admin's settings come from the API. The static deploy (Vercel) has no
 // server, so it reads the same public fields from settings.json instead —
 // otherwise it would lose the announcement and the retail/wholesale switch.
+// The owner's category names and order. Without an API (the static build) or
+// on any failure, the built-in ones stand.
+async function loadCategories() {
+  try {
+    const res = await fetch('/api/categories');
+    if (!res.ok || !(res.headers.get('content-type') || '').includes('application/json')) return;
+    const list = await res.json();
+    if (!Array.isArray(list) || !list.length) return;
+    list.forEach((c) => { if (c && c.id && c.label) catLabels[catKey(c.id)] = String(c.label); });
+    catOrder = list.map((c) => catKey(c.id));
+  } catch (e) { /* built-in names stand */ }
+}
+
 async function loadSettings() {
   for (const url of ['/api/settings', '/settings.json']) {
     try {
@@ -1746,7 +1763,9 @@ async function init() {
     .then((res) => (res.ok ? res.json() : {}))
     .then((cfg) => cfg.enabled === true)
     .catch(() => false); // WhatsApp checkout still works
+  const categoriesReady = loadCategories();
   siteConfig = await loadSettings();
+  await categoriesReady;
   paystackEnabled = await paystackReady;
   if (!siteConfig.wholesale_enabled && storeMode === 'wholesale') {
     storeMode = 'retail';

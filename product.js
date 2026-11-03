@@ -52,8 +52,11 @@
     showToast.timer = setTimeout(() => { toast.hidden = true; }, 2800);
   }
 
+  // The owner's names from /api/categories win over the built-in ones, which
+  // stay for the static build.
+  let categoryNames = Object.assign({}, CATEGORY_LABELS);
   function categoryLabel(category) {
-    return CATEGORY_LABELS[String(category || '').toLowerCase()] || String(category || 'Products').replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
+    return categoryNames[String(category || '').toLowerCase()] || String(category || 'Products').replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
   }
 
   // Same rule as the storefront: whole days, and closed when no dates are set.
@@ -182,13 +185,17 @@
   }
 
   async function loadProduct(productId) {
-    const [settings, detail, catalogue, reviews] = await Promise.all([
+    const [settings, detail, catalogue, reviews, categories] = await Promise.all([
       // The static deploy has no API; settings.json carries the same public fields.
       getJson('/api/settings', null).then((live) => live || getJson('/settings.json', {})),
       getJson(`/api/products/${productId}`, null),
       getJson('/api/products', null),
-      getJson(`/api/products/${productId}/reviews`, { summary: { count: 0, average: 0 }, reviews: [] })
+      getJson(`/api/products/${productId}/reviews`, { summary: { count: 0, average: 0 }, reviews: [] }),
+      getJson('/api/categories', null)
     ]);
+    if (Array.isArray(categories)) {
+      categories.forEach((c) => { if (c && c.id && c.label) categoryNames[String(c.id).toLowerCase()] = String(c.label); });
+    }
     state.settings = settings || {};
     if (!state.settings.wholesale_enabled && state.mode === 'wholesale') state.mode = 'retail';
 
