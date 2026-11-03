@@ -68,7 +68,7 @@ or domain without configuration.
 ### Admin panel
 - Product management: full CRUD, auto-generated SKUs (editable), per-size pricing,
   global size presets, image upload, bulk CSV import
-- Owner-managed **categories** (add / rename / delete, reflected on the storefront)
+- Owner-managed **categories** (add / rename / reorder / delete, saved on the server: the shop, product pages and admin filters all follow)
 - Inventory, orders, customers, suppliers, analytics, reports
 - New-order notifications in the bell (live poll) + order alerts on staff phones and computers (Web Push, turned on per device in Settings)
 - Settings: store config, WhatsApp number, wholesale rules, banner, password change

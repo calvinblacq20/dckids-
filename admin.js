@@ -80,44 +80,57 @@ function getOrders() {
     return window.adminOrders;
 }
 
+// The server's order row, in the shape the admin screens use.
+function mapServerOrder(o) {
+    return {
+        db_id: o.id,
+        id: o.order_number,
+        customer: o.customer_name,
+        phone: o.customer_phone,
+        email: o.customer_email || '',
+        total: o.total_amount,
+        status: o.status,
+        type: o.order_type,
+        date: o.created_at,
+        order_type: o.order_type,
+        preorderKind: o.preorder_kind || '',
+        delivery_area: o.delivery_area || '',
+        delivery_address: [o.delivery_address_line1, o.delivery_address_line2, o.delivery_city, o.delivery_region, o.delivery_landmark].filter(Boolean).join(', '),
+        notes: o.notes || '',
+        paymentMethod: o.payment ? o.payment.payment_method : '',
+        paymentStatus: o.payment ? o.payment.status : '',
+        paymentReference: o.payment ? o.payment.provider_reference : '',
+        paymentChannel: o.payment ? o.payment.channel : '',
+        items: o.items ? o.items.map(function(i) {
+            // Extract size from product_name e.g. "Knit Sweater (2Y)" → "2Y"
+            var sizeMatch = (i.product_name || '').match(/\(([^)]+)\)/);
+            var size = sizeMatch ? sizeMatch[1] : 'Standard';
+            return { productId: i.product_id, name: i.product_name, qty: i.quantity, price: i.price_at_time, size: size };
+        }) : []
+    };
+}
+
+// Where the next poll picks up (the server's X-Orders-Cursor), so it asks only
+// for orders created or changed since, not the whole history again.
+var __ordersCursor = null;
+
+// The full history: on sign-in, when a screen asks for fresh data, and every
+// so often from the poll so deletions elsewhere are picked up too.
 function fetchOrdersFromServer(callback) {
     var token = localStorage.getItem('adminToken');
     fetch(API_URL + '/orders', { headers: { 'Authorization': 'Bearer ' + token } })
     .then(function(r) {
         if (r.status === 401 || r.status === 403) { handleSessionExpiry(); return null; }
-        return r.json();
+        var cursor = r.headers.get('X-Orders-Cursor');
+        return r.json().then(function(data) {
+            if (Array.isArray(data) && cursor) __ordersCursor = cursor;
+            return data;
+        });
     })
     .then(function(data) {
         if (data === null) return; // session expired — already handled
         if (Array.isArray(data)) {
-            window.adminOrders = data.map(function(o) {
-                return {
-                    db_id: o.id,
-                    id: o.order_number,
-                    customer: o.customer_name,
-                    phone: o.customer_phone,
-                    email: o.customer_email || '',
-                    total: o.total_amount,
-                    status: o.status,
-                    type: o.order_type,
-                    date: o.created_at,
-                    order_type: o.order_type,
-                    preorderKind: o.preorder_kind || '',
-                    delivery_area: o.delivery_area || '',
-                    delivery_address: [o.delivery_address_line1, o.delivery_address_line2, o.delivery_city, o.delivery_region, o.delivery_landmark].filter(Boolean).join(', '),
-                    notes: o.notes || '',
-                    paymentMethod: o.payment ? o.payment.payment_method : '',
-                    paymentStatus: o.payment ? o.payment.status : '',
-                    paymentReference: o.payment ? o.payment.provider_reference : '',
-                    paymentChannel: o.payment ? o.payment.channel : '',
-                    items: o.items ? o.items.map(function(i) {
-                        // Extract size from product_name e.g. "Knit Sweater (2Y)" → "2Y"
-                        var sizeMatch = (i.product_name || '').match(/\(([^)]+)\)/);
-                        var size = sizeMatch ? sizeMatch[1] : 'Standard';
-                        return { productId: i.product_id, name: i.product_name, qty: i.quantity, price: i.price_at_time, size: size };
-                    }) : []
-                };
-            });
+            window.adminOrders = data.map(mapServerOrder);
             detectNewOrders(window.adminOrders);
             startOrderNotificationPolling();
         }
@@ -128,6 +141,37 @@ function fetchOrdersFromServer(callback) {
         console.warn('Orders API unavailable, using local data:', e && e.message ? e.message : e);
         if (callback) callback();
     });
+}
+
+// Only what changed since the last look, merged into the list by order id: new
+// orders go on top, changed ones are replaced where they stand.
+function fetchOrderChanges() {
+    if (!__ordersCursor) return fetchOrdersFromServer();
+    var token = localStorage.getItem('adminToken');
+    fetch(API_URL + '/orders?since=' + encodeURIComponent(__ordersCursor), { headers: { 'Authorization': 'Bearer ' + token } })
+    .then(function(r) {
+        if (r.status === 401 || r.status === 403) { handleSessionExpiry(); return null; }
+        if (!r.ok) return null;
+        var cursor = r.headers.get('X-Orders-Cursor');
+        return r.json().then(function(rows) {
+            if (Array.isArray(rows) && cursor) __ordersCursor = cursor;
+            return rows;
+        });
+    })
+    .then(function(rows) {
+        if (!Array.isArray(rows) || !rows.length) return;
+        var list = window.adminOrders || [];
+        var at = {};
+        list.forEach(function(o, i) { at[o.db_id] = i; });
+        rows.slice().reverse().forEach(function(row) {
+            var order = mapServerOrder(row);
+            if (at[order.db_id] !== undefined) list[at[order.db_id]] = order;
+            else list.unshift(order);
+        });
+        window.adminOrders = list;
+        detectNewOrders(window.adminOrders);
+    })
+    .catch(function() { /* offline for a moment: the next poll catches up */ });
 }
 
 // Surface customer orders placed on the storefront in the admin notification
@@ -161,8 +205,13 @@ var __orderPollStarted = false;
 function startOrderNotificationPolling() {
     if (__orderPollStarted) return;
     __orderPollStarted = true;
+    var ticks = 0;
     setInterval(function() {
-        if (localStorage.getItem('adminToken')) fetchOrdersFromServer();
+        if (!localStorage.getItem('adminToken')) return;
+        // Changes only, every 45 seconds; the full history every 15 minutes.
+        ticks++;
+        if (ticks % 20 === 0) fetchOrdersFromServer();
+        else fetchOrderChanges();
     }, 45000);
 }
 
@@ -7826,6 +7875,14 @@ function ensureTabsExist() {
     enhanceInventoryFilters();
 }
 
+// "All Categories" plus every category in the owner's list, for the filter menus.
+function categoryFilterOptions(allValue) {
+    var list = typeof window.adminCategories === 'function' ? window.adminCategories() : [];
+    return '<option value="' + allValue + '">All Categories</option>' + list.map(function (c) {
+        return '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.label) + '</option>';
+    }).join('');
+}
+
 function enhanceInventoryFilters() {
     var invView = document.getElementById('tab-inventory');
     if (!invView) return;
@@ -7835,15 +7892,7 @@ function enhanceInventoryFilters() {
 
     // Category filter
     if (selects[0] && selects[0].children.length <= 1) {
-        selects[0].innerHTML = '<option value="all">All Categories</option>' +
-            '<option value="clothing">Clothing</option>' +
-            '<option value="baby">Baby</option>' +
-            '<option value="shoes">Shoes</option>' +
-            '<option value="accessories">Accessories</option>' +
-            '<option value="bags">Bags</option>' +
-            '<option value="bedding">Bedding</option>' +
-            '<option value="newborn">Newborn</option>' +
-            '<option value="essentials">Essentials</option>';
+        selects[0].innerHTML = categoryFilterOptions('all');
     }
 
     // Status filter
@@ -7878,7 +7927,7 @@ function buildTabContent(tabId) {
                 '<input type="search" id="prod-search" class="filter-input" placeholder="Search products…" aria-label="Search products">' +
                 '</div>' +
                 '<select id="prod-cat-filter" class="filter-select" aria-label="Filter products by category">' +
-                '<option value="">All Categories</option><option value="clothing">Clothing</option><option value="accessories">Accessories</option><option value="newborn">Newborn</option><option value="bedding">Bedding</option><option value="shoes">Shoes</option>' +
+                categoryFilterOptions('') +
                 '</select>' +
                 '<select id="prod-status-filter" class="filter-select" aria-label="Filter products by status">' +
                 '<option value="">All Status</option><option value="in-stock">In Stock</option><option value="low-stock">Low Stock</option><option value="out-of-stock">Out of Stock</option>' +
@@ -11394,47 +11443,76 @@ function downloadProductCsvTemplate() {
 })();
 
 /* ============================================================
-   PRODUCT CATEGORY MANAGER  (add / rename / delete)
-   Owner-managed list persisted in same-origin localStorage so the
-   storefront reads the same labels + order. Category membership still
-   derives from each product's `cat`, so categories with products
-   always appear on the storefront on every device.
+   PRODUCT CATEGORY MANAGER  (add / rename / reorder / delete)
+   The list lives on the server (/api/categories), so the names and the order
+   set here are the ones every shopper sees, on every device. A product
+   belongs to a category by its `cat`; one that still has products can't be
+   deleted (the server refuses too).
    ============================================================ */
 (function () {
   'use strict';
-  var LS_KEY = 'dcKidsCategories';
+  // The list once lived only in this browser and never reached the shop.
+  try { localStorage.removeItem('dcKidsCategories'); } catch (e) {}
 
+  // What the shop shows before the owner changes anything (the server's seed),
+  // used only until the server's list arrives.
   function defaults() {
     return [
       { id: 'newborn',     label: 'Newborn' },
-      { id: 'clothing',    label: 'Kids Clothing' },
-      { id: 'shoes',       label: 'Footwear' },
-      { id: 'feeding',     label: 'Feeding & Bottles' },
-      { id: 'gear',        label: 'Baby Gear' },
-      { id: 'bathcare',    label: 'Bath & Care' },
-      { id: 'essentials',  label: 'Baby Essentials' },
-      { id: 'accessories', label: 'Bags & Accessories' },
+      { id: 'clothing',    label: 'Clothing' },
+      { id: 'shoes',       label: 'Shoes' },
+      { id: 'essentials',  label: 'Essentials' },
+      { id: 'feeding',     label: 'Feeding' },
+      { id: 'gear',        label: 'Baby gear' },
+      { id: 'bathcare',    label: 'Bath & care' },
       { id: 'bedding',     label: 'Bedding' },
-      { id: 'womens',      label: "Women's Fashion" },
+      { id: 'accessories', label: 'Accessories' },
+      { id: 'womens',      label: "Women's fashion" },
       { id: 'home',        label: 'Home' },
       { id: 'cars',        label: 'Cars' }
     ];
   }
+  var serverList = null;
   function loadCats() {
-    var stored = null;
-    try {
-      var s = JSON.parse(localStorage.getItem(LS_KEY));
-      if (Array.isArray(s) && s.length) stored = s;
-    } catch (e) {}
-    var list = stored || defaults();
-    // "preorder" used to be a fake category (the old cat==='preorder' overload).
-    // It's now a per-product Listing Type, independent of category — drop any
-    // stale entry left over from before, and persist the cleanup once.
-    var cleaned = list.filter(function (c) { return c && c.id !== 'preorder'; });
-    if (!stored || cleaned.length !== list.length) saveCats(cleaned);
-    return cleaned;
+    return (serverList || defaults()).map(function (c) { return { id: c.id, label: c.label }; });
   }
-  function saveCats(list) { localStorage.setItem(LS_KEY, JSON.stringify(list)); }
+  function fetchCats() {
+    return fetch(API_URL + '/categories')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (list) {
+        if (Array.isArray(list) && list.length) serverList = list;
+        renderList();
+        populateCategoryDropdowns();
+      })
+      .catch(function () { /* offline: the defaults stand until the next open */ });
+  }
+  // Saves the whole list, in order. On success the server's copy comes back
+  // and replaces ours; on refusal the list is shown as it was.
+  function saveCats(list, done) {
+    fetch(API_URL + '/categories', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') },
+      body: JSON.stringify({ categories: list })
+    })
+    .then(function (r) {
+      if (r.status === 401) { if (typeof handleSessionExpiry === 'function') handleSessionExpiry(); return null; }
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (!r.ok) throw new Error(d.error || 'The categories could not be saved');
+        return d;
+      });
+    })
+    .then(function (saved) {
+      if (!saved) return;
+      if (Array.isArray(saved)) serverList = saved;
+      renderList();
+      populateCategoryDropdowns();
+      if (done) done();
+    })
+    .catch(function (err) {
+      if (typeof showToast === 'function') showToast(err.message || 'The categories could not be saved', 'error');
+      renderList();
+    });
+  }
   function slugify(name) {
     return String(name || '').toLowerCase().trim()
       .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -11482,6 +11560,8 @@ function downloadProductCsvTemplate() {
           '<div style="font-weight:600;color:#333;font-size:14px;">' + esc(c.label) + '</div>' +
           '<div style="font-size:11px;color:#999;">' + esc(c.id) + ' &middot; ' + n + ' product' + (n === 1 ? '' : 's') + '</div>' +
         '</div>' +
+        '<button type="button" title="Move up" aria-label="Move ' + esc(c.label) + ' up" onclick="moveProductCategory(\'' + esc(c.id) + '\',-1)" style="border:1px solid #e0e0e0;background:#fff;border-radius:8px;padding:6px 9px;font-size:12px;font-weight:600;cursor:pointer;color:#555;">&uarr;</button>' +
+        '<button type="button" title="Move down" aria-label="Move ' + esc(c.label) + ' down" onclick="moveProductCategory(\'' + esc(c.id) + '\',1)" style="border:1px solid #e0e0e0;background:#fff;border-radius:8px;padding:6px 9px;font-size:12px;font-weight:600;cursor:pointer;color:#555;">&darr;</button>' +
         '<button type="button" title="Rename" onclick="renameProductCategory(\'' + esc(c.id) + '\')" style="border:1px solid #e0e0e0;background:#fff;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;color:#555;">Rename</button>' +
         '<button type="button" title="Delete" onclick="deleteProductCategory(\'' + esc(c.id) + '\')" style="border:1px solid #f3c2cb;background:#fff;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;color:#d6336c;">Delete</button>' +
       '</div>';
@@ -11491,7 +11571,19 @@ function downloadProductCsvTemplate() {
   window.openCategoryManager = function () {
     ensureModal();
     renderList();
+    fetchCats();
     if (typeof openModal === 'function') openModal('modal-settings-categories');
+  };
+
+  // The order here is the order the shop lists categories in.
+  window.moveProductCategory = function (id, dir) {
+    var cats = loadCats();
+    var i = cats.findIndex(function (c) { return c.id === id; });
+    var j = i + dir;
+    if (i < 0 || j < 0 || j >= cats.length) return;
+    var moved = cats.splice(i, 1)[0];
+    cats.splice(j, 0, moved);
+    saveCats(cats);
   };
 
   window.addProductCategory = function () {
@@ -11505,11 +11597,10 @@ function downloadProductCsvTemplate() {
       if (typeof showToast === 'function') showToast('That category already exists', 'warning'); return;
     }
     cats.push({ id: id, label: name });
-    saveCats(cats);
-    if (input) input.value = '';
-    renderList();
-    populateCategoryDropdowns();
-    if (typeof showToast === 'function') showToast('Category "' + name + '" added', 'success');
+    saveCats(cats, function () {
+      if (input) input.value = '';
+      if (typeof showToast === 'function') showToast('Category "' + name + '" added', 'success');
+    });
   };
 
   // Branded in-app dialog (replaces native prompt/confirm). Stacks above the
@@ -11573,10 +11664,9 @@ function downloadProductCsvTemplate() {
       onConfirm: function (val) {
         if (!val) { if (typeof showToast === 'function') showToast('Name cannot be empty', 'error'); return; }
         c.label = val;
-        saveCats(cats);
-        renderList();
-        populateCategoryDropdowns();
-        if (typeof showToast === 'function') showToast('Category renamed', 'success');
+        saveCats(cats, function () {
+          if (typeof showToast === 'function') showToast('Category renamed — the shop shows the new name', 'success');
+        });
       }
     });
   };
@@ -11597,15 +11687,22 @@ function downloadProductCsvTemplate() {
       confirmText: 'Delete',
       danger: true,
       onConfirm: function () {
-        saveCats(cats.filter(function (x) { return x.id !== id; }));
-        renderList();
-        populateCategoryDropdowns();
-        if (typeof showToast === 'function') showToast('Category deleted', 'success');
+        saveCats(cats.filter(function (x) { return x.id !== id; }), function () {
+          if (typeof showToast === 'function') showToast('Category deleted', 'success');
+        });
       }
     });
   };
 
+  window.adminCategories = loadCats;
+
   window.populateCategoryDropdowns = function () {
+    var filter = document.getElementById('prod-cat-filter');
+    if (filter) {
+      var chosen = filter.value;
+      filter.innerHTML = categoryFilterOptions('');
+      filter.value = chosen;
+    }
     var cats = loadCats();
     var ids = cats.map(function (c) { return c.id; });
     var prods = (typeof globalProducts !== 'undefined' && globalProducts) ? globalProducts : [];
@@ -11639,6 +11736,7 @@ function downloadProductCsvTemplate() {
 
   document.addEventListener('DOMContentLoaded', function () {
     ensureModal();
+    fetchCats();
     setTimeout(function () { wrap('openAddProductModal'); wrap('openEditModal'); populateCategoryDropdowns(); }, 400);
     setTimeout(function () { populateCategoryDropdowns(); }, 1500);
   });
