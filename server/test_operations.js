@@ -60,6 +60,7 @@ async function run() {
         ALLOWED_ORIGINS: 'https://dckidsgh.com,https://www.dckidsgh.com',
         APP_URL: 'https://dckidsgh.com',
         OWNER_EMAIL: 'info@dckidsbrand.com',
+        GOOGLE_CLIENT_ID: 'test-client.apps.googleusercontent.com',
         RESEND_API_KEY: 're_test_placeholder',
         RESEND_FROM: 'DC Kids <no-reply@updates.dckidsgh.com>'
     };
@@ -67,6 +68,24 @@ async function run() {
     check('production config resolves database under DATA_DIR', resolved.dbPath === DB_PATH, resolved.dbPath);
     check('production config resolves uploads under DATA_DIR', resolved.uploadDir === UPLOAD_DIR, resolved.uploadDir);
     check('production config resolves backups under DATA_DIR', resolved.backupDir === BACKUP_DIR, resolved.backupDir);
+
+    let withoutEmailError = null;
+    try {
+        buildConfig(Object.assign({}, productionEnv, { RESEND_API_KEY: '', RESEND_FROM: '' }), { createDirectories: false });
+    } catch (error) {
+        withoutEmailError = error;
+    }
+    check('production config needs no email key: email only carries notifications', withoutEmailError === null,
+        withoutEmailError && withoutEmailError.message);
+
+    let withoutGoogleError = null;
+    try {
+        buildConfig(Object.assign({}, productionEnv, { GOOGLE_CLIENT_ID: '' }), { createDirectories: false });
+    } catch (error) {
+        withoutGoogleError = error;
+    }
+    check('production config refuses a missing GOOGLE_CLIENT_ID: nobody could sign in to the admin',
+        Boolean(withoutGoogleError && withoutGoogleError.errors.includes('GOOGLE_CLIENT_ID is required in production')));
 
     let invalidError = null;
     try {
@@ -76,6 +95,7 @@ async function run() {
             ALLOWED_ORIGINS: 'http://insecure.example',
             APP_URL: 'http://insecure.example',
             OWNER_EMAIL: 'not-an-email',
+            GOOGLE_CLIENT_ID: '',
             RESEND_API_KEY: '',
             RESEND_FROM: 'DC Kids Admin <onboarding@resend.dev>',
             PORT: '99999'

@@ -9,7 +9,7 @@
    - Images + fonts: cache-first.
    - Bumping VERSION wipes old caches on activate.
 */
-const VERSION = 'dckids-v317';
+const VERSION = 'dckids-v320';
 const STATIC_CACHE = 'dckids-static-' + VERSION;
 const RUNTIME_CACHE = 'dckids-runtime-' + VERSION;
 
@@ -47,7 +47,6 @@ const APP_SHELL = [
   '/vendor/fontawesome/webfonts/fa-regular-400.woff2',
   '/vendor/fontawesome/webfonts/fa-brands-400.woff2',
   '/image-resolver.js',
-  '/admin-recovery-view.js',
   '/account.js',
   '/product.js',
   '/firebase-auth.js',
@@ -119,6 +118,11 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
+  // Other sites' files (Google sign-in, Firebase, avatars) go straight to the
+  // network. A fetch made here is held to this worker's own security policy,
+  // which doesn't list them, so routing them through here turned Google's
+  // sign-in script into a 504 and left the admin with no way to sign in.
+  if (url.origin !== self.location.origin) return;
   const accept = req.headers.get('accept') || '';
   const isHtml = req.mode === 'navigate' || accept.includes('text/html') || url.pathname.endsWith('.html');
   const isApi = url.pathname.startsWith('/api/');

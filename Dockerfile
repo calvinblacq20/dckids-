@@ -2,8 +2,8 @@ FROM node:22-bookworm-slim AS dependencies
 
 WORKDIR /app
 
-# sqlite3 and bcrypt may need to compile native modules. Building them on the
-# same Debian release used at runtime prevents C library version mismatches.
+# sqlite3 may need to compile its native module. Building it on the same
+# Debian release used at runtime prevents C library version mismatches.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends python3 make g++ \
     && rm -rf /var/lib/apt/lists/*

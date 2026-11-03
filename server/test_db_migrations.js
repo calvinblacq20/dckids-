@@ -13,7 +13,8 @@ const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'dckids-migration-test-')
 const dbPath = path.join(tempRoot, 'inventory.db');
 let passed = 0;
 
-// The schema these three tables had in the first production release.
+// The schema these tables had in the first production release, plus the
+// sign-in code tables a later release added and ADR 0012 retired.
 const LEGACY_SCHEMA = `
     CREATE TABLE customers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -48,6 +49,32 @@ const LEGACY_SCHEMA = `
     INSERT INTO orders (order_number, customer_name, customer_phone, order_type, total_amount, status)
         VALUES ('DCK-LEGACY-1', 'Order Customer', '+233200000002', 'retail', 120, 'pending');
     INSERT INTO payments (order_id, amount) VALUES (1, 120);
+    CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE,
+        password_hash TEXT,
+        role TEXT
+    );
+    CREATE TABLE auth_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        code_hash TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        attempts INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    );
+    CREATE TABLE recovery_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        code_hash TEXT NOT NULL,
+        used_at TEXT,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    );
+    INSERT INTO users (username, role) VALUES ('legacy-staff@test.com', 'staff');
+    INSERT INTO auth_codes (user_id, code_hash, expires_at) VALUES (1, 'old-code-hash', datetime('now', '+10 minutes'));
+    INSERT INTO recovery_codes (user_id, code_hash) VALUES (1, 'old-recovery-hash');
 `;
 
 // Runs in a child so each boot gets a fresh module cache and its own connection.
@@ -148,6 +175,17 @@ async function runTests() {
         const orderCustomer = await get(sqlite, "SELECT name FROM customers WHERE phone = '+233200000002'");
         check('customers are backfilled from legacy order history', () => {
             assert.strictEqual(orderCustomer && orderCustomer.name, 'Order Customer');
+        });
+
+        const codeTables = await all(sqlite, "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('auth_codes', 'recovery_codes')");
+        check('the retired sign-in code tables are dropped from a database that had them', () => {
+            assert.deepStrictEqual(codeTables, []);
+        });
+        await run(sqlite, 'PRAGMA foreign_keys = ON');
+        await run(sqlite, "DELETE FROM users WHERE username = 'legacy-staff@test.com'");
+        const deletedStaff = await get(sqlite, "SELECT COUNT(*) AS count FROM users WHERE username = 'legacy-staff@test.com'");
+        check('a staff account that once had sign-in codes can be deleted', () => {
+            assert.strictEqual(deletedStaff.count, 0);
         });
 
         // The statement the admin runs when it marks an order paid.

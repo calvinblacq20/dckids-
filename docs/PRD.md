@@ -15,11 +15,11 @@ Give DC Kids Brand (Ghanaian kids' fashion, ages 0–12) a storefront where pare
 |---|---|---|
 | Storefront | `index.html` | Hero, category pills, paginated grid (12/page), search, cart drawer, wishlist, reviews, wholesale toggle, PWA; China Pre-Order tab (only while a window is open) with category filters and its own Retail / Wholesale switch |
 | Order tracking | `track.html` | Order number + phone last-4 gate |
-| Admin sign-in | `admin.html` | Passwordless: email OTP, recovery codes, optional Google |
+| Admin sign-in | `admin.html` | Continue with Google only; a new address becomes an access request the owner approves |
 | Admin dashboard | `admin.html` | Overview KPIs, products (camera capture, bulk import), orders (status flow), customers, suppliers, analytics, staff management, settings |
 
 ## Data model (SQLite, WAL)
-`products` (sizes JSON overrides base price) · `orders` → `order_items` (name/price snapshotted) · `payments` · `customers` · `users` (role: manager/staff; status: active/pending/rejected) · `auth_codes` / `recovery_codes` (hashed, FK → users) · `suppliers` · `product_images` · `product_reviews` · `wishlist_items` · `customer_accounts`/`customer_addresses` (flag-gated, off) · `store_settings` (WhatsApp number, MOQ, discount, banner) · `transactions` (audit).
+`products` (sizes JSON overrides base price) · `orders` → `order_items` (name/price snapshotted) · `payments` · `customers` · `users` (role: manager/staff; status: active/pending/rejected) · `suppliers` · `product_images` · `product_reviews` · `wishlist_items` · `customer_accounts`/`customer_addresses` (flag-gated, off) · `store_settings` (WhatsApp number, MOQ, discount, banner) · `transactions` (audit).
 
 Totals are always computed **server-side**. Wholesale (and bulk pre-orders) = the product's own bulk price per piece (`products.wholesale_price`; differently priced sizes move by the same proportion), else per-piece price × (1 − discount%), from the MOQ per item; a line under the MOQ is charged retail (ADR 0010). Stock deducts when an order turns `paid`.
 
@@ -40,7 +40,7 @@ Totals are always computed **server-side**. Wholesale (and bulk pre-orders) = th
 - Empty categories hidden from nav; category search resets filters. Category names and order are the owner's (`categories` table, edited in admin); a category with products can't be deleted, and any category a product uses that the list lacks is still shown.
 - The admin's order list loads the full history once, then polls only for changes (`/api/orders?since=`), with a full refresh every 15 minutes; order items load in batches, so the history has no size limit.
 - Offline/flaky network: service worker (network-first), `products.json` fallback.
-- OTP: 10-min expiry, 5 attempts, one active code; recovery codes one-time; pending/rejected staff cannot sign in.
+- Sign-in: Google only; a credential Google doesn't vouch for is refused; pending/rejected staff cannot sign in; a new address's first sign-in becomes an access request.
 
 ## Out of scope (deliberate)
 - Online card payments (checkout completes over WhatsApp; no PCI surface).
@@ -49,4 +49,4 @@ Totals are always computed **server-side**. Wholesale (and bulk pre-orders) = th
 - Native mobile apps (PWA covers install-to-home-screen).
 
 ## Done means
-Deployed on a Node host behind HTTPS with `NODE_ENV=production`, `JWT_SECRET`, `RESEND_API_KEY`, `OWNER_EMAIL`, `ALLOWED_ORIGINS` set; `npm test` green (12 suites); `docs/SHIP-CHECKLIST.md` fully checked.
+Deployed on a Node host behind HTTPS with `NODE_ENV=production`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `OWNER_EMAIL`, `ALLOWED_ORIGINS` set; `npm test` green (13 suites); `docs/SHIP-CHECKLIST.md` fully checked.

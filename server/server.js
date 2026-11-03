@@ -4,7 +4,6 @@ const express = require('express');
 const compression = require('compression');
 const cors = require('cors');
 const { originAllowed } = require('./origin_policy');
-const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { initializeApp: initializeFirebaseAdmin, applicationDefault, cert, getApps: getFirebaseApps } = require('firebase-admin/app');
 const { getAuth: getFirebaseAuth } = require('firebase-admin/auth');
@@ -12,12 +11,6 @@ const db = require('./db');
 const { UPLOAD_DIR, VOLUME_PATH, DB_PATH, BACKUP_DIR } = require('./storage');
 const { checkHealth } = require('./health');
 const { createMaintenanceMiddleware } = require('./maintenance');
-const {
-    DEFAULT_RECOVERY_CODE_COUNT,
-    replaceRecoveryCodes,
-    consumeRecoveryCode,
-    countUnusedRecoveryCodes
-} = require('./recovery_codes');
 
 const app = express();
 app.set('trust proxy', 1); // accurate req.ip behind a reverse proxy (nginx/render/etc.)
@@ -319,12 +312,15 @@ if (IS_PROD && (!process.env.JWT_SECRET || JWT_SECRET === 'dckids-super-secret-k
     process.exit(1);
 }
 
-// Email delivery is optional infrastructure. Missing Resend credentials must
+// Email and Google sign-in are optional infrastructure: a missing key must
 // never take the storefront, WhatsApp checkout, or payment webhooks offline.
-// Admin email-code sign-in is disabled separately below; Google and recovery
-// codes remain available when configured.
+// Email only carries notifications. Google is the only way into the admin, so
+// without it the shop keeps selling but nobody can manage it.
 if (IS_PROD && !process.env.RESEND_API_KEY) {
-    console.warn('WARNING: RESEND_API_KEY is not set — admin email sign-in and notification emails are disabled. Storefront checkout remains available.');
+    console.warn('WARNING: RESEND_API_KEY is not set — notification emails are disabled. Storefront checkout remains available.');
+}
+if (!String(process.env.GOOGLE_CLIENT_ID || '').trim()) {
+    console.warn('WARNING: GOOGLE_CLIENT_ID is not set — nobody can sign in to the admin. Storefront checkout remains available.');
 }
 
 // Unexpected-failure responses: the user gets a generic message; the real error
@@ -336,17 +332,15 @@ function serverError(res, err) {
     return res.status(500).json({ error: 'Something went wrong. Please try again.' });
 }
 
-// ---------------- Passwordless auth: email (Resend) + code helpers ----------------
+// ---------------- Email (Resend) and Google sign-in helpers ----------------
 const https = require('https');
-const crypto = require('crypto');
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 const RESEND_FROM = process.env.RESEND_FROM || 'DC Kids Admin <onboarding@resend.dev>';
 const APP_URL = process.env.APP_URL || 'http://localhost:3001';
 
-// Google Sign-In (optional). When GOOGLE_CLIENT_ID is set, the admin login page
-// shows a "Continue with Google" button; when unset, the button is hidden and
-// email-OTP remains the only path. The client id is public (safe to expose to
+// Google Sign-In: the admin's only sign-in. Without GOOGLE_CLIENT_ID the login
+// page says sign-in isn't set up. The client id is public (safe to expose to
 // the browser) — there is no client secret because we use the ID-token flow.
 const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || '').trim();
 
@@ -411,27 +405,6 @@ function escapeHtmlServer(s) {
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function genOtp() {
-    return String(crypto.randomInt(0, 1000000)).padStart(6, '0');
-}
-function runAuthDb(sql, params = []) {
-    return new Promise((resolve, reject) => {
-        db.run(sql, params, function (error) {
-            if (error) reject(error);
-            else resolve(this);
-        });
-    });
-}
-// Generate N fresh recovery codes for a user, store them hashed, return the
-// plaintext once (the only time they exist unhashed).
-async function generateRecoveryCodes(userId, n = DEFAULT_RECOVERY_CODE_COUNT) {
-    return replaceRecoveryCodes({ db, bcrypt, userId, count: n });
-}
-async function generateInitialRecoveryCodes(userId, n = DEFAULT_RECOVERY_CODE_COUNT) {
-    const recoveryCodes = await generateRecoveryCodes(userId, n);
-    await runAuthDb('UPDATE users SET recovery_shown = 1 WHERE id = ?', [userId]);
-    return recoveryCodes;
-}
 function notifyManagersOfRequest(name, mail) {
     db.all(`SELECT id, username, email, role, ${FIRST_MANAGER_SQL} AS first_manager_id FROM users
              WHERE role = 'manager' AND status = 'active' AND email IS NOT NULL`, [], (e, rows) => {
@@ -477,15 +450,6 @@ function verifyGoogleIdToken(idToken) {
         request.on('error', () => resolve(null));
         request.end();
     });
-}
-
-function otpEmailHtml(code) {
-    return `<div style="font-family:Inter,Arial,sans-serif;max-width:460px">
-      <h2 style="margin:0 0 8px">Your sign-in code</h2>
-      <p style="color:#555;margin:0 0 16px">Enter this code to sign in to the DC Kids admin dashboard. It expires in 10 minutes.</p>
-      <div style="font-size:32px;font-weight:800;letter-spacing:8px;background:#f6f6f8;border-radius:12px;padding:16px 0;text-align:center">${code}</div>
-      <p style="color:#999;font-size:12px;margin-top:16px">If you didn't request this, you can ignore this email.</p>
-    </div>`;
 }
 
 // Basic in-memory rate limiting to prevent API abuse (disabled for localhost)
@@ -554,10 +518,8 @@ function makeAttemptLimiter(maxAttempts, windowMs, message) {
     };
 }
 const loginLimiter    = makeAttemptLimiter(10, 15 * 60 * 1000, 'Too many login attempts. Try again in 15 minutes.');
-const registerLimiter = makeAttemptLimiter(5, 60 * 60 * 1000, 'Too many registration attempts. Try again later.');
 const trackLimiter    = makeAttemptLimiter(30, 15 * 60 * 1000, 'Too many tracking lookups. Try again shortly.');
 const reviewLimiter   = makeAttemptLimiter(10, 60 * 60 * 1000, 'Too many reviews submitted. Try again later.');
-const recoveryManageLimiter = makeAttemptLimiter(5, 60 * 60 * 1000, 'Too many recovery-code changes. Try again later.');
 // Phones on one mobile network often share an address, so this is looser than sign-in.
 const signupLimiter   = makeAttemptLimiter(20, 60 * 60 * 1000, 'Too many sign-ups from this network. Try again later.');
 
@@ -584,7 +546,7 @@ const authenticateToken = (req, res, next) => {
                 return res.status(403).json({ error: 'This account is no longer active' });
             }
             const role = isShopOwner(user, user.first_manager_id) ? 'manager' : 'staff';
-            req.user = { id: user.id, username: user.username, role, issuedAt: Number(payload.iat) };
+            req.user = { id: user.id, username: user.username, role };
             next();
         });
     });
@@ -613,219 +575,26 @@ const requireManager = (req, res, next) => {
     next();
 };
 
-const requireRecentAuthentication = (req, res, next) => {
-    const issuedAt = Number(req.user && req.user.issuedAt);
-    const ageSeconds = Math.floor(Date.now() / 1000) - issuedAt;
-    if (!Number.isFinite(issuedAt) || ageSeconds < 0 || ageSeconds > 30 * 60) {
-        return res.status(401).json({
-            error: 'For your security, sign in again before generating new recovery codes.',
-            code: 'reauth_required'
-        });
-    }
-    next();
-};
+// ---------------- AUTH ROUTES (Google sign-in only) ---------------- //
 
-app.get('/api/admin/recovery-codes/status', authenticateToken, async (req, res) => {
-    res.setHeader('Cache-Control', 'private, no-store, max-age=0');
-    try {
-        const remaining = await countUnusedRecoveryCodes({ db, userId: req.user.id });
-        return res.json({ remaining, total: DEFAULT_RECOVERY_CODE_COUNT });
-    } catch (error) {
-        return serverError(res, error);
-    }
-});
-
-app.post('/api/admin/recovery-codes/regenerate', authenticateToken, requireRecentAuthentication, recoveryManageLimiter, async (req, res) => {
-    res.setHeader('Cache-Control', 'private, no-store, max-age=0');
-    try {
-        const recoveryCodes = await generateRecoveryCodes(req.user.id);
-        logAdminAction(req, 'regenerate_recovery_codes', 'security', req.user.id, 'Regenerated personal recovery codes');
-        return res.json({
-            success: true,
-            remaining: recoveryCodes.length,
-            total: recoveryCodes.length,
-            recoveryCodes,
-            message: 'New recovery codes generated. Previous codes are no longer valid.'
-        });
-    } catch (error) {
-        return serverError(res, error);
-    }
-});
-
-// ---------------- AUTH ROUTES (passwordless: email OTP + recovery) ---------------- //
-
-// Request access (public). Emails on the OWNER_EMAIL allowlist are auto-activated
-// as owner (manager) and shown recovery codes once; everyone else is created
-// 'pending' and must be approved by a manager. No passwords are collected.
-app.post('/api/admin/register', registerLimiter, (req, res) => {
-    const { full_name, email, phone } = req.body || {};
-    const name = String(full_name || '').trim();
-    const mail = String(email || '').trim().toLowerCase();
-    if (name.length < 2 || name.length > 100) return res.status(400).json({ error: 'Please enter your full name' });
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail) || mail.length > 254) return res.status(400).json({ error: 'Please enter a valid email address' });
-
-    db.get(`SELECT COUNT(*) AS c FROM users WHERE status = 'active' AND role = 'manager'`, [], (err, row) => {
-        if (err) return serverError(res, err);
-        // An email on the allowlist is always an owner. Without an allowlist,
-        // fall back to "first sign-up = owner" so a fresh install bootstraps.
-        const isOwner = OWNER_EMAILS.length > 0
-            ? OWNER_EMAILS.includes(mail)
-            : (!row || row.c === 0);
-        const status = isOwner ? 'active' : 'pending';
-        const role = isOwner ? 'manager' : 'staff';
-        db.run(
-            `INSERT INTO users (username, password_hash, role, email, full_name, phone, status, created_at)
-             VALUES (?, NULL, ?, ?, ?, ?, ?, datetime('now'))`,
-            [mail, role, mail, name, String(phone || '').trim() || null, status],
-            async function (e2) {
-                if (e2) {
-                    if (String(e2.message).includes('UNIQUE')) {
-                        return res.status(409).json({ error: 'An account with this email already exists' });
-                    }
-                    return serverError(res, e2);
-                }
-                if (isOwner) {
-                    // No recovery codes here: whoever sends this form has not yet
-                    // proved they own the inbox. They come with the first sign-in,
-                    // which needs the emailed code (or a Google-verified address).
-                    sendEmail(mail, 'Your DC Kids admin account is ready',
-                        `<p>Hi ${escapeHtmlServer(name)}, your owner account is active.</p><p>Sign in at <a href="${APP_URL}/admin.html">${APP_URL}/admin.html</a> — we'll email you a 6-digit code each time.</p>`);
-                    return res.status(201).json({
-                        success: true, owner: true,
-                        message: 'Your owner account is active. Sign in with the code we email you; your recovery codes come with that first sign-in.'
-                    });
-                }
-                sendEmail(mail, 'DC Kids admin access requested',
-                    `<p>Hi ${escapeHtmlServer(name)}, we received your request for admin access.</p><p>A manager will review it, and you'll be able to sign in once you're approved.</p>`);
-                notifyManagersOfRequest(name, mail);
-                return res.status(201).json({ success: true, owner: false, message: 'Request submitted — a manager will review it.' });
-            }
-        );
-    });
-});
-
-// Step 1 of sign-in: email a 6-digit code to an ACTIVE account.
-app.post('/api/auth/request-code', loginLimiter, (req, res) => {
-    if (IS_PROD && !RESEND_API_KEY) {
-        return res.status(503).json({
-            error: 'Email sign-in is temporarily unavailable. Use Google sign-in or a recovery code.'
-        });
-    }
-    const mail = String((req.body && req.body.email) || '').trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return res.status(400).json({ error: 'Enter a valid email.' });
-    db.get(`SELECT * FROM users WHERE email = ?`, [mail], async (err, user) => {
-        if (err) return serverError(res, err);
-        // Don't reveal whether an email exists, but be clear on pending/rejected.
-        if (!user) return res.json({ success: true, message: 'If that email has access, a code has been sent.' });
-        if (user.status === 'pending') return res.status(403).json({ error: 'Your access request is still awaiting approval.' });
-        if (user.status === 'rejected') return res.status(403).json({ error: 'Your access request was declined.' });
-        if (user.status !== 'active') return res.status(403).json({ error: 'This account is not active.' });
-
-        const code = genOtp();
-        const codeHash = await bcrypt.hash(code, 10);
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
-        db.run(`DELETE FROM auth_codes WHERE user_id = ?`, [user.id], () => {
-            db.run(`INSERT INTO auth_codes (user_id, code_hash, expires_at, attempts) VALUES (?, ?, ?, 0)`,
-                [user.id, codeHash, expiresAt], (e2) => {
-                    if (e2) return serverError(res, e2);
-                    // Operator-visible in development so the flow is testable
-                    // without email (and in Resend test mode, where email only
-                    // delivers to your own address). NEVER in production:
-                    // logging live sign-in codes would let anyone with log
-                    // access take over any admin account.
-                    if (!IS_PROD) console.log(`\n[SIGN-IN CODE] ${mail} -> ${code}  (valid 10 min)\n`);
-                    sendEmail(mail, 'Your DC Kids admin sign-in code', otpEmailHtml(code));
-                    // Same wording as the unknown-email branch above: a different message
-                    // here would let an attacker enumerate valid admin addresses.
-                    res.json({ success: true, message: 'If that email has access, a code has been sent.' });
-                });
-        });
-    });
-});
-
-// Step 2 of sign-in: verify the code and issue a session.
-app.post('/api/auth/verify-code', loginLimiter, (req, res) => {
-    const mail = String((req.body && req.body.email) || '').trim().toLowerCase();
-    const code = String((req.body && req.body.code) || '').trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail) || !/^\d{6}$/.test(code)) {
-        return res.status(400).json({ error: 'Enter the 6-digit code.' });
-    }
-    db.get(
-        `SELECT u.*, c.id AS code_id, c.code_hash, c.expires_at, c.attempts
-         FROM users u JOIN auth_codes c ON c.user_id = u.id
-         WHERE u.email = ? ORDER BY c.id DESC LIMIT 1`,
-        [mail],
-        async (err, row) => {
-            if (err) return serverError(res, err);
-            if (!row) return res.status(400).json({ error: 'No code found. Request a new one.' });
-            if (row.status !== 'active') return res.status(403).json({ error: 'This account is not active.' });
-            if (new Date(row.expires_at).getTime() < Date.now()) {
-                db.run(`DELETE FROM auth_codes WHERE id = ?`, [row.code_id]);
-                return res.status(400).json({ error: 'Code expired. Request a new one.' });
-            }
-            if (row.attempts >= 5) {
-                db.run(`DELETE FROM auth_codes WHERE id = ?`, [row.code_id]);
-                return res.status(429).json({ error: 'Too many attempts. Request a new code.' });
-            }
-            const ok = await bcrypt.compare(code, row.code_hash);
-            if (!ok) {
-                db.run(`UPDATE auth_codes SET attempts = attempts + 1 WHERE id = ?`, [row.code_id]);
-                return res.status(400).json({ error: 'Incorrect code.' });
-            }
-            db.run(`DELETE FROM auth_codes WHERE user_id = ?`, [row.id]);
-            let role;
-            let recoveryCodes = null;
-            try {
-                role = await shopRoleOf(row);
-                if (!row.recovery_shown) recoveryCodes = await generateInitialRecoveryCodes(row.id);
-            } catch (error) {
-                return serverError(res, error);
-            }
-            const accessToken = jwt.sign({ id: row.id, username: row.email, role }, JWT_SECRET, { expiresIn: '12h' });
-            res.json({ accessToken, role, recoveryCodes });
-        }
-    );
-});
-
-// Backup sign-in with a one-time recovery code (if email is unavailable).
-app.post('/api/auth/recovery', loginLimiter, (req, res) => {
-    const mail = String((req.body && req.body.email) || '').trim().toLowerCase();
-    const rc = String((req.body && req.body.code) || '');
-    if (!mail || !rc) return res.status(400).json({ error: 'Enter your email and a recovery code.' });
-    db.get(`SELECT * FROM users WHERE email = ? AND status = 'active'`, [mail], async (err, user) => {
-        if (err) return serverError(res, err);
-        if (!user) return res.status(400).json({ error: 'Invalid email or recovery code.' });
-        try {
-            const consumed = await consumeRecoveryCode({ db, bcrypt, userId: user.id, code: rc });
-            if (!consumed) return res.status(400).json({ error: 'Invalid email or recovery code.' });
-            const role = await shopRoleOf(user);
-            const accessToken = jwt.sign({ id: user.id, username: user.email, role }, JWT_SECRET, { expiresIn: '12h' });
-            return res.json({ accessToken, role });
-        } catch (error) {
-            return serverError(res, error);
-        }
-    });
-});
-
-// Public: tells the admin login page whether Google Sign-In is available (and
-// with which client id). Returns null when unconfigured so the page silently
-// falls back to email-OTP. The client id is not a secret.
+// Public: the client id the admin login page needs for "Continue with Google",
+// or null when it isn't set up. The client id is not a secret.
 app.get('/api/auth/config', (req, res) => {
-    res.json({
-        googleClientId: GOOGLE_CLIENT_ID || null,
-        emailCodeAvailable: !IS_PROD || Boolean(RESEND_API_KEY)
-    });
+    res.json({ googleClientId: GOOGLE_CLIENT_ID || null });
 });
 
-// Primary sign-in: "Continue with Google". Verifies the Google ID token, then
-// applies the SAME access gate as the OTP flow — active signs in, pending/
-// rejected are refused, and an unknown email becomes a pending access request
-// (so one tap both requests access and, once approved, logs in). An allowlisted
-// OWNER_EMAIL is auto-activated as owner on first sign-in, mirroring /register.
+// The admin's one sign-in. Verifies the Google ID token, then gates on the
+// account: active signs in, pending/rejected are refused, and an unknown email
+// becomes a pending access request (so one tap both requests access and, once
+// approved, signs in). The OWNER_EMAIL address is activated as owner on its
+// first sign-in; without OWNER_EMAIL, the first person to sign in becomes the
+// owner, so a fresh install still bootstraps.
 app.post('/api/auth/google', loginLimiter, async (req, res) => {
-    if (!GOOGLE_CLIENT_ID) return res.status(400).json({ error: 'Google sign-in is not configured.' });
+    if (!GOOGLE_CLIENT_ID) return res.status(400).json({ error: 'Google sign-in is not set up.' });
     const credential = String((req.body && req.body.credential) || '');
-    const payload = await verifyGoogleIdToken(credential);
+    // The tests swap in a stand-in for Google; nothing else sets this.
+    const verify = app.get('verifyGoogleIdToken') || verifyGoogleIdToken;
+    const payload = await verify(credential);
     if (!payload) return res.status(401).json({ error: 'Google sign-in failed. Please try again.' });
 
     const mail = String(payload.email).trim().toLowerCase();
@@ -836,27 +605,29 @@ app.post('/api/auth/google', loginLimiter, async (req, res) => {
         if (err) return serverError(res, err);
 
         if (!user) {
-            const isOwner = OWNER_EMAILS.includes(mail);
+            let isOwner = OWNER_EMAILS.includes(mail);
+            if (!OWNER_EMAILS.length) {
+                try {
+                    const first = await dbGetAsync(`SELECT ${FIRST_MANAGER_SQL} AS id`);
+                    isOwner = !first || first.id == null;
+                } catch (error) {
+                    return serverError(res, error);
+                }
+            }
             const status = isOwner ? 'active' : 'pending';
             const role = isOwner ? 'manager' : 'staff';
             db.run(
                 `INSERT INTO users (username, password_hash, role, email, full_name, phone, status, google_sub, created_at)
                  VALUES (?, NULL, ?, ?, ?, NULL, ?, ?, datetime('now'))`,
                 [mail, role, mail, name, status, sub],
-                async function (e2) {
+                function (e2) {
                     if (e2) return serverError(res, e2);
-                    const userId = this.lastID;
                     if (isOwner) {
-                        try {
-                            const recoveryCodes = await generateInitialRecoveryCodes(userId);
-                            const accessToken = jwt.sign({ id: userId, username: mail, role }, JWT_SECRET, { expiresIn: '12h' });
-                            return res.json({ accessToken, role, recoveryCodes });
-                        } catch (error) {
-                            return serverError(res, error);
-                        }
+                        const accessToken = jwt.sign({ id: this.lastID, username: mail, role }, JWT_SECRET, { expiresIn: '12h' });
+                        return res.json({ accessToken, role });
                     }
                     notifyManagersOfRequest(name, mail);
-                    return res.status(403).json({ error: 'Access requested — an owner needs to approve your account before you can sign in.' });
+                    return res.status(403).json({ error: 'Access requested — the owner needs to approve your account before you can sign in.', pending: true });
                 }
             );
             return;
@@ -881,22 +652,20 @@ app.post('/api/auth/google', loginLimiter, async (req, res) => {
             user.role = 'manager';
         }
 
-        if (user.status === 'pending') return res.status(403).json({ error: 'Your access request is still awaiting approval.' });
+        if (user.status === 'pending') return res.status(403).json({ error: 'Your access request is still awaiting the owner’s approval.', pending: true });
         if (user.status === 'rejected') return res.status(403).json({ error: 'Your access request was declined.' });
         if (user.status !== 'active') return res.status(403).json({ error: 'This account is not active.' });
 
         if (sub && !user.google_sub) db.run(`UPDATE users SET google_sub = ? WHERE id = ?`, [sub, user.id]);
 
         let role;
-        let recoveryCodes = null;
         try {
             role = await shopRoleOf(user);
-            if (!user.recovery_shown) recoveryCodes = await generateInitialRecoveryCodes(user.id);
         } catch (error) {
             return serverError(res, error);
         }
         const accessToken = jwt.sign({ id: user.id, username: user.email, role }, JWT_SECRET, { expiresIn: '12h' });
-        res.json({ accessToken, role, recoveryCodes });
+        res.json({ accessToken, role });
     });
 });
 
@@ -1632,17 +1401,17 @@ app.get('/api/users', authenticateToken, requireManager, (req, res) => {
     });
 });
 
-// Create a staff account. Passwordless: the account is identified by email and
-// immediately active — the person signs in with an emailed 6-digit code (or
-// Google), so no password is collected. This is the owner's direct "add my
-// staff" path; the public register endpoint is the request/approve one. Every
-// account added here is staff: the shop has one owner.
+// Create a staff account. The account is identified by email and immediately
+// active — the person signs in with the Google account on that address, so no
+// password is collected. This is the owner's direct "add my staff" path; a
+// first Google sign-in from an unknown address is the request/approve one.
+// Every account added here is staff: the shop has one owner.
 app.post('/api/users', authenticateToken, requireManager, (req, res) => {
     const { full_name, email } = req.body || {};
     const mail = String(email || '').trim().toLowerCase();
     const name = String(full_name || '').trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail) || mail.length > 254) {
-        return res.status(400).json({ error: 'A valid email address is required — staff sign in with a code sent to it' });
+        return res.status(400).json({ error: 'A valid email address is required — staff sign in with the Google account on it' });
     }
     if (name.length < 2 || name.length > 100) {
         return res.status(400).json({ error: 'Please enter the person\'s full name' });
@@ -1661,16 +1430,14 @@ app.post('/api/users', authenticateToken, requireManager, (req, res) => {
             }
             sendEmail(mail, 'You now have DC Kids admin access',
                 `<p>Hi ${escapeHtmlServer(name)}, you've been given ${finalRole} access to the DC Kids dashboard.</p>
-                 <p>Sign in at <a href="${APP_URL}/admin.html">${APP_URL}/admin.html</a> — we'll email you a 6-digit code each time.</p>`);
+                 <p>Sign in at <a href="${APP_URL}/admin.html">${APP_URL}/admin.html</a> with the Google account for this email.</p>`);
             logAdminAction(req, 'create', 'staff', this.lastID, `Added ${finalRole}: ${mail}`);
             res.status(201).json({ id: this.lastID, email: mail, full_name: name, role: finalRole });
         }
     );
 });
 
-// Delete user. Their sign-in codes reference the user row (FK), so they must
-// go first — every activated account has recovery codes, and deleting the user
-// row alone fails with "FOREIGN KEY constraint failed".
+// Delete user
 app.delete('/api/users/:id', authenticateToken, requireManager, (req, res) => {
     const userId = req.params.id;
 
@@ -1679,17 +1446,11 @@ app.delete('/api/users/:id', authenticateToken, requireManager, (req, res) => {
         return res.status(400).json({ error: 'Cannot delete your own logged-in user account' });
     }
 
-    db.run(`DELETE FROM auth_codes WHERE user_id = ?`, [userId], (err) => {
+    db.run(`DELETE FROM users WHERE id = ?`, [userId], function (err) {
         if (err) return serverError(res, err);
-        db.run(`DELETE FROM recovery_codes WHERE user_id = ?`, [userId], (err2) => {
-            if (err2) return serverError(res, err2);
-            db.run(`DELETE FROM users WHERE id = ?`, [userId], function (err3) {
-                if (err3) return serverError(res, err3);
-                if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
-                logAdminAction(req, 'delete', 'staff', userId, `Deleted staff account #${userId}`);
-                res.json({ success: true, message: 'User deleted successfully' });
-            });
-        });
+        if (this.changes === 0) return res.status(404).json({ error: 'User not found' });
+        logAdminAction(req, 'delete', 'staff', userId, `Deleted staff account #${userId}`);
+        res.json({ success: true, message: 'User deleted successfully' });
     });
 });
 

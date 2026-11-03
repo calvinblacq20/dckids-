@@ -7,9 +7,11 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn } = require('child_process');
+const jwt = require('jsonwebtoken');
 const sqlite3 = require('sqlite3');
 
 const HISTORY = 33000;
+const JWT_SECRET = 'order-history-test-secret-0123456789abcdef';
 let passed = 0;
 function check(name, fn) {
     try {
@@ -30,6 +32,17 @@ const post = (url, body) => fetch(BASE + url, { method: 'POST', headers: { 'Cont
 
 function exec(db, sql, params = []) {
     return new Promise((resolve, reject) => db.run(sql, params, function (err) { if (err) reject(err); else resolve(this); }));
+}
+
+// The owner's account as her first Google sign-in would create it. Google
+// can't be reached from a test, so her session token is signed directly.
+async function ownerSession() {
+    const db = new sqlite3.Database(dbPath);
+    db.configure('busyTimeout', 10000);
+    const owner = await exec(db, `INSERT INTO users (username, role, email, full_name, status, created_at)
+        VALUES ('owner@dckidsbrand.com', 'manager', 'owner@dckidsbrand.com', 'History Owner', 'active', datetime('now'))`);
+    await new Promise((resolve) => db.close(resolve));
+    return jwt.sign({ id: owner.lastID, username: 'owner@dckidsbrand.com', role: 'manager' }, JWT_SECRET, { expiresIn: '1h' });
 }
 
 async function fillHistory() {
@@ -55,7 +68,7 @@ async function main() {
     const child = spawn(process.execPath, [path.join(__dirname, 'server.js')], {
         env: {
             PATH: process.env.PATH, NODE_ENV: 'test', PORT: String(port), DB_PATH: dbPath,
-            JWT_SECRET: 'order-history-test-secret-0123456789abcdef', OWNER_EMAIL: 'owner@dckidsbrand.com',
+            JWT_SECRET, OWNER_EMAIL: 'owner@dckidsbrand.com',
             RESEND_API_KEY: '', VAPID_PUBLIC_KEY: '', VAPID_PRIVATE_KEY: ''
         },
         stdio: ['ignore', 'pipe', 'pipe']
@@ -70,13 +83,7 @@ async function main() {
             if (child.exitCode !== null) throw new Error('server exited:\n' + output);
             await new Promise((r) => setTimeout(r, 200));
         }
-        // The owner signs in the real way: the code is printed to the log locally.
-        await post('/api/admin/register', { full_name: 'History Owner', email: 'owner@dckidsbrand.com', phone: '0549193805' });
-        await post('/api/auth/request-code', { email: 'owner@dckidsbrand.com' });
-        await new Promise((r) => setTimeout(r, 300));
-        const code = [...output.matchAll(/\[SIGN-IN CODE\] owner@dckidsbrand\.com -> (\d{6})/g)].pop();
-        const session = await post('/api/auth/verify-code', { email: 'owner@dckidsbrand.com', code: code && code[1] });
-        const auth = { Authorization: 'Bearer ' + session.accessToken };
+        const auth = { Authorization: 'Bearer ' + await ownerSession() };
 
         await fillHistory();
 

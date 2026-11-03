@@ -4,7 +4,6 @@
 // anywhere Node runs, including a fresh clone with only `npm install` done.
 const fs = require('fs');
 const path = require('path');
-const jwt = require('jsonwebtoken');
 
 const TEST_PORT = 3041;
 const TEST_DB = path.join(__dirname, '_smoketest.db');
@@ -17,7 +16,8 @@ process.env.PORT = String(TEST_PORT);
 process.env.DB_PATH = TEST_DB;
 process.env.NODE_ENV = 'test';              // dev mode: localhost bypasses rate limits
 process.env.RESEND_API_KEY = '';            // emails log to console instead of sending
-process.env.OWNER_EMAIL = 'owner@test.com'; // the test's first sign-up is the owner
+process.env.OWNER_EMAIL = 'owner@test.com'; // the owner, on her first Google sign-in
+process.env.GOOGLE_CLIENT_ID = 'smoke-client.apps.googleusercontent.com'; // Google itself is stood in for below
 process.env.FIREBASE_API_KEY = 'smoke-public-api-key';
 process.env.FIREBASE_AUTH_DOMAIN = 'smoke-test.firebaseapp.com';
 process.env.FIREBASE_PROJECT_ID = 'smoke-test';
@@ -43,17 +43,6 @@ function cleanupDb() {
         try { fs.unlinkSync(path.join(__dirname, '..', rel)); } catch (e) { /* not present */ }
     });
 }
-
-// The OTP flow emails a 6-digit code; without RESEND_API_KEY the server prints
-// it as "[SIGN-IN CODE] email -> 123456". Capture it from console output.
-let lastOtp = '';
-const origLog = console.log;
-console.log = function (...args) {
-    const s = args.join(' ');
-    const m = /\[SIGN-IN CODE\]\s+\S+\s+->\s+(\d{6})/.exec(s);
-    if (m) lastOtp = m[1];
-    origLog.apply(console, args);
-};
 
 async function waitForServer(tries) {
     for (let i = 0; i < tries; i++) {
@@ -90,6 +79,13 @@ async function run() {
         }
         return firebaseTokens[token];
     });
+    // Google is the admin's only sign-in. The stand-in vouches for a credential
+    // of the form "google:<email>" and nothing else.
+    app.set('verifyGoogleIdToken', async (credential) => {
+        const match = /^google:(.+@.+)$/.exec(credential);
+        return match ? { email: match[1], email_verified: true, name: 'Smoke ' + match[1].split('@')[0], sub: 'sub-' + match[1] } : null;
+    });
+    const googleSignIn = (email) => fetch(`${BASE}/api/auth/google`, json('POST', { credential: 'google:' + email }));
     const db = require('./db');
     const dbRun = (sql, params) => new Promise((resolve, reject) => db.run(sql, params || [], function(err) { err ? reject(err) : resolve(this); }));
     const dbGet = (sql, params) => new Promise((resolve, reject) => db.get(sql, params || [], (err, row) => err ? reject(err) : resolve(row)));
@@ -276,6 +272,10 @@ async function run() {
     check('service worker cache misses resolve to a Response',
         swSource.includes('hit || offlineResponse(accept)'));
     check('service worker includes offline product page assets', ['/product.html', '/product.css', '/product.js'].every(asset => swSource.includes(asset)));
+    // Its own fetch() is held to the storefront policy, which blocks Google's
+    // sign-in script: the one way into the admin.
+    check('the service worker leaves other sites\' files, like Google sign-in, to the browser',
+        /const url = new URL\(req\.url\);\s*(?:\/\/[^\n]*\n\s*)*if \(url\.origin !== self\.location\.origin\) return;/.test(swSource));
     const storefrontSource = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
     const appSource = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
     const customerAuthSource = fs.readFileSync(path.join(__dirname, '..', 'firebase-auth.js'), 'utf8');
@@ -386,6 +386,14 @@ async function run() {
     const adminPageSource = fs.readFileSync(path.join(__dirname, '..', 'admin.html'), 'utf8');
     const adminSource = fs.readFileSync(path.join(__dirname, '..', 'admin.js'), 'utf8');
     check('the admin offers no way to make a second owner', !adminPageSource.includes('value="manager"'));
+    check('the phone tab bar stays off the sign-in screens',
+        fs.readFileSync(path.join(__dirname, '..', 'admin-bridge.css'), 'utf8').includes('body:not(.is-authed) .mobile-bottom-nav'));
+    check('the admin signs in with Google only: no emailed codes, recovery codes or request form',
+        adminPageSource.includes('id="google-signin-btn"') &&
+        !/login-step-code|login-step-recovery|recovery-codes-overlay|signup-container|recovery-security-card|admin-recovery-view/.test(adminPageSource) &&
+        !/auth\/request-code|auth\/verify-code|auth\/recovery|recovery-codes|admin\/register/.test(adminSource));
+    check('a first Google sign-in from a new address shows as a request, not an error',
+        adminSource.includes('if (r.data.pending) return _loginInfo(r.data.error);'));
     check('the staff list keeps sign-up names and emails out of onclick handlers',
         !adminSource.includes("onclick=\"openEditStaffModal(' + u.id") && !adminSource.includes("onclick=\"confirmDeleteStaff(' + u.id") &&
         adminSource.includes('data-staff-edit="'));
@@ -426,8 +434,8 @@ async function run() {
         !adminSource.includes('fallback-token') &&
         /var token = localStorage\.getItem\('adminToken'\);\s*if \(token\) \{\s*fetch\(API_URL \+ '\/me'/.test(adminSource));
     check('where there is no server (the static preview), sign-in says so instead of failing',
-        adminSource.includes('function showNoServerSignIn()') &&
-        /if \(!\/json\/\.test\(res\.headers\.get\('content-type'\) \|\| ''\)\) \{\s*showNoServerSignIn\(\);/.test(adminSource));
+        adminSource.includes("if (!/json/.test(res.headers.get('content-type') || '')) throw new Error('no-server');") &&
+        adminSource.includes('this copy of the site has none'));
     check('the shop, the product page and the admin all use the owner\'s category list from the server',
         appSource.includes("fetch('/api/categories')") && appSource.includes('catOrder = list.map(') &&
         productScriptSource.includes("getJson('/api/categories', null)") &&
@@ -438,13 +446,6 @@ async function run() {
         adminSourceEarly.includes('if (ticks % 20 === 0) fetchOrdersFromServer();') && adminSourceEarly.includes('else fetchOrderChanges();'));
     check('the docs describe the real sign-in, not the old admin password',
         ['README.md', 'DEPLOYMENT.md'].every((doc) => !/ADMIN_PASSWORD|admin123/.test(fs.readFileSync(path.join(__dirname, '..', doc), 'utf8'))));
-    check('admin settings exposes accessible recovery-code management',
-        adminPageSource.includes('id="recovery-security-card"') &&
-        adminPageSource.includes('id="recovery-code-status" role="status" aria-live="polite"') &&
-        adminPageSource.includes('id="recovery-code-regenerate-btn"') &&
-        adminSource.includes('async function loadRecoveryCodeStatus()') &&
-        adminSource.includes('async function regenerateRecoveryCodes()') &&
-        adminSource.includes("recoveryLink.parentElement.hidden = (step === 'recovery')"));
     check('mobile product page exposes a synchronized quick-add bar',
         productPageSource.includes('id="productMobileBuybar"') &&
         productStylesSource.includes('.product-mobile-buybar') &&
@@ -494,37 +495,32 @@ async function run() {
 
     r = await fetch(`${BASE}/api/auth/config`);
     const adminAuthConfig = await r.json();
-    check('admin auth config reports local email-code availability',
-        r.status === 200 && adminAuthConfig.emailCodeAvailable === true);
+    check('admin auth config gives the Google client id and nothing else',
+        r.status === 200 && JSON.stringify(adminAuthConfig) === JSON.stringify({ googleClientId: process.env.GOOGLE_CLIENT_ID }),
+        JSON.stringify(adminAuthConfig));
 
-    // ---- auth: passwordless flow ----
+    // ---- auth: Google is the only sign-in ----
     r = await fetch(`${BASE}/api/orders`);
     check('orders list requires auth', r.status === 401, `status ${r.status}`);
     r = await fetch(`${BASE}/api/admin/customers`);
     check('admin customer directory requires auth', r.status === 401, `status ${r.status}`);
 
-    // First sign-up bootstraps the owner. Recovery codes wait for her first
-    // sign-in: the form alone doesn't prove the inbox is hers.
-    r = await fetch(`${BASE}/api/admin/register`, json('POST', {
-        full_name: 'Smoke Owner', email: 'owner@test.com', phone: '0241111111'
-    }));
-    const reg = await r.json();
-    check('first sign-up becomes owner', r.status === 201 && reg.owner === true, `status ${r.status}`);
-    check('registering the owner\'s address hands out no recovery codes', reg.recoveryCodes === undefined);
+    for (const gone of ['/api/admin/register', '/api/auth/request-code', '/api/auth/verify-code', '/api/auth/recovery', '/api/admin/recovery-codes/regenerate']) {
+        r = await fetch(`${BASE}${gone}`, json('POST', { email: 'owner@test.com', code: '123456' }));
+        check(`the old code sign-in ${gone} is gone`, r.status === 404, `status ${r.status}`);
+    }
+    check('the emailed and recovery code tables are dropped',
+        !(await dbGet("SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('auth_codes', 'recovery_codes')")));
 
-    // Email OTP: request a code (captured from the console) and verify it.
-    r = await fetch(`${BASE}/api/auth/request-code`, json('POST', { email: 'owner@test.com' }));
-    check('request-code succeeds for active user', r.status === 200, `status ${r.status}`);
-    check('sign-in code issued', /^\d{6}$/.test(lastOtp), `captured "${lastOtp}"`);
+    r = await fetch(`${BASE}/api/auth/google`, json('POST', { credential: 'forged-credential' }));
+    check('a credential Google does not vouch for is refused', r.status === 401, `status ${r.status}`);
 
-    r = await fetch(`${BASE}/api/auth/verify-code`, json('POST', { email: 'owner@test.com', code: '000000' === lastOtp ? '111111' : '000000' }));
-    check('wrong code rejected', r.status === 400, `status ${r.status}`);
-
-    r = await fetch(`${BASE}/api/auth/verify-code`, json('POST', { email: 'owner@test.com', code: lastOtp }));
+    // The OWNER_EMAIL address becomes the owner on its first Google sign-in.
+    r = await googleSignIn('owner@test.com');
     const login = await r.json();
-    check('correct code issues session', r.status === 200 && !!login.accessToken, `status ${r.status}`);
-    check('owner receives recovery codes with her first emailed-code sign-in', Array.isArray(login.recoveryCodes) && login.recoveryCodes.length > 0);
-    const ownerCodes = login.recoveryCodes || [];
+    check('the owner\'s first Google sign-in opens her account as owner',
+        r.status === 200 && !!login.accessToken && login.role === 'manager', `status ${r.status}, role ${login.role}`);
+    check('signing in hands out no recovery codes', !('recoveryCodes' in login));
     const auth = { 'Authorization': `Bearer ${login.accessToken}` };
 
     r = await fetch(`${BASE}/api/orders`, { headers: auth });
@@ -631,83 +627,33 @@ async function run() {
     check('image health report includes all safeguards', r.status === 200 && ['missingImages','missingSkus','duplicateSkus','invalidPaths','unusedUploads'].every(k => Array.isArray(health[k])));
 
 
-    // Recovery code is a valid backup sign-in, but only one concurrent request
-    // may redeem it. This catches the race where both requests read the unused
-    // row before either asynchronous UPDATE completes.
-    const recoveryAttempts = await Promise.all([
-        fetch(`${BASE}/api/auth/recovery`, json('POST', { email: 'owner@test.com', code: ownerCodes[0] })),
-        fetch(`${BASE}/api/auth/recovery`, json('POST', { email: 'owner@test.com', code: ownerCodes[0] }))
-    ]);
-    const recoveryBodies = await Promise.all(recoveryAttempts.map((response) => response.json()));
-    const recoverySuccesses = recoveryAttempts.filter((response) => response.status === 200).length;
-    const recoveryRejections = recoveryAttempts.filter((response) => response.status === 400).length;
-    const rec = recoveryBodies.find((body) => body && body.accessToken) || {};
-    check('recovery code signs in once under concurrent use', recoverySuccesses === 1 && recoveryRejections === 1 && !!rec.accessToken,
-        `statuses ${recoveryAttempts.map((response) => response.status).join(', ')}`);
-    r = await fetch(`${BASE}/api/auth/recovery`, json('POST', { email: 'owner@test.com', code: ownerCodes[0] }));
-    check('consumed recovery code stays invalid', r.status === 400, `status ${r.status}`);
+    // A first Google sign-in from an unknown address asks the owner for access.
+    r = await googleSignIn('staff@test.com');
+    const requested = await r.json();
+    check('a new address\'s first Google sign-in becomes an access request, without a session',
+        r.status === 403 && requested.pending === true && !requested.accessToken, `status ${r.status}`);
+    const requestRow = await dbGet("SELECT status, role FROM users WHERE email = 'staff@test.com'");
+    check('the access request waits for the owner as pending staff',
+        requestRow && requestRow.status === 'pending' && requestRow.role === 'staff', JSON.stringify(requestRow));
+    r = await googleSignIn('staff@test.com');
+    const stillPending = await r.json();
+    check('a pending request still cannot sign in', r.status === 403 && stillPending.pending === true && !stillPending.accessToken,
+        `status ${r.status}`);
 
-    r = await fetch(`${BASE}/api/admin/recovery-codes/status`);
-    check('recovery-code status requires admin authentication', r.status === 401, `status ${r.status}`);
-    r = await fetch(`${BASE}/api/admin/recovery-codes/status`, { headers: auth });
-    const recoveryStatus = await r.json();
-    check('authenticated admin sees remaining recovery-code count', r.status === 200 && recoveryStatus.remaining === 7,
-        `status ${r.status}, remaining ${recoveryStatus.remaining}`);
-
-    const loginClaims = jwt.decode(login.accessToken);
-    const staleAdminToken = jwt.sign({
-        id: loginClaims.id,
-        username: loginClaims.username,
-        role: loginClaims.role,
-        iat: Math.floor(Date.now() / 1000) - (31 * 60)
-    }, process.env.JWT_SECRET, { expiresIn: '12h' });
-    r = await fetch(`${BASE}/api/admin/recovery-codes/regenerate`, json('POST', {}, {
-        'Authorization': `Bearer ${staleAdminToken}`
-    }));
-    const staleRegeneration = await r.json();
-    check('recovery-code regeneration requires a recent sign-in', r.status === 401 && staleRegeneration.code === 'reauth_required',
-        `status ${r.status}, code ${staleRegeneration.code}`);
-
-    r = await fetch(`${BASE}/api/admin/recovery-codes/regenerate`, json('POST', {}, auth));
-    const regenerated = await r.json();
-    check('authenticated admin can replace their recovery codes', r.status === 200 && regenerated.remaining === 8 &&
-        Array.isArray(regenerated.recoveryCodes) && regenerated.recoveryCodes.length === 8, `status ${r.status}`);
-    r = await fetch(`${BASE}/api/auth/recovery`, json('POST', { email: 'owner@test.com', code: ownerCodes[1] }));
-    check('regeneration invalidates every code from the previous set', r.status === 400, `status ${r.status}`);
-    r = await fetch(`${BASE}/api/auth/recovery`, json('POST', { email: 'owner@test.com', code: regenerated.recoveryCodes[0] }));
-    const regeneratedLogin = await r.json();
-    check('a regenerated recovery code signs in once', r.status === 200 && !!regeneratedLogin.accessToken, `status ${r.status}`);
-
-    // Unknown email gets a generic answer (no account enumeration).
-    r = await fetch(`${BASE}/api/auth/request-code`, json('POST', { email: 'nobody@test.com' }));
-    check('unknown email not revealed', r.status === 200, `status ${r.status}`);
-
-    // Second sign-up is a pending staff request that cannot sign in yet.
-    r = await fetch(`${BASE}/api/admin/register`, json('POST', {
-        full_name: 'New Staff', email: 'staff@test.com'
-    }));
-    const reg2 = await r.json();
-    check('second sign-up is pending staff', r.status === 201 && reg2.owner === false, `status ${r.status}`);
-    r = await fetch(`${BASE}/api/auth/request-code`, json('POST', { email: 'staff@test.com' }));
-    check('pending staff cannot request code', r.status === 403, `status ${r.status}`);
-
-    // Owner adds a staff member directly (passwordless) — active immediately.
+    // Owner adds a staff member directly — active immediately.
     r = await fetch(`${BASE}/api/users`, json('POST', { full_name: 'Direct Staff', email: 'direct@test.com', role: 'staff' }, auth));
     const created = await r.json();
     check('owner adds staff directly', r.status === 201 && created.id > 0, `status ${r.status}`);
-    r = await fetch(`${BASE}/api/auth/request-code`, json('POST', { email: 'direct@test.com' }));
-    check('new staff can request a sign-in code', r.status === 200, `status ${r.status}`);
 
-    // Sign the new staff member in for real (OTP just requested above), so we
-    // can prove their session dies the moment they're deleted.
-    r = await fetch(`${BASE}/api/auth/verify-code`, json('POST', { email: 'direct@test.com', code: lastOtp }));
+    // Sign the new staff member in, so we can prove their session dies the
+    // moment they're deleted.
+    r = await googleSignIn('direct@test.com');
     const staffLogin = await r.json();
-    check('direct staff can sign in', r.status === 200 && !!staffLogin.accessToken, `status ${r.status}`);
+    check('direct staff can sign in with Google', r.status === 200 && !!staffLogin.accessToken && staffLogin.role === 'staff',
+        `status ${r.status}, role ${staffLogin.role}`);
 
-    // Deleting a user must also remove their sign-in code rows (FK) — this
-    // exact case used to fail with "FOREIGN KEY constraint failed".
     r = await fetch(`${BASE}/api/users/${created.id}`, { method: 'DELETE', headers: auth });
-    check('staff with sign-in codes deletable', r.status === 200, `status ${r.status}`);
+    check('a staff account that has signed in can be deleted', r.status === 200, `status ${r.status}`);
 
     // Their still-unexpired JWT must be dead immediately (per-request re-check).
     r = await fetch(`${BASE}/api/orders`, { headers: { 'Authorization': `Bearer ${staffLogin.accessToken}` } });
@@ -735,8 +681,7 @@ async function run() {
     check('the owner\'s sign-in email stays the one on OWNER_EMAIL', r.status === 400, `status ${r.status}`);
     // An older row that still says manager only gets staff powers.
     await dbRun("UPDATE users SET role = 'manager' WHERE id = ?", [second.id]);
-    await fetch(`${BASE}/api/auth/request-code`, json('POST', { email: 'second@test.com' }));
-    const secondLogin = await (await fetch(`${BASE}/api/auth/verify-code`, json('POST', { email: 'second@test.com', code: lastOtp }))).json();
+    const secondLogin = await (await googleSignIn('second@test.com')).json();
     check('a stray manager row signs in as staff', secondLogin.role === 'staff', `got ${secondLogin.role}`);
     r = await fetch(`${BASE}/api/users`, { headers: { 'Authorization': `Bearer ${secondLogin.accessToken}` } });
     check('a stray manager row cannot open owner-only pages', r.status === 403, `status ${r.status}`);
@@ -1288,8 +1233,7 @@ async function run() {
     await setOrderStatus(ledgerSecond, 'delivered');
     check('an order marked delivered without passing paid still takes its pieces', (await ledgerStock()) === 8, `stock ${await ledgerStock()}`);
     await fetch(`${BASE}/api/users`, json('POST', { full_name: 'Counter Staff', email: 'counter@test.com', role: 'staff' }, auth));
-    await fetch(`${BASE}/api/auth/request-code`, json('POST', { email: 'counter@test.com' }));
-    const counterLogin = await (await fetch(`${BASE}/api/auth/verify-code`, json('POST', { email: 'counter@test.com', code: lastOtp }))).json();
+    const counterLogin = await (await googleSignIn('counter@test.com')).json();
     r = await fetch(`${BASE}/api/orders/${ledgerSecond}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${counterLogin.accessToken}` } });
     check('staff cannot delete an order; that needs a manager', r.status === 403, `status ${r.status}`);
     r = await fetch(`${BASE}/api/orders/${ledgerSecond}`, { method: 'DELETE', headers: auth });
@@ -1517,6 +1461,26 @@ async function run() {
         mixedMethods.label === 'WhatsApp' && mixedMethods.share === 70, JSON.stringify(mixedMethods));
     check('with no orders there is no top payment method',
         insight.topPaymentMethod([]).label === 'No payments yet');
+
+    // Opening Settings re-applies the saved accent colour. A stray `else` once
+    // tied that call to the products widget toggle being absent, so adding the
+    // toggle back would have silently stopped it.
+    const settingsStart = adminSource.indexOf('function loadSettingsTab');
+    const settingsEnd = adminSource.lastIndexOf('/*', adminSource.indexOf('ORDER ALERTS ON THIS DEVICE'));
+    check('admin.js still carries the Settings loader', settingsStart !== -1 && settingsEnd > settingsStart);
+    const settingsTab = {
+        appliedAccent: null,
+        getSettings: () => ({ darkMode: false, accentColor: '#123456', profile: {}, notifications: {},
+            widgets: { revenue: true, inventory: true, activity: true, products: true } }),
+        refreshPushAlerts: () => {},
+        applyAccentColor: (color) => { settingsTab.appliedAccent = color; },
+        document: { getElementById: () => ({}) }
+    };
+    vm.createContext(settingsTab);
+    vm.runInContext(adminSource.slice(settingsStart, settingsEnd), settingsTab);
+    settingsTab.loadSettingsTab();
+    check('opening Settings applies the saved accent colour even with every widget toggle on the page',
+        settingsTab.appliedAccent === '#123456', `applied ${settingsTab.appliedAccent}`);
 
     // The launch screen's layers have to exist, or it plays to an empty black screen.
     const splashLayers = ['dc', 'mark', 'tagline'];

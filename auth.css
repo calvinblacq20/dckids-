@@ -12,7 +12,7 @@
   src: url('fonts/jost-latin-ext.woff2') format('woff2');
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
 
-.auth, .rc-overlay {
+.auth {
   --a-font: 'Jost', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --a-green: #0F4C3A;
   --a-sage-dark: #5E9C7E;
@@ -50,7 +50,6 @@
   overflow: hidden;
 }
 .auth__photo--login  { background-image: url('images/promo_store5.jpg'); background-position: center 35%; }
-.auth__photo--signup { background-image: url('images/promo_store2.jpg'); background-position: center 30%; }
 /* top fade keeps the logo legible; bottom fade carries the headline */
 .auth__photo::before {
   content: ''; position: absolute; inset: 0; pointer-events: none;
@@ -74,10 +73,6 @@
   font-weight: 400; font-size: clamp(28px, 3.2vw, 48px); line-height: 1.12; letter-spacing: -0.005em;
   text-shadow: 0 1px 20px rgba(0,0,0,.2);
 }
-.auth__perks { list-style: none; margin: 26px 0 0; padding: 0; max-width: 440px; }
-.auth__perks li { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.28); font-size: 15px; }
-.auth__perks b { font-weight: 500; color: #fff; }
-.auth__perks span { color: rgba(255,255,255,.82); text-align: right; }
 
 .auth__panel {
   flex: 1 1 50%;
@@ -111,16 +106,13 @@
 .auth__field input::placeholder { color: #A3A7AE; }
 .auth__field input:focus { outline: none; border-color: var(--a-green); box-shadow: inset 0 0 0 1px var(--a-green); }
 
-.auth__field--code input { height: 64px; font-size: 28px; letter-spacing: .5em; text-align: center; padding-left: .5em; }
-.auth__field--code input::placeholder { color: #D3CBC9; }
-
 .auth__hint { margin: -4px 0 18px; font-size: 14px; color: var(--a-muted); }
 
-/* admin.js hides steps/links with the hidden attribute; never let a display rule undo it */
+/* The page scripts hide parts with the hidden attribute; never let a display rule undo it */
 .auth [hidden] { display: none !important; }
 
 /* ------------------------------------------------------------- buttons --- */
-.auth__btn, .rc-modal .auth__btn {
+.auth__btn {
   display: flex; align-items: center; justify-content: center; width: 100%; min-height: 54px;
   padding: 0 22px; margin-top: 8px;
   font: inherit; font-size: 15px; letter-spacing: .02em;
@@ -129,7 +121,7 @@
 }
 .auth__btn:hover { opacity: .88; }
 .auth__btn:disabled { opacity: .5; cursor: not-allowed; }
-.auth__btn--ghost, .rc-modal .auth__btn--ghost { color: var(--a-green); background: transparent; }
+.auth__btn--ghost { color: var(--a-green); background: transparent; }
 .auth__btn--ghost:hover { opacity: 1; color: #fff; background: var(--a-green); }
 
 /* admin.css colours every bare <a> pink — each link here sets its own colour */
@@ -147,7 +139,8 @@
   font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: var(--a-muted);
 }
 .auth__or::before, .auth__or::after { content: ''; flex: 1; height: 1px; background: var(--a-line); }
-.google-signin-btn { display: flex; justify-content: center; }
+/* Holds the button's height while Google draws it, so the page doesn't jump */
+.google-signin-btn { display: flex; min-height: 44px; }
 
 /* ------------------------------------------------------ status messages --- */
 .auth__note { display: none; margin: 0 0 18px; padding: 12px 14px; font-size: 14px; border-left: 2px solid; }
@@ -162,35 +155,10 @@
 .auth__legal a { color: var(--a-ink-soft); text-decoration: underline; text-underline-offset: 2px; }
 .auth__legal a:hover { color: var(--a-green); }
 
-.auth a:focus-visible, .auth button:focus-visible, .rc-modal button:focus-visible {
+.auth a:focus-visible, .auth button:focus-visible {
   outline: 2px solid var(--a-green); outline-offset: 2px;
 }
 .auth__photo a:focus-visible { outline-color: #fff; }
-
-/* ----------------------------------------------------- recovery codes ---- */
-/* admin.js adds .open; shown once after the owner's sign-up or a first login */
-.rc-overlay {
-  position: fixed; inset: 0; z-index: 3000;
-  display: none; align-items: center; justify-content: center; padding: 20px;
-  background: rgba(20,20,18,.5);
-}
-.rc-overlay.open { display: flex; }
-/* admin-bridge.css turns .rc-modal into a rounded bottom sheet on phones; keep it square and centred */
-.rc-overlay { align-items: center; }
-.rc-modal {
-  width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto;
-  padding: clamp(26px, 4vw, 40px); background: var(--a-bg); color: var(--a-ink);
-  border: 0; border-radius: 0; box-shadow: 0 30px 80px rgba(0,0,0,.28);
-}
-.rc-modal h2 { margin: 0 0 10px; font-weight: 300; font-size: 32px; line-height: 1.1; color: var(--a-ink); }
-.rc-modal p { margin: 0 0 20px; font-size: 15px; color: var(--a-ink-soft); }
-.rc-list {
-  list-style: none; margin: 0 0 12px; padding: 0;
-  display: grid; grid-template-columns: 1fr 1fr;
-  border-top: 1px solid var(--a-line); border-left: 1px solid var(--a-line);
-  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 15px; letter-spacing: .06em;
-}
-.rc-list li { padding: 12px 14px; background: #fff; border-right: 1px solid var(--a-line); border-bottom: 1px solid var(--a-line); }
 
 /* ----------------------------------------------------------- responsive --- */
 @media (max-width: 900px) {
@@ -200,7 +168,6 @@
   .auth__brand img { height: 34px; }
   .auth__eyebrow { margin-bottom: 8px; font-size: 12px; }
   .auth__photo-title { font-size: 26px; max-width: 18ch; }
-  .auth__perks { display: none; }
   .auth__panel { flex: 1 0 auto; align-items: flex-start; padding: 34px 20px 48px; }
   .auth__card { max-width: 520px; }
   .auth__top { margin-bottom: 22px; }
