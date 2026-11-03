@@ -3,6 +3,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
 const compression = require('compression');
 const cors = require('cors');
+const { originAllowed } = require('./origin_policy');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { initializeApp: initializeFirebaseAdmin, applicationDefault, cert, getApps: getFirebaseApps } = require('firebase-admin/app');
@@ -128,12 +129,13 @@ app.use((req, res, next) => {
 
 // ----- CORS: strict in production, open in dev -----
 if (IS_PROD && ALLOWED_ORIGINS.length) {
-    app.use(cors({
-        origin: function (origin, cb) {
-            // allow same-origin / server-to-server (no Origin header) and whitelisted origins
-            if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-            return cb(new Error('Not allowed by CORS'));
-        }
+    // Same-origin requests (whatever hostname serves the shop) and listed
+    // origins pass; any other site is refused with a 403, never a 500.
+    app.use(cors((req, cb) => {
+        if (originAllowed(req.headers.origin, req.headers.host, ALLOWED_ORIGINS)) return cb(null, { origin: true });
+        const refused = new Error('Not allowed by CORS');
+        refused.corsRefused = true;
+        return cb(refused);
     }));
 } else {
     app.use(cors()); // dev: allow all
@@ -4254,6 +4256,9 @@ app.use((err, req, res, next) => {
     if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
         console.warn(`[JSON Parse Error] ${req.method} ${req.url} - ${err.message}`);
         return res.status(400).json({ error: 'Invalid JSON payload. Please verify your formatting.' });
+    }
+    if (err && err.corsRefused) {
+        return res.status(403).json({ error: 'Requests from this site are not allowed.' });
     }
     console.error('Unhandled Server Error:', err.stack);
     res.status(500).json({ error: 'Internal Server Error' });
