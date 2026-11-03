@@ -1507,8 +1507,11 @@ a.adm-row:hover, button.adm-row:hover { background: var(--ground); }
 }
 .adm-filters { position: sticky; top: calc(var(--adm-bar-h) + 12px); max-height: calc(100dvh - var(--adm-bar-h) - 24px); overflow-y: auto; padding: 18px 18px 20px; scrollbar-width: thin; }
 .adm-filters-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
-.filter-group { display: flex; flex-direction: column; margin-top: 18px; }
-.filter-group-label { font-size: 12px; font-weight: 500; color: var(--ink-75); margin-bottom: 4px; }
+/* Scoped to the side-panel filters: the screens' search bars use .filter-group
+   too, and this column layout (with its top margin) pushed their search box
+   down and pinned its icon to the top edge. */
+.adm-filters .filter-group { display: flex; flex-direction: column; margin-top: 18px; }
+.adm-filters .filter-group-label { font-size: 12px; font-weight: 500; color: var(--ink-75); margin-bottom: 4px; }
 .check-row { display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px; cursor: pointer; border-radius: var(--r-8); }
 .check-row .count { margin-left: auto; color: var(--ink-75); font-size: 12px; font-variant-numeric: tabular-nums; }
 @media (max-width: 809.98px) {
@@ -1573,6 +1576,10 @@ a.adm-row:hover, button.adm-row:hover { background: var(--ground); }
 .res-card-link { position: absolute; inset: 0; z-index: 0; border-radius: inherit; }
 .res-card-link:focus-visible { outline-offset: -2px; }
 .res-card > :not(.res-thumb):not(.res-card-link) { grid-column: 2; }
+/* A card without a picture (orders, customers, suppliers) uses the full width
+   instead of leaving the picture's column empty down its left side. */
+.res-card:not(:has(.res-thumb)) { grid-template-columns: minmax(0, 1fr); }
+.res-card:not(:has(.res-thumb)) > :not(.res-thumb):not(.res-card-link) { grid-column: 1; }
 .res-thumb { grid-row: 1 / span 5; width: 44px; height: 44px; border-radius: var(--r-img); overflow: hidden; }
 .res-thumb .photo { width: 44px; height: 44px; border-radius: var(--r-img); }
 .res-top { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
@@ -3001,3 +3008,12 @@ a.adm-row:hover, button.adm-row:hover { background: var(--ground); }
    the sign-in view renders before the shell is shown, so the page sat on the
    browser default. Paint it unconditionally for this document. */
 html, body { background: var(--ground); }
+
+/* The search card's text field matches the menu beside it: a 40px pill with
+   room before the text. (A generic input rule gave it a border and height but
+   kept its zero padding, so the placeholder sat on the left edge.) */
+.patd-search .patd-field input {
+  height: 40px; min-height: 40px; padding: 0 16px;
+  border: 1px solid var(--ink-12); border-radius: var(--r-pill); background: var(--surface);
+}
+.patd-search .patd-field input:focus { border-color: var(--ink-50); }
