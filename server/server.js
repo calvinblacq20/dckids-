@@ -4,6 +4,7 @@ const express = require('express');
 const compression = require('compression');
 const cors = require('cors');
 const { originAllowed } = require('./origin_policy');
+const { shouldTrustProxy } = require('./trusted_proxies');
 const jwt = require('jsonwebtoken');
 const { initializeApp: initializeFirebaseAdmin, applicationDefault, cert, getApps: getFirebaseApps } = require('firebase-admin/app');
 const { getAuth: getFirebaseAuth } = require('firebase-admin/auth');
@@ -13,7 +14,7 @@ const { checkHealth } = require('./health');
 const { createMaintenanceMiddleware } = require('./maintenance');
 
 const app = express();
-app.set('trust proxy', 1); // accurate req.ip behind a reverse proxy (nginx/render/etc.)
+app.set('trust proxy', shouldTrustProxy);
 app.disable('x-powered-by'); // don't advertise the framework to scanners
 // Pages, scripts, styles and the catalogue are text and shrink to about a
 // quarter gzipped: the difference a shopper on mobile data waits for.

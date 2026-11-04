@@ -6,7 +6,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "test": "node test_deployment_contract.js && node test_maintenance_mode.js && node test_restore_seed.js && node test_storage.js && node test_storage_uploads.js && node test_backup_db.js && node test_operations.js && node test_db_migrations.js && node test_shutdown_lifecycle.js && node test_origin_policy.js && node test_order_history.js && node test_owner_bootstrap.js && node test_smoke.js",
+    "test": "node test_deployment_contract.js && node test_maintenance_mode.js && node test_restore_seed.js && node test_storage.js && node test_storage_uploads.js && node test_backup_db.js && node test_operations.js && node test_db_migrations.js && node test_shutdown_lifecycle.js && node test_origin_policy.js && node test_trusted_proxies.js && node test_order_history.js && node test_owner_bootstrap.js && node test_smoke.js",
     "export:products": "node export_products.js",
     "start": "node server.js",
     "build": "npm run build:css",

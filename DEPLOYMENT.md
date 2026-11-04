@@ -188,6 +188,9 @@ remove only stale sidecars belonging to that stopped database before step 7.
 - [ ] All four `FIREBASE_*` public values set
 - [ ] Firebase Admin uses ADC/workload identity or an external service-account file
 - [ ] A test order placed on WhatsApp, then set to Paid in the admin, shows on the Payments page and in revenue
+- [ ] If Cloudflare proxies the domain (orange cloud): SSL/TLS mode is **Full (strict)**. The server already
+      recognises Cloudflare's addresses (`server/trusted_proxies.js`), so each shopper keeps their own rate limit;
+      if Cloudflare publishes new ranges at <https://www.cloudflare.com/ips>, add them there.
 
 ## 8. Admin Google Sign-In setup (required)
 
