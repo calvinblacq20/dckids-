@@ -36,4 +36,4 @@ had already drifted apart once.
   webhook must point at them directly.
 - The reconciliation tool for the 19 August 2026 incident is gone from the
   tree. If that incident is still open, the tool and its instructions are at
-  commit `f8e79ad` (`server/reconcile_paystack.js`, DEPLOYMENT.md §6).
+  commit `6df6f01` (`server/reconcile_paystack.js`, DEPLOYMENT.md §6).
