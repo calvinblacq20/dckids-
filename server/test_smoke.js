@@ -86,6 +86,17 @@ async function run() {
         return match ? { email: match[1], email_verified: true, name: 'Smoke ' + match[1].split('@')[0], sub: 'sub-' + match[1] } : null;
     });
     const googleSignIn = (email) => fetch(`${BASE}/api/auth/google`, json('POST', { credential: 'google:' + email }));
+    // Email goes to a recorder, so what the owner is sent can be read back.
+    const emailed = [];
+    app.set('emailSender', async (message) => { emailed.push(message); return { ok: true }; });
+    const waitForEmail = async (match) => {
+        for (let i = 0; i < 40; i++) {
+            const found = emailed.find(match);
+            if (found) return found;
+            await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        return null;
+    };
     const db = require('./db');
     const dbRun = (sql, params) => new Promise((resolve, reject) => db.run(sql, params || [], function(err) { err ? reject(err) : resolve(this); }));
     const dbGet = (sql, params) => new Promise((resolve, reject) => db.get(sql, params || [], (err, row) => err ? reject(err) : resolve(row)));
@@ -647,6 +658,8 @@ async function run() {
     const requestRow = await dbGet("SELECT status, role FROM users WHERE email = 'staff@test.com'");
     check('the access request waits for the owner as pending staff',
         requestRow && requestRow.status === 'pending' && requestRow.role === 'staff', JSON.stringify(requestRow));
+    const requestEmail = await waitForEmail((m) => m.subject === 'New DC Kids admin access request');
+    check('an access request emails the owner', !!requestEmail && requestEmail.to === 'owner@test.com', JSON.stringify(requestEmail && requestEmail.to));
     r = await googleSignIn('staff@test.com');
     const stillPending = await r.json();
     check('a pending request still cannot sign in', r.status === 403 && stillPending.pending === true && !stillPending.accessToken,
@@ -1565,6 +1578,39 @@ async function run() {
     check('the home-screen icon on iPhone is a solid square',
         ['index.html', 'admin.html'].every((page) => fs.readFileSync(path.join(__dirname, '..', page), 'utf8').includes('<link rel="apple-touch-icon" href="brand/apple-touch-icon.png">')) &&
         (() => { const s = imageSize('brand/apple-touch-icon.png'); return s.w === 180 && s.h === 180 && !s.alpha; })());
+
+    // ---- what the owner is emailed ----
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: '<b>Ama</b> Email', customer_phone: '0249000123', order_type: 'retail',
+        delivery_address: { line1: '5 Ring Road', city: 'Kasoa', region: 'Central' },
+        items: [{ id: 1, quantity: 1, size: sizeLabel }]
+    }));
+    const emailedOrder = await r.json();
+    const orderEmail = await waitForEmail((m) => m.subject.includes(emailedOrder.order_number));
+    check('a new order emails the owner', !!orderEmail && orderEmail.to === 'owner@test.com', JSON.stringify(orderEmail && orderEmail.to));
+    check('the order email gives the total in its subject',
+        !!orderEmail && orderEmail.subject.includes('GH₵ ' + Number(emailedOrder.total_amount).toFixed(2)), orderEmail && orderEmail.subject);
+    const firstProductName = (await dbGet('SELECT name FROM products WHERE id = 1')).name;
+    check('the order email lists what was ordered and where it goes',
+        !!orderEmail && orderEmail.html.includes(firstProductName) && orderEmail.html.includes('5 Ring Road'));
+    check('the order email shows what the customer typed as text, never as markup',
+        !!orderEmail && orderEmail.html.includes('&lt;b&gt;Ama&lt;/b&gt;') && !orderEmail.html.includes('<b>Ama</b>'));
+
+    const unpaidNow = (await dbGet(`SELECT COUNT(*) AS c FROM orders WHERE lower(COALESCE(status, '')) IN ('pending', 'awaiting_payment', 'payment_review')`)).c;
+    const lowNow = (await dbGet('SELECT COUNT(*) AS c FROM products WHERE stock > 0 AND stock <= 5')).c;
+    const summaryResult = await app.sendMorningSummary();
+    const summaryEmail = emailed.filter((m) => m.subject.startsWith('DC Kids this morning')).pop();
+    check('the morning summary goes to the owner', !!summaryEmail && summaryEmail.to === 'owner@test.com');
+    check('the morning summary counts the orders waiting on payment as the dashboard does', summaryResult.unpaid === unpaidNow, `${summaryResult.unpaid} vs ${unpaidNow}`);
+    check('the morning summary counts the pieces running low as the dashboard does', summaryResult.low === lowNow, `${summaryResult.low} vs ${lowNow}`);
+    check('the morning summary leads with the unpaid orders',
+        !!summaryEmail && summaryEmail.subject.includes(`${unpaidNow} order`), summaryEmail && summaryEmail.subject);
+    check('the morning summary is due later the same day before 7am',
+        app.msUntilMorningSummary(new Date('2026-11-04T06:30:00Z')) === 30 * 60 * 1000);
+    check('the morning summary at exactly 7am waits a full day for the next one',
+        app.msUntilMorningSummary(new Date('2026-11-04T07:00:00Z')) === 24 * 60 * 60 * 1000);
+    check('the morning summary after 7am is due the next morning',
+        app.msUntilMorningSummary(new Date('2026-11-04T20:00:00Z')) === 11 * 60 * 60 * 1000);
 
     console.log(`\n${passed} passed, ${failed} failed`);
     cleanupDb();

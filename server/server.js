@@ -371,6 +371,8 @@ if (OWNER_EMAILS.length === 0) {
 // extra dependency). Fully graceful: a missing key or a failed send is logged
 // and swallowed — email problems must never break registration or sign-in.
 function sendEmail(to, subject, html) {
+    const injected = app.get('emailSender');
+    if (typeof injected === 'function') return Promise.resolve(injected({ to, subject, html }));
     return new Promise((resolve) => {
         if (!RESEND_API_KEY) {
             console.log(`[email skipped: no RESEND_API_KEY] to=${to} subject="${subject}"`);
@@ -406,18 +408,97 @@ function escapeHtmlServer(s) {
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+// OWNER_EMAIL when set, so she hears from the shop before her first sign-in.
+async function shopOwnerEmails() {
+    if (OWNER_EMAILS.length) return OWNER_EMAILS;
+    const first = await dbGetAsync(`SELECT email FROM users WHERE id = ${FIRST_MANAGER_SQL} AND email IS NOT NULL`);
+    return first ? [first.email] : [];
+}
+
+async function emailShopOwner(subject, html) {
+    const recipients = await shopOwnerEmails();
+    return Promise.all(recipients.map((to) => sendEmail(to, subject, html)));
+}
+
 function notifyManagersOfRequest(name, mail) {
-    db.all(`SELECT id, username, email, role, ${FIRST_MANAGER_SQL} AS first_manager_id FROM users
-             WHERE role = 'manager' AND status = 'active' AND email IS NOT NULL`, [], (e, rows) => {
-        if (e || !rows) return;
-        // Only the owner approves access, so only she hears about requests.
-        rows.filter((r) => isShopOwner(r, r.first_manager_id)).forEach((r) => sendEmail(
-            r.email,
-            'New DC Kids admin access request',
-            `<p><strong>${escapeHtmlServer(name)}</strong> (${escapeHtmlServer(mail)}) has requested admin access.</p>
-             <p>Approve or reject it in <a href="${APP_URL}/admin.html">Manage Staff &rsaquo; Access Requests</a>.</p>`
-        ));
-    });
+    // Only the owner approves access, so only she hears about requests.
+    emailShopOwner('New DC Kids admin access request',
+        `<p><strong>${escapeHtmlServer(name)}</strong> (${escapeHtmlServer(mail)}) has requested admin access.</p>
+         <p>Approve or reject it in <a href="${APP_URL}/admin.html">Manage Staff &rsaquo; Access Requests</a>.</p>`
+    ).catch((err) => console.error('[Owner email]', err.message));
+}
+
+function cedis(amount) {
+    return 'GH₵ ' + Number(amount || 0).toFixed(2);
+}
+
+function orderTypeLabel(orderType) {
+    return orderType === 'preorder' ? 'China pre-order' : orderType === 'wholesale' ? 'Wholesale' : 'Retail';
+}
+
+// Read back from the database, so the email shows what was actually saved.
+async function emailOwnerAboutOrder(orderId) {
+    const order = await dbGetAsync('SELECT * FROM orders WHERE id = ?', [orderId]);
+    if (!order) return;
+    const items = await dbAllAsync('SELECT product_name, quantity, price_at_time FROM order_items WHERE order_id = ? ORDER BY id', [orderId]);
+    const where = [order.delivery_address_line1, order.delivery_address_line2, order.delivery_city || order.delivery_area, order.delivery_region]
+        .filter(Boolean).map(escapeHtmlServer).join(', ');
+    const rows = items.map((item) => `<tr><td style="padding:6px 0">${escapeHtmlServer(item.product_name)}</td>`
+        + `<td style="padding:6px 12px;text-align:center">${Number(item.quantity || 0)}</td>`
+        + `<td style="padding:6px 0;text-align:right">${cedis(Number(item.price_at_time || 0) * Number(item.quantity || 0))}</td></tr>`).join('');
+    const discount = Number(order.discount_percent || 0);
+    const html = `<h2 style="margin:0 0 4px">New ${orderTypeLabel(order.order_type).toLowerCase()} order ${escapeHtmlServer(order.order_number)}</h2>
+        <p style="margin:0 0 16px;color:#555">Waiting for payment on WhatsApp.</p>
+        <p><strong>${escapeHtmlServer(order.customer_name || 'Guest')}</strong><br>${escapeHtmlServer(order.customer_phone || '')}`
+        + (where ? `<br>${where}` : '')
+        + (order.delivery_landmark ? `<br>Landmark: ${escapeHtmlServer(order.delivery_landmark)}` : '') + `</p>
+        <table style="border-collapse:collapse;width:100%;max-width:520px">
+          <thead><tr><th align="left">Item</th><th>Qty</th><th align="right">Amount</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`
+        + (discount ? `<p>Welcome offer: ${discount}% off</p>` : '') + `
+        <p style="font-size:18px"><strong>Total: ${cedis(order.total_amount)}</strong></p>`
+        + (order.notes ? `<p>Notes: ${escapeHtmlServer(order.notes)}</p>` : '') + `
+        <p><a href="${APP_URL}/admin.html">Open it in the admin</a></p>`;
+    return emailShopOwner(`New order ${order.order_number} · ${cedis(order.total_amount)}`, html);
+}
+
+// The same counts as the dashboard's "waiting on payment" and "Running low".
+async function sendMorningSummary() {
+    const unpaid = await dbAllAsync(`SELECT order_number, customer_name, total_amount, created_at FROM orders
+        WHERE lower(COALESCE(status, '')) IN ('pending', 'awaiting_payment', 'payment_review') ORDER BY created_at ASC`);
+    const low = await dbAllAsync('SELECT name, stock FROM products WHERE stock > 0 AND stock <= 5 ORDER BY stock ASC, name ASC');
+    if (!unpaid.length && !low.length) return { sent: false, unpaid: 0, low: 0 };
+    const owed = unpaid.reduce((sum, order) => sum + Number(order.total_amount || 0), 0);
+    const unpaidLine = `${unpaid.length} order${unpaid.length === 1 ? '' : 's'} waiting on payment`;
+    const lowLine = `${low.length} piece${low.length === 1 ? '' : 's'} running low`;
+    const firstTen = (rows, line) => rows.slice(0, 10).map(line).join('') + (rows.length > 10 ? `<li>and ${rows.length - 10} more</li>` : '');
+    const html = '<h2 style="margin:0 0 12px">Good morning</h2>'
+        + (unpaid.length ? `<h3 style="margin:16px 0 4px">${unpaidLine}, ${cedis(owed)} in all</h3><p style="margin:0;color:#555">Oldest first</p><ul>`
+            + firstTen(unpaid, (o) => `<li>${escapeHtmlServer(o.order_number)} · ${escapeHtmlServer(o.customer_name || 'Guest')} · ${cedis(o.total_amount)} · ${escapeHtmlServer(String(o.created_at || '').slice(0, 10))}</li>`)
+            + '</ul>' : '')
+        + (low.length ? `<h3 style="margin:16px 0 4px">${lowLine}</h3><ul>`
+            + firstTen(low, (p) => `<li>${escapeHtmlServer(p.name)}: ${Number(p.stock)} left</li>`) + '</ul>' : '')
+        + `<p><a href="${APP_URL}/admin.html">Open the admin</a></p>`;
+    await emailShopOwner('DC Kids this morning: ' + [unpaid.length ? unpaidLine : '', low.length ? lowLine : ''].filter(Boolean).join(', '), html);
+    return { sent: true, unpaid: unpaid.length, low: low.length };
+}
+
+// 07:00 UTC is 7am in Ghana, which stays on UTC all year.
+const MORNING_SUMMARY_HOUR_UTC = 7;
+function msUntilMorningSummary(now) {
+    const next = new Date(now.getTime());
+    next.setUTCHours(MORNING_SUMMARY_HOUR_UTC, 0, 0, 0);
+    if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+    return next.getTime() - now.getTime();
+}
+
+function scheduleMorningSummary() {
+    setTimeout(() => {
+        sendMorningSummary()
+            .catch((err) => console.error('[Morning summary]', err.message))
+            .finally(scheduleMorningSummary);
+    }, msUntilMorningSummary(new Date())).unref();
 }
 // Verify a Google ID token (JWT credential from Google Identity Services) via
 // Google's tokeninfo endpoint — no extra dependency, matching the raw-https
@@ -1801,6 +1882,7 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                         );
 
                         notifyStaffOfOrder({ order_number, customer_name, order_type, total_amount });
+                        emailOwnerAboutOrder(order_id).catch((err) => console.error('[Owner order email]', err.message));
 
                         res.json({ success: true, order_number, total_amount, status: initialStatus, welcome_discount: welcomePercent });
                     }
@@ -3215,7 +3297,7 @@ async function pushToStaff(message, userId) {
 }
 
 function notifyStaffOfOrder(order) {
-    const type = order.order_type === 'preorder' ? 'China pre-order' : order.order_type === 'wholesale' ? 'Wholesale' : 'Retail';
+    const type = orderTypeLabel(order.order_type);
     pushToStaff({
         title: 'New order · ' + order.order_number,
         body: [order.customer_name || 'Guest', 'GH₵ ' + Number(order.total_amount || 0).toFixed(2), type].join(' · '),
@@ -3655,9 +3737,11 @@ function startServer() {
 if (typeof db.whenReady === 'function') {
     db.whenReady(() => {
         startServer();
+        scheduleMorningSummary();
     });
 } else {
     startServer();
+    scheduleMorningSummary();
 }
 
 // test_smoke.js imports this module and owns its own process lifetime. Signal
@@ -3669,3 +3753,5 @@ if (require.main === module || process.env.DCKIDS_SERVER_ENTRYPOINT === '1') {
 }
 
 module.exports = app;
+module.exports.sendMorningSummary = sendMorningSummary;
+module.exports.msUntilMorningSummary = msUntilMorningSummary;

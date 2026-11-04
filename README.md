@@ -107,7 +107,7 @@ Set these in `server/.env` (see `DEPLOYMENT.md` for the full table):
 | `ALLOWED_ORIGINS` | Comma-separated origins allowed by CORS in production. |
 | `OWNER_EMAIL` | **Required in production.** The shop owner's email: the only account with owner powers. |
 | `GOOGLE_CLIENT_ID` | **Required.** The admin's only sign-in (Continue with Google). See DEPLOYMENT.md §8. |
-| `RESEND_API_KEY` / `RESEND_FROM` | Optional. Notification emails: access requests to the owner, notes to new staff (from a verified sender). |
+| `RESEND_API_KEY` / `RESEND_FROM` | Optional. Notification emails: every new order, access requests and a 7am summary to the owner, notes to new staff (from a verified sender). |
 | `PORT` | Listening port (default 3000; most hosts inject this). |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Optional order alerts as device notifications from the installed admin app (`npx web-push generate-vapid-keys`). |
 | `SMTP_*` | Optional transactional email. |
