@@ -1494,6 +1494,30 @@ async function run() {
     check('opening Settings applies the saved accent colour even with every widget toggle on the page',
         settingsTab.appliedAccent === '#123456', `applied ${settingsTab.appliedAccent}`);
 
+    // Inventory counts what is on the shelf; pre-order pieces have no stock.
+    const inventoryStart = adminSource.indexOf('function getFilteredInventory');
+    const inventoryEnd = adminSource.indexOf('function sortInventory');
+    const preorderTestStart = adminSource.indexOf('function isPreorderProduct');
+    const preorderTestEnd = adminSource.indexOf('\n', preorderTestStart);
+    check('admin.js still carries the Inventory filter and the pre-order test',
+        inventoryStart !== -1 && inventoryEnd > inventoryStart && preorderTestStart !== -1);
+    const inventoryTab = {
+        globalProducts: [
+            { id: 1, name: 'Romper', cat: 'clothing', stock: 4, fulfillment_type: 'in_stock' },
+            { id: 2, name: 'School bag', cat: 'accessories', stock: 0, fulfillment_type: 'preorder' },
+            { id: 3, name: 'Old row', cat: 'clothing', stock: 0 }
+        ],
+        document: { querySelector: () => null, getElementById: () => null }
+    };
+    vm.createContext(inventoryTab);
+    vm.runInContext(adminSource.slice(inventoryStart, inventoryEnd) + adminSource.slice(preorderTestStart, preorderTestEnd), inventoryTab);
+    const inventoryIds = inventoryTab.getFilteredInventory().map((p) => p.id);
+    check('Inventory lists the pieces the shop holds and leaves pre-order pieces to Pre-orders',
+        JSON.stringify(inventoryIds) === '[1,3]', JSON.stringify(inventoryIds));
+    check('Inventory has no listing-type filter, since only held pieces are listed, and links to Pre-orders',
+        !adminPageSource.includes('id="inv-fulfillment-filter"') &&
+        adminPageSource.includes('onclick="switchTab(\'tab-preorders\')">Pre-order pieces</button>'));
+
     // The launch screen's layers have to exist, or it plays to an empty black screen.
     const splashLayers = ['dc', 'mark', 'tagline'];
     check('every launch screen layer is on disk',

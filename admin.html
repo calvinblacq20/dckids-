@@ -781,6 +781,8 @@
               <span class="adm-status"><i class="adm-dot"></i><span id="inventory-status-line">&nbsp;</span></span>
             </div>
             <div class="adm-head__actions">
+              <!-- Inventory counts what the shop holds; pre-order pieces have no stock and are run from their own screen. -->
+              <button type="button" class="adm-ghost" onclick="switchTab('tab-preorders')">Pre-order pieces</button>
             </div>
           </div>
 
@@ -807,11 +809,6 @@
             <option value="in-stock">In Stock</option>
             <option value="low-stock">Low Stock</option>
             <option value="out-of-stock">Out of Stock</option>
-          </select>
-          <select id="inv-fulfillment-filter" class="filter-select" aria-label="Filter by listing type">
-            <option value="">All Listings</option>
-            <option value="in_stock">Available Now</option>
-            <option value="preorder">China Pre-Order</option>
           </select>
           <select id="inv-sort" class="filter-select" aria-label="Sort inventory">
             <option value="name-asc">Name A–Z</option>
@@ -6393,7 +6390,7 @@
   <!-- Scripts -->
   <script src="vendor/chart.umd.js?v=4.5.1"></script>
   <script src="image-resolver.js?v=2"></script>
-  <script src="admin.js?v=199"></script>
+  <script src="admin.js?v=200"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

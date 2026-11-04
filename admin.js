@@ -1562,10 +1562,11 @@ function renderInventoryTable() {
 
     var invStatus = document.getElementById('inventory-status-line');
     if (invStatus) {
-        var invAll = (typeof globalProducts !== 'undefined' && Array.isArray(globalProducts)) ? globalProducts.length : totalItems;
-        // Pre-order pieces hold no stock, so they are never low or out.
-        var invLow = sorted.filter(function (p) { var n = Number(p.stock || 0); return !isPreorderProduct(p) && n > 0 && n <= 5; }).length;
-        var invOut = sorted.filter(function (p) { return !isPreorderProduct(p) && Number(p.stock || 0) <= 0; }).length;
+        var invAll = (typeof globalProducts !== 'undefined' && Array.isArray(globalProducts))
+            ? globalProducts.filter(function (p) { return !isPreorderProduct(p); }).length
+            : totalItems;
+        var invLow = sorted.filter(function (p) { var n = Number(p.stock || 0); return n > 0 && n <= 5; }).length;
+        var invOut = sorted.filter(function (p) { return Number(p.stock || 0) <= 0; }).length;
         invStatus.textContent = totalItems + ' of ' + invAll + ' items \u00b7 ' + invLow + ' low \u00b7 ' + invOut + ' out of stock';
     }
     var start = (invCurrentPage - 1) * INV_PER_PAGE;
@@ -1593,13 +1594,12 @@ function renderInventoryTable() {
 
     fillAdmRows('inventory-rows', paged, function (p) {
         var stock = Number(p.stock || 0);
-        var pre = isPreorderProduct(p);
         return {
             id: p.id,
             img: resolveAdminProductImage(p).src,
             title: p.name || 'Unnamed',
-            pill: pre ? 'Pre-order' : (stock <= 0 ? 'Out of stock' : (stock <= 5 ? 'Low' : '')),
-            meta: [p.sku || '—', adminCategoryName(p.cat), pre ? 'China pre-order' : stock + ' in stock'].join(' · '),
+            pill: stock <= 0 ? 'Out of stock' : (stock <= 5 ? 'Low' : ''),
+            meta: [p.sku || '—', adminCategoryName(p.cat), stock + ' in stock'].join(' · '),
             value: Number(p.price) > 0 ? 'GHS ' + Number(p.price).toFixed(2) : 'No price yet'
         };
     }, function (id) { openProductDetail(Number(id)); });
@@ -1624,22 +1624,22 @@ function getFilteredInventory() {
     var searchEl = document.querySelector('#tab-inventory .filter-bar input');
     var catFilter = document.getElementById('inv-cat-filter');
     var statusFilter = document.getElementById('inv-status-filter');
-    var fulfillmentFilter = document.getElementById('inv-fulfillment-filter');
 
     var query = searchEl ? searchEl.value.toLowerCase() : '';
     var cat = catFilter ? catFilter.value : 'all';
     var status = statusFilter ? statusFilter.value : 'all';
-    var fulfillment = fulfillmentFilter ? fulfillmentFilter.value : '';
 
     return globalProducts.filter(function(p) {
+        // Inventory counts what is on the shelf. Pre-order pieces are sourced
+        // once ordered and have no stock, so they are run from Pre-orders.
+        if (isPreorderProduct(p)) return false;
         var matchesSearch = !query || (p.name && p.name.toLowerCase().indexOf(query) >= 0) || (p.cat && p.cat.toLowerCase().indexOf(query) >= 0) || (p.size && p.size.toLowerCase().indexOf(query) >= 0);
         var matchesCat = cat === 'all' || cat === '' || cat === 'All Categories' || p.cat === cat;
         var matchesStatus = true;
         if (status === 'in-stock') matchesStatus = p.stock >= 5;
         else if (status === 'low-stock') matchesStatus = p.stock > 0 && p.stock < 5;
         else if (status === 'out-of-stock') matchesStatus = p.stock <= 0;
-        var matchesFulfillment = !fulfillment || (p.fulfillment_type || 'in_stock') === fulfillment;
-        return matchesSearch && matchesCat && matchesStatus && matchesFulfillment;
+        return matchesSearch && matchesCat && matchesStatus;
     });
 }
 
@@ -7527,9 +7527,9 @@ function enhanceInventoryFilters() {
             '<option value="out-of-stock">Out of Stock</option>';
     }
 
-    // Bind filter events by id, not position — the filter bar now has a 3rd
-    // (fulfillment) select between status and sort, so positional indices shift.
-    ['inv-cat-filter', 'inv-status-filter', 'inv-fulfillment-filter', 'inv-sort'].forEach(function(id) {
+    // Bind filter events by id, not position, so adding or removing a select
+    // can't shift which handler a control gets.
+    ['inv-cat-filter', 'inv-status-filter', 'inv-sort'].forEach(function(id) {
         var el = document.getElementById(id);
         if (el) el.addEventListener('change', function() { invCurrentPage = 1; renderInventoryTable(); });
     });
