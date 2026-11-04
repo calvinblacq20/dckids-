@@ -303,6 +303,11 @@ async function run() {
         storefrontSource.includes('id="place-btn"') && !storefrontSource.includes('id="pay-btn"') &&
         !appSource.includes('/api/checkout/') && !fs.existsSync(path.join(__dirname, '..', 'payment-result.html')));
     const storeStylesSource = fs.readFileSync(path.join(__dirname, '..', 'store.css'), 'utf8');
+    // The hero photos are 1179px wide; full-bleed on a wider screen stretches them into a blurred strip.
+    check('on wide screens the hero photo is a panel no wider than the photo itself',
+        /@media \(min-width: 1200px\) \{\s*\.hero__slide \{[^}]*width: min\(52%, 1000px\)/.test(storeStylesSource));
+    check('the hero tells the browser how wide its photo shows on wide screens',
+        (storefrontSource.match(/sizes="\(min-width: 1200px\) 52vw, 100vw"/g) || []).length === 3);
     check('no storefront surface still references the retired artwork',
         !appSource.includes('category-fallbacks') && !storeStylesSource.includes('card__image-label') &&
         !fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8').includes('category-fallbacks'));
