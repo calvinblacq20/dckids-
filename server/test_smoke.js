@@ -1595,6 +1595,26 @@ async function run() {
         !!orderEmail && orderEmail.html.includes(firstProductName) && orderEmail.html.includes('5 Ring Road'));
     check('the order email shows what the customer typed as text, never as markup',
         !!orderEmail && orderEmail.html.includes('&lt;b&gt;Ama&lt;/b&gt;') && !orderEmail.html.includes('<b>Ama</b>'));
+    check('every shop email carries the DC Kids logo',
+        !!orderEmail && orderEmail.html.includes('/brand/apple-touch-icon.png') && orderEmail.html.includes('alt="DC Kids"'));
+    check('a customer who gives no email is not emailed',
+        !emailed.some((m) => m.subject === 'Your DC Kids order ' + emailedOrder.order_number));
+
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Efua Confirm', customer_phone: '0249000124', customer_email: 'efua.customer@example.com', order_type: 'retail',
+        delivery_address: { line1: '7 Ring Road', city: 'Kasoa', region: 'Central' },
+        items: [{ id: 1, quantity: 1, size: sizeLabel }]
+    }));
+    const confirmedOrder = await r.json();
+    const confirmation = await waitForEmail((m) => m.subject === 'Your DC Kids order ' + confirmedOrder.order_number);
+    check('a customer who gives an email gets an order confirmation', !!confirmation && confirmation.to === 'efua.customer@example.com',
+        JSON.stringify(confirmation && confirmation.to));
+    check('the confirmation gives the total', !!confirmation && confirmation.html.includes('GH₵ ' + Number(confirmedOrder.total_amount).toFixed(2)));
+    check('the confirmation links to tracking for that order',
+        !!confirmation && confirmation.html.includes('track.html?order=' + encodeURIComponent(confirmedOrder.order_number)));
+    check('the confirmation leaves out the phone number and address',
+        !!confirmation && !confirmation.html.includes('0249000124') && !confirmation.html.includes('7 Ring Road'));
+    check('the confirmation carries the DC Kids logo', !!confirmation && confirmation.html.includes('alt="DC Kids"'));
 
     const unpaidNow = (await dbGet(`SELECT COUNT(*) AS c FROM orders WHERE lower(COALESCE(status, '')) IN ('pending', 'awaiting_payment', 'payment_review')`)).c;
     const lowNow = (await dbGet('SELECT COUNT(*) AS c FROM products WHERE stock > 0 AND stock <= 5')).c;

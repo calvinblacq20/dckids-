@@ -372,13 +372,13 @@ if (OWNER_EMAILS.length === 0) {
 // and swallowed — email problems must never break registration or sign-in.
 function sendEmail(to, subject, html) {
     const injected = app.get('emailSender');
-    if (typeof injected === 'function') return Promise.resolve(injected({ to, subject, html }));
+    if (typeof injected === 'function') return Promise.resolve(injected({ to, subject, html: shopEmailHtml(html) }));
     return new Promise((resolve) => {
         if (!RESEND_API_KEY) {
             console.log(`[email skipped: no RESEND_API_KEY] to=${to} subject="${subject}"`);
             return resolve({ skipped: true });
         }
-        const payload = JSON.stringify({ from: RESEND_FROM, to: [to], subject, html });
+        const payload = JSON.stringify({ from: RESEND_FROM, to: [to], subject, html: shopEmailHtml(html) });
         const request = https.request({
             hostname: 'api.resend.com',
             path: '/emails',
@@ -400,6 +400,13 @@ function sendEmail(to, subject, html) {
         request.write(payload);
         request.end();
     });
+}
+
+// Email apps show only images from a public address, and many skip WebP, so the logo is a PNG on APP_URL.
+function shopEmailHtml(body) {
+    return `<div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;max-width:560px">`
+        + `<img src="${APP_URL}/brand/apple-touch-icon.png" width="72" height="72" alt="DC Kids" style="display:block;margin:0 0 16px">`
+        + `${body}</div>`;
 }
 
 function escapeHtmlServer(s) {
@@ -436,31 +443,53 @@ function orderTypeLabel(orderType) {
     return orderType === 'preorder' ? 'China pre-order' : orderType === 'wholesale' ? 'Wholesale' : 'Retail';
 }
 
-// Read back from the database, so the email shows what was actually saved.
-async function emailOwnerAboutOrder(orderId) {
-    const order = await dbGetAsync('SELECT * FROM orders WHERE id = ?', [orderId]);
-    if (!order) return;
-    const items = await dbAllAsync('SELECT product_name, quantity, price_at_time FROM order_items WHERE order_id = ? ORDER BY id', [orderId]);
-    const where = [order.delivery_address_line1, order.delivery_address_line2, order.delivery_city || order.delivery_area, order.delivery_region]
-        .filter(Boolean).map(escapeHtmlServer).join(', ');
+function orderItemsTable(items, order) {
     const rows = items.map((item) => `<tr><td style="padding:6px 0">${escapeHtmlServer(item.product_name)}</td>`
         + `<td style="padding:6px 12px;text-align:center">${Number(item.quantity || 0)}</td>`
         + `<td style="padding:6px 0;text-align:right">${cedis(Number(item.price_at_time || 0) * Number(item.quantity || 0))}</td></tr>`).join('');
     const discount = Number(order.discount_percent || 0);
-    const html = `<h2 style="margin:0 0 4px">New ${orderTypeLabel(order.order_type).toLowerCase()} order ${escapeHtmlServer(order.order_number)}</h2>
-        <p style="margin:0 0 16px;color:#555">Waiting for payment on WhatsApp.</p>
-        <p><strong>${escapeHtmlServer(order.customer_name || 'Guest')}</strong><br>${escapeHtmlServer(order.customer_phone || '')}`
-        + (where ? `<br>${where}` : '')
-        + (order.delivery_landmark ? `<br>Landmark: ${escapeHtmlServer(order.delivery_landmark)}` : '') + `</p>
-        <table style="border-collapse:collapse;width:100%;max-width:520px">
+    return `<table style="border-collapse:collapse;width:100%">
           <thead><tr><th align="left">Item</th><th>Qty</th><th align="right">Amount</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>`
-        + (discount ? `<p>Welcome offer: ${discount}% off</p>` : '') + `
-        <p style="font-size:18px"><strong>Total: ${cedis(order.total_amount)}</strong></p>`
-        + (order.notes ? `<p>Notes: ${escapeHtmlServer(order.notes)}</p>` : '') + `
-        <p><a href="${APP_URL}/admin.html">Open it in the admin</a></p>`;
-    return emailShopOwner(`New order ${order.order_number} · ${cedis(order.total_amount)}`, html);
+        + (discount ? `<p>Welcome offer: ${discount}% off</p>` : '')
+        + `<p style="font-size:18px"><strong>Total: ${cedis(order.total_amount)}</strong></p>`;
+}
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Read back from the database, so each email shows what was actually saved.
+async function emailAboutNewOrder(orderId) {
+    const order = await dbGetAsync('SELECT * FROM orders WHERE id = ?', [orderId]);
+    if (!order) return;
+    const items = await dbAllAsync('SELECT product_name, quantity, price_at_time FROM order_items WHERE order_id = ? ORDER BY id', [orderId]);
+    const table = orderItemsTable(items, order);
+    const where = [order.delivery_address_line1, order.delivery_address_line2, order.delivery_city || order.delivery_area, order.delivery_region]
+        .filter(Boolean).map(escapeHtmlServer).join(', ');
+    await emailShopOwner(`New order ${order.order_number} · ${cedis(order.total_amount)}`,
+        `<h2 style="margin:0 0 4px">New ${orderTypeLabel(order.order_type).toLowerCase()} order ${escapeHtmlServer(order.order_number)}</h2>
+        <p style="margin:0 0 16px;color:#555">Waiting for payment on WhatsApp.</p>
+        <p><strong>${escapeHtmlServer(order.customer_name || 'Guest')}</strong><br>${escapeHtmlServer(order.customer_phone || '')}`
+        + (where ? `<br>${where}` : '')
+        + (order.delivery_landmark ? `<br>Landmark: ${escapeHtmlServer(order.delivery_landmark)}` : '') + '</p>'
+        + table
+        + (order.notes ? `<p>Notes: ${escapeHtmlServer(order.notes)}</p>` : '')
+        + `<p><a href="${APP_URL}/admin.html">Open it in the admin</a></p>`);
+
+    // Checkout never verifies the address, so the customer's copy leaves out their phone and address.
+    const customerEmail = String(order.customer_email || '').trim();
+    if (!EMAIL_PATTERN.test(customerEmail) || customerEmail.length > 254) return;
+    const settings = await dbGetAsync('SELECT whatsapp_number FROM store_settings WHERE id = 1');
+    const whatsapp = String((settings && settings.whatsapp_number) || '').replace(/\D/g, '');
+    const firstName = String(order.customer_name || '').trim().split(/\s+/)[0];
+    await sendEmail(customerEmail, `Your DC Kids order ${order.order_number}`,
+        `<h2 style="margin:0 0 8px">Thank you${firstName ? ', ' + escapeHtmlServer(firstName) : ''}!</h2>
+        <p>We've received your order <strong>${escapeHtmlServer(order.order_number)}</strong>. We'll confirm payment and delivery with you on WhatsApp.</p>`
+        + (order.order_type === 'preorder'
+            ? "<p>It includes China pre-order pieces: we'll send the payment details on WhatsApp and order them once they're paid in full.</p>" : '')
+        + table
+        + `<p><a href="${APP_URL}/track.html?order=${encodeURIComponent(order.order_number)}">Track your order</a></p>
+        <p style="color:#555">Questions? Message us on ${whatsapp ? `<a href="https://wa.me/${whatsapp}">WhatsApp</a>` : 'WhatsApp'}. This inbox isn't read, so please don't reply to this email.</p>`);
 }
 
 // The same counts as the dashboard's "waiting on payment" and "Running low".
@@ -1882,7 +1911,7 @@ app.post('/api/orders', optionalCustomer, (req, res) => {
                         );
 
                         notifyStaffOfOrder({ order_number, customer_name, order_type, total_amount });
-                        emailOwnerAboutOrder(order_id).catch((err) => console.error('[Owner order email]', err.message));
+                        emailAboutNewOrder(order_id).catch((err) => console.error('[Order emails]', err.message));
 
                         res.json({ success: true, order_number, total_amount, status: initialStatus, welcome_discount: welcomePercent });
                     }
