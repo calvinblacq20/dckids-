@@ -202,15 +202,6 @@ button { font-family: inherit; cursor: pointer; }
 /* portrait photos in a wide cover: keep the owner's face inside the visible band */
 .hero__slide--shop { object-position: 55% 42%; }
 .hero__slide--owner { object-position: 50% 52%; }
-/* Wider than the 1179px photos, a cover stretches them and keeps a strip of face:
-   the photo becomes a panel at no more than its own size, fading into the dark side. */
-@media (min-width: 1200px) {
-  .hero__slide {
-    left: auto; width: min(52%, 1000px);
-    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 22%);
-    mask-image: linear-gradient(to right, transparent 0, #000 22%);
-  }
-}
 /* top fade keeps the white nav legible; bottom fade carries the headline */
 .hero__shade {
   position: absolute; inset: 0; pointer-events: none;
