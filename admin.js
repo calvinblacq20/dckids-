@@ -1553,11 +1553,11 @@ function buildAdmRow(row) {
     '</button>';
 }
 
-function fillAdmRows(containerId, items, map, onPick) {
+function fillAdmRows(containerId, items, map, onPick, emptyHtml) {
     var box = document.getElementById(containerId);
     if (!box) return;
     if (!items.length) {
-        box.innerHTML = '<p class="adm-empty t-cap muted">Nothing to show.</p>';
+        box.innerHTML = emptyHtml || '<p class="adm-empty t-cap muted">Nothing to show.</p>';
         return;
     }
     box.innerHTML = items.map(function (item) { return buildAdmRow(map(item)); }).join('');
@@ -1570,6 +1570,7 @@ function renderInventoryTable() {
     var tbody = document.getElementById('inventory-tbody');
     if (!tbody) return;
 
+    syncInventoryCategoryOptions();
     var products = getFilteredInventory();
     var sorted = sortInventory(products);
     var totalItems = sorted.length;
@@ -1585,10 +1586,11 @@ function renderInventoryTable() {
     }
     var start = (invCurrentPage - 1) * INV_PER_PAGE;
     var paged = sorted.slice(start, start + INV_PER_PAGE);
+    var preorderNote = paged.length ? '' : inventoryPreorderNote();
 
     tbody.innerHTML = '';
     if (paged.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#888;padding:40px;">No products found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#888;padding:40px;">' + (preorderNote || 'No products found') + '</td></tr>';
     } else {
         paged.forEach(function(p) {
             var tr = document.createElement('tr');
@@ -1616,7 +1618,8 @@ function renderInventoryTable() {
             meta: [p.sku || '—', adminCategoryName(p.cat), stock + ' in stock'].join(' · '),
             value: Number(p.price) > 0 ? 'GHS ' + Number(p.price).toFixed(2) : 'No price yet'
         };
-    }, function (id) { openProductDetail(Number(id)); });
+    }, function (id) { openProductDetail(Number(id)); },
+        preorderNote ? '<p class="adm-empty t-cap muted">' + preorderNote + '</p>' : '');
 
     renderPagination('inv-pagination', totalItems, invCurrentPage, INV_PER_PAGE, function(page) {
         invCurrentPage = page;
@@ -1635,26 +1638,83 @@ function renderInventoryTable() {
 }
 
 function getFilteredInventory() {
-    var searchEl = document.querySelector('#tab-inventory .filter-bar input');
-    var catFilter = document.getElementById('inv-cat-filter');
-    var statusFilter = document.getElementById('inv-status-filter');
-
-    var query = searchEl ? searchEl.value.toLowerCase() : '';
-    var cat = catFilter ? catFilter.value : 'all';
-    var status = statusFilter ? statusFilter.value : 'all';
-
+    var f = readInventoryFilters();
     return globalProducts.filter(function(p) {
         // Inventory counts what is on the shelf. Pre-order pieces are sourced
         // once ordered and have no stock, so they are run from Pre-orders.
         if (isPreorderProduct(p)) return false;
-        var matchesSearch = !query || (p.name && p.name.toLowerCase().indexOf(query) >= 0) || (p.cat && p.cat.toLowerCase().indexOf(query) >= 0) || (p.size && p.size.toLowerCase().indexOf(query) >= 0);
-        var matchesCat = cat === 'all' || cat === '' || cat === 'All Categories' || p.cat === cat;
         var matchesStatus = true;
-        if (status === 'in-stock') matchesStatus = p.stock >= 5;
-        else if (status === 'low-stock') matchesStatus = p.stock > 0 && p.stock < 5;
-        else if (status === 'out-of-stock') matchesStatus = p.stock <= 0;
-        return matchesSearch && matchesCat && matchesStatus;
+        // Low is 5 or fewer, the same line as the status count above the list.
+        if (f.status === 'in-stock') matchesStatus = p.stock > 5;
+        else if (f.status === 'low-stock') matchesStatus = p.stock > 0 && p.stock <= 5;
+        else if (f.status === 'out-of-stock') matchesStatus = p.stock <= 0;
+        return inventoryMatches(p, f.query, f.cat) && matchesStatus;
     });
+}
+
+function readInventoryFilters() {
+    var searchEl = document.querySelector('#tab-inventory .filter-bar input');
+    var catFilter = document.getElementById('inv-cat-filter');
+    var statusFilter = document.getElementById('inv-status-filter');
+    return {
+        query: searchEl ? searchEl.value.toLowerCase() : '',
+        cat: catFilter ? catFilter.value : 'all',
+        status: statusFilter ? statusFilter.value : 'all'
+    };
+}
+
+function inventoryMatches(p, query, cat) {
+    var matchesSearch = !query || (p.name && p.name.toLowerCase().indexOf(query) >= 0) || (p.cat && p.cat.toLowerCase().indexOf(query) >= 0) || (p.size && p.size.toLowerCase().indexOf(query) >= 0);
+    var matchesCat = cat === 'all' || cat === '' || cat === 'All Categories' || p.cat === cat;
+    return matchesSearch && matchesCat;
+}
+
+// How many pre-order pieces a search and category find when no shop piece
+// does, so an empty Inventory can say where they went; 0 otherwise.
+function preorderOnlyMatches(products, query, cat) {
+    var held = 0, preorders = 0;
+    products.forEach(function (p) {
+        if (!inventoryMatches(p, query, cat)) return;
+        if (isPreorderProduct(p)) preorders++; else held++;
+    });
+    return held ? 0 : preorders;
+}
+
+function inventoryPreorderNote() {
+    var f = readInventoryFilters();
+    var n = preorderOnlyMatches(globalProducts, f.query, f.cat);
+    if (!n) return '';
+    return 'Nothing in the shop matches. ' + n + ' pre-order piece' + (n === 1 ? ' does' : 's do') + '. ' +
+        '<button type="button" class="adm-ghost" onclick="switchTab(\'tab-preorders\')">See Pre-order pieces</button>';
+}
+
+// The categories that have pieces on the shelf, in the owner's order, then any
+// a held piece still uses that the owner's list no longer names. A category of
+// only pre-order pieces would always list nothing here, so it is left out.
+function inventoryCategoryOptions(products, list) {
+    var held = {};
+    products.forEach(function (p) { if (!isPreorderProduct(p) && p.cat) held[p.cat] = true; });
+    var shown = list.filter(function (c) { return held[c.id]; });
+    shown.forEach(function (c) { delete held[c.id]; });
+    Object.keys(held).forEach(function (id) { shown.push({ id: id, label: adminCategoryName(id) }); });
+    return shown;
+}
+
+function syncInventoryCategoryOptions() {
+    var sel = document.getElementById('inv-cat-filter');
+    if (!sel) return;
+    var list = typeof window.adminCategories === 'function' ? window.adminCategories() : [];
+    var shown = inventoryCategoryOptions(globalProducts || [], list);
+    var signature = shown.map(function (c) { return c.id + ':' + c.label; }).join('|');
+    // Rewriting the options on every render would rebuild the menu under the
+    // owner's finger, so it only changes when the categories do.
+    if (sel.dataset.options === signature) return;
+    var chosen = sel.value;
+    sel.innerHTML = '<option value="">All Categories</option>' + shown.map(function (c) {
+        return '<option value="' + escapeHtml(c.id) + '">' + escapeHtml(c.label) + '</option>';
+    }).join('');
+    sel.dataset.options = signature;
+    sel.value = shown.some(function (c) { return c.id === chosen; }) ? chosen : '';
 }
 
 function sortInventory(products) {
@@ -1746,8 +1806,8 @@ function openProductDetail(productId) {
 
     var sku = displaySku(p);
     var stock = (p.stock != null) ? p.stock : 0;
-    var statusText = stock <= 0 ? 'Out of Stock' : (stock < 5 ? 'Low Stock' : 'In Stock');
-    var statusClass = stock <= 0 ? 'out-of-stock' : (stock < 5 ? 'low-stock' : 'in-stock');
+    var statusText = stock <= 0 ? 'Out of Stock' : (stock <= 5 ? 'Low Stock' : 'In Stock');
+    var statusClass = stock <= 0 ? 'out-of-stock' : (stock <= 5 ? 'low-stock' : 'in-stock');
 
     function set(id, val){ var el = document.getElementById(id); if (el) el.textContent = val; }
     var img = document.getElementById('pd-img');
@@ -1825,7 +1885,7 @@ function updateProductStats() {
     globalProducts.forEach(function(p) {
         if (p.stock <= 0) {
             out++;
-        } else if (p.stock < 5) {
+        } else if (p.stock <= 5) {
             low++;
         } else {
             instock++;
@@ -5938,8 +5998,8 @@ function downloadSummaryReport(type) {
         }
 
         if (type === 'all' || type === 'inventory') {
-            var inStockCount = globalProducts.filter(function(p) { return p.stock >= 5; }).length;
-            var lowStockCount = globalProducts.filter(function(p) { return p.stock > 0 && p.stock < 5; }).length;
+            var inStockCount = globalProducts.filter(function(p) { return p.stock > 5; }).length;
+            var lowStockCount = globalProducts.filter(function(p) { return p.stock > 0 && p.stock <= 5; }).length;
             var outStockCount = globalProducts.filter(function(p) { return p.stock == 0; }).length;
             var totalVal = globalProducts.reduce(function(sum, p) { return sum + (p.stock * p.price); }, 0);
 
@@ -6094,8 +6154,8 @@ function generateInventoryReportTable(start, end) {
         totalStock += (p.stock || 0);
         totalVal += val;
 
-        var status = p.stock <= 0 ? 'Out of Stock' : (p.stock < 5 ? 'Low Stock' : 'In Stock');
-        var badgeClass = p.stock <= 0 ? 'badge-cancelled' : (p.stock < 5 ? 'badge-pending' : 'badge-completed');
+        var status = p.stock <= 0 ? 'Out of Stock' : (p.stock <= 5 ? 'Low Stock' : 'In Stock');
+        var badgeClass = p.stock <= 0 ? 'badge-cancelled' : (p.stock <= 5 ? 'badge-pending' : 'badge-completed');
 
         html += '<tr>';
         html += '<td><div style="font-weight:600; color:#333;">' + escapeHtml(p.name) + '</div><div style="font-size:11px; color:#777;">ID: ' + p.id + '</div></td>';
@@ -7526,12 +7586,7 @@ function enhanceInventoryFilters() {
     if (!invView) return;
 
     var selects = invView.querySelectorAll('.filter-bar select');
-    var searchInput = invView.querySelector('.filter-bar input[type="text"]');
-
-    // Category filter
-    if (selects[0] && selects[0].children.length <= 1) {
-        selects[0].innerHTML = categoryFilterOptions('all');
-    }
+    var searchInput = document.getElementById('inv-search');
 
     // Status filter
     if (selects[1] && selects[1].children.length <= 1) {
@@ -8119,7 +8174,7 @@ function setupEventListeners() {
             var val = parseInt(stockInput.value);
             if (isNaN(val) || val <= 0) {
                 statusSelect.value = 'out_of_stock';
-            } else if (val < 5) {
+            } else if (val <= 5) {
                 statusSelect.value = 'low_stock';
             } else {
                 statusSelect.value = 'in_stock';
@@ -8131,11 +8186,11 @@ function setupEventListeners() {
             if (val === 'out_of_stock') {
                 stockInput.value = '0';
             } else if (val === 'low_stock') {
-                if (isNaN(currentStock) || currentStock <= 0 || currentStock >= 5) {
+                if (isNaN(currentStock) || currentStock <= 0 || currentStock > 5) {
                     stockInput.value = '3';
                 }
             } else if (val === 'in_stock') {
-                if (isNaN(currentStock) || currentStock < 5) {
+                if (isNaN(currentStock) || currentStock <= 5) {
                     stockInput.value = '15';
                 }
             }
@@ -8375,7 +8430,7 @@ function setupEventListeners() {
             var val = parseInt(addStockInput.value);
             if (isNaN(val) || val <= 0) {
                 addStatusSelect.value = 'out_of_stock';
-            } else if (val < 5) {
+            } else if (val <= 5) {
                 addStatusSelect.value = 'low_stock';
             } else {
                 addStatusSelect.value = 'in_stock';
@@ -11318,6 +11373,7 @@ function downloadProductCsvTemplate() {
   window.adminCategories = loadCats;
 
   window.populateCategoryDropdowns = function () {
+    syncInventoryCategoryOptions();
     var filter = document.getElementById('prod-cat-filter');
     if (filter) {
       var chosen = filter.value;

@@ -1516,6 +1516,10 @@ async function run() {
     const inventoryEnd = adminSource.indexOf('function sortInventory');
     const preorderTestStart = adminSource.indexOf('function isPreorderProduct');
     const preorderTestEnd = adminSource.indexOf('\n', preorderTestStart);
+    const categoryNameStart = adminSource.indexOf('function adminCategoryName');
+    const categoryNameEnd = adminSource.indexOf('function adminPriceCell');
+    const inventorySource = adminSource.slice(inventoryStart, inventoryEnd) +
+        adminSource.slice(preorderTestStart, preorderTestEnd) + adminSource.slice(categoryNameStart, categoryNameEnd);
     check('admin.js still carries the Inventory filter and the pre-order test',
         inventoryStart !== -1 && inventoryEnd > inventoryStart && preorderTestStart !== -1);
     const inventoryTab = {
@@ -1524,13 +1528,54 @@ async function run() {
             { id: 2, name: 'School bag', cat: 'accessories', stock: 0, fulfillment_type: 'preorder' },
             { id: 3, name: 'Old row', cat: 'clothing', stock: 0 }
         ],
-        document: { querySelector: () => null, getElementById: () => null }
+        document: { querySelector: () => null, getElementById: () => null },
+        window: {}
     };
     vm.createContext(inventoryTab);
-    vm.runInContext(adminSource.slice(inventoryStart, inventoryEnd) + adminSource.slice(preorderTestStart, preorderTestEnd), inventoryTab);
+    vm.runInContext(inventorySource, inventoryTab);
     const inventoryIds = inventoryTab.getFilteredInventory().map((p) => p.id);
     check('Inventory lists the pieces the shop holds and leaves pre-order pieces to Pre-orders',
         JSON.stringify(inventoryIds) === '[1,3]', JSON.stringify(inventoryIds));
+    const shelf = [
+        { id: 1, name: 'Romper', cat: 'clothing', stock: 4, fulfillment_type: 'in_stock' },
+        { id: 2, name: 'Toy car', cat: 'cars', stock: 0, fulfillment_type: 'preorder' },
+        { id: 3, name: 'Sun hat', cat: 'hats', stock: 2, fulfillment_type: 'in_stock' }
+    ];
+    const ownerCategories = [{ id: 'clothing', label: 'Clothing' }, { id: 'cars', label: 'Cars' }];
+    const categoryIds = inventoryTab.inventoryCategoryOptions(shelf, ownerCategories).map((c) => c.id);
+    check('the Inventory category menu offers only categories with shop pieces, keeping ones the list lost',
+        JSON.stringify(categoryIds) === '["clothing","hats"]', JSON.stringify(categoryIds));
+    check('a search that finds only pre-order pieces counts them, so Inventory can say where they are',
+        inventoryTab.preorderOnlyMatches(shelf, 'car', '') === 1);
+    check('a search that finds a shop piece is not treated as pre-order only',
+        inventoryTab.preorderOnlyMatches(shelf, 'romper', '') === 0);
+    const filterValues = { 'inv-status-filter': 'low-stock' };
+    const stockTab = {
+        globalProducts: [{ id: 1, stock: 5 }, { id: 2, stock: 6 }, { id: 3, stock: 0 }],
+        document: { querySelector: () => null, getElementById: (id) => (id in filterValues ? { value: filterValues[id] } : null) }
+    };
+    vm.createContext(stockTab);
+    vm.runInContext(inventorySource, stockTab);
+    const lowIds = stockTab.getFilteredInventory().map((p) => p.id);
+    check('the Low Stock filter counts a piece with 5 left, the same line as the status count',
+        JSON.stringify(lowIds) === '[1]', JSON.stringify(lowIds));
+    filterValues['inv-status-filter'] = 'in-stock';
+    const inStockIds = stockTab.getFilteredInventory().map((p) => p.id);
+    check('the In Stock filter starts above 5',
+        JSON.stringify(inStockIds) === '[2]', JSON.stringify(inStockIds));
+    const noteTab = {
+        globalProducts: shelf,
+        document: { querySelector: () => ({ value: 'car' }), getElementById: () => null }
+    };
+    vm.createContext(noteTab);
+    vm.runInContext(inventorySource, noteTab);
+    const preorderNote = noteTab.inventoryPreorderNote();
+    check('an empty Inventory search that only finds pre-orders points to Pre-order pieces',
+        preorderNote.includes('1 pre-order piece does') && preorderNote.includes("switchTab('tab-preorders')"), preorderNote);
+    const inventoryBinder = adminSource.slice(adminSource.indexOf('function enhanceInventoryFilters'), adminSource.indexOf('function buildTabContent'));
+    check('typing in the Inventory search filters the list: the box is type="search", so it is bound by id',
+        adminPageSource.includes('<input type="search" id="inv-search"') &&
+        /getElementById\('inv-search'\)[\s\S]*addEventListener\('input'/.test(inventoryBinder));
     check('Inventory has no listing-type filter, since only held pieces are listed, and links to Pre-orders',
         !adminPageSource.includes('id="inv-fulfillment-filter"') &&
         adminPageSource.includes('onclick="switchTab(\'tab-preorders\')">Pre-order pieces</button>'));
