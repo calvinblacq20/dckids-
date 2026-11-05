@@ -76,10 +76,12 @@ const CSP_COMMON =
     "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'";
 
 // Storefront: Firebase SDK is imported from gstatic; sign-in popups/redirects
-// run through the Firebase auth handler and Google; avatars come from
-// ui-avatars, and Google account photos from googleusercontent.
+// run through the Firebase auth handler and Google, and Firebase loads its
+// apis.google.com helper to talk to that handler (blocked, Google sign-in fails
+// with auth/internal-error); avatars come from ui-avatars, and Google account
+// photos from googleusercontent.
 const CSP_STORE =
-    "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://accounts.google.com; " +
+    "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://accounts.google.com https://apis.google.com; " +
     "connect-src 'self' https://*.googleapis.com https://*.firebaseapp.com https://www.gstatic.com; " +
     "frame-src https://accounts.google.com https://*.firebaseapp.com; " +
     "img-src 'self' data: blob: https://ui-avatars.com https://lh3.googleusercontent.com; " +

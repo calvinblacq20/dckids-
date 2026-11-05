@@ -1404,6 +1404,10 @@ async function run() {
         storeCsp.includes('https://www.gstatic.com'), storeCsp);
     check('storefront CSP keeps its own style-src',
         /style-src[^;]*'unsafe-inline'/.test(storeCsp), storeCsp);
+    check('shop CSP allows the helper Firebase needs for Google sign-in',
+        /script-src[^;]*https:\/\/apis\.google\.com/.test(storeCsp), storeCsp);
+    check('shop CSP allows the Firebase sign-in frame',
+        /frame-src[^;]*https:\/\/\*\.firebaseapp\.com/.test(storeCsp), storeCsp);
 
     // Both surfaces must still refuse arbitrary third-party script.
     check('no CSP allows a wildcard script source',
