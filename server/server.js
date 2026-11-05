@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 const express = require('express');
@@ -637,6 +638,17 @@ const reviewLimiter   = makeAttemptLimiter(10, 60 * 60 * 1000, 'Too many reviews
 const signupLimiter   = makeAttemptLimiter(20, 60 * 60 * 1000, 'Too many sign-ups from this network. Try again later.');
 
 // JWT Middleware
+const ADMIN_SESSION_HOURS = 12;
+// The sign-in behind a token must still exist: logout and "sign out of all devices" delete it.
+const LIVE_SESSION_SQL = `(SELECT 1 FROM admin_sessions s WHERE s.id = ? AND s.user_id = u.id AND s.expires_at > datetime('now'))`;
+
+async function startAdminSession(userId, username, role) {
+    const sid = crypto.randomBytes(18).toString('base64url');
+    await dbRunAsync("DELETE FROM admin_sessions WHERE expires_at <= datetime('now')");
+    await dbRunAsync(`INSERT INTO admin_sessions (id, user_id, expires_at) VALUES (?, ?, datetime('now', '+${ADMIN_SESSION_HOURS} hours'))`, [sid, userId]);
+    return jwt.sign({ id: userId, username, role, sid }, JWT_SECRET, { expiresIn: ADMIN_SESSION_HOURS + 'h' });
+}
+
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -653,13 +665,15 @@ const authenticateToken = (req, res, next) => {
         // so a demoted manager loses manager routes on their next request.
         // Primary-key lookup: negligible cost at this scale. NULL status =
         // pre-migration account, treated as active.
-        db.get(`SELECT id, username, email, role, status, ${FIRST_MANAGER_SQL} AS first_manager_id FROM users WHERE id = ?`, [payload.id], (e, user) => {
+        db.get(`SELECT u.id, u.username, u.email, u.role, u.status, ${FIRST_MANAGER_SQL} AS first_manager_id, ${LIVE_SESSION_SQL} AS live_session
+                  FROM users u WHERE u.id = ?`, [payload.sid || '', payload.id], (e, user) => {
             if (e) return serverError(res, e);
             if (!user || (user.status && user.status !== 'active')) {
                 return res.status(403).json({ error: 'This account is no longer active' });
             }
+            if (!user.live_session) return res.status(403).json({ error: 'Your session has ended. Please sign in again.' });
             const role = isShopOwner(user, user.first_manager_id) ? 'manager' : 'staff';
-            req.user = { id: user.id, username: user.username, role };
+            req.user = { id: user.id, username: user.username, role, sid: payload.sid };
             next();
         });
     });
@@ -736,8 +750,9 @@ app.post('/api/auth/google', loginLimiter, async (req, res) => {
                 function (e2) {
                     if (e2) return serverError(res, e2);
                     if (isOwner) {
-                        const accessToken = jwt.sign({ id: this.lastID, username: mail, role }, JWT_SECRET, { expiresIn: '12h' });
-                        return res.json({ accessToken, role });
+                        return startAdminSession(this.lastID, mail, role)
+                            .then((accessToken) => res.json({ accessToken, role }))
+                            .catch((sessionErr) => serverError(res, sessionErr));
                     }
                     notifyManagersOfRequest(name, mail);
                     return res.status(403).json({ error: 'Access requested — the owner needs to approve your account before you can sign in.', pending: true });
@@ -777,9 +792,30 @@ app.post('/api/auth/google', loginLimiter, async (req, res) => {
         } catch (error) {
             return serverError(res, error);
         }
-        const accessToken = jwt.sign({ id: user.id, username: user.email, role }, JWT_SECRET, { expiresIn: '12h' });
+        let accessToken;
+        try {
+            accessToken = await startAdminSession(user.id, user.email, role);
+        } catch (error) {
+            return serverError(res, error);
+        }
         res.json({ accessToken, role });
     });
+});
+
+// Ends this sign-in on the server, so its token stops working even where it was copied.
+app.post('/api/auth/logout', authenticateToken, async (req, res) => {
+    try {
+        await dbRunAsync('DELETE FROM admin_sessions WHERE id = ?', [req.user.sid]);
+        res.json({ success: true });
+    } catch (error) { serverError(res, error); }
+});
+
+app.post('/api/auth/logout-all', authenticateToken, async (req, res) => {
+    try {
+        const ended = await dbRunAsync('DELETE FROM admin_sessions WHERE user_id = ?', [req.user.id]);
+        logAdminAction(req, 'logout_all', 'user', req.user.id, 'Signed out of all devices');
+        res.json({ success: true, ended: ended.changes });
+    } catch (error) { serverError(res, error); }
 });
 
 // Pending access requests (owner/manager only)
@@ -2759,11 +2795,13 @@ function optionalCustomer(req, res, next) {
             // so the order is not attached to a customer account. As in
             // authenticateToken, the account is re-checked, so a deleted or
             // rejected member's token loses counter discounts at once.
-            return db.get(`SELECT id, username, status FROM users WHERE id = ?`, [payload.id], (e, user) => {
+            return db.get(`SELECT u.id, u.username, u.status, ${LIVE_SESSION_SQL} AS live_session FROM users u WHERE u.id = ?`,
+                [payload.sid || '', payload.id], (e, user) => {
                 if (e) return serverError(res, e);
                 if (!user || (user.status && user.status !== 'active')) {
                     return res.status(403).json({ error: 'This account is no longer active' });
                 }
+                if (!user.live_session) return res.status(403).json({ error: 'Your session has ended. Please sign in again.' });
                 req.staff = { id: user.id, username: user.username };
                 next();
             });

@@ -43,7 +43,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=114">
+  <link rel="stylesheet" href="admin-bridge.css?v=115">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -4909,7 +4909,8 @@
               <span>Log out</span>
             </button>
           </div>
-          <section class="settings-alerts-card" id="push-alerts-card" aria-labelledby="push-alerts-title">
+          <p class="settings-signout-all">Still signed in on a phone or computer you no longer use? <button type="button" id="settingsSignOutAllBtn" onclick="signOutAllDevices()">Sign out of all devices</button></p>
+<section class="settings-alerts-card" id="push-alerts-card" aria-labelledby="push-alerts-title">
             <div class="settings-alerts-card__copy">
               <span class="settings-alerts-card__icon" aria-hidden="true">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
@@ -6390,7 +6391,7 @@
   <!-- Scripts -->
   <script src="vendor/chart.umd.js?v=4.5.1"></script>
   <script src="image-resolver.js?v=2"></script>
-  <script src="admin.js?v=200"></script>
+  <script src="admin.js?v=201"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

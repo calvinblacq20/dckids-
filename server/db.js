@@ -783,6 +783,19 @@ const db = new sqlite3.Database(dbPath, (err) => {
             if (err) console.error('Error creating push_subscriptions table', err);
         });
 
+        // One row per admin sign-in. Logout deletes it, so a copied token dies with it.
+        db.run(`CREATE TABLE IF NOT EXISTS admin_sessions (
+            id TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            expires_at DATETIME NOT NULL
+        )`, (err) => {
+            if (err) console.error('Error creating admin_sessions table', err);
+        });
+        db.run('CREATE INDEX IF NOT EXISTS idx_admin_sessions_user ON admin_sessions (user_id)', (err) => {
+            if (err) console.error('Error indexing admin_sessions', err);
+        });
+
         // Product categories as shoppers see them: the name on the shop and the
         // order the shop lists them in. The owner edits them in admin; a product
         // belongs to one by its products.cat. Seeded with the names and order the

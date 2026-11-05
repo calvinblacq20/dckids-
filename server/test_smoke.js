@@ -1636,6 +1636,33 @@ async function run() {
     check('the morning summary after 7am is due the next morning',
         app.msUntilMorningSummary(new Date('2026-11-04T20:00:00Z')) === 11 * 60 * 60 * 1000);
 
+    // ---- signing out ends the session on the server ----
+    const signInToken = async (email) => (await (await googleSignIn(email)).json()).accessToken;
+    const asA = { Authorization: 'Bearer ' + await signInToken('owner@test.com') };
+    const asB = { Authorization: 'Bearer ' + await signInToken('owner@test.com') };
+    const asC = { Authorization: 'Bearer ' + await signInToken('owner@test.com') };
+    check('a fresh sign-in reads admin data', (await fetch(`${BASE}/api/me`, { headers: asA })).status === 200);
+    r = await fetch(`${BASE}/api/auth/logout`, { method: 'POST', headers: asA });
+    check('logging out answers ok', r.status === 200, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/me`, { headers: asA });
+    check('a logged-out session is refused even if its token was copied', r.status === 403, `status ${r.status}`);
+    check('logging out ends only that session', (await fetch(`${BASE}/api/me`, { headers: asB })).status === 200);
+    r = await fetch(`${BASE}/api/orders`, json('POST', {
+        customer_name: 'Counter After Logout', customer_phone: '0249000777', order_type: 'retail', items: [{ id: 1, quantity: 1, size: sizeLabel }]
+    }, asA));
+    check('a logged-out session cannot place counter orders as staff', r.status === 403, `status ${r.status}`);
+    const ownerForForgery = await dbGet("SELECT id FROM users WHERE email = 'owner@test.com'");
+    const neverSignedIn = require('jsonwebtoken').sign({ id: ownerForForgery.id, username: 'owner@test.com', role: 'manager' }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    r = await fetch(`${BASE}/api/me`, { headers: { Authorization: 'Bearer ' + neverSignedIn } });
+    check('a correctly signed token that was never a sign-in is refused', r.status === 403, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/auth/logout-all`, { method: 'POST', headers: asB });
+    check('signing out of all devices answers ok', r.status === 200, `status ${r.status}`);
+    const bAfter = (await fetch(`${BASE}/api/me`, { headers: asB })).status;
+    const cAfter = (await fetch(`${BASE}/api/me`, { headers: asC })).status;
+    check('signing out of all devices ends every session', bAfter === 403 && cAfter === 403, `${bAfter} ${cAfter}`);
+    check('the admin offers a way to sign out of all devices',
+        adminHtml.includes('onclick="signOutAllDevices()"') && adminSource.includes("'/auth/logout-all'") && adminSource.includes("'/auth/logout'"));
+
     console.log(`\n${passed} passed, ${failed} failed`);
     cleanupDb();
     process.exit(failed ? 1 : 0);

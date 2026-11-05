@@ -511,6 +511,9 @@ function logout(isSignOut) {
     // A deliberate sign-out also ends order alerts here, so a shared phone stops
     // showing customer names. Idle and expiry sign-outs leave them running.
     if (isSignOut === true) stopPushAlertsOnDevice();
+    // Ends the session on the server too, so a copy of this token stops working.
+    var token = localStorage.getItem('adminToken');
+    if (token) fetch(API_URL + '/auth/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token }, keepalive: true }).catch(function () {});
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminRole');
     currentRole = '';
@@ -518,6 +521,17 @@ function logout(isSignOut) {
     _stopIdleTimer();
     document.getElementById('dashboard-container').style.display = 'none';
     document.getElementById('login-container').style.display = 'flex';
+}
+
+function signOutAllDevices() {
+    if (!window.confirm('Sign out of the admin on every phone and computer, including this one?')) return;
+    fetch(API_URL + '/auth/logout-all', { method: 'POST', headers: { 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') } })
+        .then(function (r) {
+            if (!r.ok) throw new Error('status ' + r.status);
+            localStorage.removeItem('adminToken');
+            logout(true);
+        })
+        .catch(function () { showToast('Could not sign out your other devices. Check your connection and try again.', 'error'); });
 }
 
 // A protected endpoint answered 401/403: the token is missing, invalid, or

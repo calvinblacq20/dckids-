@@ -100,10 +100,13 @@ function insertOwner() {
             database.run(`INSERT INTO users (username, role, email, full_name, status, created_at)
                 VALUES ('storage-owner@test.com', 'manager', 'storage-owner@test.com', 'Storage Owner', 'active', datetime('now'))`, function (runError) {
                 const ownerId = this && this.lastID;
-                database.close((closeError) => {
-                    if (runError) reject(runError);
-                    else if (closeError) reject(closeError);
-                    else resolve(ownerId);
+                if (runError) return database.close(() => reject(runError));
+                database.run(`INSERT INTO admin_sessions (id, user_id, expires_at) VALUES ('storage-session', ?, datetime('now', '+1 hour'))`, [ownerId], (sessionError) => {
+                    database.close((closeError) => {
+                        if (sessionError) reject(sessionError);
+                        else if (closeError) reject(closeError);
+                        else resolve(ownerId);
+                    });
                 });
             });
         });
@@ -131,7 +134,7 @@ async function run() {
     startServer();
     await waitForServer();
     const ownerId = await insertOwner();
-    const auth = { Authorization: `Bearer ${jwt.sign({ id: ownerId }, secret, { expiresIn: '5m' })}` };
+    const auth = { Authorization: `Bearer ${jwt.sign({ id: ownerId, sid: 'storage-session' }, secret, { expiresIn: '5m' })}` };
     const upload = await fetch(`${baseUrl}/api/upload-image`, json('POST', { dataUrl: tinyPng }, auth));
     const uploaded = await upload.json();
     assert.strictEqual(upload.status, 200, JSON.stringify(uploaded));

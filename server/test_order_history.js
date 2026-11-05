@@ -41,8 +41,9 @@ async function ownerSession() {
     db.configure('busyTimeout', 10000);
     const owner = await exec(db, `INSERT INTO users (username, role, email, full_name, status, created_at)
         VALUES ('owner@dckidsbrand.com', 'manager', 'owner@dckidsbrand.com', 'History Owner', 'active', datetime('now'))`);
+    await exec(db, `INSERT INTO admin_sessions (id, user_id, expires_at) VALUES ('history-session', ?, datetime('now', '+1 hour'))`, [owner.lastID]);
     await new Promise((resolve) => db.close(resolve));
-    return jwt.sign({ id: owner.lastID, username: 'owner@dckidsbrand.com', role: 'manager' }, JWT_SECRET, { expiresIn: '1h' });
+    return jwt.sign({ id: owner.lastID, username: 'owner@dckidsbrand.com', role: 'manager', sid: 'history-session' }, JWT_SECRET, { expiresIn: '1h' });
 }
 
 async function fillHistory() {

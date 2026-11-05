@@ -1607,6 +1607,8 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
 .settings-account-card__name { font-size: 16px; font-weight: 500; color: var(--ink); }
 .settings-account-card__sub { font-size: 13px; color: var(--ink-50); }
 .settings-account-card__logout { flex: none; }
+.settings-signout-all { grid-column: 1 / -1; margin: -4px 0 0; font-size: 13px; color: var(--ink-50); }
+.settings-signout-all button { background: none; border: 0; padding: 0; font: inherit; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .settings-alerts-card__icon { display: grid; place-items: center; width: 36px; height: 36px; flex: none; border-radius: var(--r-12); background: #f6ecdf; color: var(--warning-ink); }
 .settings-alerts-card__actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .settings-alerts-card__status { margin-top: 10px; font-weight: 500; color: var(--ink); }
