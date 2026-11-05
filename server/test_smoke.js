@@ -1660,6 +1660,8 @@ async function run() {
     const bAfter = (await fetch(`${BASE}/api/me`, { headers: asB })).status;
     const cAfter = (await fetch(`${BASE}/api/me`, { headers: asC })).status;
     check('signing out of all devices ends every session', bAfter === 403 && cAfter === 403, `${bAfter} ${cAfter}`);
+    check('order alerts promise only what the shop sends: new orders, not online payments',
+        !adminHtml.includes('paid online'));
     check('the admin offers a way to sign out of all devices',
         adminHtml.includes('onclick="signOutAllDevices()"') && adminSource.includes("'/auth/logout-all'") && adminSource.includes("'/auth/logout'"));
 

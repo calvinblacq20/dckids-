@@ -3305,8 +3305,8 @@ app.put('/api/users/:id', authenticateToken, requireManager, async (req, res) =>
 // ===========================================================================
 //   ORDER ALERTS ON STAFF DEVICES (Web Push)
 //   Staff turn these on in the installed admin app (Settings → Order alerts);
-//   the phone then shows a notification for every new order and every order
-//   paid online, whether the app is open or not. Needs a VAPID key pair in
+//   the phone then shows a notification for every new order, whether the app
+//   is open or not. Needs a VAPID key pair in
 //   server/.env; generate it once and keep it, as replacing it ends every
 //   subscription.
 //     npx web-push generate-vapid-keys
