@@ -1,0 +1,15 @@
+# Secret scan rules for CI (.github/workflows/ci.yml, secret-scan job).
+# Gitleaks' default rules, plus the placeholders that are meant to be public:
+# the development JWT fallback that production refuses to start with
+# (server/server.js), and the stand-in secrets the tests boot servers with.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Development and test placeholders, never real keys"
+regexes = [
+  '''dckids-super-secret-key-change-in-production''',
+]
+paths = [
+  '''^server/test_[a-z_]+\.js$''',
+]
