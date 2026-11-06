@@ -115,8 +115,9 @@
 /* The same red as the sign-in screen's errors (auth.css --a-danger), which is
    scoped to the sign-in view and so not available here. */
 .account-data__delete {
-  padding: 0 0 2px; font: inherit; font-size: 15px; color: #B42318; background: none; border: 0;
-  border-bottom: 1px solid currentColor; cursor: pointer;
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 2px;
+  font: inherit; font-size: 15px; color: #B42318; background: none; border: 0; cursor: pointer;
+  text-decoration: underline; text-underline-offset: 4px;
 }
 .account-data__delete:disabled { opacity: .5; cursor: not-allowed; }
 
