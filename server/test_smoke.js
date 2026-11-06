@@ -888,6 +888,14 @@ async function run() {
     check('no payment method is reported that nobody recorded',
         reportedMethods.every((method) => ['WhatsApp', 'Not recorded'].includes(method)), reportedMethods.join(','));
     await fetch(`${BASE}/api/orders/${unrecordedId}`, json('PUT', { status: 'cancelled' }, auth));
+    r = await fetch(`${BASE}/api/orders/${unrecordedId}`, json('PUT', { status: 'processing' }, auth));
+    check('a cancelled order is not reopened by a plain status change', r.status === 409, `status ${r.status}`);
+    const stillClosed = (await dbGet('SELECT status FROM orders WHERE id = ?', [unrecordedId])).status;
+    check('a refused reopen leaves the order cancelled', stillClosed === 'cancelled', stillClosed);
+    r = await fetch(`${BASE}/api/orders/${unrecordedId}`, json('PUT', { status: 'processing', reopen: true }, auth));
+    const reopened = (await dbGet('SELECT status FROM orders WHERE id = ?', [unrecordedId])).status;
+    check('staff can reopen a cancelled order when they say so', r.status === 200 && reopened === 'processing', `status ${r.status}, ${reopened}`);
+    await fetch(`${BASE}/api/orders/${unrecordedId}`, json('PUT', { status: 'cancelled' }, auth));
     r = await fetch(`${BASE}/api/checkout/paystack`, json('POST', {
         customer_name: 'Card Payer', customer_phone: '0249000009', order_type: 'retail', items: [{ id: 1, quantity: 1, size: sizeLabel }]
     }));

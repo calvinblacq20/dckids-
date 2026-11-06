@@ -2296,6 +2296,10 @@ app.patch('/api/orders/:id/preorder-kind', authenticateToken, async (req, res) =
 
 // Update order status (Admin)
 const ORDER_STATUSES = ['pending', 'pending_deposit', 'awaiting_payment', 'payment_failed', 'payment_review', 'processing', 'paid', 'shipped', 'dispatched', 'delivered', 'completed', 'cancelled'];
+// Where an order ends. Moving one back out is rare and usually a slip of the
+// finger, so it takes an explicit reopen (the admin asks first). Every change,
+// reopens included, is in the audit log.
+const CLOSED_ORDER_STATUSES = ['completed', 'cancelled'];
 app.put('/api/orders/:id', authenticateToken, async (req, res) => {
     const { status } = req.body;
     const orderId = req.params.id;
@@ -2308,6 +2312,13 @@ app.put('/api/orders/:id', authenticateToken, async (req, res) => {
     try {
         const order = await dbGetAsync('SELECT status FROM orders WHERE id = ?', [orderId]);
         if (!order) return res.status(404).json({ error: 'Order not found' });
+        if (CLOSED_ORDER_STATUSES.includes(order.status) && normStatus !== order.status && req.body.reopen !== true) {
+            return res.status(409).json({
+                error: `This order is ${order.status}, so it stays closed unless you choose to reopen it.`,
+                reopen_required: true,
+                status: order.status
+            });
+        }
         if (normStatus === 'paid') {
             const result = await markOrderPaid(orderId);
             logAdminAction(req, 'update_status', 'order', orderId, `Marked order #${orderId} as paid`, { from: order.status, to: 'paid' });

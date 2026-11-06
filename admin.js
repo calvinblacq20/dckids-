@@ -3612,30 +3612,40 @@ function saveOrder() {
     var newStatus = statusEl ? statusEl.value : order.status;
     
     var token = localStorage.getItem('adminToken');
-    fetch(API_URL + '/orders/' + order.db_id, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
-        },
-        body: JSON.stringify({ status: newStatus })
-    })
-    .then(function(res) {
-        if (res.ok) {
-            closeModal('modal-order');
-            showToast('Order updated', 'success');
-            // Refresh orders list
-            fetchOrdersFromServer(function() {
-                renderOrdersTable();
-                loadDashboard();
+    function send(reopen) {
+        fetch(API_URL + '/orders/' + order.db_id, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify(reopen ? { status: newStatus, reopen: true } : { status: newStatus })
+        })
+        .then(function(res) {
+            if (res.ok) {
+                closeModal('modal-order');
+                showToast('Order updated', 'success');
+                // Refresh orders list
+                fetchOrdersFromServer(function() {
+                    renderOrdersTable();
+                    loadDashboard();
+                });
+                return;
+            }
+            return res.json().catch(function() { return {}; }).then(function(d) {
+                // A completed or cancelled order only moves again once staff say so.
+                if (res.status === 409 && d.reopen_required && !reopen) {
+                    if (window.confirm('This order is ' + d.status + '. Reopen it as "' + newStatus.replace(/_/g, ' ') + '"?')) send(true);
+                    return;
+                }
+                showToast(d.error || 'Failed to update order', 'error');
             });
-        } else {
-            showToast('Failed to update order', 'error');
-        }
-    })
-    .catch(function() {
-        showToast('Error updating order', 'error');
-    });
+        })
+        .catch(function() {
+            showToast('Error updating order', 'error');
+        });
+    }
+    send(false);
 }
 
 /* ============================================================
