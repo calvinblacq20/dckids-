@@ -21,12 +21,12 @@
   color-scheme: light;
 
   --ground: #ebeff5;
-  /* The page sits lighter than the chips. --ground does both jobs in ~119
-     places: it paints the page behind the cards, and it fills the small
-     controls that sit on top of them. Lightening it everywhere would have
-     made those chips vanish against a white card, so the page gets its own
-     value and --ground keeps filling. */
-  --page: #f6f8fb;
+  /* The page is plain white; the cards on it keep their hairline outline.
+     --ground does both jobs in ~119 places: it painted the page behind the
+     cards, and it fills the small controls that sit on top of them. Turning
+     it white everywhere would have made those chips vanish against a white
+     card, so the page gets its own value and --ground keeps filling. */
+  --page: #ffffff;
   --surface: #ffffff;
   --ink: #242426;
   --ink-75: rgba(36, 36, 38, 0.75);
@@ -3004,10 +3004,10 @@ a.adm-row:hover, button.adm-row:hover { background: var(--ground); }
   }
 }
 
-/* The reference paints the ground via body:has(.adm), which does not hold here:
+/* The reference paints the page via body:has(.adm), which does not hold here:
    the sign-in view renders before the shell is shown, so the page sat on the
    browser default. Paint it unconditionally for this document. */
-html, body { background: var(--ground); }
+html, body { background: var(--page); }
 
 /* The search card's text field matches the menu beside it: a 40px pill with
    room before the text. (A generic input rule gave it a border and height but
