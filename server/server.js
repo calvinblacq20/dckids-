@@ -270,9 +270,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dckids-super-secret-key-change-in-
 
 // Customer authentication is handled by Firebase. These web-app values are
 // public identifiers (not secrets) and are exposed through /api/customer/auth/config.
-// Server credentials stay outside the repository. File-based hosts can use
-// Application Default Credentials / GOOGLE_APPLICATION_CREDENTIALS, while
-// platforms such as Railway can supply the JSON as a sealed environment value.
+// Verifying a customer's ID token needs only the project id and Google's public
+// keys, so no service account is required. One is still honoured if set
+// (FIREBASE_SERVICE_ACCOUNT_JSON, or Application Default Credentials), for any
+// later feature that calls other Firebase Admin services.
 const FIREBASE_PUBLIC_CONFIG = {
     apiKey: String(process.env.FIREBASE_API_KEY || '').trim(),
     authDomain: String(process.env.FIREBASE_AUTH_DOMAIN || '').trim(),
@@ -2709,14 +2710,11 @@ app.get('/api/analytics/sales/export', authenticateToken, async (req, res) => {
 
 // ===========================================================================
 //   CUSTOMER ACCOUNTS (storefront)
-//   Separate auth from staff: JWT carries { cid, email, kind: 'customer' }.
-//
-//   The storefront currently has no sign-in UI (account.html was removed), so
-//   the public entry points — register, login, password reset — are gated off
-//   by default to close an unused write surface. Set CUSTOMER_ACCOUNTS_ENABLED=true
-//   in server/.env to reopen them when the account UI returns. Token-protected
-//   routes (me/addresses/wishlist) stay mounted: without login nobody can mint
-//   a customer token, so they are unreachable until the flag is on.
+//   Customers sign in on account.html with Firebase (ADR 0006); staff tokens
+//   are the shop's own JWTs and never reach these routes. Every customer route
+//   verifies the Firebase ID token on each request and reads only that
+//   customer's rows. Without FIREBASE_PROJECT_ID they answer 503
+//   firebase/not-configured and the account page says accounts are coming soon.
 // ===========================================================================
 const dbGetAsync = (sql, params) => new Promise((resolve, reject) => {
     db.get(sql, params || [], (err, row) => err ? reject(err) : resolve(row));

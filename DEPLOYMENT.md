@@ -56,7 +56,7 @@ is up to your host:
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | no | Order alerts as phone/desktop notifications from the installed admin app. Generate the pair once with `npx web-push generate-vapid-keys` (from `server/`) and keep it: a new pair silently ends every existing device's alerts. `VAPID_SUBJECT` is a contact, e.g. `mailto:info@dckidsbrand.com`. Each device then turns alerts on in admin **Settings → Order alerts on this device**; on iPhone the admin must first be added to the Home Screen (iOS 16.4+). |
 | `SMTP_*` | no | Optional transactional email. |
 | `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_APP_ID` | **yes** | Public Firebase web-app configuration used by the customer account page. |
-| `GOOGLE_APPLICATION_CREDENTIALS` / `FIREBASE_SERVICE_ACCOUNT_JSON` | production* | Use an external service-account file path, workload identity, or a sealed JSON environment value on Railway-style hosts. Never expose or commit the JSON. |
+| `GOOGLE_APPLICATION_CREDENTIALS` / `FIREBASE_SERVICE_ACCOUNT_JSON` | no | Leave unset. The server only verifies customers' sign-in tokens, which needs `FIREBASE_PROJECT_ID` and Google's public keys, not a service account. If a later feature needs one, keep the JSON in the sealed variable and never commit it. |
 
 ## 3. First admin account (Google sign-in)
 
@@ -86,7 +86,7 @@ Customer accounts use Firebase Authentication; the admin's Google sign-in (§8) 
 4. Configure the verification-email and password-reset templates with the store name and production continue URL.
 5. Set the Firebase password policy to require at least **8 characters**. The app also enforces this minimum before registration.
 6. Copy the web app's `apiKey`, `authDomain`, `projectId`, and `appId` into the matching environment variables above.
-7. Give the Node server Firebase Admin credentials through Application Default Credentials. If using a service-account JSON file, store it outside the repository and set `GOOGLE_APPLICATION_CREDENTIALS` to its absolute path. On Railway-style hosts, store the complete JSON only in the sealed `FIREBASE_SERVICE_ACCOUNT_JSON` variable.
+7. The server needs no Firebase service account: it checks each customer's sign-in token against Google's public keys for `FIREBASE_PROJECT_ID`. Leave `GOOGLE_APPLICATION_CREDENTIALS` and `FIREBASE_SERVICE_ACCOUNT_JSON` unset.
 
 Restart the server after changing configuration. `GET /api/customer/auth/config` intentionally exposes only the four public web fields. Customer profile, orders, addresses, wishlist, and reviews require a verified Firebase email and a valid bearer ID token.
 
@@ -186,7 +186,7 @@ remove only stale sidecars belonging to that stopped database before step 7.
 - [ ] Firebase authorized domains include localhost and every production hostname
 - [ ] Firebase verification/reset templates and 8-character password policy configured
 - [ ] All four `FIREBASE_*` public values set
-- [ ] Firebase Admin uses ADC/workload identity or an external service-account file
+- [ ] No Firebase service-account key is set (the server only verifies sign-in tokens)
 - [ ] A test order placed on WhatsApp, then set to Paid in the admin, shows on the Payments page and in revenue
 - [ ] If Cloudflare proxies the domain (orange cloud): SSL/TLS mode is **Full (strict)**. The server already
       recognises Cloudflare's addresses (`server/trusted_proxies.js`), so each shopper keeps their own rate limit;

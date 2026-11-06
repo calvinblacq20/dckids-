@@ -44,7 +44,6 @@ Totals are always computed **server-side**. Wholesale (and bulk pre-orders) = th
 
 ## Out of scope (deliberate)
 - Online card payments (checkout completes over WhatsApp; no PCI surface).
-- Customer accounts UI (endpoints exist behind `CUSTOMER_ACCOUNTS_ENABLED=false`).
 - Multi-warehouse stock, multi-currency, i18n.
 - Native mobile apps (PWA covers install-to-home-screen).
 

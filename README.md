@@ -112,7 +112,7 @@ Set these in `server/.env` (see `DEPLOYMENT.md` for the full table):
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Optional order alerts as device notifications from the installed admin app (`npx web-push generate-vapid-keys`). |
 | `SMTP_*` | Optional transactional email. |
 | `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `FIREBASE_APP_ID` | Public Firebase web-app configuration for customer authentication. |
-| `GOOGLE_APPLICATION_CREDENTIALS`, `FIREBASE_SERVICE_ACCOUNT_JSON` | External service-account path or sealed JSON value when the host does not provide Application Default Credentials. |
+| `GOOGLE_APPLICATION_CREDENTIALS`, `FIREBASE_SERVICE_ACCOUNT_JSON` | Not needed: the server only verifies customers' sign-in tokens. Leave unset. |
 
 ---
 
