@@ -43,7 +43,7 @@
   <!-- admin.css retired: the reference system in admin-system.css is the single
        source of styling, with admin-bridge.css mapping the class names this
        markup still uses onto it. -->
-  <link rel="stylesheet" href="admin-bridge.css?v=115">
+  <link rel="stylesheet" href="admin-bridge.css?v=116">
   <!-- CRITICAL MOBILE FIX — inline so it always loads with the HTML,
        bypasses any stale service-worker or browser CSS cache.
        These rules ensure the sidebar collapses on phones/tablets. -->
@@ -775,8 +775,12 @@
 
       <!-- ==================== TAB: INVENTORY ==================== -->
       <section id="tab-inventory" class="tab-view" role="tabpanel" aria-label="Inventory Management">
+        <div class="adm-top">
         <div class="adm-head">
             <div class="adm-head__titles">
+              <button type="button" class="sidebar-toggle adm-head__menu" aria-label="Open menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
               <h1 class="adm-title">Inventory</h1>
               <span class="adm-status"><i class="adm-dot"></i><span id="inventory-status-line">&nbsp;</span></span>
             </div>
@@ -809,6 +813,7 @@
             <option value="stock-asc">Stock: Low to High</option>
             <option value="stock-desc">Stock: High to Low</option>
           </select>
+        </div>
         </div>
 
         <!-- Inventory Table -->
@@ -843,8 +848,12 @@
       
       <!-- ==================== TAB: PRODUCTS ==================== -->
       <section id="tab-products" class="tab-view" role="tabpanel" aria-label="Product Management">
+        <div class="adm-top">
         <div class="adm-head">
             <div class="adm-head__titles">
+              <button type="button" class="sidebar-toggle adm-head__menu" aria-label="Open menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
               <h1 class="adm-title">Products</h1>
               <span class="adm-status"><i class="adm-dot"></i><span id="products-status-line">Loading catalogue&hellip;</span></span>
             </div>
@@ -945,6 +954,7 @@
               </div>
             </div>
           </div>
+        </div>
         </div>
 
         <!-- Bulk-action toolbar (visible only when at least one row is selected) -->
@@ -3767,8 +3777,12 @@
 
       <!-- ==================== TAB: ORDERS ==================== -->
       <section id="tab-orders" class="tab-view" role="tabpanel" aria-label="Order Management">
+          <div class="adm-top">
           <div class="adm-head">
             <div class="adm-head__titles">
+              <button type="button" class="sidebar-toggle adm-head__menu" aria-label="Open menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
               <h1 class="adm-title">Orders</h1>
               <span class="adm-status"><i class="adm-dot"></i><span id="orders-status-line">Loading orders&hellip;</span></span>
             </div>
@@ -3799,6 +3813,7 @@
               <span>Search</span><i aria-hidden="true">&rarr;</i>
             </button>
           </form>
+          </div>
 
           <section class="adm-card adm-dark adm-alert" id="orders-alert" hidden>
             <div class="adm-alert__text">
@@ -3891,6 +3906,9 @@
         <section id="tab-preorders" class="tab-view" role="tabpanel" aria-label="China pre-orders" style="display: none;">
           <div class="adm-head">
             <div class="adm-head__titles">
+              <button type="button" class="sidebar-toggle adm-head__menu" aria-label="Open menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
               <h1 class="adm-title">Pre-orders</h1>
               <span class="adm-status"><i class="adm-dot" id="po-status-dot"></i><span id="preorders-status-line">Loading pre-orders&hellip;</span></span>
             </div>
@@ -3964,8 +3982,12 @@
         </section>
 
         <section id="tab-customers" class="tab-view" role="tabpanel" aria-label="Customer Management">
+          <div class="adm-top">
           <div class="adm-head">
             <div class="adm-head__titles">
+              <button type="button" class="sidebar-toggle adm-head__menu" aria-label="Open menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
               <h1 class="adm-title">Customers</h1>
               <span class="adm-status"><i class="adm-dot"></i><span id="customers-status-line">Loading customers&hellip;</span></span>
             </div>
@@ -3994,6 +4016,7 @@
               <span>Search</span><i aria-hidden="true">&rarr;</i>
             </button>
           </form>
+          </div>
 
           <div class="patd">
             <aside class="patd-filters" aria-label="Customer filters">
@@ -4093,6 +4116,9 @@
         <section id="tab-reviews" class="tab-view" role="tabpanel" aria-label="Customer Reviews" style="display: none;">
         <div class="adm-head">
             <div class="adm-head__titles">
+              <button type="button" class="sidebar-toggle adm-head__menu" aria-label="Open menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
               <h1 class="adm-title">Reviews</h1>
               <span class="adm-status"><i class="adm-dot"></i><span id="reviews-status-line">&nbsp;</span></span>
             </div>
@@ -4140,6 +4166,9 @@
       <section id="tab-admins" class="tab-view" role="tabpanel" aria-label="Staff Management" style="display: none;">
         <div class="adm-head">
             <div class="adm-head__titles">
+              <button type="button" class="sidebar-toggle adm-head__menu" aria-label="Open menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
               <h1 class="adm-title">Manage staff</h1>
               <span class="adm-status"><i class="adm-dot"></i><span id="admins-status-line">&nbsp;</span></span>
             </div>
@@ -4203,8 +4232,12 @@
 
       <!-- ==================== TAB: SUPPLIERS ==================== -->
       <section id="tab-suppliers" class="tab-view" role="tabpanel" aria-label="Supplier Management">
+          <div class="adm-top">
           <div class="adm-head">
             <div class="adm-head__titles">
+              <button type="button" class="sidebar-toggle adm-head__menu" aria-label="Open menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
               <h1 class="adm-title">Suppliers</h1>
               <span class="adm-status"><i class="adm-dot"></i><span id="suppliers-status-line">Loading suppliers&hellip;</span></span>
             </div>
@@ -4232,6 +4265,7 @@
               <span>Search</span><i aria-hidden="true">&rarr;</i>
             </button>
           </form>
+          </div>
 
           <div class="patd">
             <aside class="patd-filters" aria-label="Supplier filters">
@@ -4311,6 +4345,9 @@
       <section id="tab-payments" class="tab-view" role="tabpanel" aria-label="Payments">
         <div class="adm-head">
           <div class="adm-head__titles">
+            <button type="button" class="sidebar-toggle adm-head__menu" aria-label="Open menu">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
             <h1 class="adm-title">Payments</h1>
             <span class="adm-status"><i class="adm-dot"></i><span id="payments-status-line">&nbsp;</span></span>
           </div>
@@ -4389,7 +4426,10 @@
         <section id="tab-analytics" class="tab-view analytics-dashboard" role="tabpanel" aria-label="Sales Analytics">
         <div class="analytics-shell">
           <div class="analytics-header">
-            <div>
+            <div class="analytics-header__titles">
+              <button type="button" class="sidebar-toggle adm-head__menu" aria-label="Open menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
               <h1 class="analytics-title">Sales Analytics</h1>
               <p class="analytics-subtitle">Insights into your sales performance</p>
               <div class="analytics-tabs" role="tablist" aria-label="Analytics period">
@@ -4609,6 +4649,9 @@
       <section id="tab-reports" class="tab-view" role="tabpanel" aria-label="Reports">
         <div class="adm-head">
             <div class="adm-head__titles">
+              <button type="button" class="sidebar-toggle adm-head__menu" aria-label="Open menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
               <h1 class="adm-title">Reports</h1>
               <span class="adm-status"><i class="adm-dot"></i><span id="reports-status-line">&nbsp;</span></span>
             </div>
@@ -4881,6 +4924,9 @@
       <section id="tab-settings" class="tab-view" role="tabpanel" aria-label="Settings">
         <div class="adm-head">
             <div class="adm-head__titles">
+              <button type="button" class="sidebar-toggle adm-head__menu" aria-label="Open menu">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              </button>
               <h1 class="adm-title">Settings</h1>
 
             </div>
@@ -6382,7 +6428,7 @@
   <!-- Scripts -->
   <script src="vendor/chart.umd.js?v=4.5.1"></script>
   <script src="image-resolver.js?v=2"></script>
-  <script src="admin.js?v=203"></script>
+  <script src="admin.js?v=204"></script>
   <script>
     // Keep the admin page on fresh code: when an updated service worker takes
     // control, reload once (guarded against loops and first-registration).

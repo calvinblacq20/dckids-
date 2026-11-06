@@ -8021,7 +8021,6 @@ function setupEventListeners() {
     
     
     // Mobile Sidebar Toggle
-    var mobileSidebarToggle = document.getElementById('mobile-sidebar-toggle');
     var adminSidebar = document.querySelector('.admin-sidebar');
     var sidebarOverlay = document.getElementById('sidebar-overlay');
 
@@ -8035,10 +8034,10 @@ function setupEventListeners() {
         if (sidebarOverlay) sidebarOverlay.classList.remove('active');
     }
 
-    // The dashboard hides the top bar, because its hero already carries the
-    // same notifications and account actions. The hero therefore has its own
-    // menu button, and both open the one sidebar.
-    var sidebarToggles = [mobileSidebarToggle, document.getElementById('dash-hero-menu')].filter(Boolean);
+    // The top bar is hidden, so every page carries its own menu button: the
+    // dashboard in its hero, the rest beside their title. All of them open the
+    // one sidebar.
+    var sidebarToggles = Array.prototype.slice.call(document.querySelectorAll('.sidebar-toggle'));
 
     if (sidebarToggles.length && adminSidebar) {
         sidebarToggles.forEach(function (toggle) {

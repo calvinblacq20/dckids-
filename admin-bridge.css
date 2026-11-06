@@ -975,7 +975,9 @@ input[type="text"], input[type="email"], input[type="number"], input[type="searc
 .settings-row__title { font-size: 14px; font-weight: 500; color: var(--ink); }
 .settings-row__desc { font-size: 12px; color: var(--ink-75); }
 
-/* The page head is a layout block, not a surface — it should have no fill. */
+/* The page head has no fill of its own. On each tab it is given one as the
+   page's top card (section 53); this keeps every other head, the dashboard's
+   among them, flat. */
 .adm-head, .adm-head__titles { background: none; border: 0; }
 
 /* ---------- Dropdown (the reference's listbox) ----------
@@ -3349,3 +3351,45 @@ body.is-authed #admin-header { display: none; }
 }
 /* The type tag is already written in sentence case ("Pre-order · Bulk"). */
 .res-card__type { text-transform: none; }
+
+/* =============================================================
+   53. Page head card
+   Every page opens on a white card, the way the dashboard opens on its hero:
+   menu button, title and status, and the page's main action. Where a search
+   sits straight under the title (Orders, Customers, Suppliers, Inventory,
+   Products), .adm-top wraps the two so the search is part of the same card
+   rather than a second one under a title floating on the ground.
+   ============================================================= */
+.tab-view > .adm-head,
+.adm-top,
+.analytics-header {
+  background: var(--surface);
+  border: 0.8px solid var(--ink-06);
+  border-radius: var(--radius-lg);
+}
+.tab-view > .adm-head,
+.analytics-header { padding: 22px; }
+.tab-view > .adm-head,
+.adm-top { margin: 0 0 16px; }
+
+/* Inside the card the title lines up with the search fields' labels, which
+   sit 22px in (the search's 10px padding plus each field's 12px). */
+.adm-top > .adm-head { margin: 0; padding: 22px 22px 12px; }
+.adm-top > .patd-search,
+.adm-top > .filter-bar { margin: 0; background: none; border: 0; border-radius: 0; }
+.adm-top > .filter-bar { padding: 4px 22px 22px; }
+
+/* The menu button: phone only (the sidebar is always open from 810px), and
+   the same ground-filled circle as the one in the dashboard hero. */
+.adm-head__menu { background: var(--ground); }
+@media (max-width: 809.98px) {
+  .adm-head__titles:has(> .adm-head__menu),
+  .analytics-header__titles {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 12px;
+    align-items: center;
+  }
+  .adm-head__titles > :not(.adm-head__menu),
+  .analytics-header__titles > :not(.adm-head__menu) { grid-column: 2; }
+}
