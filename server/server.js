@@ -3305,8 +3305,9 @@ app.post('/api/wishlist/merge', authenticateCustomer, async (req, res) => {
     }
     try {
         if (productIds.length) {
+            // Only "?" marks are spliced in; the ids themselves are bound.
             const placeholders = productIds.map(() => '?').join(',');
-            const existing = await dbAllAsync(`SELECT id FROM products WHERE id IN (${placeholders})`, productIds);
+            const existing = await dbAllAsync(`SELECT id FROM products WHERE id IN (${placeholders})`, productIds); // nosemgrep: javascript.express.security.injection.tainted-sql-string.tainted-sql-string
             if (existing.length !== productIds.length) return res.status(400).json({ error: 'One or more wishlist products do not exist' });
         }
         await dbRunAsync('BEGIN IMMEDIATE');
@@ -3539,15 +3540,16 @@ app.delete('/api/whatsapp-signups/:id', authenticateToken, requireManager, async
 app.post('/api/products/bulk-delete', authenticateToken, requireManager, (req, res) => {
     const { ids } = req.body || {};
     if (!Array.isArray(ids) || ids.length === 0) return res.status(400).json({ error: 'ids array required' });
+    // Only "?" marks are spliced in; the ids themselves are bound.
     const placeholders = ids.map(() => '?').join(',');
     // Same FK constraint as the single-delete route — clear dependent rows first.
-    db.run(`DELETE FROM product_images WHERE product_id IN (${placeholders})`, ids, (err) => {
+    db.run(`DELETE FROM product_images WHERE product_id IN (${placeholders})`, ids, (err) => { // nosemgrep: javascript.express.security.injection.tainted-sql-string.tainted-sql-string
         if (err) return serverError(res, err);
-        db.run(`DELETE FROM product_reviews WHERE product_id IN (${placeholders})`, ids, (err2) => {
+        db.run(`DELETE FROM product_reviews WHERE product_id IN (${placeholders})`, ids, (err2) => { // nosemgrep: javascript.express.security.injection.tainted-sql-string.tainted-sql-string
             if (err2) return serverError(res, err2);
-            db.run(`DELETE FROM wishlist_items WHERE product_id IN (${placeholders})`, ids, (err3) => {
+            db.run(`DELETE FROM wishlist_items WHERE product_id IN (${placeholders})`, ids, (err3) => { // nosemgrep: javascript.express.security.injection.tainted-sql-string.tainted-sql-string
                 if (err3) return serverError(res, err3);
-                db.run(`DELETE FROM products WHERE id IN (${placeholders})`, ids, function(err4) {
+                db.run(`DELETE FROM products WHERE id IN (${placeholders})`, ids, function(err4) { // nosemgrep: javascript.express.security.injection.tainted-sql-string.tainted-sql-string
                     if (err4) return serverError(res, err4);
                     res.json({ success: true, deleted: this.changes });
                 });
@@ -3796,7 +3798,9 @@ app.post('/api/upload-image', authenticateToken, requireManager, (req, res) => {
 
         const fs = require('fs');
         const fname = 'product_upload_' + Date.now() + '_' + Math.floor(Math.random() * 1e4) + '.' + ext;
-        fs.writeFileSync(path.join(UPLOAD_DIR, fname), buf);
+        // The name is made here (timestamp, random number, whitelisted extension),
+        // never taken from the request, so it cannot climb out of UPLOAD_DIR.
+        fs.writeFileSync(path.join(UPLOAD_DIR, fname), buf); // nosemgrep: javascript.express.security.audit.express-path-join-resolve-traversal.express-path-join-resolve-traversal
         res.json({ success: true, path: 'images/' + fname, bytes: buf.length });
     } catch (e) {
         serverError(res, e);
