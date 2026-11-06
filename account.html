@@ -10,7 +10,7 @@
   <link rel="preload" href="fonts/jost-latin.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="store.css?v=37">
   <link rel="stylesheet" href="auth.css?v=3">
-  <link rel="stylesheet" href="account.css?v=3">
+  <link rel="stylesheet" href="account.css?v=4">
 </head>
 <body class="account-page">
   <header class="nav scrolled nav--page account-nav">
@@ -173,6 +173,13 @@
               <div class="account-section-heading"><h2>Recent orders</h2><button type="button" data-open-tab="orders">View all orders</button></div>
               <div id="recentOrders" class="account-list"></div>
             </div>
+            <div class="account-preview-section account-data">
+              <div class="account-section-heading"><div><h2>Your data</h2><p>Download a copy of what your account holds, or close it. Closing it deletes your saved addresses, wishlist and reviews. Past orders stay with the shop as sales records.</p></div></div>
+              <div class="account-data__actions">
+                <button id="downloadMyData" class="account-secondary-btn account-secondary-btn--fit" type="button">Download my data</button>
+                <button id="deleteMyAccount" class="account-data__delete" type="button">Delete my account</button>
+              </div>
+            </div>
           </section>
 
           <section id="panel-orders" class="account-panel" role="tabpanel" aria-labelledby="tab-orders" hidden>
@@ -232,6 +239,6 @@
   </footer>
   <script src="shop-contact.js?v=1"></script>
   <script src="receipt.js?v=3"></script>
-  <script type="module" src="account.js?v=10"></script>
+  <script type="module" src="account.js?v=11"></script>
 </body>
 </html>

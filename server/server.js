@@ -3007,42 +3007,105 @@ app.put('/api/customer/me', authenticateCustomer, async (req, res) => {
 });
 
 // Customer's own order history uses explicit account ownership only.
+async function customerOrderHistory(customerId) {
+    const rows = await dbAllAsync(
+        `SELECT o.*, oi.id AS item_id, oi.product_id, oi.product_name, oi.quantity, oi.price_at_time,
+                (SELECT payment_method FROM payments WHERE order_id = o.id ORDER BY id DESC LIMIT 1) AS payment_method,
+                (SELECT status FROM payments WHERE order_id = o.id ORDER BY id DESC LIMIT 1) AS payment_status,
+                (SELECT provider_reference FROM payments WHERE order_id = o.id ORDER BY id DESC LIMIT 1) AS payment_reference,
+                (SELECT channel FROM payments WHERE order_id = o.id ORDER BY id DESC LIMIT 1) AS payment_channel
+           FROM orders o LEFT JOIN order_items oi ON oi.order_id = o.id
+          WHERE o.customer_account_id = ? ORDER BY o.created_at DESC, oi.id ASC`,
+        [customerId]
+    );
+    const byId = new Map();
+    rows.forEach((row) => {
+        if (!byId.has(row.id)) {
+            byId.set(row.id, {
+                id: row.id, order_number: row.order_number, customer_name: row.customer_name,
+                customer_phone: row.customer_phone, order_type: row.order_type, preorder_kind: row.preorder_kind || null,
+                total_amount: Number(row.total_amount || 0), discount_percent: Number(row.discount_percent) || 0,
+                status: row.status || 'pending',
+                customer_email: row.customer_email, delivery_area: row.delivery_area,
+                delivery_address_line1: row.delivery_address_line1, delivery_address_line2: row.delivery_address_line2,
+                delivery_city: row.delivery_city, delivery_region: row.delivery_region,
+                delivery_landmark: row.delivery_landmark, notes: row.notes,
+                payment_method: row.payment_method, payment_status: row.payment_status,
+                payment_reference: row.payment_reference, payment_channel: row.payment_channel,
+                created_at: row.created_at, items: []
+            });
+        }
+        if (row.item_id) byId.get(row.id).items.push({
+            id: row.item_id, product_id: row.product_id, product_name: row.product_name,
+            quantity: Number(row.quantity || 0), price_at_time: Number(row.price_at_time || 0)
+        });
+    });
+    return Array.from(byId.values());
+}
+
 app.get('/api/customer/orders', authenticateCustomer, async (req, res) => {
     try {
-        const rows = await dbAllAsync(
-            `SELECT o.*, oi.id AS item_id, oi.product_id, oi.product_name, oi.quantity, oi.price_at_time,
-                    (SELECT payment_method FROM payments WHERE order_id = o.id ORDER BY id DESC LIMIT 1) AS payment_method,
-                    (SELECT status FROM payments WHERE order_id = o.id ORDER BY id DESC LIMIT 1) AS payment_status,
-                    (SELECT provider_reference FROM payments WHERE order_id = o.id ORDER BY id DESC LIMIT 1) AS payment_reference,
-                    (SELECT channel FROM payments WHERE order_id = o.id ORDER BY id DESC LIMIT 1) AS payment_channel
-               FROM orders o LEFT JOIN order_items oi ON oi.order_id = o.id
-              WHERE o.customer_account_id = ? ORDER BY o.created_at DESC, oi.id ASC`,
-            [req.customer.cid]
-        );
-        const byId = new Map();
-        rows.forEach((row) => {
-            if (!byId.has(row.id)) {
-                byId.set(row.id, {
-                    id: row.id, order_number: row.order_number, customer_name: row.customer_name,
-                    customer_phone: row.customer_phone, order_type: row.order_type, preorder_kind: row.preorder_kind || null,
-                    total_amount: Number(row.total_amount || 0), discount_percent: Number(row.discount_percent) || 0,
-                    status: row.status || 'pending',
-                    customer_email: row.customer_email, delivery_area: row.delivery_area,
-                    delivery_address_line1: row.delivery_address_line1, delivery_address_line2: row.delivery_address_line2,
-                    delivery_city: row.delivery_city, delivery_region: row.delivery_region,
-                    delivery_landmark: row.delivery_landmark, notes: row.notes,
-                    payment_method: row.payment_method, payment_status: row.payment_status,
-                    payment_reference: row.payment_reference, payment_channel: row.payment_channel,
-                    created_at: row.created_at, items: []
-                });
-            }
-            if (row.item_id) byId.get(row.id).items.push({
-                id: row.item_id, product_id: row.product_id, product_name: row.product_name,
-                quantity: Number(row.quantity || 0), price_at_time: Number(row.price_at_time || 0)
-            });
-        });
-        res.json(Array.from(byId.values()));
+        res.json(await customerOrderHistory(req.customer.cid));
     } catch (err) { serverError(res, err); }
+});
+
+// Everything the shop holds against a customer account, for "Download my
+// data" on the account page: Ghana's Data Protection Act 2012 and GDPR both
+// give customers the right to see it.
+app.get('/api/customer/export', authenticateCustomer, async (req, res) => {
+    const customerId = req.customer.cid;
+    try {
+        const addresses = await dbAllAsync(
+            `SELECT label, recipient_name, phone, address_line1, address_line2, city, region, country, is_default, created_at
+               FROM customer_addresses WHERE customer_id = ? ORDER BY id`, [customerId]);
+        const wishlist = await dbAllAsync(
+            `SELECT w.product_id, p.name AS product_name, w.created_at
+               FROM wishlist_items w LEFT JOIN products p ON p.id = w.product_id
+              WHERE w.customer_id = ? ORDER BY w.id`, [customerId]);
+        const reviews = await dbAllAsync(
+            `SELECT pr.product_id, p.name AS product_name, pr.author_name, pr.rating, pr.title, pr.body, pr.created_at
+               FROM product_reviews pr LEFT JOIN products p ON p.id = pr.product_id
+              WHERE pr.customer_id = ? ORDER BY pr.id`, [customerId]);
+        const orders = await customerOrderHistory(customerId);
+        res.setHeader('Cache-Control', 'no-store');
+        res.setHeader('Content-Disposition', 'attachment; filename="dc-kids-my-data.json"');
+        res.json({
+            exported_at: new Date().toISOString(),
+            account: {
+                email: req.customer.email, name: req.customer.name, phone: req.customer.phone,
+                created_at: req.customer.created_at, last_login_at: req.customer.last_login_at
+            },
+            addresses, wishlist, reviews, orders
+        });
+    } catch (err) { serverError(res, err); }
+});
+
+// Closes a customer account. Saved addresses, the wishlist and reviews are
+// deleted. Orders stay, unlinked from the account, because they are the
+// shop's sales record (privacy policy, "How long we keep it"). The customer
+// list entry is unlinked too, or the same phone could never open a new account.
+app.delete('/api/customer/me', authenticateCustomer, async (req, res) => {
+    const customerId = req.customer.cid;
+    let transactionOpen = false;
+    try {
+        await dbRunAsync('BEGIN IMMEDIATE');
+        transactionOpen = true;
+        await dbRunAsync('DELETE FROM customer_addresses WHERE customer_id = ?', [customerId]);
+        await dbRunAsync('DELETE FROM wishlist_items WHERE customer_id = ?', [customerId]);
+        await dbRunAsync('DELETE FROM product_reviews WHERE customer_id = ?', [customerId]);
+        await dbRunAsync('UPDATE orders SET customer_account_id = NULL WHERE customer_account_id = ?', [customerId]);
+        await dbRunAsync('UPDATE customers SET customer_account_id = NULL WHERE customer_account_id = ?', [customerId]);
+        await dbRunAsync('DELETE FROM customer_accounts WHERE id = ?', [customerId]);
+        await dbRunAsync('COMMIT');
+        transactionOpen = false;
+        console.log(`[customer account] account ${customerId} closed by its owner`);
+        res.json({ success: true });
+    } catch (err) {
+        if (transactionOpen) {
+            try { await dbRunAsync('ROLLBACK'); } catch (rollbackError) { console.error('[Customer account rollback]', rollbackError.message); }
+        }
+        serverError(res, err);
+    }
 });
 
 // ---- Customer addresses ----

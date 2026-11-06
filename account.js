@@ -15,6 +15,9 @@ const iconButton = (label, action, id, glyph) => `<button class="account-icon-bt
 const editGlyph = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z"/><path d="m13.5 7.5 3 3"/></svg>';
 const deleteGlyph = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6"/></svg>';
 
+// Shown on the sign-in screen once a closed account has signed out.
+let closedAccountNotice = '';
+
 function setVisible(id, visible) { const element = $(id); if (element) element.hidden = !visible; }
 function notice(message, kind = 'error') {
   const element = $('authMessage');
@@ -265,6 +268,10 @@ function renderAuthState(state) {
     showAuthView('signin');
   }
   if (state.error) notice(state.error);
+  else if (closedAccountNotice && !state.user) {
+    notice(closedAccountNotice, 'success');
+    closedAccountNotice = '';
+  }
 }
 
 function openAddressDialog(address) {
@@ -358,6 +365,39 @@ $('checkVerification').addEventListener('click', async (event) => {
 });
 $('verifySignOut').addEventListener('click', () => Auth.signOut());
 $('accountSignOut').addEventListener('click', () => Auth.signOut());
+
+$('downloadMyData').addEventListener('click', async (event) => {
+  const button = event.currentTarget;
+  setBusy(button, true, 'Preparing…');
+  try {
+    const response = await Auth.apiFetch('/api/customer/export');
+    if (!response.ok) await jsonResponse(response);
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(await response.blob());
+    link.download = 'dc-kids-my-data.json';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    clearRecovery();
+  } catch (error) {
+    showRecovery('Your data was not downloaded', recoveryCopy(error), () => button.click());
+  } finally { setBusy(button, false); }
+});
+
+$('deleteMyAccount').addEventListener('click', async (event) => {
+  if (!window.confirm('Delete your DC Kids account? Your saved addresses, wishlist and reviews are deleted for good. Past orders stay with the shop as sales records.')) return;
+  const button = event.currentTarget;
+  setBusy(button, true, 'Deleting…');
+  closedAccountNotice = 'Your account is deleted. You can still shop and order on WhatsApp without one.';
+  try {
+    await Auth.deleteAccount();
+  } catch (error) {
+    closedAccountNotice = '';
+    setBusy(button, false);
+    showRecovery('Your account was not deleted', recoveryCopy(error), () => button.click());
+  }
+});
 
 $('profileForm').addEventListener('submit', async (event) => {
   event.preventDefault();

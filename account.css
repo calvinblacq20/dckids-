@@ -111,6 +111,14 @@
 .account-profile-summary h2 { margin: 0 0 6px; font-weight: 400; font-size: 24px; }
 .account-profile-summary p { margin: 0; color: var(--ink-soft); font-size: 15px; overflow-wrap: anywhere; }
 .account-preview-section { padding-top: clamp(30px, 4vw, 48px); }
+.account-data__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; }
+/* The same red as the sign-in screen's errors (auth.css --a-danger), which is
+   scoped to the sign-in view and so not available here. */
+.account-data__delete {
+  padding: 0 0 2px; font: inherit; font-size: 15px; color: #B42318; background: none; border: 0;
+  border-bottom: 1px solid currentColor; cursor: pointer;
+}
+.account-data__delete:disabled { opacity: .5; cursor: not-allowed; }
 
 /* shared form fields (profile + address dialog) */
 .account-form { display: flex; flex-direction: column; }

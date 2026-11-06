@@ -2,6 +2,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.17.1/fireba
 import {
   browserLocalPersistence,
   createUserWithEmailAndPassword,
+  deleteUser,
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
@@ -240,6 +241,23 @@ async function signOutCustomer() {
   lastSessionUid = '';
 }
 
+async function deleteCustomerAccount() {
+  const response = await customerFetch('/api/customer/me', { method: 'DELETE' });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || 'Your account was not deleted. Try again.');
+  }
+  // The shop's records are gone. Firebase deletes the sign-in itself only
+  // after a recent sign-in; when it refuses, the sign-in is left holding just
+  // the email address, and signing out below still ends the session.
+  try {
+    await deleteUser(auth.currentUser);
+  } catch (error) {
+    console.warn('[account] Firebase sign-in kept after the account was closed:', error && error.code);
+  }
+  await signOutCustomer();
+}
+
 window.DCKidsAuth = {
   ready,
   getState: snapshot,
@@ -253,5 +271,6 @@ window.DCKidsAuth = {
   refreshVerification,
   sendPasswordReset,
   signOut: signOutCustomer,
+  deleteAccount: deleteCustomerAccount,
   friendlyError
 };

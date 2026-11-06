@@ -1049,6 +1049,37 @@ async function run() {
     r = await fetch(`${BASE}/api/customer/orders`, { headers: { 'Authorization': 'Bearer verified-legacy' } });
     check('later phone changes never claim unrelated orders', !(await r.json()).some(item => item.order_number === laterPhoneOrder.order_number));
 
+    // ---- a customer's own data: download it, or close the account ----
+    const legacyAuth = { 'Authorization': 'Bearer verified-legacy' };
+    r = await fetch(`${BASE}/api/customer/export`);
+    check('downloading account data needs the customer signed in', r.status === 401, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/customer/export`, { headers: legacyAuth });
+    const exported = await r.json();
+    check('a customer can download everything their account holds',
+        r.status === 200 && exported.account.email === 'legacy.customer@test.com' && exported.addresses.length === 1 &&
+        exported.wishlist.length === 1 && exported.reviews.length === 1 && exported.orders.some(item => item.order_number === legacyOrder.order_number),
+        JSON.stringify({ status: r.status, addresses: exported.addresses && exported.addresses.length }));
+    check('the download holds only that customer\'s orders',
+        !exported.orders.some(item => item.order_number === customerOrder.order_number));
+    check('the download is sent as a file and never cached',
+        /attachment/.test(r.headers.get('content-disposition') || '') && /no-store/.test(r.headers.get('cache-control') || ''));
+    r = await fetch(`${BASE}/api/customer/me`, { method: 'DELETE', headers: legacyAuth });
+    check('a customer can delete their own account', r.status === 200, `status ${r.status}`);
+    const closedId = legacyInsert.lastID;
+    check('the closed account is gone', !(await dbGet('SELECT id FROM customer_accounts WHERE id = ?', [closedId])));
+    const leftBehind = await dbGet(
+        `SELECT (SELECT COUNT(*) FROM customer_addresses WHERE customer_id = ?) + (SELECT COUNT(*) FROM wishlist_items WHERE customer_id = ?)
+              + (SELECT COUNT(*) FROM product_reviews WHERE customer_id = ?) AS count`, [closedId, closedId, closedId]);
+    check('closing an account deletes its addresses, wishlist and reviews', leftBehind.count === 0, `left ${leftBehind.count}`);
+    const keptOrder = await dbGet('SELECT customer_account_id FROM orders WHERE order_number = ?', [legacyOrder.order_number]);
+    check('its orders stay as sales records, no longer linked to the account', !!keptOrder && keptOrder.customer_account_id === null);
+    check('the customer list no longer points at the closed account',
+        (await dbGet('SELECT COUNT(*) AS count FROM customers WHERE customer_account_id = ?', [closedId])).count === 0);
+    r = await fetch(`${BASE}/api/customer/me`, { headers: legacyAuth });
+    check('a closed account can no longer be read with its old sign-in', r.status === 409, `status ${r.status}`);
+    r = await fetch(`${BASE}/api/customer/me`, { headers: customerAuth });
+    check('closing one account leaves other customers\' accounts alone', r.status === 200, `status ${r.status}`);
+
     // ---- categories: the owner's names and order, on the server ----
     r = await fetch(`${BASE}/api/categories`);
     const seededCats = await r.json();
