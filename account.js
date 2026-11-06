@@ -394,8 +394,11 @@ $('deleteMyAccount').addEventListener('click', async (event) => {
     await Auth.deleteAccount();
   } catch (error) {
     closedAccountNotice = '';
-    setBusy(button, false);
     showRecovery('Your account was not deleted', recoveryCopy(error), () => button.click());
+  } finally {
+    // The page stays open after the account closes, so a new sign-in here
+    // must find the button ready again.
+    setBusy(button, false);
   }
 });
 
